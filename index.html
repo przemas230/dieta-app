@@ -103,6 +103,17 @@
   .pantry-level.malo{background:#F6E3E0; color:var(--danger);}
   .pantry-tag{font-size:11px; background:var(--teal-pale); color:var(--teal-dark); padding:2px 8px; border-radius:999px; white-space:nowrap;}
 
+  .suggest-wrap{position:relative;}
+  .suggest-panel{
+    display:none; position:absolute; left:0; right:0; top:100%; margin-top:4px;
+    background:#fff; border:1px solid var(--line); border-radius:12px; max-height:230px; overflow-y:auto;
+    box-shadow:0 8px 20px rgba(20,20,15,.15); z-index:15;
+  }
+  .suggest-panel.show{display:block;}
+  .suggest-group-title{font-size:10.5px; text-transform:uppercase; letter-spacing:.4px; color:var(--teal-dark); font-weight:800; padding:8px 12px 4px;}
+  .suggest-item{padding:8px 12px; font-size:13px; cursor:pointer;}
+  .suggest-item:active{background:var(--teal-pale);}
+
   /* Modal */
   .modal-overlay{
     position:fixed; inset:0; background:rgba(20,20,15,.5); z-index:80;
@@ -175,15 +186,16 @@
   /* Planner */
   .day-card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px 14px; margin-bottom:10px;}
   .day-card h4{margin:0 0 8px; font-size:14.5px;}
-  .slot-row{display:flex; align-items:center; gap:8px; margin-bottom:6px;}
-  .slot-row label{width:64px; font-size:11.5px; color:var(--muted); font-weight:700;}
-  .slot-row select{
-    flex:1; border:1px solid var(--line); border-radius:9px; padding:7px 8px;
-    font-size:12.5px; background:#fff; color:var(--text);
+  .slot-row{display:flex; align-items:flex-start; gap:8px; margin-bottom:6px;}
+  .slot-row label{width:60px; flex:0 0 60px; font-size:11px; color:var(--muted); font-weight:700; padding-top:8px;}
+  .slot-pick{
+    flex:1 1 0; min-width:0; text-align:left; border:1px solid var(--line); border-radius:9px;
+    padding:7px 8px; font-size:12.5px; background:#fff; color:var(--text);
+    white-space:normal; word-break:break-word; line-height:1.35; cursor:pointer;
   }
   .regen-btn{
-    flex:0 0 auto; border:1px solid var(--line); background:var(--teal-pale); color:var(--teal-dark);
-    border-radius:9px; width:32px; height:32px; font-size:14px; cursor:pointer;
+    flex:0 0 32px; border:1px solid var(--line); background:var(--teal-pale); color:var(--teal-dark);
+    border-radius:9px; width:32px; height:32px; font-size:14px; cursor:pointer; align-self:flex-start;
   }
   .day-total{font-size:12px; color:var(--muted); margin-top:6px; text-align:right;}
 
@@ -293,8 +305,10 @@
       <h3 style="margin:0 0 10px; font-size:15px;">🏺 Dodaj do spiżarni</h3>
       <div class="settings-grid">
         <label style="grid-column:1/-1;">Nazwa produktu
-          <input type="text" id="panName" list="panNameList" placeholder="np. mleko, cukier, awokado, bazylia" autocomplete="off">
-          <datalist id="panNameList"></datalist>
+          <div class="suggest-wrap">
+            <input type="text" id="panName" placeholder="np. mleko, cukier, awokado, bazylia" autocomplete="off">
+            <div id="panSuggest" class="suggest-panel"></div>
+          </div>
         </label>
         <label>Typ
           <select id="panType">
@@ -431,6 +445,16 @@
     </div>
     <div class="hint-text" style="margin:0 0 10px;">Zaznacz składniki, które już masz w spiżarni — dodadzą się automatycznie.</div>
     <div id="modalIngList"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="plannerModalOverlay">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3 id="plannerModalTitle"></h3>
+      <button id="plannerModalClose">✕</button>
+    </div>
+    <div id="plannerModalList"></div>
   </div>
 </div>
 
@@ -831,12 +855,15 @@ document.getElementById("clearAllBtn").addEventListener("click", ()=>{
 const UNIT_WORDS = ["g","kg","ml","l","łyżka","łyżki","łyżeczka","łyżeczki","łyżek","łyżeczek","szklanka","szklanki","szklanek",
   "garść","garści","ząbek","ząbki","ząbków","opakowanie","opakowania","puszka","puszki","plaster","plastry","plasterków",
   "kromka","kromki","kromek","średni","średnia","średniej","duży","duża","dużej","duże","mały","mała","małej","małe",
-  "świeży","świeża","świeżego","świeże","szt","sztuk","sztuki","dojrzały","dojrzałego","dojrzała"];
+  "świeży","świeża","świeżego","świeże","szt","sztuk","sztuki","dojrzały","dojrzałego","dojrzała","startej","starty","starta","starte",
+  "krojony","krojona","krojone","krojonych","mielony","mielona","mielone","obrany","obrane","obranych","suszone","suszonych",
+  "suszony","suszona","mrożone","mrożonych","mrożony","cienkie","cienkich","gotowany","gotowana","ugotowanej","ugotowanego","ugotowana"];
 function coreName(label){
   let s = " " + label.toLowerCase() + " ";
   s = s.replace(/\d+([\.,\/]\d+)?/g, " ");
   UNIT_WORDS.forEach(u=>{ s = s.replace(new RegExp("\\b"+u+"\\b","g"), " "); });
   s = s.replace(/[\/\-\(\)]/g," ").replace(/\s+/g," ").trim();
+  s = s.split(/\bw\b/)[0].trim();
   return s;
 }
 function pantryMatch(label){
@@ -848,15 +875,46 @@ function pantryMatch(label){
     return core.includes(pc) || pc.includes(core);
   }) || null;
 }
+let ingredientOptions = [];
 function buildIngredientOptions(){
   const set = new Set();
   RECIPES.forEach(r=> r.ingredients.forEach(i=>{
     const c = coreName(i);
     if(c && c.length>1) set.add(c);
   }));
-  const dl = document.getElementById("panNameList");
-  dl.innerHTML = [...set].sort((a,b)=>a.localeCompare(b,'pl')).map(n=>`<option value="${n}"></option>`).join("");
+  ingredientOptions = [...set].sort((a,b)=>a.localeCompare(b,'pl'));
 }
+function renderPantrySuggestions(filterText){
+  const panel = document.getElementById("panSuggest");
+  const q = filterText.trim().toLowerCase();
+  let items = q ? ingredientOptions.filter(n=>n.toLowerCase().includes(q)) : ingredientOptions;
+  if(items.length===0){ panel.classList.remove("show"); panel.innerHTML=""; return; }
+  const groups = {};
+  items.slice(0,80).forEach(n=>{
+    const g = classify(n);
+    (groups[g]=groups[g]||[]).push(n);
+  });
+  let html = "";
+  GROUP_ORDER.forEach(g=>{
+    if(!groups[g]) return;
+    html += `<div class="suggest-group-title">${g}</div>`;
+    groups[g].forEach(n=> html += `<div class="suggest-item" data-val="${n}">${n}</div>`);
+  });
+  panel.innerHTML = html;
+  panel.classList.add("show");
+  panel.querySelectorAll(".suggest-item").forEach(el=>{
+    el.addEventListener("mousedown", (e)=>{
+      e.preventDefault();
+      document.getElementById("panName").value = el.dataset.val;
+      panel.classList.remove("show");
+    });
+  });
+}
+document.getElementById("panName").addEventListener("focus", e=> renderPantrySuggestions(e.target.value));
+document.getElementById("panName").addEventListener("input", e=> renderPantrySuggestions(e.target.value));
+document.getElementById("panName").addEventListener("blur", ()=>{
+  setTimeout(()=>document.getElementById("panSuggest").classList.remove("show"), 150);
+});
 
 document.getElementById("panType").addEventListener("change", e=>{
   const isSpice = e.target.value==="spice";
@@ -960,29 +1018,18 @@ function renderPlanner(){
     let total = 0;
     const rowsHtml = CATS.map(c=>{
       const chosenId = state.planner[di][c.id] || "";
-      const opts = recipesByCat(c.id).map(r=>`<option value="${r.id}" ${r.id===chosenId?'selected':''}>${r.name}</option>`).join("");
-      if(chosenId){
-        const r = RECIPES.find(x=>x.id===chosenId);
-        if(r) total += r.kcal;
-      }
+      const chosenRecipe = chosenId ? RECIPES.find(x=>x.id===chosenId) : null;
+      if(chosenRecipe) total += chosenRecipe.kcal;
       return `<div class="slot-row">
         <label>${c.icon} ${c.label}</label>
-        <select data-day="${di}" data-cat="${c.id}">
-          <option value="">— wybierz —</option>
-          ${opts}
-        </select>
+        <button class="slot-pick" data-pick-day="${di}" data-pick-cat="${c.id}">${chosenRecipe ? chosenRecipe.name : "— wybierz danie —"}</button>
         <button class="regen-btn" data-regen-day="${di}" data-regen-cat="${c.id}" title="Losuj inne danie">🔁</button>
       </div>`;
     }).join("");
     card.innerHTML = `<h4>${day}</h4>${rowsHtml}<div class="day-total">Razem: ${total} kcal</div>
       <button class="plan-btn" style="width:100%; margin-top:8px;" data-day-add="${di}">🛒 Dodaj składniki z tego dnia do listy zakupów</button>`;
-    card.querySelectorAll("select").forEach(sel=>{
-      sel.addEventListener("change", e=>{
-        const d = e.target.dataset.day, c = e.target.dataset.cat;
-        state.planner[d] = state.planner[d] || {};
-        state.planner[d][c] = e.target.value;
-        saveState(); renderPlanner();
-      });
+    card.querySelectorAll(".slot-pick").forEach(btn=>{
+      btn.addEventListener("click", ()=> openPlannerModal(btn.dataset.pickDay, btn.dataset.pickCat));
     });
     card.querySelector("[data-day-add]").addEventListener("click", ()=>{
       const dayMeals = state.planner[di] || {};
@@ -1035,6 +1082,39 @@ document.getElementById("autoPlanBtn").addEventListener("click", ()=>{
   saveState(); renderPlanner();
   toast("Wygenerowano plan na cały tydzień");
 });
+
+// ---------- PLANNER RECIPE PICKER MODAL ----------
+const plannerModalOverlay = document.getElementById("plannerModalOverlay");
+function openPlannerModal(day, cat){
+  const c = CATS.find(x=>x.id===cat);
+  document.getElementById("plannerModalTitle").textContent = c.icon + " " + c.label;
+  const list = document.getElementById("plannerModalList");
+  list.innerHTML = "";
+  const noneRow = document.createElement("div");
+  noneRow.className = "modal-ing-row";
+  noneRow.innerHTML = `<span>— brak / wyczyść —</span>`;
+  noneRow.addEventListener("click", ()=>{
+    state.planner[day] = state.planner[day] || {};
+    state.planner[day][cat] = "";
+    saveState(); renderPlanner(); plannerModalOverlay.classList.remove("show");
+  });
+  list.appendChild(noneRow);
+  recipesByCat(cat).forEach(r=>{
+    const row = document.createElement("div");
+    row.className = "modal-ing-row";
+    row.style.cursor = "pointer";
+    row.innerHTML = `<span>${r.name}</span><span class="pantry-tag">${r.kcal} kcal</span>`;
+    row.addEventListener("click", ()=>{
+      state.planner[day] = state.planner[day] || {};
+      state.planner[day][cat] = r.id;
+      saveState(); renderPlanner(); plannerModalOverlay.classList.remove("show");
+    });
+    list.appendChild(row);
+  });
+  plannerModalOverlay.classList.add("show");
+}
+document.getElementById("plannerModalClose").addEventListener("click", ()=> plannerModalOverlay.classList.remove("show"));
+plannerModalOverlay.addEventListener("click", (e)=>{ if(e.target===plannerModalOverlay) plannerModalOverlay.classList.remove("show"); });
 
 // ---------- PROGRESS ----------
 function todayStr(){ return new Date().toISOString().slice(0,10); }
