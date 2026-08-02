@@ -1,0 +1,26 @@
+Wersja v9 — pełna przebudowa cz. 3: 32 przepisy redukcyjne bez ograniczenia IG
+
+Pierwsza z dwóch zaplanowanych partii w kierunku pełnej symetrii puli
+przepisów (druga to "utrzymanie — sycące").
+
+Zmiany:
+- Dodano 32 nowe przepisy (8 na kategorię) dla osób na redukcji, które
+  wyłączyły "Trzymaj się niskiego indeksu glikemicznego" w Ustawieniach.
+  Nadal niskokaloryczne i wysokobiałkowe jak przystało na redukcję, ale
+  oparte na standardowych, wysokoindeksowych produktach (biały ryż,
+  zwykłe pieczywo pszenne, ziemniaki, płatki kukurydziane, makaron
+  pszenny) zamiast niskoIG-owych zamienników.
+- Nowy, automatyczny znaczek "🍚 Podwyższony IG" na kartach przepisów
+  z indeksem glikemicznym ≥55 — nie wymaga ręcznego oznaczania,
+  liczy się z już policzonego IG dania.
+- Nowy znaczek "⚖️ Sycące" (jeszcze nieużywany) przygotowany pod kolejną
+  partię — przepisy pod utrzymanie wagi.
+- Efekt: przy wyłączonym niskim IG te przepisy realnie wskakują wyżej
+  w sortowaniu wg dopasowania (np. "Zapiekanka ziemniaczana z indykiem
+  i serem" 83%→92%, "Dorsz pieczony z ziemniakami" 62%→82%), a przy
+  włączonym — trzymają się niżej, zgodnie z filozofią niskiego IG tej
+  aplikacji.
+
+Łącznie w bazie jest teraz 169 przepisów (137 poprzednio + 32 nowe).
+Kolejny krok: analogiczna partia przepisów "sycących" pod utrzymanie
+wagi, żeby dobić do ok. 50 przepisów w każdej kategorii.
