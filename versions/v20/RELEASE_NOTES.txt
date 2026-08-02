@@ -1,0 +1,40 @@
+Wersja 20
+=========
+
+Dodano 4 nowe motywy wyglądu aplikacji (obok istniejących 4: Zielony,
+Jasny, Różowy, Ciemny) — każdy z własną paletą kolorów, parą czcionek i
+charakterem animacji/przejść, tak by realnie różniły się "w dotyku", a nie
+tylko kolorem.
+
+1. 🌾 Zbiory (harvest) — ciepły, jesienny klimat targu/zbiorów: terakota,
+   oliwka, kremowe tło. Nagłówki krojem Lora (ciepły szeryf), tekst
+   Nunito. Przejścia nieco wolniejsze i "organiczne" (łagodne dochodzenie
+   do celu) — nic nie "wyskakuje", raczej się osadza.
+
+2. 🍋 Cytrusowy (citrus) — energetyczna zieleń liścia z pomarańczą i
+   czerwienią mandarynki, kremowo-cytrynowe tło. Nagłówki krojem Baloo 2
+   (pogrubiony, zaokrąglony), tekst Quicksand. Przejścia szybkie, z lekkim
+   "odbiciem" — najbardziej żywy z czterech.
+
+3. 🌿 Miętowy (mint) — chłodny, czysty, spokojny klimat "wellness":
+   głęboka mięta/teal z koralowym akcentem, lodowato-miętowe tło. Nagłówki
+   i tekst krojem Manrope/Inter — nowoczesny, czytelny grotesk. Przejścia
+   gładkie i spokojne, bez żadnych "podskoków".
+
+4. 🌙 Jagodowa noc (berry) — drugi, bardziej "premium" motyw ciemny:
+   głęboka śliwka/wino z złotym akcentem zamiast płaskiej czerni. Nagłówki
+   eleganckim szeryfem Playfair Display, tekst Work Sans. Przejścia wolne
+   i jedwabiste — nastrojowy, wieczorowy charakter.
+
+Szczegóły techniczne: każdy motyw ustawia teraz, oprócz kolorów, także
+zmienne `--font-heading` / `--font-body` / `--font-mono` oraz
+`--dur-fast` / `--dur-med` / `--ease` (czas trwania i krzywa przejść),
+które podpięto pod rzeczywiste animacje w aplikacji (przyciski, karty,
+toasty, przełączanie widoków) — więc różnica między motywami jest też
+odczuwalna w interakcji, nie tylko wizualna. Wszystkie 4 dotychczasowe
+motywy zachowują dokładnie swój poprzedni wygląd i zachowanie (dostały te
+same wartości, jakie miały "na sztywno" wcześniej).
+
+Zweryfikowano: przełączanie między wszystkimi 8 motywami przez rzeczywiste
+kliknięcia w interfejsie działa poprawnie, wybrany motyw zapisuje się i
+utrzymuje po odświeżeniu strony.

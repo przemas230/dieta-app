@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&family=Lora:wght@500;600;700&family=Nunito:wght@400;600;700;800&family=Baloo+2:wght@600;700;800&family=Quicksand:wght@500;600;700&family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script>
 (function(){
   try{
@@ -38,10 +38,6 @@
     --danger:#B54F3F;
     --danger-pale:#F6E3E0;
     --star-off:#D8D2C2;
-    --font-heading:"Fraunces", Georgia, serif;
-    --font-body:"Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --font-mono:"IBM Plex Mono","SF Mono",monospace;
-    --dur-fast:.18s; --dur-med:.25s; --ease:cubic-bezier(.4,0,.2,1);
     color-scheme: light;
   }
   :root[data-theme="light"]{
@@ -61,10 +57,6 @@
     --danger:#D14343;
     --danger-pale:#FBE5E5;
     --star-off:#D7DCE3;
-    --font-heading:"Fraunces", Georgia, serif;
-    --font-body:"Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --font-mono:"IBM Plex Mono","SF Mono",monospace;
-    --dur-fast:.18s; --dur-med:.25s; --ease:cubic-bezier(.4,0,.2,1);
   }
   :root[data-theme="pink"]{
     --teal:#D6497B;
@@ -83,10 +75,6 @@
     --danger:#C4415A;
     --danger-pale:#FBE3E8;
     --star-off:#EAD3DC;
-    --font-heading:"Fraunces", Georgia, serif;
-    --font-body:"Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --font-mono:"IBM Plex Mono","SF Mono",monospace;
-    --dur-fast:.18s; --dur-med:.25s; --ease:cubic-bezier(.4,0,.2,1);
   }
   :root[data-theme="dark"]{
     --teal:#2F9078;
@@ -106,118 +94,18 @@
     --danger-pale:#3A211D;
     --star-off:#4A554F;
     --header-end:#0D211C;
-    --font-heading:"Fraunces", Georgia, serif;
-    --font-body:"Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --font-mono:"IBM Plex Mono","SF Mono",monospace;
-    --dur-fast:.18s; --dur-med:.25s; --ease:cubic-bezier(.4,0,.2,1);
-    color-scheme: dark;
-  }
-  :root[data-theme="harvest"]{
-    --teal:#B5592E;
-    --teal-dark:#7A3A1A;
-    --teal-pale:#F5E4D8;
-    --honey:#7C8C3F;
-    --honey-pale:#EEF1DE;
-    --honey-dark:#4E5A26;
-    --plum:#A6763F;
-    --plum-pale:#F2E6D3;
-    --bg:#FBF3E7;
-    --card:#FFFFFF;
-    --text:#3B2A1E;
-    --muted:#8A7462;
-    --line:#E8DCC8;
-    --danger:#B5432E;
-    --danger-pale:#F5E0DA;
-    --star-off:#E0D0BC;
-    --font-heading:"Lora", Georgia, serif;
-    --font-body:"Nunito",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --font-mono:"IBM Plex Mono","SF Mono",monospace;
-    /* Warm, unhurried "organic growth" easing — a touch slower than the
-       other themes so things settle rather than snap into place. */
-    --dur-fast:.22s; --dur-med:.34s; --ease:cubic-bezier(.22,.61,.36,1);
-  }
-  :root[data-theme="citrus"]{
-    --teal:#4C9A2A;
-    --teal-dark:#2E5F19;
-    --teal-pale:#E8F3DE;
-    --honey:#F2A93B;
-    --honey-pale:#FEF2DC;
-    --honey-dark:#96650E;
-    --plum:#E85C4A;
-    --plum-pale:#FBE3DE;
-    --bg:#FFFCF0;
-    --card:#FFFFFF;
-    --text:#2B3A1F;
-    --muted:#6B7A5A;
-    --line:#E9E8C9;
-    --danger:#D1483A;
-    --danger-pale:#FBE1DC;
-    --star-off:#E3E0B8;
-    --font-heading:"Baloo 2", "Fraunces", sans-serif;
-    --font-body:"Quicksand",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --font-mono:"IBM Plex Mono","SF Mono",monospace;
-    /* Snappy, energetic — quick with a slight overshoot ("bounce"). */
-    --dur-fast:.12s; --dur-med:.2s; --ease:cubic-bezier(.34,1.56,.64,1);
-  }
-  :root[data-theme="mint"]{
-    --teal:#1B7A7A;
-    --teal-dark:#0F4F4F;
-    --teal-pale:#E3F3F1;
-    --honey:#E8916B;
-    --honey-pale:#FBEAE1;
-    --honey-dark:#A85A3B;
-    --plum:#5C7FB0;
-    --plum-pale:#E7EDF6;
-    --bg:#F2FAF9;
-    --card:#FFFFFF;
-    --text:#1D3335;
-    --muted:#62807E;
-    --line:#DCEEEC;
-    --danger:#D1594A;
-    --danger-pale:#FAE3DE;
-    --star-off:#CFE6E3;
-    --font-heading:"Manrope", -apple-system, sans-serif;
-    --font-body:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --font-mono:"IBM Plex Mono","SF Mono",monospace;
-    /* Calm, clinical-clean — smooth "material standard" easing, nothing bouncy. */
-    --dur-fast:.22s; --dur-med:.36s; --ease:cubic-bezier(.4,0,.2,1);
-  }
-  :root[data-theme="berry"]{
-    --teal:#7A2F55;
-    --teal-dark:#F0A9C6;
-    --teal-pale:#341022;
-    --honey:#D9A94E;
-    --honey-pale:#3A2C15;
-    --honey-dark:#F0CE93;
-    --plum:#9B7FC7;
-    --plum-pale:#2A2438;
-    --bg:#170F16;
-    --card:#241A24;
-    --text:#F0E6ED;
-    --muted:#B39AAE;
-    --line:#3A2E38;
-    --danger:#E5786B;
-    --danger-pale:#3A211D;
-    --star-off:#4A3A46;
-    --header-end:#0D0710;
-    --font-heading:"Playfair Display", Georgia, serif;
-    --font-body:"Work Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --font-mono:"IBM Plex Mono","SF Mono",monospace;
-    /* Slow, silky "expo-out" — premium/unhurried, fitting a moody evening theme. */
-    --dur-fast:.25s; --dur-med:.4s; --ease:cubic-bezier(.16,1,.3,1);
     color-scheme: dark;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0; overflow-anchor:none;}
   body{
-    font-family:var(--font-body);
+    font-family:"Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     background:var(--bg);
     color:var(--text);
     -webkit-tap-highlight-color:transparent;
     padding-bottom:78px;
     width:100%;
     overflow-x:hidden;
-    transition:background var(--dur-med) var(--ease), color var(--dur-med) var(--ease);
   }
   .app-shell{
     max-width:600px;
@@ -226,11 +114,11 @@
     width:100%;
   }
   h1, h3, h4, .card-head h3, .recipe-title, .day-card h4, #modalRecipeName, #plannerModalTitle, #tileActionTitle{
-    font-family:var(--font-heading); font-weight:600; letter-spacing:-.01em;
+    font-family:"Fraunces", Georgia, serif; font-weight:600; letter-spacing:-.01em;
   }
   .kcal-ring-value, .meta span, .weight-bar-row .val, .day-total, .pt-badge, .shop-count, #shopCount,
   .pantry-level, #settingsResult, .h-time{
-    font-family:var(--font-mono);
+    font-family:"IBM Plex Mono", "SF Mono", monospace;
   }
   header.app-top{
     position:sticky; top:0; z-index:20;
@@ -238,7 +126,7 @@
     padding:12px 18px 10px;
     border-bottom-left-radius:18px; border-bottom-right-radius:18px;
     box-shadow:0 4px 14px rgba(0,0,0,.12);
-    transition:padding var(--dur-med) var(--ease), background var(--dur-med) var(--ease);
+    transition:padding .25s ease;
     /* The browser's scroll-anchoring tries to compensate scroll position when
        content above the viewport changes size, to avoid a visual jump. Since
        this header itself changes height (collapse animation) while sitting
@@ -270,7 +158,7 @@
   .kcal-ring-caption{font-size:8px; color:rgba(255,255,255,.75); margin-top:1px;}
   .kcal-meal-list{flex:1; display:flex; flex-direction:column; gap:5px; min-width:0;}
   .kcal-meal-row{display:flex; flex-direction:column;}
-  .kmr-label{font-size:10.5px; font-weight:600; color:rgba(255,255,255,.92); font-family:var(--font-mono);}
+  .kmr-label{font-size:10.5px; font-weight:600; color:rgba(255,255,255,.92); font-family:"IBM Plex Mono",monospace;}
   .kmr-dish{font-size:10px; color:rgba(255,255,255,.72); line-height:1.25; white-space:normal; word-break:break-word;}
   main{padding:14px 14px 6px;}
   .pill-row{display:flex; gap:7px; overflow-x:auto; padding-bottom:2px; margin-bottom:10px;}
@@ -314,8 +202,8 @@
   }
   .star-btn.active{color:var(--honey);}
   .meta{display:flex; gap:10px; margin:6px 0 10px; font-size:12px; color:var(--muted); font-weight:600;}
-  .macro-row{display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:11px; color:var(--muted); margin:-4px 0 10px; font-family:var(--font-mono);}
-  .match-badge{background:var(--teal-pale); color:var(--teal-dark); font-weight:700; padding:1px 7px; border-radius:999px; font-family:var(--font-body);}
+  .macro-row{display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:11px; color:var(--muted); margin:-4px 0 10px; font-family:"IBM Plex Mono","SF Mono",monospace;}
+  .match-badge{background:var(--teal-pale); color:var(--teal-dark); font-weight:700; padding:1px 7px; border-radius:999px; font-family:"Plus Jakarta Sans",sans-serif;}
   .goal-badge{background:var(--honey-pale); color:var(--honey-dark); font-weight:700; padding:1px 7px; border-radius:999px; font-size:11px;}
   .goal-badge.maintain-badge{background:var(--plum-pale); color:var(--plum);}
   .gi-badge{background:var(--danger-pale); color:var(--danger); font-weight:700; padding:1px 7px; border-radius:999px; font-size:11px;}
@@ -327,7 +215,7 @@
   .calc-row:last-child{border-bottom:none;}
   .calc-row .ci-name{font-weight:700; font-size:12.5px; color:var(--text);}
   .calc-row .ci-base{color:var(--muted); font-size:11px; margin-top:1px;}
-  .calc-row .ci-contrib{font-family:var(--font-mono); color:var(--teal-dark); text-align:right; white-space:nowrap; font-size:11.5px; flex:0 0 auto;}
+  .calc-row .ci-contrib{font-family:"IBM Plex Mono","SF Mono",monospace; color:var(--teal-dark); text-align:right; white-space:nowrap; font-size:11.5px; flex:0 0 auto;}
   .calc-divider{border-top:1px solid var(--line); margin:12px 0;}
   .ingredients{list-style:none; padding-left:0; font-size:13px; color:var(--text); margin:0 0 8px;}
   .ingredients li{display:flex; align-items:flex-start; gap:6px; margin-bottom:4px;}
@@ -482,7 +370,7 @@
   .scale-btn{
     flex:0 0 auto; border:1px solid var(--line); background:var(--teal-pale); color:var(--teal-dark);
     border-radius:9px; min-width:32px; height:32px; padding:0 7px; font-size:11.5px; font-weight:700;
-    cursor:pointer; align-self:flex-start; font-family:var(--font-mono);
+    cursor:pointer; align-self:flex-start; font-family:"IBM Plex Mono", monospace;
   }
   .day-total{font-size:12px; color:var(--muted); margin-top:6px; text-align:right;}
 
@@ -494,7 +382,7 @@
   .cup{
     width:38px; height:38px; border-radius:10px; border:2px solid var(--plum);
     background:var(--card); display:flex; align-items:center; justify-content:center;
-    font-size:17px; cursor:pointer; transition:background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+    font-size:17px; cursor:pointer; transition:background .15s ease, transform .1s ease;
   }
   .cup.full{background:var(--plum); color:#fff;}
   .weight-input-row{display:flex; gap:8px; margin:10px 0;}
@@ -528,15 +416,15 @@
   .toast{
     position:fixed; bottom:88px; left:50%; transform:translateX(-50%) translateY(8px);
     background:#2A2A2A; color:#fff; padding:9px 16px; border-radius:20px;
-    font-size:13px; z-index:60; opacity:0; transition:opacity var(--dur-med) var(--ease), transform var(--dur-med) var(--ease); pointer-events:none;
+    font-size:13px; z-index:60; opacity:0; transition:opacity .25s ease, transform .25s ease; pointer-events:none;
   }
   .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
   .view{display:none;}
-  .view.active{display:block; animation:viewIn var(--dur-med) var(--ease);}
+  .view.active{display:block; animation:viewIn .2s ease;}
   @keyframes viewIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
-  .card, .day-card, .pantry-tile, .shop-item, .pantry-item{transition:transform var(--dur-fast) var(--ease);}
+  .card, .day-card, .pantry-tile, .shop-item, .pantry-item{transition:transform .1s ease;}
   .card:active, .day-card:active, .pantry-tile:active{transform:scale(.98);}
-  input[type=checkbox], .fav-toggle, .pill, .add-btn, .btn{transition:background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);}
+  input[type=checkbox], .fav-toggle, .pill, .add-btn, .btn{transition:background .15s ease, border-color .15s ease, color .15s ease;}
   @media (prefers-reduced-motion: reduce){
     .view.active{animation:none;}
     .card:active, .day-card:active, .pantry-tile:active{transform:none;}
@@ -1070,11 +958,7 @@ const THEMES = [
   {id:"teal", label:"Zielony (domyślny)", swatch:"#1F6B5C", metaColor:"#1F6B5C"},
   {id:"light", label:"Jasny", swatch:"#2C6FE0", metaColor:"#2C6FE0"},
   {id:"pink", label:"Różowy", swatch:"#D6497B", metaColor:"#D6497B"},
-  {id:"dark", label:"Ciemny", swatch:"#151A18", metaColor:"#0D211C"},
-  {id:"harvest", label:"Zbiory", swatch:"#B5592E", metaColor:"#B5592E"},
-  {id:"citrus", label:"Cytrusowy", swatch:"#4C9A2A", metaColor:"#4C9A2A"},
-  {id:"mint", label:"Miętowy", swatch:"#1B7A7A", metaColor:"#1B7A7A"},
-  {id:"berry", label:"Jagodowa noc", swatch:"#7A2F55", metaColor:"#0D0710"}
+  {id:"dark", label:"Ciemny", swatch:"#151A18", metaColor:"#0D211C"}
 ];
 (function syncMetaColor(){
   const meta = document.querySelector('meta[name="theme-color"]');
