@@ -1,7 +1,7 @@
 {
-  "name": "Dieta App",
-  "short_name": "Dieta App",
-  "description": "Przepisy, dynamiczna lista zakupów, planer tygodnia i śledzenie postępów – personalizowana dieta dopasowana do Twojego profilu i celu.",
+  "name": "Dieta – Niski IG bez laktozy",
+  "short_name": "Moja Dieta",
+  "description": "Przepisy, dynamiczna lista zakupów, planer tygodnia i śledzenie postępów – dieta niskiego IG bez laktozy.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

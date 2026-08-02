@@ -1,0 +1,39 @@
+Wersja 11
+=========
+
+1. Rebranding aplikacji
+   - Nowy tytuł strony i nagłówek: "Dieta App" (poprzednio "Dieta · Niski IG
+     bez laktozy"). Aplikacja nie jest już opisywana jako wyłącznie dieta
+     niskoglikemiczna — niski indeks glikemiczny to teraz jedna z opcji
+     do wyboru przy budowaniu profilu, a nie tożsamość całej aplikacji.
+   - Zaktualizowano manifest.json (nazwa, opis) zgodnie z nowym brandingiem.
+
+2. Nowa ikona aplikacji
+   - Zaprojektowano nową ikonę kojarzącą się z jedzeniem: miska z kolorowym
+     jedzeniem i unoszącą się parą, na zielonym tle w barwach aplikacji.
+   - Podmieniono icon-192.png i icon-512.png, podbito wersję cache Service
+     Workera (dieta-app-v15), aby użytkownicy od razu zobaczyli nową ikonę.
+
+3. Kompaktowy, chowający się nagłówek
+   - Nagłówek na górze każdej strony zajmował zbyt dużo miejsca na ekranie.
+   - Dodano płynne chowanie się szczegółów nagłówka (podtytuł profilu,
+     pasek kcal) przy przewijaniu w dół i przywracanie przy przewijaniu
+     w górę / powrocie na sam początek strony — nagłówek zostaje kompaktowy,
+     ale wszystkie informacje są nadal dostępne po przewinięciu do góry.
+
+4. Pełne mieszanie opcji: cel diety x niski indeks glikemiczny
+   - Dodano możliwość łączenia każdego celu (redukcja / utrzymanie /
+     budowanie masy) z przełącznikiem "niski indeks glikemiczny" (włączony
+     / wyłączony) — wszystkie 6 kombinacji jest teraz obsługiwanych, a
+     dobór wielkości porcji i przepisów dopasowuje się do wybranej
+     kombinacji.
+   - Dodano 12 nowych przepisów dedykowanych kombinacji "budowanie masy +
+     niski IG" (owsianki, kanapki z ciecierzycą/hummusem, dania z soczewicą,
+     łososiem, indykiem i kaszą gryczaną), oparte o węglowodany o niskim IG
+     (ciecierzyca, soczewica, kasza gryczana, pieczywo pełnoziarniste),
+     dzięki czemu osoby budujące masę mogą jednocześnie trzymać niski
+     indeks glikemiczny bez rezygnowania z odpowiedniej kaloryczności i
+     ilości białka.
+   - Zweryfikowano algorytm dopasowania przepisów (recipeMatchScore) dla
+     wszystkich 6 kombinacji cel x tryb IG we wszystkich kategoriach posiłków
+     — przepisy poprawnie zmieniają ranking w zależności od wybranych opcji.
