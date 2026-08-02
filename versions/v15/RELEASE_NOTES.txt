@@ -1,0 +1,23 @@
+Wersja 15
+=========
+
+Naprawiono nagłówek "utykający" w stanie schowanym na samej górze strony.
+
+Poprzednia poprawka (wersja 13) dodała, oprócz jednego ostrego progu
+przewijania, także blokadę czasową (ok. 320 ms) uniemożliwiającą kolejną
+zmianę stanu zaraz po poprzedniej — miało to zapobiegać nakładaniu się
+animacji. W praktyce to właśnie ta blokada powodowała nowy problem: jeśli
+przewinięcie z powrotem na samą górę zdążyło się zakończyć, zanim ta
+blokada wygasła (a przy normalnym, szybkim geście przewijania w górę tuż po
+przewinięciu w dół zdarzało się to bardzo łatwo), żadne kolejne zdarzenie
+przewijania już nie nadchodziło — więc nic nie sprawdzało ponownie, że
+użytkownik jest już na górze, i nagłówek zostawał schowany, dopóki
+użytkownik nie przewinął czegokolwiek jeszcze raz.
+
+Usunięto tę blokadę czasową. Ochrona przed nakładaniem się animacji, która
+faktycznie działa, to (1) podtytuł i pasek kcal połączone w jeden wspólnie
+animowany kontener (zamiast trzech osobnych) oraz (2) grupowanie wielu
+zdarzeń przewijania w jedno sprawdzenie na klatkę animacji
+(requestAnimationFrame) — to już wystarczająco eliminuje efekt "walczących"
+animacji bez potrzeby dodatkowej blokady czasowej, która w praktyce
+powodowała nowy błąd.

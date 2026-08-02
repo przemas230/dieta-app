@@ -2907,30 +2907,30 @@ setInterval(checkWaterReminderSchedule, 30000);
   const headerEl = document.querySelector("header.app-top");
   if(!headerEl) return;
   // A single crisp threshold (not a wide dead-zone) decides collapsed vs
-  // expanded, so there's no ambiguous middle ground. Multiple scroll events
-  // per animation frame are coalesced via requestAnimationFrame (one state
-  // check per frame, not one per event) — that alone is what stops jittery
-  // touch-scroll from re-triggering the transition rapidly, since sub+kcal
-  // row now live in a single collapsible wrapper instead of three separately
-  // animated elements fighting each other.
-  // (A previous version also added a time-based lockout on top of this, to
-  // block any state change for a bit after the last one. That backfired: if
-  // scrolling settled at the top while still inside that lockout window, no
-  // further scroll event would ever arrive to re-check the state, and the
-  // header stayed stuck collapsed at the very top of the page.)
+  // expanded, so there's no ambiguous middle ground. What actually caused the
+  // header to visibly stutter/overlap wasn't the threshold width though — it
+  // was jittery touch-scroll events re-triggering the class toggle while the
+  // previous CSS transition was still mid-flight, so two transitions were
+  // fighting over the same element. LOCKOUT_MS blocks any further state
+  // change until the current transition has had time to finish.
   const THRESHOLD = 60;
-  let ticking = false;
+  const TRANSITION_MS = 200, LOCKOUT_MS = TRANSITION_MS + 120;
+  let ticking = false, lastChangeAt = 0;
   window.addEventListener("scroll", ()=>{
     if(ticking) return;
     ticking = true;
     requestAnimationFrame(()=>{
       ticking = false;
+      const now = performance.now();
+      if(now - lastChangeAt < LOCKOUT_MS) return;
       const y = window.scrollY;
       const isCollapsed = headerEl.classList.contains("collapsed");
       if(!isCollapsed && y > THRESHOLD){
         headerEl.classList.add("collapsed");
+        lastChangeAt = now;
       }else if(isCollapsed && y <= THRESHOLD){
         headerEl.classList.remove("collapsed");
+        lastChangeAt = now;
       }
     });
   }, {passive:true});
