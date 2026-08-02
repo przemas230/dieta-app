@@ -1,0 +1,27 @@
+Wersja v4 — pilotaż: realne dane odżywcze i dopasowanie do profilu (Śniadania)
+
+Zmiany względem v3:
+- 30 przepisów z kategorii "Śniadania" wzbogacono o realne dane:
+  białko/węglowodany/tłuszcz/błonnik na porcję oraz szacowany indeks
+  glikemiczny (IG) i ładunek glikemiczny (ŁG) posiłku. Wartości
+  oszacowano na podstawie standardowych danych odżywczych per
+  składnik (w stylu USDA) oraz publikowanych wartości IG (baza
+  Uniwersytetu Sydney) — to szacunki, nie wyniki badań laboratoryjnych
+  tego konkretnego dania.
+- Dodano personalizowane cele makroskładników: aplikacja liczy teraz,
+  ile białka/węgli/tłuszczu potrzebuje dana osoba na dany posiłek,
+  zależnie od płci, wagi i celu (redukcja/utrzymanie/budowanie masy) —
+  redukcja stawia na więcej białka, budowanie masy na więcej węgli.
+- Na kartach przepisów z danymi widać teraz makroskładniki, IG/ŁG oraz
+  znaczek "🎯 dopasowanie %" pokazujący, jak dobrze dany przepis pasuje
+  do profilu i celu użytkownika.
+- Nowy przycisk 🎯 na liście przepisów sortuje wyniki od najlepiej do
+  najgorzej dopasowanych (na razie realnie działa tylko dla Śniadań —
+  pozostałe kategorie nie mają jeszcze wzbogaconych danych).
+- Poprawiono odświeżanie listy przepisów po zapisaniu/zresetowaniu
+  profilu w Ustawieniach (wcześniej lista nie reagowała na zmianę celu
+  diety bez przełączenia zakładki).
+
+Uwaga: to pilotaż obejmujący tylko kategorię Śniadania. Po akceptacji
+tego podejścia można tym samym sposobem wzbogacić pozostałe 90
+przepisów (II Śniadanie, Obiady, Kolacje).
