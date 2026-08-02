@@ -1,0 +1,11 @@
+Wersja v2 — wybór motywu kolorystycznego
+
+Zmiany względem v1:
+- Nowa sekcja "Wygląd aplikacji" w Ustawieniach z 4 motywami:
+  Zielony (domyślny), Jasny, Różowy, Ciemny.
+- Wybrany motyw jest zapamiętywany (localStorage) i przywracany po
+  ponownym otwarciu aplikacji.
+- Kolor paska statusu w przeglądarce/telefonie dopasowuje się do
+  wybranego motywu.
+- Wykres postępu wagi automatycznie dobiera kolory do aktywnego
+  motywu (czytelny również w trybie ciemnym).

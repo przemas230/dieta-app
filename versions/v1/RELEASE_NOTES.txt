@@ -1,0 +1,6 @@
+Wersja v1 — stan wyjściowy
+
+Zrzut aplikacji sprzed wprowadzenia systemu wersjonowania/backupów.
+Zawiera funkcjonalność sprzed dodania wyboru motywów kolorystycznych
+(profil, kalkulacja kalorii, przepisy, lista zakupów, planer,
+spiżarnia, śledzenie postępów).
