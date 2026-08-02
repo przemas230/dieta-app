@@ -2919,25 +2919,20 @@ setInterval(checkWaterReminderSchedule, 30000);
   // further scroll event would ever arrive to re-check the state, and the
   // header stayed stuck collapsed at the very top of the page.)
   const THRESHOLD = 60;
-  function applyState(){
-    const y = window.scrollY;
-    const isCollapsed = headerEl.classList.contains("collapsed");
-    if(!isCollapsed && y > THRESHOLD) headerEl.classList.add("collapsed");
-    else if(isCollapsed && y <= THRESHOLD) headerEl.classList.remove("collapsed");
-  }
-  let ticking = false, idleTimer = null;
+  let ticking = false;
   window.addEventListener("scroll", ()=>{
-    if(!ticking){
-      ticking = true;
-      requestAnimationFrame(()=>{ ticking = false; applyState(); });
-    }
-    // On very long pages (e.g. Śniadania/Obiady with 50+ recipe cards), a long
-    // fast fling from the bottom back to the top can settle its last few
-    // pixels without firing another 'scroll' event on some mobile browsers —
-    // the per-frame check above then never sees the final resting position.
-    // This re-checks once scrolling has actually stopped, as a safety net.
-    clearTimeout(idleTimer);
-    idleTimer = setTimeout(applyState, 150);
+    if(ticking) return;
+    ticking = true;
+    requestAnimationFrame(()=>{
+      ticking = false;
+      const y = window.scrollY;
+      const isCollapsed = headerEl.classList.contains("collapsed");
+      if(!isCollapsed && y > THRESHOLD){
+        headerEl.classList.add("collapsed");
+      }else if(isCollapsed && y <= THRESHOLD){
+        headerEl.classList.remove("collapsed");
+      }
+    });
   }, {passive:true});
 })();
 

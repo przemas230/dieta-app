@@ -1,0 +1,21 @@
+Wersja 16
+=========
+
+Dodatkowa poprawka niezawodności rozwijania nagłówka po przewinięciu do góry
+— tym razem konkretnie na długich listach (zakładki Śniadania / Obiady,
+50+ przepisów), gdy użytkownik przewija od samego dołu z powrotem na górę
+szybkim, ciągłym gestem.
+
+Na bardzo długich stronach szybkie, ciągłe przewinięcie od dołu do samej
+góry może się "domykać" na urządzeniu mobilnym bez wysłania jeszcze jednego
+zdarzenia przewijania dla ostatnich kilku pikseli — sprawdzenie stanu
+nagłówka na klatkę animacji (requestAnimationFrame) mogło wtedy nie zdążyć
+zobaczyć finalnej pozycji.
+
+Dodano dodatkowe, "spóźnione" sprawdzenie stanu nagłówka: 150 ms po tym,
+jak przewijanie faktycznie się zatrzyma, aplikacja jeszcze raz sprawdza
+rzeczywistą pozycję przewijania i w razie potrzeby poprawia stan nagłówka
+(schowany/pokazany) — niezależnie od tego, czy poprzednie sprawdzenie "w
+locie" zdążyło złapać finalną pozycję, czy nie. To działa jako siatka
+bezpieczeństwa na wypadek takich przypadków brzegowych na realnych
+urządzeniach, których nie da się w pełni odtworzyć w testach.
