@@ -1,4 +1,4 @@
-const CACHE_NAME = "dieta-app-v12";
+const CACHE_NAME = "dieta-app-v13";
 const ASSETS = ["./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -64,26 +64,35 @@ async function setKV(key, val){
 }
 function todayStr(){ return new Date().toISOString().slice(0, 10); }
 
+function dropletsText(count){
+  let out = "";
+  for(let i=0;i<8;i++) out += (i<count ? "💧" : "⚪");
+  return out;
+}
+async function pushWaterNotification(count){
+  await self.registration.showNotification("💧 Nawodnienie", {
+    body: `${dropletsText(count)}\n${count} / 8 szklanek`,
+    tag: "water-tracker",
+    silent: true,
+    actions: [{ action: "add-water", title: "+1 💧" }, { action: "remove-water", title: "-1 ↩️" }],
+    icon: "icon-192.png"
+  });
+}
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  if (event.action === "add-water") {
+  if (event.action === "add-water" || event.action === "remove-water") {
     event.waitUntil((async () => {
       const today = todayStr();
       const storedDate = await getKV("waterDate");
       let count = await getKV("pendingWater");
       if (storedDate !== today) count = 0;
-      count = Math.min(8, (count || 0) + 1);
+      count = event.action === "add-water" ? Math.min(8, (count || 0) + 1) : Math.max(0, (count || 0) - 1);
       await setKV("waterDate", today);
       await setKV("pendingWater", count);
       const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       clientsList.forEach((c) => c.postMessage({ type: "water-add", count }));
-      await self.registration.showNotification("💧 Nawodnienie", {
-        body: `Wypito dziś: ${count} / 8 szklanek`,
-        tag: "water-tracker",
-        silent: true,
-        actions: [{ action: "add-water", title: "+1 szklanka 💧" }],
-        icon: "icon-192.png"
-      });
+      await pushWaterNotification(count);
     })());
   } else {
     event.waitUntil(
