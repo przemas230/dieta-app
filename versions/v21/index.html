@@ -306,7 +306,7 @@
     width:42px; height:42px; border-radius:10px; overflow:hidden; flex:0 0 auto;
     background:var(--teal-pale); display:flex; align-items:center; justify-content:center;
   }
-  .thumb-emoji{font-size:22px; line-height:1;}
+  .thumb img{width:100%; height:100%; object-fit:cover; display:block;}
   .thumb-ph{font-size:18px; opacity:.5;}
   .star-btn{
     border:none; background:none; font-size:20px; cursor:pointer; padding:0 2px;
@@ -942,83 +942,80 @@ function buildPantryTileList(){
 }
 
 
-// ---------- RECIPE THUMBNAILS ----------
-// Used to show a random, often loosely-related stock photo fetched live from
-// Wikimedia Commons per broad keyword bucket (e.g. every fish recipe got
-// whatever "grilled fish fillet" search happened to return that day) — slow,
-// dependent on a third-party API, and not actually about the specific dish.
-// Replaced with a deterministic icon of the recipe's own main ingredient,
-// reusing the same canonical-ingredient-name pipeline (coreName/pantryCanon)
-// and emoji set (CANON_INFO) already used for pantry tiles — same visual
-// language, no network round-trip, and it's always the dish's own biggest
-// contributor rather than a generic category stand-in.
-const THUMB_SKIP_CANON = new Set(["przyprawy dodatki"]);
-// Canonical strings the recipe database's ingredient *labels* produce (via
-// coreName+pantryCanon) that don't exactly match a CANON_INFO/pantry key —
-// mostly different grammatical forms ("Chleb żytni na zakwasie" vs the
-// pantry's "chleb żytni") or a qualifier CANON_INFO doesn't have its own
-// entry for (e.g. "ogórek zielony" vs pantry's plain "ogórek").
-const THUMB_CANON_ALIASES = {
-  "chleb czystoziarnisty":"chleb żytni", "chleb żytni na zakwasie":"chleb żytni",
-  "bułka pszenna kajzerka":"chleb żytni", "chleb pszenny jasny":"chleb żytni",
-  "ogórek zielony":"ogórek", "napój migdałowy":"napój roślinny (migdałowy/owsiany/kokosowy)",
-  "napój kokosowy":"napój roślinny (migdałowy/owsiany/kokosowy)", "napój owsiany":"napój roślinny (migdałowy/owsiany/kokosowy)",
-  "serek wiejski bez laktozy":"serek bez laktozy", "serek puszysty bez laktozy":"serek bez laktozy",
-  "ciecierzyca z":"ciecierzyca", "ser bez laktozy":"feta / ser bez laktozy", "feta bez laktozy":"feta / ser bez laktozy",
-  "jogurt naturalny bez laktozy":"jogurt bez laktozy",
-  "kasza gryczana sucha":"kasza gryczana", "kasza jaglana sucha":"kasza jaglana",
-  "kasza pęczak sucha":"kasza pęczak", "kasza bulgur sucha":"kasza bulgur", "kasza kuskus sucha":"kasza bulgur",
-  "mieszanka warzyw":"mrożone warzywa", "odżywka białkowa bez laktozy":"odżywka białkowa",
-  "masło orzechowe %":"masło orzechowe / migdałowe", "masło migdałowe":"masło orzechowe / migdałowe",
-  "komosa ryżowa surowa":"komosa ryżowa", "pomidory z":"pomidor", "koncentrat pomidorowy":"koncentrat / passata pomidorowa",
-  "passata pomidorowa":"koncentrat / passata pomidorowa",
-  "pierś z indyka wędzona":"indyk", "hummus klasyczny":"hummus", "hummus pasta z ciecierzycy":"hummus",
-  "pasta z czerwonej fasoli hummus":"hummus",
-  "czarna fasola z":"fasola", "czerwona fasola z":"fasola",
-  "soczewica czerwona sucha":"soczewica", "soczewica czerwona":"soczewica",
-  "ryż basmati surowy":"ryż", "ryż biały surowy":"ryż", "ryż ugotowany":"ryż",
-  "łosoś filet":"łosoś", "łosoś wędzony":"łosoś", "dorsz polędwica":"dorsz", "pstrąg filet":"pstrąg",
-  "makrela wędzona":"makrela", "tofu naturalne":"tofu",
-  "pestki dyni":"pestki (dyni/słonecznika)", "pestki słonecznika":"pestki (dyni/słonecznika)",
-  "granola bez laktozy":"granola", "makaron soba suchy":"makaron soba", "makaron pszenny suchy":"makaron soba",
-  "sos tamari sojowy":"sos sojowy / tamari", "nasiona chia":"siemię lniane / chia",
-  "wołowina gulaszowa":"wołowina", "wołowina chuda":"wołowina",
-  "wafel ryżowy":"wafle chrupkie", "wafel gryczany":"wafle chrupkie",
-  "orzechy mieszane":"orzechy", "orzechy nerkowca":"orzechy", "orzechy laskowe":"orzechy", "orzeszki ziemne":"orzechy",
-  "mleko kokosowe lekkie":"mleko kokosowe", "ziemniaki młode":"ziemniaki",
-  "pietruszka korzeń":"pietruszka (korzeń)", "seler korzeniowy":"seler naciowy",
-  "jarmuż mieszanka warzyw":"jarmuż", "chipsy z jarmużu pieczone":"jarmuż",
-  "mąka kokosowa":"mąka", "rodzynki":"rodzynki / żurawina", "morele":"morele suszone",
-  "zielony groszek":"groszek zielony", "tortilla pełnoziarnista":"tortilla",
-  "płatki kukurydziane":"płatki owsiane", "muffinka owsiano bananowa":"płatki owsiane", "dżem":"miód"
-};
-function thumbCanon(label){
-  const raw = coreName(label);
-  const canon = pantryCanon(raw);
-  return THUMB_CANON_ALIASES[canon] || canon;
+// ---------- RECIPE THUMBNAILS (Wikimedia Commons — free, no API key, hotlink-safe) ----------
+const PHOTO_RULES = [
+  [["owsian","płatki owsiane","musli","granola","jaglan"], "oatmeal bowl breakfast"],
+  [["smoothie","koktajl","kisiel","budyń"], "fruit smoothie glass"],
+  [["jajecznic","omlet","frittata","jajka sadzone","szakszuka","jajka w koszul","jajka faszerowane","jajka w awokado"], "scrambled eggs breakfast"],
+  [["kanapk","tost","wrap","kromk","chipsy z jarmuż"], "open sandwich toast"],
+  [["sałatk","carpaccio"], "fresh green salad bowl"],
+  [["krem z","zupa","gulasz","chili con carne"], "vegetable soup bowl"],
+  [["łosoś","dorsz","pstrąg","makrel","krewetk","ryb"], "grilled fish fillet"],
+  [["kurczak","indyk","drob"], "grilled chicken breast"],
+  [["wołowin","wieprzow","stek","kotlet","stroganow"], "beef steak dish"],
+  [["makaron","soba","bulgur"], "pasta dish bowl"],
+  [["tofu"], "tofu stir fry"],
+  [["ciecierzyc","fasol","soczewic","hummus"], "chickpea lentil bowl"],
+  [["pieczark","grzyb"], "mushroom dish"],
+  [["twaróg","serek","skyr","jogurt"], "yogurt bowl"],
+  [["awokado"], "avocado toast"],
+  [["burak"], "roasted beetroot salad"]
+];
+const DEFAULT_PHOTO_QUERY = "healthy meal plate";
+function photoQuery(r){
+  const t = (r.name + " " + r.ingredients.join(" ")).toLowerCase();
+  for(const [keys,q] of PHOTO_RULES){ if(keys.some(k=>t.includes(k))) return q; }
+  return DEFAULT_PHOTO_QUERY;
 }
-// Picks the recipe's own biggest (by kcal) ingredient that maps to a known
-// pantry icon, skipping seasonings/condiments unless nothing else qualifies —
-// so "Oliwa z oliwek" doesn't become the face of a chicken dish just because
-// everything else in it happens to be untracked salt and pepper.
-function mainIngredientInfo(r){
-  if(!r.calc || !r.calc.length) return null;
-  let best = null, bestKcal = -1, fallback = null, fallbackKcal = -1;
-  r.calc.forEach(item=>{
-    const canon = thumbCanon(item.label);
-    if(THUMB_SKIP_CANON.has(canon)) return;
-    const info = CANON_INFO[canon];
-    if(!info) return;
-    if(item.kcal > fallbackKcal){ fallbackKcal = item.kcal; fallback = info; }
-    if(info.cat !== "Przyprawy" && item.kcal > bestKcal){ bestKcal = item.kcal; best = info; }
-  });
-  return best || fallback;
+const PHOTO_CACHE_KEY = "dietaPhotoCacheV3";
+let photoCache = {};
+try{ photoCache = JSON.parse(localStorage.getItem(PHOTO_CACHE_KEY)) || {}; }catch(e){ photoCache = {}; }
+function savePhotoCache(){ try{ localStorage.setItem(PHOTO_CACHE_KEY, JSON.stringify(photoCache)); }catch(e){} }
+const photoPromises = {};
+function getPhotoUrls(query){
+  if(photoCache[query] !== undefined) return Promise.resolve(photoCache[query]);
+  if(photoPromises[query]) return photoPromises[query];
+  const api = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch="
+    + encodeURIComponent(query) + "&gsrlimit=5&prop=imageinfo&iiprop=url&iiurlwidth=220&format=json&origin=*";
+  const p = fetch(api).then(res=>res.json()).then(data=>{
+    let urls = [];
+    const pages = data.query && data.query.pages;
+    if(pages){
+      urls = Object.values(pages)
+        .filter(pg=>pg.imageinfo && pg.imageinfo[0])
+        .map(pg=> pg.imageinfo[0].thumburl || pg.imageinfo[0].url)
+        .filter(Boolean);
+    }
+    photoCache[query] = urls.length ? urls : null; savePhotoCache();
+    return photoCache[query];
+  }).catch(()=>{ photoCache[query] = null; savePhotoCache(); return null; });
+  photoPromises[query] = p;
+  return p;
 }
 function attachThumb(card, r){
   const thumbEl = card.querySelector(".thumb");
   if(!thumbEl) return;
-  const info = mainIngredientInfo(r);
-  thumbEl.innerHTML = `<span class="thumb-emoji">${info ? info.emoji : "🍽️"}</span>`;
+  const q = photoQuery(r);
+  const showCandidates = (urls)=>{
+    if(!urls || !urls.length || !thumbEl.isConnected) return;
+    let idx = 0;
+    thumbEl.innerHTML = `<img src="${urls[0]}" alt="" loading="lazy">`;
+    if(urls.length > 1){
+      thumbEl.title = "Stuknij, by zobaczyć inną propozycję zdjęcia";
+      thumbEl.style.cursor = "pointer";
+      thumbEl.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        idx = (idx + 1) % urls.length;
+        thumbEl.innerHTML = `<img src="${urls[idx]}" alt="" loading="lazy">`;
+      });
+    }
+  };
+  getPhotoUrls(q).then(urls=>{
+    if(urls && urls.length){ showCandidates(urls); return; }
+    if(q !== DEFAULT_PHOTO_QUERY){
+      getPhotoUrls(DEFAULT_PHOTO_QUERY).then(urls2=> showCandidates(urls2));
+    }
+  });
 }
 
 const CATS = [
