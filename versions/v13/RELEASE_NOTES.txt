@@ -1,0 +1,44 @@
+Wersja 13
+=========
+
+1. Naprawiono "skaczący"/nakładający się nagłówek przy przewijaniu
+   Poprzednia poprawka (wersja 12) nadal potrafiła migotać na prawdziwym
+   telefonie: przy szarpanym przewijaniu kciukiem zdarzało się, że nowa
+   zmiana stanu (schowany/pokazany) uruchamiała się, zanim poprzednia
+   animacja zdążyła się skończyć — dwie animacje "walczyły" o ten sam
+   element, co dawało efekt nakładających się, przezroczystych fragmentów
+   tekstu widocznych na pokazanych zrzutach ekranu.
+   - Podtytuł profilu i pasek kcal połączono w jeden wspólny, chowany
+     kontener (zamiast dwóch osobno animowanych elementów) — mniej
+     jednoczesnych animacji na raz.
+   - Próg schowania/pokazania jest teraz jeden, ostry (60px) zamiast
+     "martwej strefy" — nagłówek zawsze wie, czy ma być schowany, czy
+     pokazany, bez stanu pośredniego.
+   - Dodano blokadę czasową (nieco dłuższą niż czas trwania animacji) —
+     kolejna zmiana stanu nie może się rozpocząć, dopóki poprzednia
+     animacja się nie skończy, co eliminuje nakładanie się przejść.
+
+2. Diety mają teraz odpowiadać zapotrzebowaniu kalorycznemu
+   Automatyczne generowanie planu tygodnia ("Wygeneruj plan tygodnia") oraz
+   przycisk "🔁 losuj inne danie" dobierały przepisy całkowicie losowo z
+   danej kategorii, bez względu na to, ile kalorii/białka/węglowodanów
+   faktycznie potrzebuje dany profil — przez co dzienny plan mógł wyjść
+   znacznie poniżej dziennego zapotrzebowania.
+   - Dodano `fittingPool()` — pula kandydatów do losowania ograniczona do
+     najlepiej dopasowanych przepisów (wg tego samego dopasowania
+     makroskładników/kcal, które już wcześniej pokazywaliśmy jako "🎯 X%"
+     na kartach przepisów) dla danej kategorii posiłku i profilu, zamiast
+     całej, nieprzefiltrowanej puli.
+   - Zarówno generator planu tygodnia, jak i przycisk "losuj inne danie",
+     korzystają teraz z tej puli — realnie zmniejsza to odchylenie od
+     dziennego celu kalorycznego.
+   - Ręczny wybór dania w planerze pokazuje teraz przepisy posortowane od
+     najlepiej dopasowanych, z widocznym procentem dopasowania przy każdej
+     pozycji, żeby ułatwić świadomy wybór.
+
+Uwaga / znane ograniczenie: dla profili z dużym zapotrzebowaniem kalorycznym
+(np. budowanie masy przy dużej aktywności) niektóre kategorie przepisów mają
+zbyt niski sufit kaloryczny, żeby w pełni domknąć dzienny cel nawet przy
+najlepiej dopasowanych daniach — baza przepisów ma stałe, niewielkie porcje.
+To osobny, większy temat (większe dania / mnożenie porcji), do ustalenia z
+użytkownikiem przed podjęciem.

@@ -128,14 +128,20 @@
     box-shadow:0 4px 14px rgba(0,0,0,.12);
     transition:padding .25s ease;
   }
-  header.app-top h1{margin:0; font-size:17px; font-weight:700; letter-spacing:.2px;}
-  header.app-top .sub{font-size:12.5px; opacity:.85; margin-top:3px;}
-  header.app-top .header-collapsible{
-    max-height:280px; opacity:1; overflow:hidden;
-    transition:max-height .2s ease, opacity .15s ease;
+  header.app-top h1{margin:0; font-size:17px; font-weight:700; letter-spacing:.2px; transition:font-size .25s ease;}
+  header.app-top .sub{
+    font-size:12.5px; opacity:.85; margin-top:3px;
+    max-height:40px; overflow:hidden;
+    transition:max-height .25s ease, opacity .2s ease, margin-top .25s ease;
+  }
+  header.app-top .kcal-row{
+    max-height:130px; overflow:hidden;
+    transition:max-height .25s ease, opacity .2s ease, margin-top .25s ease;
   }
   header.app-top.collapsed{ padding-bottom:8px; }
-  header.app-top.collapsed .header-collapsible{ max-height:0; opacity:0; }
+  header.app-top.collapsed h1{ font-size:15px; }
+  header.app-top.collapsed .sub{ max-height:0; opacity:0; margin-top:0; }
+  header.app-top.collapsed .kcal-row{ max-height:0; opacity:0; margin-top:0; }
   .kcal-strip{display:flex; gap:8px; margin-top:12px; overflow-x:auto;}
   .kcal-chip{
     flex:0 0 auto; background:rgba(255,255,255,.14); border-radius:10px;
@@ -424,24 +430,24 @@
 <div class="app-shell">
 <header class="app-top">
   <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-    <h1>🍲 Dieta App</h1>
+    <div>
+      <h1>🍲 Dieta App</h1>
+      <div class="sub" id="headerSub">Kobieta, 37 lat · 164 cm · 67&nbsp;kg → cel 62&nbsp;kg · ~1500–1550&nbsp;kcal/dzień</div>
+    </div>
     <button id="settingsBtn" style="background:rgba(255,255,255,.16); border:none; color:#fff; width:36px; height:36px; border-radius:10px; flex:0 0 auto; display:flex; align-items:center; justify-content:center;"><i data-lucide="settings" style="width:18px;height:18px;"></i></button>
   </div>
-  <div class="header-collapsible">
-    <div class="sub" id="headerSub">Kobieta, 37 lat · 164 cm · 67&nbsp;kg → cel 62&nbsp;kg · ~1500–1550&nbsp;kcal/dzień</div>
-    <div class="kcal-row">
-      <div class="kcal-ring-wrap">
-        <svg viewBox="0 0 120 120" class="kcal-ring-svg">
-          <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="10"/>
-          <circle id="kcalRingProgress" cx="60" cy="60" r="52" fill="none" stroke="var(--honey)" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 326.7" transform="rotate(-90 60 60)"/>
-        </svg>
-        <div class="kcal-ring-center">
-          <div class="kcal-ring-value" id="kcalRingValue">0</div>
-          <div class="kcal-ring-caption" id="kcalRingCaption">z 0 kcal</div>
-        </div>
+  <div class="kcal-row">
+    <div class="kcal-ring-wrap">
+      <svg viewBox="0 0 120 120" class="kcal-ring-svg">
+        <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="10"/>
+        <circle id="kcalRingProgress" cx="60" cy="60" r="52" fill="none" stroke="var(--honey)" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 326.7" transform="rotate(-90 60 60)"/>
+      </svg>
+      <div class="kcal-ring-center">
+        <div class="kcal-ring-value" id="kcalRingValue">0</div>
+        <div class="kcal-ring-caption" id="kcalRingCaption">z 0 kcal</div>
       </div>
-      <div class="kcal-meal-list" id="kcalMealList"></div>
     </div>
+    <div class="kcal-meal-list" id="kcalMealList"></div>
   </div>
 </header>
 
@@ -1067,20 +1073,6 @@ function recipeMatchScore(r, target, profile){
     if(r.gl > glThreshold) score -= (r.gl - glThreshold) * glWeight;
   }
   return Math.max(0, Math.min(100, Math.round(score)));
-}
-// Candidate pool for random/auto meal picks: only the best-fitting recipes for this
-// category given the profile's macro/kcal target, so auto-planning and "🔁 losuj inne
-// danie" can't land on something wildly under- or over- the caloric need for that slot,
-// while still leaving enough options (top ~35%) for variety across the week.
-function fittingPool(catId, profile){
-  const target = calcMacroTargets(profile)[catId];
-  const scored = recipesByCat(catId)
-    .map(r=>({r, score: recipeMatchScore(r, target, profile)}))
-    .filter(x=>x.score!==null)
-    .sort((a,b)=> b.score - a.score);
-  if(scored.length===0) return recipesByCat(catId);
-  const topN = Math.max(3, Math.round(scored.length*0.2));
-  return scored.slice(0, topN).map(x=>x.r);
 }
 function todaysPlannerMeals(){
   const jsDay = new Date().getDay();
@@ -2230,7 +2222,7 @@ function renderPlanner(){
     card.querySelectorAll(".regen-btn").forEach(btn=>{
       btn.addEventListener("click", ()=>{
         const d = btn.dataset.regenDay, c = btn.dataset.regenCat;
-        const pool = fittingPool(c, state.profile);
+        const pool = recipesByCat(c);
         const current = (state.planner[d]||{})[c];
         let candidates = pool.filter(r=>r.id!==current);
         if(candidates.length===0) candidates = pool;
@@ -2248,7 +2240,7 @@ function renderPlanner(){
 document.getElementById("autoPlanBtn").addEventListener("click", ()=>{
   if(!confirm("To nadpisze wszystkie dania zaplanowane w całym tygodniu. Na pewno chcesz wygenerować nowy plan?")) return;
   const pools = {};
-  CATS.forEach(c=>{ pools[c.id] = [...fittingPool(c.id, state.profile)].sort(()=>Math.random()-0.5); });
+  CATS.forEach(c=>{ pools[c.id] = [...recipesByCat(c.id)].sort(()=>Math.random()-0.5); });
   const idx = {sniadania:0,drugie:0,obiady:0,kolacje:0};
   DAYS.forEach((day,di)=>{
     state.planner[di] = {};
@@ -2303,15 +2295,11 @@ function openPlannerPickerModal(day, cat){
     saveState(); renderPlanner(); renderHeader(); plannerModalOverlay.classList.remove("show");
   });
   list.appendChild(noneRow);
-  const target = calcMacroTargets(state.profile)[cat];
-  const sorted = [...recipesByCat(cat)].sort((a,b)=>
-    (recipeMatchScore(b, target, state.profile)||0) - (recipeMatchScore(a, target, state.profile)||0));
-  sorted.forEach(r=>{
+  recipesByCat(cat).forEach(r=>{
     const row = document.createElement("div");
     row.className = "modal-ing-row";
     row.style.cursor = "pointer";
-    const score = recipeMatchScore(r, target, state.profile);
-    row.innerHTML = `<span>${r.name}</span><span class="pantry-tag">${r.kcal} kcal${score!==null?` · 🎯 ${score}%`:""}</span>`;
+    row.innerHTML = `<span>${r.name}</span><span class="pantry-tag">${r.kcal} kcal</span>`;
     row.addEventListener("click", ()=> openPlannerPreview(day, cat, r.id));
     list.appendChild(row);
   });
@@ -2793,32 +2781,20 @@ setInterval(checkWaterReminderSchedule, 30000);
 (function(){
   const headerEl = document.querySelector("header.app-top");
   if(!headerEl) return;
-  // A single crisp threshold (not a wide dead-zone) decides collapsed vs
-  // expanded, so there's no ambiguous middle ground. What actually caused the
-  // header to visibly stutter/overlap wasn't the threshold width though — it
-  // was jittery touch-scroll events re-triggering the class toggle while the
-  // previous CSS transition was still mid-flight, so two transitions were
-  // fighting over the same element. LOCKOUT_MS blocks any further state
-  // change until the current transition has had time to finish.
-  const THRESHOLD = 60;
-  const TRANSITION_MS = 200, LOCKOUT_MS = TRANSITION_MS + 120;
-  let ticking = false, lastChangeAt = 0;
+  // Absolute-position hysteresis (collapse past COLLAPSE_AT, expand below
+  // EXPAND_AT) instead of tracking scroll deltas: delta-based tracking was
+  // fragile against jittery/batched touch-scroll events, causing it to need
+  // a big swipe to react and then flicker near the trigger point.
+  const COLLAPSE_AT = 80, EXPAND_AT = 40;
+  let ticking = false;
   window.addEventListener("scroll", ()=>{
     if(ticking) return;
     ticking = true;
     requestAnimationFrame(()=>{
-      ticking = false;
-      const now = performance.now();
-      if(now - lastChangeAt < LOCKOUT_MS) return;
       const y = window.scrollY;
-      const isCollapsed = headerEl.classList.contains("collapsed");
-      if(!isCollapsed && y > THRESHOLD){
-        headerEl.classList.add("collapsed");
-        lastChangeAt = now;
-      }else if(isCollapsed && y <= THRESHOLD){
-        headerEl.classList.remove("collapsed");
-        lastChangeAt = now;
-      }
+      if(y > COLLAPSE_AT) headerEl.classList.add("collapsed");
+      else if(y < EXPAND_AT) headerEl.classList.remove("collapsed");
+      ticking = false;
     });
   }, {passive:true});
 })();
