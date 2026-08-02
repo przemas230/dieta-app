@@ -1,0 +1,19 @@
+Wersja v6 — poprawione kcal + szczegółowe wyliczenie per przepis
+
+Zmiany względem v5:
+- Poprawiono kaloryczność 12 przepisów, dla których nawet po kalibracji
+  nie dało się sensownie pogodzić podanych kcal ze składnikami (m.in.
+  lekkie przekąski i kolacje warzywno-owocowe). Nowe wartości wynikają
+  wprost z ich rzeczywistych składników, bez naciągania:
+    D16 300→145 kcal, D17 290→135, D25 300→110, D27 285→120,
+    D29 290→90, D30 305→70, K4 310→135, K14 315→145, K16 310→85,
+    K22 315→110, K24 320→150, K25 310→110.
+  Uwaga: część z tych dań realnie jest teraz lżejsza niż zakładany
+  "kubełek kaloryczny" danej pory posiłku (II Śniadanie/Kolacja) — to
+  świadoma decyzja (uczciwa liczba zamiast urealnionej), do
+  ew. rozważenia osobno, czy dokładać składniki, by dogonić budżet.
+- Okienko "Skąd te liczby?" pokazuje teraz też szczegółowe wyliczenie
+  DLA KONKRETNEGO klikniętego przepisu: listę składników z ich
+  wartością bazową (na podaną gramaturę/sztukę) i wkładem do sumy
+  (kcal, białko, węgle, tłuszcz), plus informację, czy i o ile
+  wynik doliczono do znanej kaloryczności dania.
