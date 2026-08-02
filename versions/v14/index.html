@@ -359,11 +359,6 @@
     flex:0 0 32px; border:1px solid var(--line); background:var(--teal-pale); color:var(--teal-dark);
     border-radius:9px; width:32px; height:32px; font-size:14px; cursor:pointer; align-self:flex-start;
   }
-  .scale-btn{
-    flex:0 0 auto; border:1px solid var(--line); background:var(--teal-pale); color:var(--teal-dark);
-    border-radius:9px; min-width:32px; height:32px; padding:0 7px; font-size:11.5px; font-weight:700;
-    cursor:pointer; align-self:flex-start; font-family:"IBM Plex Mono", monospace;
-  }
   .day-total{font-size:12px; color:var(--muted); margin-top:6px; text-align:right;}
 
   /* Postep */
@@ -930,7 +925,6 @@ function loadState(){
       if(s.waterNotifEnabled===undefined) s.waterNotifEnabled = false;
       if(!s.theme) s.theme = "teal";
       if(!s.waterReminder) s.waterReminder = {...DEFAULT_WATER_REMINDER};
-      if(!s.plannerScale) s.plannerScale = {};
       const shoppingVals = Object.values(s.shopping||{});
       if(shoppingVals.some(v=>v && v.unitCat===undefined)){
         s.shopping = {}; s.recipeAdded = {};
@@ -938,7 +932,7 @@ function loadState(){
       return s;
     }
   }catch(e){}
-  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, water:{date:"",count:0}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, waterNotifEnabled:false, theme:"teal", waterReminder:{...DEFAULT_WATER_REMINDER}};
+  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, water:{date:"",count:0}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, waterNotifEnabled:false, theme:"teal", waterReminder:{...DEFAULT_WATER_REMINDER}};
 }
 let state = loadState();
 document.documentElement.setAttribute("data-theme", state.theme || "teal");
@@ -1088,71 +1082,6 @@ function fittingPool(catId, profile){
   const topN = Math.max(3, Math.round(scored.length*0.2));
   return scored.slice(0, topN).map(x=>x.r);
 }
-// ---------- PORTION SCALING ----------
-// Fixed-portion recipes can't reach the daily kcal target for larger profiles
-// (e.g. bulking with high activity) — this lets a planned meal be scaled up
-// (1x-2x) so its kcal/macros/ingredients grow with it, closing that gap
-// without needing a bigger recipe database.
-const SCALE_STEPS = [1, 1.25, 1.5, 1.75, 2];
-function getPlannerScale(day, cat){
-  const v = (state.plannerScale[day]||{})[cat];
-  return SCALE_STEPS.includes(v) ? v : 1;
-}
-function setPlannerScale(day, cat, scale){
-  state.plannerScale[day] = state.plannerScale[day] || {};
-  state.plannerScale[day][cat] = scale;
-}
-function nextScaleStep(scale){
-  const i = SCALE_STEPS.indexOf(scale);
-  return SCALE_STEPS[(i<0?0:i+1) % SCALE_STEPS.length];
-}
-// Smallest step from SCALE_STEPS that lands closest to the meal-slot's kcal
-// target, so auto-planning and rerolls default to a sensible size instead of
-// always the recipe's base (1x) portion.
-function idealScaleFor(r, targetKcal){
-  if(!targetKcal || !r.kcal) return 1;
-  let best = 1, bestDiff = Math.abs(r.kcal - targetKcal);
-  SCALE_STEPS.forEach(s=>{
-    const diff = Math.abs(r.kcal*s - targetKcal);
-    if(diff < bestDiff){ bestDiff = diff; best = s; }
-  });
-  return best;
-}
-function formatScaledAmount(v){
-  if(v >= 20) return String(Math.round(v/5)*5);
-  const rounded = Math.round(v*2)/2;
-  return Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(".", ",");
-}
-// Scales the leading quantity of a freeform ingredient line ("2 jajka",
-// "1/2 puszki pomidorów krojonych", "150g fileta z łososia"). Lines without a
-// leading number ("garść szpinaku", "sól") are left as-is — there's nothing
-// reliable to scale.
-function scaleIngredientText(text, scale){
-  if(scale===1) return text;
-  const m = text.match(/^(\d+(?:[.,]\d+)?)(\/(\d+))?\s*(.*)$/);
-  if(!m) return text;
-  let value = parseFloat(m[1].replace(",", "."));
-  if(m[3]) value = value / parseFloat(m[3]);
-  const rest = m[4] || "";
-  return formatScaledAmount(value*scale) + (rest ? " " + rest : "");
-}
-function scaleRecipe(r, scale){
-  if(!scale || scale===1) return r;
-  const round1 = n => Math.round(n*10)/10;
-  return {
-    ...r,
-    kcal: Math.round(r.kcal*scale),
-    protein: r.protein!==undefined ? Math.round(r.protein*scale) : undefined,
-    carbs: r.carbs!==undefined ? Math.round(r.carbs*scale) : undefined,
-    fat: r.fat!==undefined ? Math.round(r.fat*scale) : undefined,
-    fiber: r.fiber!==undefined ? Math.round(r.fiber*scale) : undefined,
-    gl: r.gl!==undefined ? round1(r.gl*scale) : undefined,
-    ingredients: r.ingredients.map(i=>scaleIngredientText(i, scale)),
-    calc: r.calc ? r.calc.map(item=>({...item, qty: round1(item.qty*scale), kcal: Math.round(item.kcal*scale), p: round1(item.p*scale), c: round1(item.c*scale), f: round1(item.f*scale)})) : r.calc,
-    _scale: scale,
-    _baseId: r.id
-  };
-}
 function todaysPlannerMeals(){
   const jsDay = new Date().getDay();
   const polIndex = jsDay===0 ? 6 : jsDay-1;
@@ -1160,8 +1089,7 @@ function todaysPlannerMeals(){
   const result = {};
   CATS.forEach(c=>{
     const rid = dayMeals[c.id];
-    const base = rid ? RECIPES.find(x=>x.id===rid) : null;
-    result[c.id] = base ? scaleRecipe(base, getPlannerScale(polIndex, c.id)) : null;
+    result[c.id] = rid ? RECIPES.find(x=>x.id===rid) : null;
   });
   return result;
 }
@@ -1185,8 +1113,7 @@ function renderHeader(){
   document.getElementById("kcalRingCaption").textContent = `z ${t.daily} kcal`;
   document.getElementById("kcalMealList").innerHTML = CATS.map(c=>{
     const r = meals[c.id];
-    const scaleSuffix = r && r._scale && r._scale!==1 ? ` · ${String(r._scale).replace(".",",")}×` : "";
-    return `<div class="kcal-meal-row"><span class="kmr-label">${c.icon} ${c.label} · ${t[c.id]} kcal</span>${r?`<span class="kmr-dish">${r.name}${scaleSuffix}</span>`:""}</div>`;
+    return `<div class="kcal-meal-row"><span class="kmr-label">${c.icon} ${c.label} · ${t[c.id]} kcal</span>${r?`<span class="kmr-dish">${r.name}</span>`:""}</div>`;
   }).join("");
   document.getElementById("weightGoalTitle").textContent = `⚖️ Postęp wagi (cel: ${p.targetWeight} kg)`;
 }
@@ -1585,7 +1512,6 @@ function openPlanPicker(r){
     btn.addEventListener("click", ()=>{
       state.planner[di] = state.planner[di] || {};
       state.planner[di][r.cat] = r.id;
-      setPlannerScale(di, r.cat, 1);
       saveState(); renderPlanner(); renderHeader();
       document.getElementById("planPickerOverlay").classList.remove("show");
       toast(`Zaplanowano „${r.name}" na ${day}`);
@@ -2272,15 +2198,11 @@ function renderPlanner(){
     let total = 0;
     const rowsHtml = CATS.map(c=>{
       const chosenId = state.planner[di][c.id] || "";
-      const baseRecipe = chosenId ? RECIPES.find(x=>x.id===chosenId) : null;
-      const scale = baseRecipe ? getPlannerScale(di, c.id) : 1;
-      const chosenRecipe = baseRecipe ? scaleRecipe(baseRecipe, scale) : null;
+      const chosenRecipe = chosenId ? RECIPES.find(x=>x.id===chosenId) : null;
       if(chosenRecipe) total += chosenRecipe.kcal;
-      const scaleLabel = String(scale).replace(".", ",") + "×";
       return `<div class="slot-row">
         <label>${c.icon} ${c.label}</label>
         <button class="slot-pick" data-pick-day="${di}" data-pick-cat="${c.id}">${chosenRecipe ? chosenRecipe.name : "— wybierz danie —"}</button>
-        ${baseRecipe?`<button class="scale-btn" data-scale-day="${di}" data-scale-cat="${c.id}" title="Wielkość porcji — kliknij, by zmienić">${scaleLabel}</button>`:""}
         <button class="regen-btn" data-regen-day="${di}" data-regen-cat="${c.id}" title="Losuj inne danie">🔁</button>
       </div>`;
     }).join("");
@@ -2289,22 +2211,14 @@ function renderPlanner(){
     card.querySelectorAll(".slot-pick").forEach(btn=>{
       btn.addEventListener("click", ()=> openPlannerModal(btn.dataset.pickDay, btn.dataset.pickCat));
     });
-    card.querySelectorAll(".scale-btn").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        const d = btn.dataset.scaleDay, c = btn.dataset.scaleCat;
-        setPlannerScale(d, c, nextScaleStep(getPlannerScale(d, c)));
-        saveState(); renderPlanner(); renderHeader();
-      });
-    });
     card.querySelector("[data-day-add]").addEventListener("click", ()=>{
       const dayMeals = state.planner[di] || {};
       let added = 0, already = 0, empty = 0;
       CATS.forEach(c=>{
         const rid = dayMeals[c.id];
         if(!rid){ empty++; return; }
-        const base = RECIPES.find(x=>x.id===rid);
-        if(!base) return;
-        const r = scaleRecipe(base, getPlannerScale(di, c.id));
+        const r = RECIPES.find(x=>x.id===rid);
+        if(!r) return;
         if(state.recipeAdded[r.id]){ already++; return; }
         addRecipeToShoppingList(r);
         added++;
@@ -2323,7 +2237,6 @@ function renderPlanner(){
         const pick = candidates[Math.floor(Math.random()*candidates.length)];
         state.planner[d] = state.planner[d] || {};
         state.planner[d][c] = pick.id;
-        setPlannerScale(d, c, idealScaleFor(pick, calcTargets(state.profile)[c]));
         saveState(); renderPlanner(); renderHeader();
         toast("Nowa propozycja: " + pick.name);
       });
@@ -2337,16 +2250,13 @@ document.getElementById("autoPlanBtn").addEventListener("click", ()=>{
   const pools = {};
   CATS.forEach(c=>{ pools[c.id] = [...fittingPool(c.id, state.profile)].sort(()=>Math.random()-0.5); });
   const idx = {sniadania:0,drugie:0,obiady:0,kolacje:0};
-  const dailyTargets = calcTargets(state.profile);
   DAYS.forEach((day,di)=>{
     state.planner[di] = {};
-    state.plannerScale[di] = {};
     CATS.forEach(c=>{
       const pool = pools[c.id];
       const r = pool[idx[c.id] % pool.length];
       idx[c.id]++;
       state.planner[di][c.id] = r.id;
-      state.plannerScale[di][c.id] = idealScaleFor(r, dailyTargets[c.id]);
     });
   });
   saveState(); renderPlanner(); renderHeader();
@@ -2375,28 +2285,7 @@ function openPlannerDetailModal(day, cat, recipeId){
   changeBtn.textContent = "🔁 Wybierz inne danie z listy";
   changeBtn.addEventListener("click", ()=> openPlannerPickerModal(day, cat));
   list.appendChild(changeBtn);
-
-  const scale = getPlannerScale(day, cat);
-  const scaleRow = document.createElement("div");
-  scaleRow.style.cssText = "display:flex; align-items:center; gap:6px; margin-bottom:12px; flex-wrap:wrap;";
-  const scaleLabel = document.createElement("span");
-  scaleLabel.style.cssText = "font-size:12px; color:var(--muted); margin-right:2px;";
-  scaleLabel.textContent = "Wielkość porcji:";
-  scaleRow.appendChild(scaleLabel);
-  SCALE_STEPS.forEach(s=>{
-    const b = document.createElement("button");
-    b.className = "ing-chip" + (s===scale ? " active" : "");
-    b.textContent = String(s).replace(".", ",") + "×";
-    b.addEventListener("click", ()=>{
-      setPlannerScale(day, cat, s);
-      saveState(); renderPlanner(); renderHeader();
-      openPlannerDetailModal(day, cat, recipeId);
-    });
-    scaleRow.appendChild(b);
-  });
-  list.appendChild(scaleRow);
-
-  list.appendChild(recipeCard(scaleRecipe(r, scale), ()=> openPlannerDetailModal(day, cat, recipeId)));
+  list.appendChild(recipeCard(r, ()=> openPlannerDetailModal(day, cat, recipeId)));
   plannerModalOverlay.classList.add("show");
 }
 function openPlannerPickerModal(day, cat){
@@ -2411,7 +2300,6 @@ function openPlannerPickerModal(day, cat){
   noneRow.addEventListener("click", ()=>{
     state.planner[day] = state.planner[day] || {};
     state.planner[day][cat] = "";
-    setPlannerScale(day, cat, 1);
     saveState(); renderPlanner(); renderHeader(); plannerModalOverlay.classList.remove("show");
   });
   list.appendChild(noneRow);
@@ -2448,7 +2336,6 @@ function openPlannerPreview(day, cat, recipeId){
   chooseBtn.addEventListener("click", ()=>{
     state.planner[day] = state.planner[day] || {};
     state.planner[day][cat] = r.id;
-    setPlannerScale(day, cat, 1);
     saveState(); renderPlanner(); renderHeader();
     openPlannerDetailModal(day, cat, r.id);
   });

@@ -1,0 +1,37 @@
+Wersja 14
+=========
+
+Dodano skalowanie wielkości porcji dań w planerze.
+
+Kontekst: nawet po poprzedniej poprawce (wersja 13, dobór przepisów wg
+dopasowania do zapotrzebowania), dla dużego zapotrzebowania kalorycznego
+(np. budowanie masy przy dużej aktywności, ~3280 kcal/dzień) same przepisy
+były za małe, żeby domknąć dzienny cel — baza ma stałe, niewielkie porcje
+(np. max ok. 710 kcal na danie obiadowe).
+
+Co się zmieniło:
+- Każdy zaplanowany posiłek można teraz przeskalować: 1×, 1,25×, 1,5×, 1,75×
+  lub 2× bazowej porcji. Skalowanie mnoży proporcjonalnie kalorie, białko,
+  węglowodany, tłuszcz, błonnik, ładunek glikemiczny oraz — tam gdzie to
+  możliwe — ilości składników (np. "150g piersi z kurczaka" przy 1,5×
+  staje się "225 g piersi z kurczaka"). Indeks glikemiczny (IG) się nie
+  zmienia — to cecha samego jedzenia, nie ilości.
+- W widoku Planera przy każdym posiłku pojawia się przycisk z aktualnym
+  mnożnikiem (np. "1,5×") — kliknięcie przełącza na kolejną wielkość.
+  Pełny wybór wielkości (z podglądem przeliczonych wartości i składników)
+  jest też dostępny po otwarciu szczegółów posiłku.
+- Generator planu tygodnia oraz "🔁 losuj inne danie" automatycznie
+  dobierają teraz najlepszą wielkość porcji z tego zestawu, żeby dzienna
+  suma kalorii była jak najbliżej celu profilu — nie tylko dobierają
+  najlepiej dopasowany przepis, ale też jego rozmiar.
+- Ręczny wybór konkretnego dania (z listy w planerze albo przyciskiem
+  "📅 Zaplanuj" na karcie przepisu) domyślnie ustawia porcję z powrotem na
+  1× — to świadomy wybór użytkownika co do konkretnego dania, więc nie
+  narzucamy mu wcześniej ustawionego mnożnika z innego przepisu.
+- Dodawanie składników z zaplanowanego dnia do listy zakupów uwzględnia
+  wybraną wielkość porcji (ilości na liście są przeskalowane).
+
+Przykładowy efekt: dla profilu z celem ~3280 kcal/dzień, wygenerowany plan
+trafia teraz w ~3297 kcal (wcześniej: automatyczny dobór dań potrafił
+wyjść nawet 30%+ poniżej celu, bez żadnego mechanizmu, który by to
+korygował).
