@@ -1,0 +1,31 @@
+Wersja v7 — pilotaż: przepisy zróżnicowane wg celu diety (budowanie masy)
+
+Kontekst: dotąd wszystkie 120 przepisów było wspólną pulą, tylko inaczej
+scorowaną wg profilu. Ten pilotaż sprawdza, czy realnie da się mieć w
+aplikacji osobne dania "pod dany cel", a nie tylko inne przeliczenie
+tych samych dań.
+
+Zmiany:
+- Dodano 5 nowych przepisów obiadowych (O31–O35) oznaczonych jako
+  "goalFit: gain" — kaloryczne, bogate w węglowodany i białko dania
+  (585–655 kcal, 35–52 g białka), inspirowane stylem dań z
+  researchowanych wcześniej serwisów (m.in. EatingWell, Kwestia Smaku)
+  dostosowanym do realiów niskiego IG. Na karcie widać znaczek
+  "💪 Na masę".
+- Poprawiono algorytm dopasowania (recipeMatchScore): kara za wysoki
+  ładunek glikemiczny jest teraz łagodniejsza dla celu "budowanie masy"
+  (próg 35 zamiast 20, mniejsza waga kary) — bo wyższy ŁG w posiłku
+  okołotreningowym przy budowaniu masy to akceptowalny kompromis, inaczej
+  niż przy redukcji/utrzymaniu, gdzie stabilny cukier jest priorytetem
+  tej aplikacji.
+- Efekt: przy profilu "budowanie masy" 3 z 5 nowych przepisów trafiają
+  do czołówki sortowania wg dopasowania (w tym #1 i #2 miejsce) — przy
+  "redukcji" żaden się nie przebija, dokładnie jak powinno być.
+- Poprawiono nieaktualny komunikat przy włączaniu sortowania (mówił
+  "tylko Śniadania mają dane", mimo że od v5 wszystkie kategorie mają
+  komplet danych).
+
+To pilotaż jednej kategorii (Obiady) i jednego kierunku (budowanie
+masy). Jeśli podejście się sprawdzi, można tak samo dołożyć przepisy
+"pod redukcję" (bardzo sycące, niskokaloryczne, wysokobiałkowe) oraz
+rozszerzyć na pozostałe kategorie posiłków.
