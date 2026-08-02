@@ -2914,31 +2914,24 @@ setInterval(checkWaterReminderSchedule, 30000);
 (function(){
   const headerEl = document.querySelector("header.app-top");
   if(!headerEl) return;
-  // Direction-based, like the show/hide toolbar in most apps (Gmail,
-  // Twitter, ...): scrolling down hides it, scrolling up shows it again —
-  // wherever you are in a long list, not only within a few px of the very
-  // top. A pure "am I near the top" threshold (what this used to be) only
-  // ever shows the header at the literal top of the page, which is nearly
-  // never true on a 50+ recipe list — that's what was reported as "won't
-  // expand unless I'm at the very top". Also always show near the top
-  // itself (NEAR_TOP), so landing back at y=0 is never ambiguous.
-  // Reading window.scrollY here is reliable now that the header opts out of
-  // the browser's scroll anchoring (see the `overflow-anchor:none` on
-  // header.app-top) — that anchoring, not the direction logic itself, was
-  // the real cause of the earlier flicker/stuck bugs.
-  const NEAR_TOP = 60, DELTA = 4;
-  let lastY = window.scrollY;
+  // A single crisp threshold (not a wide dead-zone) decides collapsed vs
+  // expanded, so there's no ambiguous middle ground. Multiple scroll events
+  // per animation frame are coalesced via requestAnimationFrame (one state
+  // check per frame, not one per event) — that alone is what stops jittery
+  // touch-scroll from re-triggering the transition rapidly, since sub+kcal
+  // row now live in a single collapsible wrapper instead of three separately
+  // animated elements fighting each other.
+  // (A previous version also added a time-based lockout on top of this, to
+  // block any state change for a bit after the last one. That backfired: if
+  // scrolling settled at the top while still inside that lockout window, no
+  // further scroll event would ever arrive to re-check the state, and the
+  // header stayed stuck collapsed at the very top of the page.)
+  const THRESHOLD = 60;
   function applyState(){
     const y = window.scrollY;
     const isCollapsed = headerEl.classList.contains("collapsed");
-    if(y < NEAR_TOP){
-      if(isCollapsed) headerEl.classList.remove("collapsed");
-    }else if(y - lastY > DELTA){
-      if(!isCollapsed) headerEl.classList.add("collapsed");
-    }else if(lastY - y > DELTA){
-      if(isCollapsed) headerEl.classList.remove("collapsed");
-    }
-    lastY = y;
+    if(!isCollapsed && y > THRESHOLD) headerEl.classList.add("collapsed");
+    else if(isCollapsed && y <= THRESHOLD) headerEl.classList.remove("collapsed");
   }
   let ticking = false, idleTimer = null;
   window.addEventListener("scroll", ()=>{
@@ -2946,9 +2939,10 @@ setInterval(checkWaterReminderSchedule, 30000);
       ticking = true;
       requestAnimationFrame(()=>{ ticking = false; applyState(); });
     }
-    // On very long pages, a long fast fling can settle its last few pixels
-    // without firing another 'scroll' event on some mobile browsers — the
-    // per-frame check above then never sees the final resting position.
+    // On very long pages (e.g. Śniadania/Obiady with 50+ recipe cards), a long
+    // fast fling from the bottom back to the top can settle its last few
+    // pixels without firing another 'scroll' event on some mobile browsers —
+    // the per-frame check above then never sees the final resting position.
     // This re-checks once scrolling has actually stopped, as a safety net.
     clearTimeout(idleTimer);
     idleTimer = setTimeout(applyState, 150);
