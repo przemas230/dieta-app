@@ -12,6 +12,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script>
+(function(){
+  try{
+    var s = JSON.parse(localStorage.getItem("dietaAppStateV1") || "{}");
+    if(s.theme) document.documentElement.setAttribute("data-theme", s.theme);
+  }catch(e){}
+})();
+</script>
 <style>
   :root{
     --teal:#1F6B5C;
@@ -19,6 +27,7 @@
     --teal-pale:#EAF3EE;
     --honey:#C98A3E;
     --honey-pale:#FBF0DC;
+    --honey-dark:#8A6417;
     --plum:#7C4F63;
     --plum-pale:#F3E9ED;
     --bg:#FAF7F0;
@@ -27,6 +36,65 @@
     --muted:#64756C;
     --line:#E3DECF;
     --danger:#B54F3F;
+    --danger-pale:#F6E3E0;
+    --star-off:#D8D2C2;
+    color-scheme: light;
+  }
+  :root[data-theme="light"]{
+    --teal:#2C6FE0;
+    --teal-dark:#1B4A99;
+    --teal-pale:#E9F0FD;
+    --honey:#E0932E;
+    --honey-pale:#FDF1E1;
+    --honey-dark:#8A5817;
+    --plum:#7A5FC7;
+    --plum-pale:#EFEBFB;
+    --bg:#F5F7FA;
+    --card:#FFFFFF;
+    --text:#1E2733;
+    --muted:#5D6B7A;
+    --line:#E2E7EE;
+    --danger:#D14343;
+    --danger-pale:#FBE5E5;
+    --star-off:#D7DCE3;
+  }
+  :root[data-theme="pink"]{
+    --teal:#D6497B;
+    --teal-dark:#93315A;
+    --teal-pale:#FCE9F0;
+    --honey:#E0932E;
+    --honey-pale:#FDF1E1;
+    --honey-dark:#8A5817;
+    --plum:#A24F82;
+    --plum-pale:#F6E7F0;
+    --bg:#FFF6FA;
+    --card:#FFFFFF;
+    --text:#3A2530;
+    --muted:#8A6C78;
+    --line:#F1D9E4;
+    --danger:#C4415A;
+    --danger-pale:#FBE3E8;
+    --star-off:#EAD3DC;
+  }
+  :root[data-theme="dark"]{
+    --teal:#2F9078;
+    --teal-dark:#8FE0C7;
+    --teal-pale:#163830;
+    --honey:#E0A559;
+    --honey-pale:#3A2C15;
+    --honey-dark:#F0CE93;
+    --plum:#8C5D78;
+    --plum-pale:#3A2A33;
+    --bg:#151A18;
+    --card:#1E2523;
+    --text:#E7EEE9;
+    --muted:#93A39B;
+    --line:#313B37;
+    --danger:#E5786B;
+    --danger-pale:#3A211D;
+    --star-off:#4A554F;
+    --header-end:#0D211C;
+    color-scheme: dark;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -54,7 +122,7 @@
   }
   header.app-top{
     position:sticky; top:0; z-index:20;
-    background:linear-gradient(160deg, var(--teal), var(--teal-dark)); color:#fff;
+    background:linear-gradient(160deg, var(--teal), var(--header-end, var(--teal-dark))); color:#fff;
     padding:16px 18px 14px;
     border-bottom-left-radius:18px; border-bottom-right-radius:18px;
     box-shadow:0 4px 14px rgba(0,0,0,.12);
@@ -99,7 +167,7 @@
     text-align:center; color:var(--muted); font-size:13.5px; padding:30px 10px;
   }
   .card{
-    background:linear-gradient(165deg, #FFFFFF 0%, var(--teal-pale) 145%);
+    background:linear-gradient(165deg, var(--card) 0%, var(--teal-pale) 145%);
     border:1px solid var(--line); border-radius:16px;
     padding:14px; margin-bottom:12px;
     box-shadow:0 1px 2px rgba(30,30,20,.04), 0 8px 20px rgba(30,30,20,.05);
@@ -115,20 +183,20 @@
   .thumb-ph{font-size:18px; opacity:.5;}
   .star-btn{
     border:none; background:none; font-size:20px; cursor:pointer; padding:0 2px;
-    line-height:1; color:#D8D2C2;
+    line-height:1; color:var(--star-off);
   }
   .star-btn.active{color:var(--honey);}
   .meta{display:flex; gap:10px; margin:6px 0 10px; font-size:12px; color:var(--muted); font-weight:600;}
   .ingredients{list-style:none; padding-left:0; font-size:13px; color:var(--text); margin:0 0 8px;}
   .ingredients li{display:flex; align-items:flex-start; gap:6px; margin-bottom:4px;}
-  .ing-fav{border:none; background:none; padding:0; font-size:14px; line-height:1.4; color:#D8D2C2; cursor:pointer; flex:0 0 auto;}
+  .ing-fav{border:none; background:none; padding:0; font-size:14px; line-height:1.4; color:var(--star-off); cursor:pointer; flex:0 0 auto;}
   .ing-fav.active{color:var(--honey);}
   .have-it{font-weight:700; color:var(--teal-dark);}
   .pantry-group-title{font-size:12.5px; text-transform:uppercase; letter-spacing:.5px; color:var(--teal-dark); font-weight:800; margin:16px 0 8px;}
   .pantry-item{display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:7px;}
   .tile-grid{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px;}
   .pantry-tile{
-    position:relative; width:76px; min-height:72px; border:1.5px solid var(--line); background:#fff;
+    position:relative; width:76px; min-height:72px; border:1.5px solid var(--line); background:var(--card);
     border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:3px; padding:8px 4px; cursor:pointer; -webkit-tap-highlight-color:transparent;
   }
@@ -148,14 +216,14 @@
   .pantry-item .pi-del{border:none; background:none; color:var(--danger); font-size:16px; cursor:pointer; padding:2px 4px;}
   .pantry-level{font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px;}
   .pantry-level.duzo{background:var(--teal-pale); color:var(--teal-dark);}
-  .pantry-level.wystarczy{background:var(--honey-pale); color:#8A6417;}
-  .pantry-level.malo{background:#F6E3E0; color:var(--danger);}
+  .pantry-level.wystarczy{background:var(--honey-pale); color:var(--honey-dark);}
+  .pantry-level.malo{background:var(--danger-pale); color:var(--danger);}
   .pantry-tag{font-size:11px; background:var(--teal-pale); color:var(--teal-dark); padding:2px 8px; border-radius:999px; white-space:nowrap;}
 
   .suggest-wrap{position:relative;}
   .suggest-panel{
     display:none; position:absolute; left:0; right:0; top:100%; margin-top:4px;
-    background:#fff; border:1px solid var(--line); border-radius:12px; max-height:230px; overflow-y:auto;
+    background:var(--card); border:1px solid var(--line); border-radius:12px; max-height:230px; overflow-y:auto;
     box-shadow:0 8px 20px rgba(20,20,15,.15); z-index:15;
   }
   .suggest-panel.show{display:block;}
@@ -171,7 +239,7 @@
   .modal-overlay.show{display:flex;}
   .modal-overlay.center{align-items:center; padding:16px;}
   .modal-sheet{
-    background:#fff; width:100%; max-width:520px; border-radius:20px 20px 0 0;
+    background:var(--card); width:100%; max-width:520px; border-radius:20px 20px 0 0;
     padding:18px 16px calc(18px + env(safe-area-inset-bottom)); max-height:78vh; overflow-y:auto;
   }
   .modal-sheet.center-sheet{border-radius:20px; max-width:340px; max-height:none;}
@@ -181,7 +249,7 @@
   .modal-ing-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid var(--line);}
   .modal-ing-row span{font-size:13.5px; flex:1;}
   .modal-ing-btn{
-    flex:0 0 auto; border:1px solid var(--teal); background:#fff; color:var(--teal-dark);
+    flex:0 0 auto; border:1px solid var(--teal); background:var(--card); color:var(--teal-dark);
     border-radius:10px; padding:7px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;
   }
   .modal-ing-btn.on{background:var(--teal); color:#fff; border-color:var(--teal);}
@@ -231,7 +299,7 @@
   .settings-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;}
   .settings-grid label{display:flex; flex-direction:column; font-size:11.5px; color:var(--muted); font-weight:700; gap:4px;}
   .settings-grid label select, .settings-grid label input{
-    border:1px solid var(--line); border-radius:9px; padding:8px 8px; font-size:13.5px; color:var(--text); background:#fff;
+    border:1px solid var(--line); border-radius:9px; padding:8px 8px; font-size:13.5px; color:var(--text); background:var(--card);
     width:100%;
   }
   .settings-grid label.span2{grid-column:1 / -1;}
@@ -240,13 +308,20 @@
   .hint-text{font-size:11.5px; color:var(--muted); line-height:1.5; margin:-6px 0 12px;}
   .settings-result{font-size:12.5px; color:var(--teal-dark); margin-top:6px; line-height:1.5;}
   .chip-grid{display:flex; flex-wrap:wrap; gap:6px;}
-  .ing-chip{border:1px solid var(--line); background:#fff; border-radius:999px; padding:6px 12px; font-size:12px; cursor:pointer; color:var(--text);}
-  .ing-chip.active{background:var(--honey-pale); border-color:var(--honey); font-weight:700; color:#8A6417;}
+  .ing-chip{border:1px solid var(--line); background:var(--card); border-radius:999px; padding:6px 12px; font-size:12px; cursor:pointer; color:var(--text);}
+  .ing-chip.active{background:var(--honey-pale); border-color:var(--honey); font-weight:700; color:var(--honey-dark);}
+  .theme-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .theme-opt{
+    display:flex; align-items:center; gap:8px; border:1.5px solid var(--line); background:var(--card);
+    border-radius:12px; padding:10px 12px; font-size:13px; font-weight:700; color:var(--text); cursor:pointer;
+  }
+  .theme-opt.active{border-color:var(--teal); background:var(--teal-pale); color:var(--teal-dark);}
+  .theme-swatch{width:20px; height:20px; border-radius:999px; flex:0 0 auto; border:1px solid rgba(0,0,0,.08);}
   .recipe-title{cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px;}
 
   /* Planner */
   .day-card{
-    background:linear-gradient(165deg, #FFFFFF 0%, var(--teal-pale) 150%);
+    background:linear-gradient(165deg, var(--card) 0%, var(--teal-pale) 150%);
     border:1px solid var(--line); border-radius:16px; padding:12px 14px; margin-bottom:10px;
     box-shadow:0 1px 2px rgba(30,30,20,.04), 0 8px 20px rgba(30,30,20,.05);
   }
@@ -255,7 +330,7 @@
   .slot-row label{width:60px; flex:0 0 60px; font-size:11px; color:var(--muted); font-weight:700; padding-top:8px;}
   .slot-pick{
     flex:1 1 0; min-width:0; text-align:left; border:1px solid var(--line); border-radius:9px;
-    padding:7px 8px; font-size:12.5px; background:#fff; color:var(--text);
+    padding:7px 8px; font-size:12.5px; background:var(--card); color:var(--text);
     white-space:normal; word-break:break-word; line-height:1.35; cursor:pointer;
   }
   .regen-btn{
@@ -271,7 +346,7 @@
   .water-row{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 4px;}
   .cup{
     width:38px; height:38px; border-radius:10px; border:2px solid var(--plum);
-    background:#fff; display:flex; align-items:center; justify-content:center;
+    background:var(--card); display:flex; align-items:center; justify-content:center;
     font-size:17px; cursor:pointer; transition:background .15s ease, transform .1s ease;
   }
   .cup.full{background:var(--plum); color:#fff;}
@@ -291,7 +366,7 @@
   nav.bottom{
     position:fixed; bottom:0; left:50%; transform:translateX(-50%);
     width:100%; max-width:600px;
-    background:#fff;
+    background:var(--card);
     border-top:1px solid var(--line); display:flex; z-index:30;
     padding-bottom:env(safe-area-inset-bottom);
   }
@@ -440,6 +515,11 @@
         <button class="btn ghost" id="resetSettingsBtn">Domyślne</button>
       </div>
       <div id="settingsResult" class="settings-result"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 10px; font-size:15px;">🎨 Wygląd aplikacji</h3>
+      <div class="theme-grid" id="themeGrid"></div>
     </div>
 
     <div class="card">
@@ -776,6 +856,7 @@ function loadState(){
       if(!s.customTiles) s.customTiles = {};
       if(!s.pantryUnitOverride) s.pantryUnitOverride = {};
       if(s.waterNotifEnabled===undefined) s.waterNotifEnabled = false;
+      if(!s.theme) s.theme = "teal";
       const shoppingVals = Object.values(s.shopping||{});
       if(shoppingVals.some(v=>v && v.unitCat===undefined)){
         s.shopping = {}; s.recipeAdded = {};
@@ -783,11 +864,47 @@ function loadState(){
       return s;
     }
   }catch(e){}
-  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, water:{date:"",count:0}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, waterNotifEnabled:false};
+  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, water:{date:"",count:0}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, waterNotifEnabled:false, theme:"teal"};
 }
 let state = loadState();
+document.documentElement.setAttribute("data-theme", state.theme || "teal");
 function saveState(){
   try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+}
+// ---------- THEME ----------
+const THEMES = [
+  {id:"teal", label:"Zielony (domyślny)", swatch:"#1F6B5C", metaColor:"#1F6B5C"},
+  {id:"light", label:"Jasny", swatch:"#2C6FE0", metaColor:"#2C6FE0"},
+  {id:"pink", label:"Różowy", swatch:"#D6497B", metaColor:"#D6497B"},
+  {id:"dark", label:"Ciemny", swatch:"#151A18", metaColor:"#0D211C"}
+];
+(function syncMetaColor(){
+  const meta = document.querySelector('meta[name="theme-color"]');
+  const t = THEMES.find(x=>x.id===(state.theme||"teal"));
+  if(meta && t) meta.setAttribute("content", t.metaColor);
+})();
+function applyTheme(id){
+  state.theme = id;
+  saveState();
+  document.documentElement.setAttribute("data-theme", id);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  const t = THEMES.find(x=>x.id===id);
+  if(meta && t) meta.setAttribute("content", t.metaColor);
+  renderThemePicker();
+  renderWeights();
+}
+function renderThemePicker(){
+  const box = document.getElementById("themeGrid");
+  if(!box) return;
+  box.innerHTML = "";
+  THEMES.forEach(t=>{
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "theme-opt" + ((state.theme||"teal")===t.id ? " active" : "");
+    btn.innerHTML = `<span class="theme-swatch" style="background:${t.swatch}"></span>${t.label}`;
+    btn.addEventListener("click", ()=> applyTheme(t.id));
+    box.appendChild(btn);
+  });
 }
 function addLog(action, detail){
   state.history.unshift({ts: new Date().toISOString(), action, detail});
@@ -903,6 +1020,7 @@ function loadSettingsForm(){
   document.getElementById("setGlutenFree").checked = !!p.glutenFree;
   document.getElementById("setLactoseFree").checked = !!p.lactoseFree;
   document.getElementById("settingsResult").textContent = "";
+  renderThemePicker();
   renderFavIngChips("");
 }
 function renderFavIngChips(filterText){
@@ -2048,6 +2166,12 @@ function renderWater(){
 }
 
 let weightChartInstance = null;
+function hexToRgba(hex, alpha){
+  const h = hex.replace("#","");
+  const full = h.length===3 ? h.split("").map(c=>c+c).join("") : h;
+  const r = parseInt(full.substring(0,2),16), g = parseInt(full.substring(2,4),16), b = parseInt(full.substring(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
 function renderWeights(){
   const list = document.getElementById("weightList");
   list.innerHTML = "";
@@ -2064,22 +2188,29 @@ function renderWeights(){
   if(typeof Chart !== "undefined" && canvas){
     if(weightChartInstance){ weightChartInstance.destroy(); }
     const ctx = canvas.getContext("2d");
+    const cs = getComputedStyle(document.documentElement);
+    const cVar = (name, fallback)=> (cs.getPropertyValue(name).trim() || fallback);
+    const tealColor = cVar("--teal", "#1F6B5C");
+    const honeyColor = cVar("--honey", "#C98A3E");
+    const cardColor = cVar("--card", "#fff");
+    const paleColor = cVar("--teal-pale", "#EAF3EE");
+    const mutedColor = cVar("--muted", "#64756C");
     const gradient = ctx.createLinearGradient(0,0,0,180);
-    gradient.addColorStop(0, "rgba(31,107,92,.28)");
-    gradient.addColorStop(1, "rgba(31,107,92,0)");
+    gradient.addColorStop(0, hexToRgba(tealColor,.28));
+    gradient.addColorStop(1, hexToRgba(tealColor,0));
     weightChartInstance = new Chart(ctx, {
       type: "line",
       data: {
         labels,
         datasets: [{
           data,
-          borderColor: "#1F6B5C",
+          borderColor: tealColor,
           backgroundColor: gradient,
           fill: true,
           tension: .3,
           pointRadius: recent.map((_,i)=> i===recent.length-1 ? 5 : 2),
-          pointBackgroundColor: recent.map((_,i)=> i===recent.length-1 ? "#C98A3E" : "#1F6B5C"),
-          pointBorderColor: "#fff",
+          pointBackgroundColor: recent.map((_,i)=> i===recent.length-1 ? honeyColor : tealColor),
+          pointBorderColor: cardColor,
           pointBorderWidth: 1.5,
           borderWidth: 2
         }]
@@ -2088,8 +2219,8 @@ function renderWeights(){
         responsive: true, maintainAspectRatio: false,
         plugins:{ legend:{display:false} },
         scales:{
-          x:{ grid:{display:false}, ticks:{font:{size:9}} },
-          y:{ grid:{color:"#EAF3EE"}, ticks:{font:{size:9}} }
+          x:{ grid:{display:false}, ticks:{font:{size:9}, color:mutedColor} },
+          y:{ grid:{color:paleColor}, ticks:{font:{size:9}, color:mutedColor} }
         }
       }
     });
