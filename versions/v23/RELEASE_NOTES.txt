@@ -1,0 +1,39 @@
+Wersja 23
+=========
+
+Dodano diagnostykę powiadomień o wodzie (Ustawienia → "🔧 Diagnostyka
+powiadomień o wodzie") — na razie zamiast kolejnej próby naprawy "na
+ślepo".
+
+Kontekst: problem "+1 w powiadomieniu czasem odejmuje zamiast dodać" był
+już sprawdzany kilkukrotnie na poziomie kodu (logika w sw.js jest
+poprawna — potwierdzone też patrząc w historię gita, ta logika nigdy nie
+była odwrócona) i mimo kilku poprawek (wymuszanie aktualizacji Service
+Workera, zabezpieczenie przed podwójnym zliczeniem stuknięcia) problem
+nadal się zgłasza. Zamiast zgadywać dalej, dodano narzędzie do zebrania
+faktów bezpośrednio z telefonu, na którym to się dzieje.
+
+Co nowego:
+- Service Worker zapisuje teraz każde zdarzenie z przycisków powiadomienia
+  (jaki `action` faktycznie odebrał, licznik przed/po, oraz z jakiej wersji
+  cache'u SW to zdarzenie pochodzi) do lokalnego dziennika (ostatnie 20
+  zdarzeń).
+- Nowa sekcja w Ustawieniach pokazuje ten dziennik oraz ma:
+  - przycisk "🔄 Wymuś aktualizację aplikacji" — ręcznie sprawdza i
+    ściąga najnowszą wersję aplikacji (przydatne, jeśli aplikacja rzadko
+    jest otwierana wprost, a tylko obsługiwana z poziomu powiadomień —
+    wtedy automatyczne sprawdzanie aktualizacji może nie mieć okazji się
+    uruchomić),
+  - przycisk "📋 Odśwież dziennik powiadomień" — pokazuje zapisane
+    zdarzenia.
+- Podbito wersję cache Service Workera (dieta-app-v18).
+
+Jak z tego skorzystać: wejdź w Ustawienia, stuknij "Wymuś aktualizację",
+poczekaj aż strona się odświeży, spróbuj jeszcze raz stuknąć "+1" w
+powiadomieniu o wodzie (tak, żeby odtworzyć problem), wróć do Ustawień i
+stuknij "Odśwież dziennik powiadomień". Wpis w dzienniku pokaże dokładnie,
+jaka akcja została odebrana i jaki licznik z niej wyszedł — to da
+konkretny dowód, czy to np. wciąż stara wersja aplikacji (inny numer
+cache w dzienniku niż v18), czy faktycznie odebrano `action=remove-water`
+mimo stuknięcia w "+1" (co wskazywałoby na coś głębiej w systemie Android),
+czy coś jeszcze innego.

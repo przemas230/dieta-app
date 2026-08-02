@@ -687,18 +687,6 @@
     </div>
 
     <div class="card">
-      <h3 style="margin:0 0 10px; font-size:15px;">🔧 Diagnostyka powiadomień o wodzie</h3>
-      <div class="hint-text" style="margin:0 0 10px;">Jeśli przycisk „+1 💧” w powiadomieniu nadal czasem odejmuje zamiast dodać: stuknij poniższy przycisk raz, żeby wymusić aktualizację aplikacji do najnowszej wersji, spróbuj jeszcze raz stuknąć „+1” w powiadomieniu, a potem wróć tutaj i odśwież dziennik — pokaże dokładnie, co aplikacja zarejestrowała.</div>
-      <div class="shop-actions" style="margin-bottom:10px;">
-        <button class="btn ghost" id="forceUpdateBtn" style="width:100%;">🔄 Wymuś aktualizację aplikacji</button>
-      </div>
-      <div class="shop-actions" style="margin-bottom:10px;">
-        <button class="btn ghost" id="refreshWaterLogBtn" style="width:100%;">📋 Odśwież dziennik powiadomień</button>
-      </div>
-      <div id="waterActionLogBox" class="settings-result" style="font-family:var(--font-mono); font-size:11px; white-space:pre-wrap; text-align:left;"></div>
-    </div>
-
-    <div class="card">
       <h3 style="margin:0 0 6px; font-size:15px;">⭐ Ulubione składniki</h3>
       <div class="hint-text" style="margin:0 0 10px;">Wybrane tutaj składniki będą pogrubione na liście przepisów (tak samo jak gwiazdka przy składniku w przepisie — to ten sam wybór).</div>
       <input class="search" id="favIngSearch" type="text" placeholder="Szukaj składnika…" style="margin-bottom:10px;">
@@ -1142,7 +1130,7 @@ function switchView(name){
   if(name==="shop") renderShop();
   if(name==="planner") renderPlanner();
   if(name==="progress") renderProgress();
-  if(name==="settings"){ loadSettingsForm(); renderWaterActionLog(); }
+  if(name==="settings") loadSettingsForm();
   if(name==="pantry") renderPantry();
 }
 document.querySelectorAll("nav.bottom button").forEach(btn=>{
@@ -3040,36 +3028,6 @@ function onReminderSettingsChanged(){
 });
 document.getElementById("enableReminderBtn").addEventListener("click", enableWaterReminder);
 setInterval(checkWaterReminderSchedule, 30000);
-
-// ---------- WATER NOTIFICATION DIAGNOSTICS ----------
-async function renderWaterActionLog(){
-  const box = document.getElementById("waterActionLogBox");
-  if(!box) return;
-  const log = (await getWaterKV("waterActionLog")) || [];
-  if(!log.length){ box.textContent = "Brak zapisanych zdarzeń jeszcze — stuknij +1/-1 w powiadomieniu, potem wróć tu i odśwież."; return; }
-  const lines = [...log].reverse().map(e=>{
-    const time = new Date(e.t).toLocaleTimeString("pl-PL");
-    if(e.result === "swallowed-duplicate") return `${time}  action=${e.action}  [odrzucono jako duplikat]  cache=${e.swCache}`;
-    return `${time}  action=${e.action}  ${e.countBefore}→${e.countAfter}  cache=${e.swCache}`;
-  });
-  box.textContent = lines.join("\n");
-}
-const refreshLogBtn = document.getElementById("refreshWaterLogBtn");
-if(refreshLogBtn) refreshLogBtn.addEventListener("click", renderWaterActionLog);
-const forceUpdateBtn = document.getElementById("forceUpdateBtn");
-if(forceUpdateBtn){
-  forceUpdateBtn.addEventListener("click", async ()=>{
-    if(!("serviceWorker" in navigator)){ toast("Service Worker niedostępny w tej przeglądarce"); return; }
-    try{
-      const reg = await navigator.serviceWorker.getRegistration();
-      if(reg){ await reg.update(); }
-      toast("Sprawdzono aktualizację — jeśli jest nowsza wersja, strona zaraz się odświeży");
-      setTimeout(()=> window.location.reload(), 800);
-    }catch(e){
-      toast("Nie udało się sprawdzić aktualizacji");
-    }
-  });
-}
 
 // ---------- HEADER COLLAPSE ON SCROLL ----------
 (function(){

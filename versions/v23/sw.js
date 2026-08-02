@@ -1,4 +1,4 @@
-const CACHE_NAME = "dieta-app-v18";
+const CACHE_NAME = "dieta-app-v17";
 const ASSETS = ["./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -92,38 +92,21 @@ async function pushWaterNotification(count){
 // looks like the wrong button fired when the user taps again against a count
 // that's already ahead of what they expected).
 let lastWaterActionAt = 0;
-// Diagnostic trail for the water-notification buttons: every dispatch this
-// SW instance actually receives gets appended here (kept to the last 20),
-// visible in Ustawienia. Every previous fix for "+1 acts like -1" checked out
-// on static review of this exact logic, so at this point the only way
-// forward is to see, on the device where it happens, what event.action and
-// CACHE_NAME this SW instance is really running — instead of guessing again.
-async function logWaterAction(entry){
-  const log = (await getKV("waterActionLog")) || [];
-  log.push(entry);
-  while(log.length > 20) log.shift();
-  await setKV("waterActionLog", log);
-}
 async function handleWaterTrackerAction(action){
   const now = Date.now();
   // Short window: long enough to swallow a same-tap duplicate dispatch
   // (those land within single-digit-to-low-double-digit ms), short enough
   // to never eat a real second tap — lifting and re-pressing a finger takes
   // people well over 150ms even when double-tapping quickly on purpose.
-  if (now - lastWaterActionAt < 150){
-    await logWaterAction({t: now, action, swCache: CACHE_NAME, result: "swallowed-duplicate"});
-    return;
-  }
+  if (now - lastWaterActionAt < 150) return;
   lastWaterActionAt = now;
   const today = todayStr();
   const storedDate = await getKV("waterDate");
   let count = Number(await getKV("pendingWater"));
   if (!Number.isFinite(count) || storedDate !== today) count = 0;
-  const countBefore = count;
   count = action === "add-water" ? clampCount(count + 1) : clampCount(count - 1);
   await setKV("waterDate", today);
   await setKV("pendingWater", count);
-  await logWaterAction({t: now, action, swCache: CACHE_NAME, countBefore, countAfter: count});
   const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
   clientsList.forEach((c) => c.postMessage({ type: "water-add", count }));
   await pushWaterNotification(count);
