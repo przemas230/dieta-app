@@ -1,0 +1,38 @@
+Wersja 17
+=========
+
+1. Znaleziono i naprawiono prawdziwą przyczynę "skaczącego" nagłówka
+   Winny okazał się mechanizm przeglądarki "scroll anchoring" (kotwiczenie
+   przewijania) — gdy element u góry strony zmienia wysokość (a dokładnie
+   to robi nasz nagłówek przy zwijaniu/rozwijaniu), przeglądarka
+   automatycznie koryguje pozycję przewijania, żeby zapobiec "skokowi"
+   widoku. Ta "korekta" sama w sobie generowała kolejne zdarzenie
+   przewijania, które nasz kod interpretował jako nowe przewinięcie
+   użytkownika — i zwijał/rozwijał nagłówek jeszcze raz, co znowu zmieniało
+   jego wysokość, co znowu uruchamiało korektę przeglądarki... i tak w
+   kółko. To tłumaczy zarówno migotanie przy samej górze strony, jak i to,
+   że nagłówek nie rozwijał się poprawnie w okolicach pierwszego przepisu
+   (tam, gdzie użytkownik akurat przekraczał próg zwijania/rozwijania).
+
+   Test potwierdzający: te same przewinięcia myszką wygenerowały 43
+   chaotyczne, oscylujące zmiany stanu nagłówka bez tej poprawki, a tylko
+   5 czystych, stabilnych przejść po jej zastosowaniu.
+
+   Naprawiono, wyłączając "scroll anchoring" dla nagłówka i całej strony
+   (`overflow-anchor: none`) — przeglądarka nie próbuje już kompensować
+   zmian wysokości nagłówka, więc pętla sprzężenia zwrotnego znika.
+
+2. Nowo zaplanowane dania od razu w odpowiedniej wielkości porcji
+   Wcześniej: wybranie konkretnego dania ręcznie (z listy w planerze albo
+   przyciskiem "📅 Zaplanuj" na karcie przepisu) zawsze resetowało wielkość
+   porcji do bazowej (1×) — więc jeśli dane danie było za małe na czyjeś
+   zapotrzebowanie kaloryczne, użytkownik musiał sam zwiększyć porcję
+   ręcznie. Automatyczne dobieranie wielkości działało wcześniej tylko przy
+   generowaniu całego tygodnia i przy "🔁 losuj inne danie".
+
+   Teraz każdy sposób zaplanowania dania — ręczny wybór z listy, przycisk
+   "Zaplanuj" na karcie przepisu, losowanie i generator tygodnia — od razu
+   dobiera wielkość porcji najbliższą zapotrzebowaniu kalorycznemu profilu
+   na ten posiłek. Użytkownik nadal może to ręcznie zmienić przyciskiem
+   wielkości porcji, ale nie musi tego robić, żeby dieta miała sensowną
+   liczbę kalorii.
