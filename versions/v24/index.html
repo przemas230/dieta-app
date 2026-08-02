@@ -2840,9 +2840,7 @@ async function refreshWaterNotification(){
       tag: "water-tracker",
       silent: true,
       requireInteraction: true,
-      // Order matches sw.js's pushWaterNotification — see the comment there
-      // for why add-water comes second (diagnostic log evidence).
-      actions: [{action:"remove-water", title:"-1 ↩️"}, {action:"add-water", title:"+1 💧"}],
+      actions: [{action:"add-water", title:"+1 💧"}, {action:"remove-water", title:"-1 ↩️"}],
       icon: "icon-192.png"
     });
     await setWaterKV("waterDate", todayStr());
