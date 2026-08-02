@@ -99,6 +99,7 @@
   .ingredients li{display:flex; align-items:flex-start; gap:6px; margin-bottom:4px;}
   .ing-fav{border:none; background:none; padding:0; font-size:14px; line-height:1.4; color:#D8D2C2; cursor:pointer; flex:0 0 auto;}
   .ing-fav.active{color:var(--gold);}
+  .have-it{font-weight:700; color:var(--teal-dark);}
   .pantry-group-title{font-size:12.5px; text-transform:uppercase; letter-spacing:.5px; color:var(--teal-dark); font-weight:800; margin:16px 0 8px;}
   .pantry-item{display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:7px;}
   .pantry-item .pi-name{font-size:14px; font-weight:600;}
@@ -142,9 +143,9 @@
   }
   .modal-ing-btn.on{background:var(--teal); color:#fff; border-color:var(--teal);}
   .method{font-size:13px; color:var(--muted); line-height:1.5; margin:0 0 12px;}
-  .card-actions{display:flex; gap:8px;}
+  .card-actions{display:flex; gap:8px; flex-wrap:wrap;}
   .add-btn{
-    flex:1; border:none; border-radius:11px; padding:10px 8px; font-size:13px;
+    flex:1 1 auto; min-width:0; border:none; border-radius:11px; padding:10px 8px; font-size:13px;
     font-weight:700; cursor:pointer; background:var(--teal-pale); color:var(--teal-dark);
   }
   .add-btn.on{background:var(--teal); color:#fff;}
@@ -225,6 +226,10 @@
   .weight-bar-track{flex:1; background:var(--teal-pale); border-radius:6px; height:14px; overflow:hidden;}
   .weight-bar-fill{height:100%; background:var(--teal); border-radius:6px;}
   .weight-bar-row .val{width:48px; text-align:right; font-weight:700;}
+  .history-row{padding:8px 0; border-bottom:1px solid var(--line);}
+  .history-row:last-child{border-bottom:none;}
+  .history-row .h-time{color:var(--muted); font-size:11px; margin-bottom:2px;}
+  .history-row .h-detail{font-size:12.5px; line-height:1.4;}
 
   nav.bottom{
     position:fixed; bottom:0; left:50%; transform:translateX(-50%);
@@ -268,10 +273,14 @@
   <!-- VIEW: PRZEPISY -->
   <section id="view-recipes" class="view active">
     <div class="pill-row" id="catPills"></div>
-    <div class="toolbar">
+    <div class="toolbar" style="flex-wrap:wrap;">
       <input class="search" id="searchBox" type="text" placeholder="Szukaj przepisu lub składnika…">
       <button class="fav-toggle" id="favToggle" title="Tylko ulubione przepisy">⭐</button>
       <button class="fav-toggle" id="ingFavToggle" title="Tylko z ulubionymi składnikami">🌟</button>
+      <button class="fav-toggle" id="pantryFilterToggle" title="Dania z tego, co mam w spiżarni">🏺</button>
+    </div>
+    <div class="shop-actions" style="margin:0 0 10px;">
+      <button class="btn ghost" id="ideaBtn" style="width:100%;">💡 Pomysł na danie z ulubionych składników</button>
     </div>
     <div class="hint-text" style="margin:-4px 0 10px;">💡 Stuknij w danie, aby oznaczyć składniki, które już masz w spiżarni.</div>
     <div id="recipeList"></div>
@@ -282,6 +291,9 @@
     <div class="shop-summary">
       <strong>🛒 Lista zakupów</strong>
       <span class="count" id="shopCount">0 pozycji</span>
+    </div>
+    <div class="shop-actions" style="margin:0 0 12px;">
+      <button class="btn ghost" id="addWeekBtn" style="width:100%;">📅 Dodaj składniki z całego tygodnia w Planerze</button>
     </div>
     <div id="shopList"></div>
     <div class="shop-actions">
@@ -429,6 +441,14 @@
       <h3 style="margin:0 0 6px; font-size:14.5px;">📆 Dzisiaj — co zjadłam</h3>
       <div id="todayTracker"></div>
     </div>
+
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <h3 style="margin:0; font-size:14.5px;">📜 Historia aktywności</h3>
+        <button class="btn ghost" id="clearHistoryBtn" style="padding:6px 10px; font-size:11.5px;">Wyczyść</button>
+      </div>
+      <div id="historyList"></div>
+    </div>
   </section>
 
 </main>
@@ -465,6 +485,16 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="ideaModalOverlay">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3>💡 Pomysł na danie</h3>
+      <button id="ideaModalClose">✕</button>
+    </div>
+    <div id="ideaContent"></div>
+  </div>
+</div>
+
 <script>
 const RECIPES = [{"id": "S1", "cat": "sniadania", "name": "Szakszuka ze szpinakiem i pomidorami", "time": "10 min", "kcal": 390, "ingredients": ["2 jajka", "1/2 puszki pomidorów krojonych", "garść szpinaku", "1 łyżeczka oliwy", "1 kromka chleba żytniego na zakwasie", "ząbek czosnku"], "method": "Podsmaż czosnek i szpinak na oliwie, dodaj pomidory i przyprawy. Wbij jajka, przykryj patelnię i duś 5 min do ścięcia białek. Zjedz z chlebem."}, {"id": "S2", "cat": "sniadania", "name": "Omlet z awokado, pomidorkami i roszponką", "time": "8 min", "kcal": 410, "ingredients": ["2 jajka", "1/2 awokado", "garść pomidorków koktajlowych", "garść roszponki", "1 łyżeczka oliwy", "sól, pieprz"], "method": "Roztrzep jajka z solą i pieprzem. Usmaż omlet na oliwie. Na gotowy omlet wyłóż pokrojone awokado, pomidorki i roszponkę. Złóż na pół."}, {"id": "S3", "cat": "sniadania", "name": "Nocna owsianka białkowa z borówkami i migdałami (bez laktozy)", "time": "3 min (wieczorem)", "kcal": 395, "ingredients": ["4 łyżki płatków owsianych górskich", "150g jogurtu skyr bez laktozy", "100ml napoju migdałowego", "garść borówek", "10g migdałów w płatkach"], "method": "Wymieszaj wieczorem płatki, skyr i napój migdałowy w słoiku. Wstaw do lodówki. Rano posyp borówkami i migdałami."}, {"id": "S4", "cat": "sniadania", "name": "Jajecznica na maśle klarowanym ze szczypiorkiem i pomidorem", "time": "5 min", "kcal": 385, "ingredients": ["3 jajka", "1 łyżeczka masła klarowanego", "pęczek szczypiorku", "1 pomidor", "1 kromka chleba czystoziarnistego"], "method": "Usmaż jajecznicę na maśle klarowanym ze szczypiorkiem. Zjedz ze świeżym pomidorem i chlebem ziarnistym."}, {"id": "S5", "cat": "sniadania", "name": "Aromatyczne tofu z warzywami (tofucznica)", "time": "8 min", "kcal": 380, "ingredients": ["180g tofu naturalnego", "1/2 cebuli", "1/2 papryki", "garść szpinaku", "1 łyżeczka oliwy", "kurkuma", "sól czarna (kala namak)"], "method": "Cebulę i paprykę podsmaż na oliwie. Rozgnieć tofu widelcem, dodaj na patelnię z kurkumą i szpinakiem. Smaż 4 minuty."}, {"id": "S6", "cat": "sniadania", "name": "Pudding chia na napoju kokosowo-migdałowym z malinami", "time": "5 min", "kcal": 390, "ingredients": ["3 łyżki nasion chia", "200ml napoju migdałowego bez cukru", "1 łyżka odżywki białkowej bez laktozy lub skyr bez laktozy", "garść malin", "10g orzechów włoskich"], "method": "Wymieszaj nasiona chia z napojem roślinnym i odżywką/skyrem. Odstaw do lodówki na noc. Rano dodaj maliny i posiekane orzechy."}, {"id": "S7", "cat": "sniadania", "name": "Kanapki żytnie z pastą z awokado i jajkiem na twardo", "time": "10 min", "kcal": 405, "ingredients": ["2 kromki chleba żytniego na zakwasie", "1/2 dojrzałego awokado", "1 jajko ugotowane na twardo", "sok z cytryny", "kiełki rzodkiewki"], "method": "Rozgnieć awokado z sokiem z cytryny, solą i pieprzem. Posmaruj chleb, na wierzch połóż plastry ugotowanego jajka i posyp kiełkami."}, {"id": "S8", "cat": "sniadania", "name": "Szybki omlet kokosowy z cynamonem i borówkami", "time": "7 min", "kcal": 395, "ingredients": ["2 jajka", "1 łyżka mąki kokosowej lub owsianej", "1/2 łyżeczki cynamonu", "1 łyżeczka oleju kokosowego", "garść borówek", "1 łyżka wiórków kokosowych"], "method": "Rozetrzyj jajka z mąką i cynamonem. Usmaż na oleju kokosowym. Podawaj z borówkami i wiórkami kokosowymi."}, {"id": "S9", "cat": "sniadania", "name": "Pasta z wędzonego łososia i serka bez laktozy na chlebie", "time": "5 min", "kcal": 400, "ingredients": ["60g łososia wędzonego", "2 łyżki serka puszystego bez laktozy", "koper", "sok z cytryny", "2 kromki chleba żytniego", "zielony ogórek"], "method": "Rozgnieć łososia widelcem i wymieszaj z serkiem bez laktozy i koperkiem. Posmaruj chleb i obłóż plastrami ogórka."}, {"id": "S10", "cat": "sniadania", "name": "Jajka sadzone na duszonym jarmużu z pestkami dyni", "time": "8 min", "kcal": 390, "ingredients": ["2 jajka", "2 garście jarmużu lub szpinaku", "1 łyżeczka oliwy", "1 łyżka pestek dyni", "1 kromka chleba żytniego"], "method": "Podsmaż jarmuż na oliwie z podlaniem 2 łyżek wody aż zmięknie. Zrób wgłębienia, wbij jajka, przykryj do ścięcia. Posyp pestkami dyni."}, {"id": "S11", "cat": "sniadania", "name": "Owsianka na wodzie z jabłkiem, cynamonem i orzechami", "time": "8 min", "kcal": 400, "ingredients": ["5 łyżek płatków owsianych górskich", "1 starte jabłko", "1/2 łyżeczki cynamonu", "1 łyżka masła orzechowego 100%", "10g orzechów włoskich", "szczypta soli"], "method": "Ugotuj płatki na wodzie (5 min). Zdejmij z ognia, dodaj starte jabłko, cynamon, masło orzechowe i posiekane orzechy."}, {"id": "S12", "cat": "sniadania", "name": "Frittata warzywna z cukinią i papryką", "time": "12 min", "kcal": 405, "ingredients": ["3 jajka", "1/2 cukinii startej", "1/2 papryki w kostkę", "1 łyżeczka oliwy", "szczypiorek", "sól, pieprz"], "method": "Warzywa podsmaż na oliwie 3 min. Zalej roztrzepanymi jajkami, przykryj i duś na małym ogniu 8 min, aż się zetnie. Posyp szczypiorkiem."}, {"id": "S13", "cat": "sniadania", "name": "Kanapki z pastą jajeczną i szczypiorkiem", "time": "8 min", "kcal": 395, "ingredients": ["2 jajka ugotowane na twardo", "1 łyżka jogurtu naturalnego bez laktozy", "szczypiorek", "2 kromki chleba żytniego", "rzodkiewka"], "method": "Jajka rozgnieć widelcem, wymieszaj z jogurtem i szczypiorkiem. Posmaruj chleb, udekoruj plastrami rzodkiewki."}, {"id": "S14", "cat": "sniadania", "name": "Musli własnej roboty na napoju migdałowym (na zimno)", "time": "3 min (wieczorem)", "kcal": 400, "ingredients": ["4 łyżki płatków owsianych", "150ml napoju migdałowego bez cukru", "1 łyżka orzechów mieszanych", "1 łyżka rodzynek lub żurawiny bez cukru", "szczypta cynamonu"], "method": "Wieczorem wymieszaj wszystkie składniki w słoiku i wstaw do lodówki. Rano gotowe do jedzenia."}, {"id": "S15", "cat": "sniadania", "name": "Placki owsiane bananowe na patelni", "time": "10 min", "kcal": 405, "ingredients": ["1/2 dojrzałego banana", "1 jajko", "3 łyżki płatków owsianych zmielonych", "1/2 łyżeczki cynamonu", "1 łyżeczka oleju kokosowego do smażenia"], "method": "Zmiksuj banana z jajkiem, płatkami i cynamonem. Smaż małe placuszki na oleju kokosowym po 2 min z każdej strony."}, {"id": "S16", "cat": "sniadania", "name": "Twarożek bez laktozy z rzodkiewką i szczypiorkiem", "time": "5 min", "kcal": 390, "ingredients": ["150g twarogu bez laktozy", "4 rzodkiewki w kostkę", "szczypiorek", "1 kromka chleba żytniego", "szczypta soli"], "method": "Rozgnieć twaróg widelcem, wymieszaj z rzodkiewką i szczypiorkiem. Podawaj z chlebem żytnim."}, {"id": "S17", "cat": "sniadania", "name": "Jajka na miękko z awokado i pomidorem", "time": "8 min", "kcal": 395, "ingredients": ["2 jajka", "1/2 awokado w plastrach", "1 pomidor w plastrach", "1 kromka chleba żytniego", "sól, pieprz, oliwa"], "method": "Ugotuj jajka na miękko (5-6 min). Podawaj z plastrami awokado, pomidora, chlebem i skropione oliwą."}, {"id": "S18", "cat": "sniadania", "name": "Smoothie bowl jagodowo-białkowy z granolą", "time": "5 min", "kcal": 400, "ingredients": ["150g skyru bez laktozy", "garść mrożonych jagód", "1 łyżeczka siemienia lnianego", "2 łyżki granoli bez laktozy", "kilka świeżych jagód do dekoracji"], "method": "Zblenduj skyr z mrożonymi jagodami na gęsty krem. Przełóż do miski, posyp granolą, siemieniem i świeżymi jagodami."}, {"id": "S19", "cat": "sniadania", "name": "Kanapki z hummusem, jajkiem i kiełkami rzodkiewki", "time": "7 min", "kcal": 400, "ingredients": ["2 kromki chleba żytniego", "3 łyżki hummusu klasycznego", "1 jajko ugotowane na twardo", "kiełki rzodkiewki", "szczypta papryki słodkiej"], "method": "Posmaruj chleb hummusem, ułóż plastry jajka, posyp kiełkami i papryką."}, {"id": "S20", "cat": "sniadania", "name": "Owsianka jaglana na napoju migdałowym z gruszką", "time": "10 min", "kcal": 400, "ingredients": ["4 łyżki kaszy jaglanej", "150ml napoju migdałowego bez cukru", "1/2 gruszki w kostkę", "szczypta cynamonu", "1 łyżka orzechów"], "method": "Ugotuj wypłukaną kaszę jaglaną w napoju migdałowym (8 min). Dodaj gruszkę, cynamon i posiekane orzechy."}, {"id": "D1", "cat": "drugie", "name": "Serek wiejski bez laktozy z orzechami i malinami", "time": "2 min", "kcal": 295, "ingredients": ["1 opakowanie serka wiejskiego bez laktozy (200g)", "15g orzechów włoskich", "garść świeżych lub mrożonych malin"], "method": "Włóż serek wiejski do miseczki, wymieszaj z malinami i posyp posiekanymi orzechami włoskimi."}, {"id": "D2", "cat": "drugie", "name": "Skyr bez laktozy z borówkami i pestkami słonecznika", "time": "2 min", "kcal": 305, "ingredients": ["150g skyru naturalnego bez laktozy", "garść borówek amerykańskich", "15g pestek słonecznika", "szczypta cynamonu"], "method": "Przełóż skyr do miseczki, wymieszaj z cynamonem i borówkami. Posyp prażonym słonecznikiem."}, {"id": "D3", "cat": "drugie", "name": "Koktajl jagodowo-szpinakowy na napoju migdałowym", "time": "3 min", "kcal": 290, "ingredients": ["150ml napoju migdałowego bez cukru", "garść jagód/borówek", "duża garść szpinaku", "100g skyru bez laktozy", "1 łyżeczka siemienia lnianego"], "method": "Zblenduj wszystkie składniki w gładki koktajl. Wypij od razu."}, {"id": "D4", "cat": "drugie", "name": "Słupki zielonego ogórka i papryki z hummusem", "time": "4 min", "kcal": 310, "ingredients": ["1/2 zielonego ogórka", "1/2 papryki czerwonej", "1 marchewka", "4 łyżki hummusu klasycznego (ok. 60g)"], "method": "Pokrój warzywa w długie słupki. Maczaj bezpośrednio w hummusie."}, {"id": "D5", "cat": "drugie", "name": "Garść migdałów i orzechów brazylijskich + jabłko", "time": "1 min", "kcal": 300, "ingredients": ["20g migdałów", "2 orzechy brazylijskie", "1 małe jabłko ze skórką"], "method": "Gotowa przekąska do zabrania do pracy bez żadnego przygotowania."}, {"id": "D6", "cat": "drugie", "name": "Plastry indyka wędzonego z awokado i ogórkiem kiszonym", "time": "3 min", "kcal": 285, "ingredients": ["4 plastry dobrej jakości piersi z indyka", "1/2 awokado", "2 ogórki kiszone"], "method": "Na każdy plaster indyka połóż pasek awokado i ogórka kiszonego. Zawiń w szybkie roladki."}, {"id": "D7", "cat": "drugie", "name": "Sałatka z pomidorków, oliwek i sera feta bez laktozy", "time": "4 min", "kcal": 310, "ingredients": ["10 pomidorków koktajlowych", "8 czarnych oliwek", "40g sera feta bez laktozy", "1 łyżeczka oliwy z oliwek", "oregano"], "method": "Pokrój pomidorki na połówki, dodaj oliwki i pokruszoną fetę bez laktozy. Polej oliwą i posyp oregano."}, {"id": "D8", "cat": "drugie", "name": "Serek granulowany z rzodkiewką, szczypiorkiem i siemieniem lnianym", "time": "3 min", "kcal": 290, "ingredients": ["1 opakowanie serka wiejskiego bez laktozy (200g)", "4 rzodkiewki", "pęczek szczypiorku", "1 łyżeczka mielonego siemienia lnianego"], "method": "Rzodkiewkę pokrój w kosteczkę, szczypiorek posiekaj. Wymieszaj z serkiem i siemieniem lnianym."}, {"id": "D9", "cat": "drugie", "name": "Zielone smoothie z jarmużem, ogórkiem, cytryną i skyrem", "time": "3 min", "kcal": 280, "ingredients": ["garść jarmużu", "1/2 ogórka", "sok z 1/2 cytryny", "150ml wody", "150g skyru bez laktozy", "1 łyżka migdałów w płatkach"], "method": "Zblenduj jarmuż, ogórek, sok z cytryny, wodę i skyr. Posyp na wierzchu płatkami migdałów."}, {"id": "D10", "cat": "drugie", "name": "Wafle gryczane z masłem migdałowym i cynamonem", "time": "2 min", "kcal": 305, "ingredients": ["2 wafle gryczane lub żytnie chrupkie", "1,5 łyżki masła migdałowego 100% bez cukru", "szczypta cynamonu"], "method": "Posmaruj wafle gryczane masłem migdałowym i posyp cynamonem."}, {"id": "D11", "cat": "drugie", "name": "Serek wiejski bez laktozy z ogórkiem i rzodkiewką", "time": "3 min", "kcal": 290, "ingredients": ["150g serka wiejskiego bez laktozy", "1/2 ogórka w kostkę", "3 rzodkiewki", "szczypta soli i pieprzu"], "method": "Wymieszaj serek z pokrojonym ogórkiem i rzodkiewką. Dopraw solą i pieprzem."}, {"id": "D12", "cat": "drugie", "name": "Jabłko pieczone z cynamonem i orzechami", "time": "5 min", "kcal": 295, "ingredients": ["1 duże jabłko", "1/2 łyżeczki cynamonu", "10g orzechów włoskich", "1 łyżeczka miodu (opcjonalnie)"], "method": "Wydrąż środek jabłka, wypełnij orzechami i cynamonem. Piecz w mikrofalówce 3 min lub w piekarniku 15 min w 180C."}, {"id": "D13", "cat": "drugie", "name": "Domowe chipsy z jarmużu z migdałami", "time": "1 min (przygotowane wcześniej)", "kcal": 300, "ingredients": ["30g suszonych chipsów z jarmużu (upieczonych wcześniej z oliwą i solą)", "15g migdałów"], "method": "Chipsy przygotuj wcześniej: liście jarmużu skrop oliwą, posól i piecz 10 min w 160C. Zjedz z garścią migdałów."}, {"id": "D14", "cat": "drugie", "name": "Koktajl bananowo-szpinakowy na napoju kokosowym", "time": "3 min", "kcal": 310, "ingredients": ["1/2 banana", "garść szpinaku", "150ml napoju kokosowego bez cukru", "1 łyżka masła orzechowego"], "method": "Zblenduj wszystkie składniki na gładki koktajl."}, {"id": "D15", "cat": "drugie", "name": "Kanapka gryczana z pastą z awokado", "time": "4 min", "kcal": 300, "ingredients": ["2 wafle gryczane", "1/2 awokado", "sok z cytryny", "szczypta chili"], "method": "Rozgnieć awokado z sokiem z cytryny i chili. Posmaruj wafle gryczane."}, {"id": "D16", "cat": "drugie", "name": "Marchewka i seler naciowy z pastą z ciecierzycy", "time": "4 min", "kcal": 300, "ingredients": ["1 marchewka", "1 łodyga selera naciowego", "4 łyżki pasty z ciecierzycy (hummus)"], "method": "Pokrój warzywa w słupki, maczaj w paście z ciecierzycy."}, {"id": "D17", "cat": "drugie", "name": "Skyr bez laktozy z siemieniem lnianym i cynamonem", "time": "2 min", "kcal": 290, "ingredients": ["150g skyru bez laktozy", "1 łyżka siemienia lnianego mielonego", "szczypta cynamonu", "garść malin"], "method": "Wymieszaj skyr z siemieniem i cynamonem, dodaj maliny."}, {"id": "D18", "cat": "drugie", "name": "Garść orzechów nerkowca i suszonych moreli", "time": "1 min", "kcal": 305, "ingredients": ["20g orzechów nerkowca", "3 suszone morele bez cukru"], "method": "Gotowa przekąska bez przygotowania — spakuj do pojemnika rano."}, {"id": "D19", "cat": "drugie", "name": "Kisiel owsiany na napoju migdałowym z malinami", "time": "5 min (wieczorem)", "kcal": 295, "ingredients": ["3 łyżki płatków owsianych błyskawicznych", "200ml napoju migdałowego bez cukru", "garść malin", "szczypta wanilii"], "method": "Ugotuj płatki z napojem migdałowym na gęsty kisiel (5 min). Wystudź, dodaj maliny i wanilię."}, {"id": "D20", "cat": "drugie", "name": "Roladki z ogórka z pastą serową bez laktozy", "time": "5 min", "kcal": 290, "ingredients": ["1 duży ogórek pokrojony wzdłuż na plastry", "100g serka puszystego bez laktozy", "koperek", "sól, pieprz"], "method": "Serek wymieszaj z koperkiem. Nałóż na plastry ogórka i zwiń w roladki."}, {"id": "O1", "cat": "obiady", "name": "Jednopatelniowy kurczak z warzywami i kaszą gryczaną", "time": "15 min", "kcal": 480, "ingredients": ["150g piersi z kurczaka", "35g suchej kaszy gryczanej niepalonej", "1/2 opakowania warzyw na patelnię (bez ziemniaków)", "1 łyżka oliwy z oliwek", "zioła prowansalskie"], "method": "Ugotuj kaszę. Kurczaka pokrój w kostkę i podsmaż na oliwie z przyprawami. Dodaj mrożone warzywa i duś 8 min. Wymieszaj z kaszą."}, {"id": "O2", "cat": "obiady", "name": "Łosoś pieczony w folii z brokułami i komosą ryżową", "time": "15 min", "kcal": 490, "ingredients": ["120g fletu z łososia", "1/2 główki brokuła", "35g suchej komosy ryżowej", "sok z cytryny", "1 łyżeczka oliwy", "ząbek czosnku"], "method": "Ugotuj komosę i różyczki brokuła. Łososia skrop cytryną, dopraw solą, pieprzem i czosnkiem, zawiń w folię i piecz w 180C przez 15 min. Podawaj razem."}, {"id": "O3", "cat": "obiady", "name": "Indyk duszony z cukinią, papryką i kaszą pęczak", "time": "15 min", "kcal": 475, "ingredients": ["150g piersi z indyka", "1/2 cukinii", "1/2 papryki czerwonej", "1/2 puszki pomidorów krojonych", "35g kaszy pęczak", "1 łyżka oliwy", "oregano"], "method": "Ugotuj pęczak. Indyk i warzywa pokrój w kostkę, podsmaż na oliwie. Zalej pomidorami i duś 10 minut. Podawaj z kaszą."}, {"id": "O4", "cat": "obiady", "name": "Gulasz z czerwonej soczewicy z pomidorami i szpinakiem", "time": "12 min", "kcal": 470, "ingredients": ["50g czerwonej soczewicy (suchej)", "1/2 puszki pomidorów krojonych", "garść szpinaku", "1/2 cebuli", "1 łyżeczka oliwy", "kmin rzymski, curry"], "method": "Cebulę podsmaż, dodaj opłukaną soczewicę, pomidory i 1/2 szklanki wody. Gotuj 10 min. Na koniec wrzuć szpinak i przyprawy."}, {"id": "O5", "cat": "obiady", "name": "Dorsz pieczony z ziołami, fasolką szparagową i batatem", "time": "15 min", "kcal": 485, "ingredients": ["150g polędwicy z dorsza", "150g fasolki szparagowej (mrożonej/świeżej)", "80g batata w kostkę", "1 łyżka oliwy", "koperek"], "method": "Dorsza i batata w kostce skrop oliwą, dopraw i upiecz w piekarniku (180C, 18 min). Fasolkę ugotuj na parze. Zjedz razem."}, {"id": "O6", "cat": "obiady", "name": "Stroganow z indyka z pieczarkami, ogórkiem kiszonym i kaszą bulgur", "time": "15 min", "kcal": 495, "ingredients": ["130g piersi z indyka", "100g pieczarek", "1/2 ogórka kiszonego", "1 łyżka koncentratu pomidorowego", "35g kaszy bulgur", "1 łyżeczka oliwy"], "method": "Indyka i pieczarki podsmaż na oliwie. Dodaj koncentrat, podlej wodą i duś 10 min. Dodaj pokrojonego ogórka kiszonego. Podawaj z bulgurem."}, {"id": "O7", "cat": "obiady", "name": "Stir-fry z tofu, brokułem, kiełkami i makaronem gryczanym soba", "time": "10 min", "kcal": 480, "ingredients": ["120g tofu naturalnego", "1/2 główki brokuła", "garść kiełków", "40g makaronu gryczanego Soba", "1 łyżka sosu tamari/sojowego", "1 łyżeczka oleju sezamowego"], "method": "Ugotuj makaron Soba (4 min). Tofu i brokuł podsmaż na oleju sezamowym, dodaj sos tamari i kiełki. Wymieszaj z makaronem."}, {"id": "O8", "cat": "obiady", "name": "Pulpety z indyka w sosie pomidorowym z kalafiorem i pęczakiem", "time": "15 min", "kcal": 475, "ingredients": ["140g mielonego mięsa z piersi indyka", "1/2 puszki passaty pomidorowej", "1/2 główki kalafiora", "35g kaszy pęczak", "oregano, czosnek"], "method": "Uformuj pulpety z mięsa doprawionego solą i pieprzem. Wrzuć na gotującą się passatę z czosnkiem i oregano (duś 12 min). Podawaj z kalafiorem i pęczakiem."}, {"id": "O9", "cat": "obiady", "name": "Buddha Bowl z pieczoną cieciorką, awokado i komosą ryżową", "time": "10 min", "kcal": 490, "ingredients": ["1/2 puszki ciecierzycy", "1/2 awokado", "35g ugotowanej komosy ryżowej", "garść szpinaku", "5 pomidorków", "1 łyżeczka oliwy", "sok z cytryny"], "method": "Ciecierzycę podpiecz na patelni z papryką słodką (5 min). W misce ułóż szpinak, ugotowaną komosę, ciecierzycę, awokado i pomidorki. Polej oliwą i cytryną."}, {"id": "O10", "cat": "obiady", "name": "Polędwiczka wieprzowa z duszoną cukinią i kaszą gryczaną", "time": "12 min", "kcal": 485, "ingredients": ["140g polędwiczki wieprzowej", "1 mała cukinia", "35g kaszy gryczanej niepalonej", "1 łyżeczka oliwy", "majeranek, czosnek"], "method": "Ugotuj kaszę. Polędwiczkę pokrój w plastry, podsmaż na oliwie po 3 min z każdej strony. Dodaj plastry cukinii i czosnek, duś razem 4 minuty."}, {"id": "O11", "cat": "obiady", "name": "Krewetki z cukinią i kaszą gryczaną w sosie czosnkowym", "time": "12 min", "kcal": 480, "ingredients": ["150g krewetek obranych", "1/2 cukinii w kostkę", "35g kaszy gryczanej", "2 ząbki czosnku", "1 łyżka oliwy", "natka pietruszki"], "method": "Ugotuj kaszę. Krewetki i cukinię podsmaż na oliwie z czosnkiem 5 min. Wymieszaj z kaszą, posyp natką."}, {"id": "O12", "cat": "obiady", "name": "Kurczak curry z mlekiem kokosowym i brokułem", "time": "15 min", "kcal": 495, "ingredients": ["150g piersi z kurczaka", "100ml lekkiego mleka kokosowego", "1/2 główki brokuła", "1 łyżeczka pasty curry", "35g ryżu basmati"], "method": "Ugotuj ryż. Kurczaka pokrój i podsmaż, dodaj pastę curry, mleko kokosowe i brokuł, duś 8 min. Podawaj z ryżem."}, {"id": "O13", "cat": "obiady", "name": "Pieczony indyk z batatami i fasolką szparagową", "time": "15 min", "kcal": 485, "ingredients": ["150g piersi z indyka", "100g batata w kostkę", "150g fasolki szparagowej", "1 łyżka oliwy", "tymianek"], "method": "Indyka, batata i fasolkę skrop oliwą, dopraw tymiankiem i upiecz w 190C przez 15 min (lub podsmaż na patelni z pokrywką)."}, {"id": "O14", "cat": "obiady", "name": "Ciepła sałatka z quinoa, ciecierzycą i pieczoną papryką", "time": "12 min", "kcal": 480, "ingredients": ["40g suchej komosy ryżowej", "1/2 puszki ciecierzycy", "1 papryka pieczona", "garść rukoli", "1 łyżeczka oliwy", "sok z cytryny"], "method": "Ugotuj komosę. Ciecierzycę i paprykę podgrzej na patelni 5 min. Wymieszaj z rukolą, komosą, oliwą i cytryną."}, {"id": "O15", "cat": "obiady", "name": "Makaron soba z kurczakiem i warzywami stir-fry", "time": "10 min", "kcal": 485, "ingredients": ["120g piersi z kurczaka", "40g makaronu soba", "1/2 opakowania warzyw na patelnię", "1 łyżka sosu tamari", "1 łyżeczka oleju sezamowego"], "method": "Ugotuj makaron (4 min). Kurczaka i warzywa podsmaż na oleju sezamowym z sosem tamari 6 min. Wymieszaj z makaronem."}, {"id": "O16", "cat": "obiady", "name": "Gulasz z czarnej fasoli z papryką i kuminem, kasza jaglana", "time": "12 min", "kcal": 475, "ingredients": ["1/2 puszki czarnej fasoli", "1/2 papryki czerwonej", "1/2 cebuli", "1 łyżeczka kuminu", "35g kaszy jaglanej", "1 łyżeczka oliwy"], "method": "Ugotuj kaszę jaglaną. Cebulę i paprykę podsmaż, dodaj fasolę i kumin, duś 8 min z odrobiną wody. Podawaj z kaszą."}, {"id": "O17", "cat": "obiady", "name": "Pstrąg pieczony z koperkiem i sałatką z ogórka", "time": "15 min", "kcal": 485, "ingredients": ["1 filet z pstrąga (ok. 150g)", "koperek, cytryna", "150g młodych ziemniaków", "1 ogórek", "1 łyżeczka oliwy"], "method": "Pstrąga skrop cytryną z koperkiem, piecz w 190C 15 min. Ziemniaki ugotuj, ogórek pokrój w plastry i skrop oliwą jako sałatkę."}, {"id": "O18", "cat": "obiady", "name": "Kotlety z indyka mielonego z cukinią i kaszą gryczaną", "time": "15 min", "kcal": 480, "ingredients": ["150g mielonego mięsa z indyka", "1/2 cukinii startej", "35g kaszy gryczanej", "1 łyżeczka oliwy", "zioła prowansalskie"], "method": "Ugotuj kaszę. Mięso wymieszaj z startą cukinią i przyprawami, uformuj kotleciki, usmaż po 4 min z każdej strony na oliwie."}, {"id": "O19", "cat": "obiady", "name": "Zapiekane warzywa korzeniowe z fetą bez laktozy i soczewicą", "time": "15 min", "kcal": 480, "ingredients": ["1/2 marchewki, 1/2 pietruszki, 1/2 batata (w kostkę)", "40g fety bez laktozy", "50g czerwonej soczewicy ugotowanej", "1 łyżka oliwy", "tymianek"], "method": "Warzywa korzeniowe skrop oliwą i piecz/duś na patelni pod przykryciem 12 min. Wymieszaj z ugotowaną soczewicą, posyp fetą."}, {"id": "O20", "cat": "obiady", "name": "Wołowina duszona z warzywami i kaszą pęczak (odgrzewana)", "time": "10 min", "kcal": 495, "ingredients": ["150g wcześniej uduszonej wołowiny z warzywami (przygotowanej w większej porcji)", "35g kaszy pęczak", "natka pietruszki"], "method": "Danie przygotowane wcześniej w większej porcji (np. w weekend) — wystarczy odgrzać wołowinę z warzywami i ugotować kaszę pęczak."}, {"id": "K1", "cat": "kolacje", "name": "Sałatka z tuńczykiem, jajkiem na twardo i oliwkami", "time": "5 min", "kcal": 320, "ingredients": ["1/2 puszki tuńczyka w sosie własnym", "1 jajko na twardo", "garść miksu sałat", "1/2 papryki", "6 oliwek", "1 łyżeczka oliwy z oliwek", "sok z cytryny", "1 kromka chleba żytniego"], "method": "Miks sałat wymieszaj z papryką, tuńczykiem, pokrojonym jajkiem i oliwkami. Polej sosem z oliwy i cytryny. Zjedz z chlebem żytnim."}, {"id": "K2", "cat": "kolacje", "name": "Krem z cukinii z nasionami słonecznika i grzanką żytnią", "time": "12 min", "kcal": 315, "ingredients": ["1 duża cukinia", "200ml bulionu warzywnego", "1 ząbek czosnku", "1 łyżka pestek słonecznika", "1 łyżeczka oliwy", "1 kromka chleba żytniego"], "method": "Cukinię i czosnek podsmaż na oliwie (3 min), zalej bulionem i gotuj 7 min. Zblenduj na gładki krem. Posyp uprażonym słonecznikiem i zjedz z grzanką."}, {"id": "K3", "cat": "kolacje", "name": "Twarożek bez laktozy ze szczypiorkiem, rzodkiewką i ogórkiem", "time": "5 min", "kcal": 325, "ingredients": ["120g twarogu półtłustego bez laktozy", "2 łyżki jogurtu naturalnego bez laktozy", "3 rzodkiewki", "1/2 ogórka", "szczypiorek", "1 kromka chleba żytniego"], "method": "Rozgnieć twaróg z jogurtem, dodaj posiekaną rzodkiewkę, ogórek i szczypiorek. Nałóż na chleb żytni."}, {"id": "K4", "cat": "kolacje", "name": "Sałatka z wędzonym indykiem, rukolą i pomidorkami", "time": "4 min", "kcal": 310, "ingredients": ["70g piersi z indyka wędzonego", "garść rukoli", "8 pomidorków koktajlowych", "1 łyżeczka pestek dyni", "1 łyżeczka oliwy z oliwek", "ocet balsamiczny"], "method": "Wymieszaj rukolę z pomidorkami i pokrojonym w paski indykiem. Skrop oliwą, octem balsamicznym i posyp pestkami dyni."}, {"id": "K5", "cat": "kolacje", "name": "Zapiekana cukinia faszerowana serkiem bez laktozy i ziołami", "time": "10 min", "kcal": 315, "ingredients": ["1 średnia cukinia", "100g serka puszystego bez laktozy lub twarożku", "1 ząbek czosnku", "zioła prowansalskie", "5 pomidorków koktajlowych"], "method": "Cukinię przekrój wzdłuż i wydrąż środek. Wymieszaj wydrążony miąższ z serkiem, czosnkiem i ziołami. Napełnij cukinie, ułóż połówki pomidorków i piecz w 190C przez 12 min."}, {"id": "K6", "cat": "kolacje", "name": "Carpaccio z pieczonego buraka z fetą bez laktozy i orzechami", "time": "5 min", "kcal": 320, "ingredients": ["1 duży burak ugotowany/pieczony", "40g fety bez laktozy", "10g orzechów włoskich", "garść roszponki", "1 łyżeczka oliwy", "sok z cytryny"], "method": "Pokrój buraka w bardzo cienkie plastry i ułóż na talerzu na roszponce. Posyp pokruszoną fetą bez laktozy i posiekanymi orzechami. Polej oliwą z cytryną."}, {"id": "K7", "cat": "kolacje", "name": "Wrap pełnoziarnisty z pastą z czerwonej fasoli i warzywami", "time": "5 min", "kcal": 330, "ingredients": ["1 tortilla pełnoziarnista/orkiszowa", "3 łyżki pasty z czerwonej fasoli lub hummusu", "garść sałaty", "1/2 ogórka", "1/2 papryki"], "method": "Tortillę posmaruj pastą z fasoli, ułóż posiekane warzywa, zwiń ciasno w rolkę i przekrój na pół."}, {"id": "K8", "cat": "kolacje", "name": "Zupa jarzynowa ekspresowa na mrożonce z jajkiem na twardo", "time": "10 min", "kcal": 310, "ingredients": ["1/2 opakowania mieszanki warzywnej (mrożonej)", "250ml bulionu warzywnego", "1 jajko ugotowane na twardo", "1 łyżeczka oliwy", "koperek"], "method": "Ugotuj mrożone warzywa w bulionie (8 min). Dodaj oliwę i koperek. Podawaj z przekrojonym jajkiem ugotowanym na twardo."}, {"id": "K9", "cat": "kolacje", "name": "Sałatka z wędzoną makrelą, ogórkiem kiszonym i czerwoną cebulą", "time": "5 min", "kcal": 325, "ingredients": ["60g wędzonej makreli", "2 ogórki kiszone", "1/4 czerwonej cebuli", "garść miksu sałat", "1 kromka chleba żytniego na zakwasie"], "method": "Rozdrobnij makrelę, wymieszaj z pokrojonym w kostkę ogórkiem kiszonym, cebulą i sałatą. Zjedz z chlebem żytnim."}, {"id": "K10", "cat": "kolacje", "name": "Guacamole z awokado na chrupkim chlebie żytnim z pomidorem", "time": "5 min", "kcal": 315, "ingredients": ["1/2 dojrzałego awokado", "sok z 1/2 limonki", "1 ząbek czosnku", "1 pomidor", "2 kromki chrupkiego chleba żytniego"], "method": "Rozgnieć awokado z czosnkiem, sokiem z limonki, solą i pieprzem. Posmaruj chrupki chleb i przykryj plastrami pomidora."}, {"id": "K11", "cat": "kolacje", "name": "Sałatka grecka z fetą bez laktozy i oliwkami", "time": "6 min", "kcal": 320, "ingredients": ["1 pomidor", "1/2 ogórka", "1/4 czerwonej cebuli", "40g fety bez laktozy", "8 oliwek", "1 łyżeczka oliwy", "oregano"], "method": "Warzywa pokrój w kostkę, wymieszaj z oliwkami i pokruszoną fetą. Polej oliwą, posyp oregano."}, {"id": "K12", "cat": "kolacje", "name": "Krem z brokuła z pestkami dyni", "time": "12 min", "kcal": 310, "ingredients": ["1/2 główki brokuła", "200ml bulionu warzywnego", "1 łyżka pestek dyni", "1 łyżeczka oliwy", "szczypta gałki muszkatołowej"], "method": "Ugotuj brokuł w bulionie 8 min, zblenduj na krem. Polej oliwą i posyp pestkami dyni."}, {"id": "K13", "cat": "kolacje", "name": "Jajka faszerowane pastą z awokado", "time": "8 min", "kcal": 320, "ingredients": ["2 jajka ugotowane na twardo", "1/4 awokado", "sok z cytryny", "szczypta papryki słodkiej"], "method": "Przekrój jajka na pół, żółtka wymieszaj z awokado i cytryną. Nałóż z powrotem do białek, posyp papryką."}, {"id": "K14", "cat": "kolacje", "name": "Sałatka z pieczarkami, rukolą i orzechami", "time": "6 min", "kcal": 315, "ingredients": ["100g pieczarek", "garść rukoli", "10g orzechów włoskich", "1 łyżeczka oliwy", "ocet balsamiczny", "płatki parmezanu bez laktozy (opcjonalnie)"], "method": "Pieczarki pokrój cienko, wymieszaj z rukolą i orzechami. Skrop oliwą i octem balsamicznym."}, {"id": "K15", "cat": "kolacje", "name": "Tosty z jajkiem sadzonym i szpinakiem", "time": "8 min", "kcal": 325, "ingredients": ["1 jajko", "garść szpinaku", "1 kromka chleba żytniego", "1 łyżeczka oliwy", "sól, pieprz"], "method": "Podsmaż szpinak na oliwie, zrób miejsce i usmaż jajko sadzone. Podawaj na grzance z chleba żytniego."}, {"id": "K16", "cat": "kolacje", "name": "Zupa krem z pomidorów i bazylii", "time": "12 min", "kcal": 310, "ingredients": ["1/2 puszki pomidorów krojonych", "150ml bulionu warzywnego", "garść świeżej bazylii", "1 łyżeczka oliwy", "ząbek czosnku"], "method": "Zagotuj pomidory z bulionem i czosnkiem (8 min). Zblenduj z bazylią na gładki krem, polej oliwą."}, {"id": "K17", "cat": "kolacje", "name": "Roladki z indyka z serkiem bez laktozy i szczypiorkiem", "time": "6 min", "kcal": 315, "ingredients": ["4 plastry piersi z indyka wędzonego", "80g serka puszystego bez laktozy", "szczypiorek", "1/2 papryki w słupkach"], "method": "Serek wymieszaj ze szczypiorkiem, posmaruj plastry indyka, dodaj słupek papryki i zwiń w roladki."}, {"id": "K18", "cat": "kolacje", "name": "Sałatka z ciecierzycą, ogórkiem i miętą", "time": "6 min", "kcal": 325, "ingredients": ["1/2 puszki ciecierzycy", "1/2 ogórka", "garść świeżej mięty", "1 łyżeczka oliwy", "sok z cytryny"], "method": "Ciecierzycę i pokrojonego ogórka wymieszaj z posiekaną miętą. Polej oliwą i cytryną."}, {"id": "K19", "cat": "kolacje", "name": "Omlet ziołowy z pomidorem", "time": "7 min", "kcal": 320, "ingredients": ["2 jajka", "1 pomidor w kostkę", "świeże zioła (natka, szczypiorek)", "1 łyżeczka oliwy", "sól, pieprz"], "method": "Roztrzep jajka z ziołami, wymieszaj z pomidorem. Usmaż omlet na oliwie z obu stron."}, {"id": "K20", "cat": "kolacje", "name": "Pasta z makreli na chlebie żytnim z rukolą", "time": "5 min", "kcal": 320, "ingredients": ["60g wędzonej makreli", "1 łyżka jogurtu naturalnego bez laktozy", "sok z cytryny", "garść rukoli", "2 kromki chleba żytniego"], "method": "Makrelę rozgnieć widelcem, wymieszaj z jogurtem i sokiem z cytryny. Posmaruj chleb, przykryj rukolą."}, {"id": "S21", "cat": "sniadania", "name": "Koktajl śniadaniowy owsiano-bananowy z masłem orzechowym", "time": "4 min", "kcal": 405, "ingredients": ["1/2 banana", "3 łyżki płatków owsianych", "1 łyżka masła orzechowego 100%", "200ml napoju migdałowego bez cukru", "szczypta cynamonu"], "method": "Zblenduj wszystkie składniki na gładki koktajl. Wypij od razu po przygotowaniu."}, {"id": "S22", "cat": "sniadania", "name": "Tosty francuskie na chlebie żytnim (bez laktozy)", "time": "10 min", "kcal": 400, "ingredients": ["2 kromki chleba żytniego", "1 jajko", "3 łyżki napoju migdałowego bez cukru", "szczypta cynamonu", "1 łyżeczka oleju kokosowego", "garść borówek"], "method": "Roztrzep jajko z napojem migdałowym i cynamonem. Namocz w tym kromki chleba i usmaż na oleju kokosowym po 2 min z każdej strony. Podawaj z borówkami."}, {"id": "S23", "cat": "sniadania", "name": "Sałatka śniadaniowa z jajkiem, awokado i pomidorami", "time": "8 min", "kcal": 400, "ingredients": ["2 jajka ugotowane na twardo", "1/2 awokado", "2 pomidory", "garść rukoli", "1 łyżeczka oliwy", "1 kromka chleba żytniego"], "method": "Warzywa i pokrojone jajka wymieszaj w misce, dodaj awokado w kostce. Polej oliwą, dopraw solą i pieprzem. Zjedz z chlebem."}, {"id": "S24", "cat": "sniadania", "name": "Omlet z pieczarkami i szczypiorkiem", "time": "10 min", "kcal": 390, "ingredients": ["2 jajka", "80g pieczarek", "szczypiorek", "1 łyżeczka oliwy", "sól, pieprz"], "method": "Pieczarki podsmaż na oliwie 4 min. Zalej roztrzepanymi jajkami, smaż pod przykryciem 4 min. Posyp szczypiorkiem."}, {"id": "S25", "cat": "sniadania", "name": "Kanapki z pastą z tuńczyka i jajkiem", "time": "6 min", "kcal": 405, "ingredients": ["1/2 puszki tuńczyka w sosie własnym", "1 jajko ugotowane na twardo", "1 łyżka jogurtu naturalnego bez laktozy", "2 kromki chleba żytniego", "szczypiorek"], "method": "Tuńczyka rozgnieć z jajkiem i jogurtem, dopraw solą i pieprzem. Posmaruj chleb i posyp szczypiorkiem."}, {"id": "S26", "cat": "sniadania", "name": "Owsianka z siemieniem lnianym, gruszką i orzechami laskowymi", "time": "8 min", "kcal": 400, "ingredients": ["5 łyżek płatków owsianych", "150ml napoju owsianego bez cukru", "1 łyżeczka siemienia lnianego mielonego", "1/2 gruszki", "10g orzechów laskowych"], "method": "Ugotuj płatki z napojem owsianym (5 min). Dodaj siemię, pokrojoną gruszkę i posiekane orzechy."}, {"id": "S27", "cat": "sniadania", "name": "Jajecznica z pomidorami i bazylią na maśle klarowanym", "time": "6 min", "kcal": 390, "ingredients": ["3 jajka", "1 pomidor", "świeża bazylia", "1 łyżeczka masła klarowanego", "1 kromka chleba żytniego"], "method": "Pomidora podsmaż krótko na maśle klarowanym, dodaj roztrzepane jajka i usmaż jajecznicę. Posyp bazylią, zjedz z chlebem."}, {"id": "S28", "cat": "sniadania", "name": "Kanapki z twarożkiem bez laktozy, łososiem i koperkiem", "time": "6 min", "kcal": 405, "ingredients": ["100g twarożku bez laktozy", "50g wędzonego łososia", "koperek", "2 kromki chleba żytniego", "sok z cytryny"], "method": "Twarożek wymieszaj z koperkiem i odrobiną cytryny. Posmaruj chleb, przykryj plastrami łososia."}, {"id": "S29", "cat": "sniadania", "name": "Budyń jaglany na napoju kokosowym z cynamonem i jabłkiem", "time": "12 min", "kcal": 400, "ingredients": ["4 łyżki kaszy jaglanej", "150ml napoju kokosowego bez cukru", "1/2 jabłka w kostce", "cynamon", "łyżeczka miodu (opcjonalnie)"], "method": "Ugotuj wypłukaną kaszę jaglaną w napoju kokosowym (10 min) do miękkości. Dodaj jabłko i cynamon."}, {"id": "S30", "cat": "sniadania", "name": "Zapiekane jajka w awokado", "time": "12 min", "kcal": 395, "ingredients": ["1 duże awokado", "2 małe jajka", "sól, pieprz, płatki chili", "1 kromka chleba żytniego"], "method": "Przekrój awokado na pół, usuń trochę miąższu by zrobić miejsce. Wbij jajko w każdą połówkę, piecz w 200C 10-12 min. Podawaj z chlebem."}, {"id": "D21", "cat": "drugie", "name": "Domowy batonik owsiano-orzechowy (bez pieczenia)", "time": "5 min (+chłodzenie)", "kcal": 305, "ingredients": ["4 łyżki płatków owsianych", "1 łyżka masła orzechowego", "1 łyżeczka miodu", "10g orzechów mieszanych", "szczypta cynamonu"], "method": "Wymieszaj wszystkie składniki na gęstą masę, uformuj batonik, schłodź w lodówce 30 min."}, {"id": "D22", "cat": "drugie", "name": "Sałatka owocowa z jogurtem skyr", "time": "4 min", "kcal": 295, "ingredients": ["garść jagód/borówek", "1 kiwi", "1/2 jabłka", "100g skyru naturalnego bez laktozy"], "method": "Pokrojone owoce wymieszaj ze skyrem w miseczce."}, {"id": "D23", "cat": "drugie", "name": "Papryka faszerowana serkiem bez laktozy", "time": "5 min", "kcal": 290, "ingredients": ["1 papryka", "100g serka puszystego bez laktozy", "szczypiorek", "szczypta papryki słodkiej"], "method": "Paprykę przekrój na pół, usuń pestki. Wypełnij serkiem wymieszanym ze szczypiorkiem."}, {"id": "D24", "cat": "drugie", "name": "Chrupkie pieczywo z pastą jajeczną", "time": "5 min", "kcal": 300, "ingredients": ["2 wafle ryżowe lub żytnie chrupkie", "1 jajko ugotowane na twardo", "1 łyżka jogurtu bez laktozy", "szczypiorek"], "method": "Jajko rozgnieć z jogurtem i szczypiorkiem, nałóż na chrupkie pieczywo."}, {"id": "D25", "cat": "drugie", "name": "Koktajl truskawkowo-migdałowy", "time": "3 min", "kcal": 300, "ingredients": ["garść mrożonych truskawek", "150ml napoju migdałowego bez cukru", "1 łyżka płatków migdałowych"], "method": "Zblenduj truskawki z napojem migdałowym, posyp płatkami migdałowymi."}, {"id": "D26", "cat": "drugie", "name": "Serek wiejski z ananasem i orzechami", "time": "3 min", "kcal": 300, "ingredients": ["150g serka wiejskiego bez laktozy", "4 kawałki ananasa (świeżego lub w soku własnym)", "10g orzechów nerkowca"], "method": "Wymieszaj serek z pokrojonym ananasem, posyp orzechami."}, {"id": "D27", "cat": "drugie", "name": "Jajko na twardo z warzywami słupkami", "time": "5 min", "kcal": 285, "ingredients": ["1 jajko ugotowane na twardo", "1 marchewka", "1/2 papryki", "szczypta soli"], "method": "Warzywa pokrój w słupki, podawaj razem z przekrojonym jajkiem."}, {"id": "D28", "cat": "drugie", "name": "Muffinka owsiana bez cukru (przygotowana wcześniej)", "time": "2 min", "kcal": 300, "ingredients": ["1 muffinka owsiano-bananowa upieczona wcześniej w większej porcji (płatki owsiane, banan, jajko, cynamon)"], "method": "Muffinki przygotuj wcześniej w większej ilości i przechowuj w lodówce — świetna przekąska na wynos bez codziennego gotowania."}, {"id": "D29", "cat": "drugie", "name": "Pieczone chipsy z buraka", "time": "5 min (+pieczenie)", "kcal": 290, "ingredients": ["1 średni burak", "1 łyżeczka oliwy", "szczypta soli"], "method": "Buraka pokrój na cienkie plastry, skrop oliwą i posól. Piecz w 180C 20 min do chrupkości."}, {"id": "D30", "cat": "drugie", "name": "Smoothie z buraka, jabłka i imbiru", "time": "4 min", "kcal": 305, "ingredients": ["1/2 ugotowanego buraka", "1/2 jabłka", "kawałek świeżego imbiru", "150ml wody", "sok z cytryny"], "method": "Zblenduj wszystkie składniki na gładki koktajl."}, {"id": "O21", "cat": "obiady", "name": "Kurczak w sosie musztardowym z brokułem i kaszą gryczaną", "time": "15 min", "kcal": 485, "ingredients": ["150g piersi z kurczaka", "1 łyżka musztardy", "1/2 główki brokuła", "35g kaszy gryczanej", "1 łyżeczka oliwy"], "method": "Ugotuj kaszę i brokuł. Kurczaka podsmaż na oliwie, pod koniec dodaj musztardę i chwilę poddusić z odrobiną wody. Podawaj razem."}, {"id": "O22", "cat": "obiady", "name": "Pieczeń z indyka z papryką i cukinią, ryż basmati", "time": "15 min", "kcal": 480, "ingredients": ["150g piersi z indyka", "1/2 papryki", "1/2 cukinii", "35g ryżu basmati", "1 łyżka oliwy", "papryka słodka"], "method": "Ugotuj ryż. Indyka i warzywa pokrój w kostkę, podsmaż na oliwie z papryką słodką 10 min. Podawaj z ryżem."}, {"id": "O23", "cat": "obiady", "name": "Krewetki curry z ryżem i szpinakiem", "time": "12 min", "kcal": 480, "ingredients": ["150g krewetek", "1 łyżeczka pasty curry", "100ml lekkiego mleka kokosowego", "garść szpinaku", "35g ryżu basmati"], "method": "Ugotuj ryż. Krewetki podsmaż krótko, dodaj pastę curry, mleko kokosowe i szpinak, duś 5 min. Podawaj z ryżem."}, {"id": "O24", "cat": "obiady", "name": "Zapiekanka z kalafiora, indyka i sera bez laktozy", "time": "15 min", "kcal": 485, "ingredients": ["1/2 główki kalafiora", "120g mielonego indyka", "30g sera bez laktozy startego", "1 jajko", "zioła prowansalskie"], "method": "Kalafiora ugotuj na parze, wymieszaj z podsmażonym mięsem, jajkiem i przyprawami. Przełóż do naczynia, posyp serem i zapiecz w 190C 12 min."}, {"id": "O25", "cat": "obiady", "name": "Gulasz wołowy z warzywami korzeniowymi i kaszą jaglaną (na 2 dni)", "time": "15 min", "kcal": 495, "ingredients": ["150g wołowiny gulaszowej", "1/2 marchewki, 1/2 pietruszki, 1/2 selera", "1/2 puszki pomidorów krojonych", "35g kaszy jaglanej", "majeranek"], "method": "Wołowinę i warzywa korzeniowe duś z pomidorami pod przykryciem ok. 12-15 min (lub użyj wcześniej ugotowanej większej porcji). Podawaj z kaszą jaglaną."}, {"id": "O26", "cat": "obiady", "name": "Łosoś w sosie koperkowym (bez laktozy) z ziemniakami", "time": "15 min", "kcal": 490, "ingredients": ["120g fileta z łososia", "2 łyżki jogurtu naturalnego bez laktozy", "koperek", "150g młodych ziemniaków", "sok z cytryny"], "method": "Ugotuj ziemniaki. Łososia usmaż na patelni 3 min z każdej strony. Jogurt wymieszaj z koperkiem i cytryną jako sos, polej rybę."}, {"id": "O27", "cat": "obiady", "name": "Sałatka obiadowa z kurczakiem, awokado i komosą", "time": "12 min", "kcal": 480, "ingredients": ["130g piersi z kurczaka", "1/2 awokado", "35g ugotowanej komosy ryżowej", "garść miksu sałat", "1 łyżeczka oliwy", "sok z limonki"], "method": "Kurczaka usmaż i pokrój w paski. Wymieszaj z sałatą, komosą i awokado, polej oliwą z limonką."}, {"id": "O28", "cat": "obiady", "name": "Faszerowana papryka mięsem indyczym i ryżem", "time": "15 min", "kcal": 485, "ingredients": ["2 papryki", "120g mielonego indyka", "30g ryżu (ugotowanego)", "1/2 puszki pomidorów krojonych", "zioła"], "method": "Wymieszaj mięso z ryżem i przyprawami, nafaszeruj papryki. Duś w sosie pomidorowym pod przykryciem 15 min."}, {"id": "O29", "cat": "obiady", "name": "Dorsz w warzywach na patelni z kaszą pęczak", "time": "15 min", "kcal": 480, "ingredients": ["150g dorsza", "1/2 cukinii, 1/2 papryki, garść pomidorków", "35g kaszy pęczak", "1 łyżka oliwy", "zioła prowansalskie"], "method": "Ugotuj kaszę. Warzywa podduś na oliwie 5 min, dodaj dorsza w kawałkach, duś pod przykryciem 8 min. Podawaj z kaszą."}, {"id": "O30", "cat": "obiady", "name": "Chili con carne z fasolą i kaszą jaglaną", "time": "15 min", "kcal": 490, "ingredients": ["120g mielonej wołowiny (chudej)", "1/2 puszki czerwonej fasoli", "1/2 puszki pomidorów krojonych", "chili, kumin", "35g kaszy jaglanej"], "method": "Mięso podsmaż, dodaj fasolę, pomidory i przyprawy, duś 12 min. Podawaj z ugotowaną kaszą jaglaną."}, {"id": "K21", "cat": "kolacje", "name": "Sałatka z awokado, jajkiem i rukolą", "time": "6 min", "kcal": 320, "ingredients": ["1/2 awokado", "1 jajko ugotowane na twardo", "garść rukoli", "1 łyżeczka oliwy", "sok z cytryny"], "method": "Wymieszaj rukolę z pokrojonym awokado i jajkiem. Polej oliwą i cytryną."}, {"id": "K22", "cat": "kolacje", "name": "Krem z dyni z pestkami", "time": "12 min", "kcal": 315, "ingredients": ["200g dyni", "150ml bulionu warzywnego", "1 łyżka pestek dyni", "szczypta gałki muszkatołowej", "1 łyżeczka oliwy"], "method": "Ugotuj dynię w bulionie 10 min, zblenduj na krem z gałką muszkatołową. Polej oliwą, posyp pestkami."}, {"id": "K23", "cat": "kolacje", "name": "Roladki cukiniowe z serkiem bez laktozy", "time": "10 min", "kcal": 320, "ingredients": ["1 cukinia (w cienkich plastrach wzdłuż)", "100g serka puszystego bez laktozy", "świeże zioła", "1 łyżeczka oliwy"], "method": "Cukinię lekko podsmaż na oliwie z obu stron do zmiękczenia. Nałóż serek z ziołami i zwiń w roladki."}, {"id": "K24", "cat": "kolacje", "name": "Sałatka z krewetkami i ogórkiem", "time": "8 min", "kcal": 320, "ingredients": ["100g krewetek", "1 ogórek", "garść sałaty", "1 łyżeczka oliwy", "sok z limonki", "czosnek"], "method": "Krewetki podsmaż krótko z czosnkiem. Wymieszaj z pokrojonym ogórkiem i sałatą, polej oliwą i limonką."}, {"id": "K25", "cat": "kolacje", "name": "Zupa krem z kalafiora", "time": "12 min", "kcal": 310, "ingredients": ["1/2 główki kalafiora", "200ml bulionu warzywnego", "1 łyżeczka oliwy", "szczypta kurkumy", "szczypiorek"], "method": "Ugotuj kalafiora w bulionie 10 min, zblenduj na krem z kurkumą. Posyp szczypiorkiem."}, {"id": "K26", "cat": "kolacje", "name": "Pieczarki faszerowane serkiem bez laktozy i czosnkiem", "time": "12 min", "kcal": 315, "ingredients": ["6 dużych pieczarek", "80g serka puszystego bez laktozy", "ząbek czosnku", "natka pietruszki"], "method": "Wydrąż pieczarki, nadzienie z serka, czosnku i natki włóż do kapeluszy. Piecz w 190C 10 min."}, {"id": "K27", "cat": "kolacje", "name": "Sałatka z jajkiem, szpinakiem i pestkami dyni", "time": "6 min", "kcal": 320, "ingredients": ["2 jajka ugotowane na twardo", "garść szpinaku", "1 łyżka pestek dyni", "1 łyżeczka oliwy", "sok z cytryny"], "method": "Wymieszaj szpinak z pokrojonymi jajkami i pestkami dyni. Polej oliwą z cytryną."}, {"id": "K28", "cat": "kolacje", "name": "Tosty z awokado i jajkiem sadzonym", "time": "8 min", "kcal": 325, "ingredients": ["1 kromka chleba żytniego", "1/2 awokado", "1 jajko", "chili, sól"], "method": "Na grzankę nałóż rozgniecione awokado, na wierzch usmażone jajko sadzone. Dopraw chili i solą."}, {"id": "K29", "cat": "kolacje", "name": "Sałatka z tofu, ogórkiem i sezamem", "time": "8 min", "kcal": 315, "ingredients": ["100g tofu naturalnego", "1 ogórek", "1 łyżeczka sezamu", "1 łyżeczka sosu tamari", "1 łyżeczka oleju sezamowego"], "method": "Tofu podsmaż krótko na oleju sezamowym. Wymieszaj z pokrojonym ogórkiem, polej sosem tamari, posyp sezamem."}, {"id": "K30", "cat": "kolacje", "name": "Krem z zielonego groszku z miętą", "time": "10 min", "kcal": 310, "ingredients": ["150g zielonego groszku (mrożonego)", "150ml bulionu warzywnego", "świeża mięta", "1 łyżeczka oliwy"], "method": "Ugotuj groszek w bulionie 5 min, zblenduj z miętą na gładki krem. Polej oliwą."}];
 
@@ -493,7 +523,7 @@ function photoQuery(r){
   for(const [keys,q] of PHOTO_RULES){ if(keys.some(k=>t.includes(k))) return q; }
   return DEFAULT_PHOTO_QUERY;
 }
-const PHOTO_CACHE_KEY = "dietaPhotoCacheV1";
+const PHOTO_CACHE_KEY = "dietaPhotoCacheV2";
 let photoCache = {};
 try{ photoCache = JSON.parse(localStorage.getItem(PHOTO_CACHE_KEY)) || {}; }catch(e){ photoCache = {}; }
 function savePhotoCache(){ try{ localStorage.setItem(PHOTO_CACHE_KEY, JSON.stringify(photoCache)); }catch(e){} }
@@ -501,14 +531,17 @@ const photoPromises = {};
 function getPhotoUrl(query){
   if(photoCache[query] !== undefined) return Promise.resolve(photoCache[query]);
   if(photoPromises[query]) return photoPromises[query];
-  const api = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch="
-    + encodeURIComponent(query + " filetype:bitmap") + "&gsrlimit=1&prop=imageinfo&iiprop=url&iiurlwidth=160&format=json&origin=*";
+  const api = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch="
+    + encodeURIComponent(query) + "&gsrlimit=3&prop=imageinfo&iiprop=url&iiurlwidth=220&format=json&origin=*";
   const p = fetch(api).then(res=>res.json()).then(data=>{
     let url = null;
     const pages = data.query && data.query.pages;
     if(pages){
-      const first = Object.values(pages)[0];
-      url = first && first.imageinfo && first.imageinfo[0] && (first.imageinfo[0].thumburl || first.imageinfo[0].url) || null;
+      const candidates = Object.values(pages).filter(pg=>pg.imageinfo && pg.imageinfo[0]);
+      if(candidates.length){
+        const info = candidates[0].imageinfo[0];
+        url = info.thumburl || info.url || null;
+      }
     }
     photoCache[query] = url; savePhotoCache();
     return url;
@@ -519,8 +552,14 @@ function getPhotoUrl(query){
 function attachThumb(card, r){
   const thumbEl = card.querySelector(".thumb");
   if(!thumbEl) return;
-  getPhotoUrl(photoQuery(r)).then(url=>{
-    if(url && thumbEl.isConnected){ thumbEl.innerHTML = `<img src="${url}" alt="" loading="lazy">`; }
+  const q = photoQuery(r);
+  getPhotoUrl(q).then(url=>{
+    if(url){ if(thumbEl.isConnected) thumbEl.innerHTML = `<img src="${url}" alt="" loading="lazy">`; return; }
+    if(q !== DEFAULT_PHOTO_QUERY){
+      getPhotoUrl(DEFAULT_PHOTO_QUERY).then(url2=>{
+        if(url2 && thumbEl.isConnected) thumbEl.innerHTML = `<img src="${url2}" alt="" loading="lazy">`;
+      });
+    }
   });
 }
 
@@ -544,14 +583,23 @@ function loadState(){
       if(!s.eaten) s.eaten = {};
       if(!s.favIngredients) s.favIngredients = {};
       if(!s.pantry) s.pantry = {};
+      if(!s.history) s.history = [];
+      const shoppingVals = Object.values(s.shopping||{});
+      if(shoppingVals.some(v=>v && v.unitCat===undefined)){
+        s.shopping = {}; s.recipeAdded = {};
+      }
       return s;
     }
   }catch(e){}
-  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, water:{date:"",count:0}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}};
+  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, water:{date:"",count:0}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[]};
 }
 let state = loadState();
 function saveState(){
   try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+}
+function addLog(action, detail){
+  state.history.unshift({ts: new Date().toISOString(), action, detail});
+  if(state.history.length > 200) state.history.length = 200;
 }
 
 // ---------- TOAST ----------
@@ -677,6 +725,7 @@ document.getElementById("resetSettingsBtn").addEventListener("click", ()=>{
 let currentCat = "sniadania";
 let onlyFav = false;
 let onlyIngFav = false;
+let onlyPantryReady = false;
 let searchTerm = "";
 
 function renderPills(){
@@ -697,25 +746,74 @@ function ingredientKeysForRecipe(r){
   return r.ingredients.map(normalize);
 }
 
+const UNIT_DEFS = [
+  [["kg"], "weight", 1000],
+  [["g"], "weight", 1],
+  [["l"], "volume", 1000],
+  [["ml"], "volume", 1],
+  [["łyżki","łyżek","łyżka"], "tbsp", 1],
+  [["łyżeczki","łyżeczek","łyżeczka"], "tsp", 1],
+  [["szklanki","szklanek","szklanka"], "cup", 1],
+  [["garści","garść"], "handful", 1],
+  [["ząbki","ząbków","ząbek"], "clove", 1],
+  [["opakowania","opakowanie"], "pack", 1],
+  [["puszki","puszka"], "can", 1],
+  [["plastry","plasterków","plaster"], "slice", 1],
+  [["kromki","kromek","kromka"], "slice", 1]
+];
+const UNIT_LABELS = {tbsp:"łyżki", tsp:"łyżeczki", cup:"szklanki", handful:"garści", clove:"ząbki", pack:"opak.", can:"puszki", slice:"kromki/plastry"};
+function parseIngredient(text){
+  let s = text.trim();
+  const m = s.match(/^(\d+\/\d+|\d+[.,]\d+|\d+)\s*/);
+  let qty = 1, rest = s;
+  if(m){
+    const raw = m[1];
+    qty = raw.includes('/') ? (Number(raw.split('/')[0])/Number(raw.split('/')[1])) : parseFloat(raw.replace(',','.'));
+    rest = s.slice(m[0].length).trim();
+  }
+  let unitCat = "count", factor = 1;
+  const tokens = rest.toLowerCase().split(/\s+/).filter(Boolean);
+  const firstTok = tokens[0] || "";
+  for(const [words,cat,f] of UNIT_DEFS){
+    if(words.includes(firstTok)){ unitCat=cat; factor=f; rest = tokens.slice(1).join(" "); break; }
+  }
+  const baseQty = (isNaN(qty)?1:qty) * factor;
+  const name = coreName(rest) || coreName(s) || s.toLowerCase();
+  return {baseQty, unitCat, name};
+}
+function formatQty(unitCat, baseQty){
+  const round = (n,d)=>{ const p=Math.pow(10,d===undefined?2:d); return Math.round(n*p)/p; };
+  if(unitCat==="weight") return baseQty>=1000 ? round(baseQty/1000,2)+" kg" : round(baseQty,0)+" g";
+  if(unitCat==="volume") return baseQty>=1000 ? round(baseQty/1000,2)+" l" : round(baseQty,0)+" ml";
+  if(unitCat==="count") return String(round(baseQty,2));
+  return round(baseQty,2) + " " + UNIT_LABELS[unitCat];
+}
+
 function addRecipeToShoppingList(r){
-  const keys = ingredientKeysForRecipe(r);
-  keys.forEach((k,i)=>{
-    if(!state.shopping[k]){
-      state.shopping[k] = {label: r.ingredients[i], checked:false, count:0};
-    }
-    state.shopping[k].count += 1;
+  r.ingredients.forEach(ing=>{
+    const {baseQty, unitCat, name} = parseIngredient(ing);
+    const key = name + "|" + unitCat;
+    if(!state.shopping[key]) state.shopping[key] = {name, unitCat, qty:0, checked:false, contributions:{}};
+    const entry = state.shopping[key];
+    entry.contributions[r.id] = (entry.contributions[r.id]||0) + baseQty;
+    entry.qty += baseQty;
   });
   state.recipeAdded[r.id] = true;
+  addLog("shopping_add", `Dodano do listy zakupów: ${r.name}`);
 }
 function removeRecipeFromShoppingList(r){
-  const keys = ingredientKeysForRecipe(r);
-  keys.forEach(k=>{
-    if(state.shopping[k]){
-      state.shopping[k].count -= 1;
-      if(state.shopping[k].count <= 0) delete state.shopping[k];
+  r.ingredients.forEach(ing=>{
+    const {unitCat, name} = parseIngredient(ing);
+    const key = name + "|" + unitCat;
+    const entry = state.shopping[key];
+    if(entry && entry.contributions[r.id]!==undefined){
+      entry.qty -= entry.contributions[r.id];
+      delete entry.contributions[r.id];
+      if(entry.qty <= 0.0001 || Object.keys(entry.contributions).length===0) delete state.shopping[key];
     }
   });
   state.recipeAdded[r.id] = false;
+  addLog("shopping_remove", `Usunięto z listy zakupów: ${r.name}`);
 }
 
 function recipeCard(r){
@@ -735,11 +833,13 @@ function recipeCard(r){
     <ul class="ingredients">${r.ingredients.map(i=>{
       const k = normalize(i);
       const f = !!state.favIngredients[k];
-      return `<li><button class="ing-fav ${f?'active':''}" data-ing="${k}">${f?'★':'☆'}</button><span>${i}</span></li>`;
+      const have = !!pantryMatch(i);
+      return `<li><button class="ing-fav ${f?'active':''}" data-ing="${k}">${f?'★':'☆'}</button><span${have?' class="have-it"':''}>${i}</span></li>`;
     }).join("")}</ul>
     <p class="method">${r.method}</p>
     <div class="card-actions">
       <button class="add-btn ${added?'on':''}" data-add="${r.id}">${added?'✓ Na liście zakupów':'🛒 Dodaj do listy zakupów'}</button>
+      <button class="plan-btn" data-cook="${r.id}" title="Odejmij składniki ze spiżarni">✅ Zrobione</button>
     </div>
   `;
   card.addEventListener("click", ()=> openPantryModal(r));
@@ -772,6 +872,13 @@ function recipeCard(r){
     }
     saveState(); renderRecipes();
   });
+  card.querySelector("[data-cook]").addEventListener("click", (e)=>{
+    e.stopPropagation();
+    if(!confirm(`Odjąć składniki „${r.name}" ze spiżarni jako zużyte?`)) return;
+    subtractRecipeFromPantry(r);
+    saveState(); renderPantry(); renderShop(); renderRecipes();
+    toast("Odjęto składniki ze spiżarni");
+  });
   return card;
 }
 
@@ -783,6 +890,7 @@ function renderRecipes(){
   if(state.profile.lactoseFree) items = items.filter(isLactoseFree);
   if(onlyFav) items = items.filter(r=>state.favorites[r.id]);
   if(onlyIngFav) items = items.filter(r=>r.ingredients.some(i=>state.favIngredients[normalize(i)]));
+  if(onlyPantryReady) items = items.filter(r=>pantryCoverageRatio(r) >= 0.6);
   if(searchTerm){
     const t = searchTerm.toLowerCase();
     items = items.filter(r=> r.name.toLowerCase().includes(t) || r.ingredients.some(i=>i.toLowerCase().includes(t)) );
@@ -806,6 +914,61 @@ document.getElementById("ingFavToggle").addEventListener("click", e=>{
   onlyIngFav = !onlyIngFav;
   e.target.classList.toggle("active", onlyIngFav);
   renderRecipes();
+});
+document.getElementById("pantryFilterToggle").addEventListener("click", e=>{
+  onlyPantryReady = !onlyPantryReady;
+  e.target.classList.toggle("active", onlyPantryReady);
+  renderRecipes();
+});
+function pantryCoverageRatio(r){
+  if(r.ingredients.length===0) return 0;
+  const have = r.ingredients.filter(i=>pantryMatch(i)).length;
+  return have / r.ingredients.length;
+}
+
+// ---------- RECIPE IDEA GENERATOR (from favorite ingredients) ----------
+const IDEA_TEMPLATES = {
+  sniadania: ["Szybka jajecznica z {a} i {b}", "Owsianka z {a} i {b}", "Kanapki z {a} i {b} na chlebie żytnim", "Omlet z {a} i {b}"],
+  drugie: ["Sałatka z {a} i {b}", "Szybka przekąska z {a} i {b}", "Pasta z {a} na chrupkim pieczywie, z dodatkiem {b}"],
+  obiady: ["Duszone {a} z {b} i kaszą", "Zapiekane {a} z {b}", "Sałatka obiadowa z {a}, {b} i oliwą", "Jednopatelniowe danie z {a} i {b}"],
+  kolacje: ["Lekka sałatka z {a} i {b}", "Krem z {a} z dodatkiem {b}", "Roladki z {a} i {b}"]
+};
+function generateIdea(cat){
+  const favs = Object.keys(state.favIngredients).filter(k=>state.favIngredients[k]);
+  if(favs.length < 2) return null;
+  const shuffled = [...favs].sort(()=>Math.random()-0.5);
+  const aClean = coreName(shuffled[0]) || shuffled[0];
+  const bClean = coreName(shuffled[1]) || shuffled[1];
+  const templates = IDEA_TEMPLATES[cat] || IDEA_TEMPLATES.obiady;
+  const t = templates[Math.floor(Math.random()*templates.length)];
+  const name = t.replace("{a}", aClean).replace("{b}", bClean);
+  const method = `Połącz ${aClean} z ${bClean} w duchu niskiego IG — duś, piecz lub podsmaż na oliwie, dopraw ziołami i solą. To inspiracja, nie testowany przepis — dopasuj proporcje i czas gotowania samodzielnie.`;
+  return {name, method, aClean, bClean};
+}
+function renderIdea(){
+  const idea = generateIdea(currentCat);
+  const content = document.getElementById("ideaContent");
+  if(!idea){
+    content.innerHTML = `<div class="empty">Potrzeba co najmniej 2 ulubionych składników — zaznacz gwiazdką ☆ przy składnikach w przepisach.</div>`;
+    return;
+  }
+  content.innerHTML = `
+    <div class="card" style="margin-bottom:12px;">
+      <h3 style="margin:0 0 8px; font-size:15.5px;">${idea.name}</h3>
+      <p class="method">${idea.method}</p>
+    </div>
+    <button class="btn primary" id="ideaRegenBtn" style="width:100%; margin-bottom:8px;">🔄 Losuj inny pomysł</button>
+    <div class="hint-text">Wygenerowane z Twoich ulubionych składników: ${idea.aClean}, ${idea.bClean}.</div>
+  `;
+  document.getElementById("ideaRegenBtn").addEventListener("click", renderIdea);
+}
+document.getElementById("ideaBtn").addEventListener("click", ()=>{
+  renderIdea();
+  document.getElementById("ideaModalOverlay").classList.add("show");
+});
+document.getElementById("ideaModalClose").addEventListener("click", ()=> document.getElementById("ideaModalOverlay").classList.remove("show"));
+document.getElementById("ideaModalOverlay").addEventListener("click", (e)=>{
+  if(e.target===document.getElementById("ideaModalOverlay")) e.target.classList.remove("show");
 });
 
 // ---------- SHOPPING LIST VIEW ----------
@@ -834,13 +997,13 @@ function renderShop(){
   const keys = Object.keys(state.shopping);
   document.getElementById("shopCount").textContent = keys.length + " pozycji";
   if(keys.length===0){
-    box.innerHTML = `<div class="empty">Lista jest pusta — dodaj składniki zaznaczając przepisy w zakładce Przepisy 🍽</div>`;
+    box.innerHTML = `<div class="empty">Lista jest pusta — dodaj składniki zaznaczając przepisy w zakładce Przepisy 🍽 lub przyciskiem w Planerze.</div>`;
     return;
   }
   const groups = {};
   keys.forEach(k=>{
     const item = state.shopping[k];
-    const g = classify(item.label);
+    const g = classify(item.name);
     (groups[g] = groups[g] || []).push({key:k, ...item});
   });
   GROUP_ORDER.forEach(g=>{
@@ -849,13 +1012,11 @@ function renderShop(){
     title.className = "group-title";
     title.textContent = g;
     box.appendChild(title);
-    groups[g].sort((a,b)=>a.label.localeCompare(b.label,'pl')).forEach(item=>{
+    groups[g].sort((a,b)=>a.name.localeCompare(b.name,'pl')).forEach(item=>{
       const row = document.createElement("div");
       row.className = "shop-item" + (item.checked ? " checked":"");
-      const countTxt = item.count>1 ? ` <span style="color:var(--muted);">×${item.count}</span>`:"";
-      const match = pantryMatch(item.label);
-      const pantryTxt = match ? `<span class="pantry-tag">🏺 masz${match.type==='product' ? ': '+match.qty : ' ('+match.level+')'}</span>` : "";
-      row.innerHTML = `<input type="checkbox" ${item.checked?'checked':''}><span class="label">${item.label}${countTxt}</span>${pantryTxt}`;
+      const qtyLabel = formatQty(item.unitCat, item.qty);
+      row.innerHTML = `<input type="checkbox" ${item.checked?'checked':''}><span class="label">${qtyLabel} ${item.name}</span>${buildPantryTag(item)}`;
       row.querySelector("input").addEventListener("change", e=>{
         state.shopping[item.key].checked = e.target.checked;
         saveState(); renderShop();
@@ -871,20 +1032,38 @@ function buildListText(){
   const groups = {};
   keys.forEach(k=>{
     const item = state.shopping[k];
-    const g = classify(item.label);
+    const g = classify(item.name);
     (groups[g] = groups[g] || []).push(item);
   });
   let out = "🛒 Lista zakupów:\n";
   GROUP_ORDER.forEach(g=>{
     if(!groups[g]) return;
     out += "\n" + g + ":\n";
-    groups[g].sort((a,b)=>a.label.localeCompare(b.label,'pl')).forEach(item=>{
-      out += "- " + item.label + (item.count>1 ? ` (×${item.count})`:"") + "\n";
+    groups[g].sort((a,b)=>a.name.localeCompare(b.name,'pl')).forEach(item=>{
+      out += "- " + formatQty(item.unitCat, item.qty) + " " + item.name + "\n";
     });
   });
   return out.trim();
 }
 
+document.getElementById("addWeekBtn").addEventListener("click", ()=>{
+  let added = 0, already = 0, empty = 0;
+  DAYS.forEach((day,di)=>{
+    const dayMeals = state.planner[di] || {};
+    CATS.forEach(c=>{
+      const rid = dayMeals[c.id];
+      if(!rid){ empty++; return; }
+      const r = RECIPES.find(x=>x.id===rid);
+      if(!r) return;
+      if(state.recipeAdded[r.id]){ already++; return; }
+      addRecipeToShoppingList(r);
+      added++;
+    });
+  });
+  saveState(); renderShop(); renderRecipes();
+  if(added===0) toast(already ? "Wszystkie dania z Planera są już na liście" : "Planer jest jeszcze pusty — dodaj dania w zakładce Planer");
+  else toast(`Dodano składniki z ${added} dań z całego tygodnia${already?` (${already} już było na liście)`:""}`);
+});
 document.getElementById("shareBtn").addEventListener("click", async ()=>{
   const text = buildListText();
   if(navigator.share){
@@ -925,13 +1104,35 @@ const UNIT_WORDS = ["g","kg","ml","l","łyżka","łyżki","łyżeczka","łyżecz
   "świeży","świeża","świeżego","świeże","szt","sztuk","sztuki","dojrzały","dojrzałego","dojrzała","startej","starty","starta","starte",
   "krojony","krojona","krojone","krojonych","mielony","mielona","mielone","obrany","obrane","obranych","suszone","suszonych",
   "suszony","suszona","mrożone","mrożonych","mrożony","cienkie","cienkich","gotowany","gotowana","ugotowanej","ugotowanego","ugotowana"];
+const LEMMA_FIX = {
+  "cebuli":"cebula", "czerwonej cebuli":"czerwona cebula", "cukinii":"cukinia", "marchewki":"marchewka",
+  "pietruszki":"pietruszka", "dyni":"dynia", "papryki":"papryka", "papryki czerwonej":"papryka czerwona",
+  "brokuła":"brokuł", "kalafiora":"kalafior", "cytryny":"cytryna", "limonki":"limonka", "pomarańczy":"pomarańcza",
+  "śmietany":"śmietana", "śmietanki":"śmietanka", "mąki":"mąka", "kaszy":"kasza", "kaszy gryczanej":"kasza gryczana",
+  "kaszy jaglanej":"kasza jaglana", "kaszy pęczak":"kasza pęczak", "komosy ryżowej":"komosa ryżowa",
+  "soczewicy":"soczewica", "soczewicy czerwonej":"soczewica czerwona", "ciecierzycy":"ciecierzyca",
+  "fasoli":"fasola", "fasoli czarnej":"fasola czarna", "fasoli czerwonej":"fasola czerwona",
+  "piersi z kurczaka":"pierś z kurczaka", "piersi z indyka":"pierś z indyka", "wołowiny":"wołowina",
+  "wieprzowiny":"wieprzowina", "polędwiczki wieprzowej":"polędwiczka wieprzowa", "ryby":"ryba",
+  "krewetek":"krewetki", "makreli":"makrela", "pieczarek":"pieczarki", "rukoli":"rukola", "sałaty":"sałata",
+  "szpinaku":"szpinak", "jarmużu":"jarmuż", "bazylii":"bazylia", "mięty":"mięta", "natki":"natka pietruszki",
+  "cynamonu":"cynamon", "kurkumy":"kurkuma", "musztardy":"musztarda", "oliwy":"oliwa", "wody":"woda",
+  "mleka":"mleko", "jogurtu":"jogurt", "twarogu":"twaróg", "serka":"serek", "skyru":"skyr", "miodu":"miód",
+  "banana":"banan", "jabłka":"jabłko", "gruszki":"gruszka", "malin":"maliny",
+  "jagód":"jagody", "borówek":"borówki", "orzechów włoskich":"orzechy włoskie", "migdałów":"migdały",
+  "siemienia lnianego":"siemię lniane", "chleba żytniego":"chleb żytni"
+};
 function coreName(label){
-  let s = " " + label.toLowerCase() + " ";
-  s = s.replace(/\d+([\.,\/]\d+)?/g, " ");
-  UNIT_WORDS.forEach(u=>{ s = s.replace(new RegExp("\\b"+u+"\\b","g"), " "); });
-  s = s.replace(/[\/\-\(\)]/g," ").replace(/\s+/g," ").trim();
-  s = s.split(/\bw\b/)[0].trim();
-  return s;
+  let s = label.toLowerCase();
+  s = s.replace(/\d+([.,\/]\d+)?/g, " ");
+  s = s.replace(/[\/\-\(\)]/g, " ");
+  let tokens = s.split(/\s+/).filter(Boolean);
+  tokens = tokens.filter(t => !UNIT_WORDS.includes(t));
+  const wIdx = tokens.indexOf("w");
+  if(wIdx !== -1) tokens = tokens.slice(0, wIdx);
+  let result = tokens.join(" ").trim();
+  if(LEMMA_FIX[result]) result = LEMMA_FIX[result];
+  return result;
 }
 function pantryMatch(label){
   const core = coreName(label);
@@ -941,6 +1142,69 @@ function pantryMatch(label){
     if(!pc) return false;
     return core.includes(pc) || pc.includes(core);
   }) || null;
+}
+function parsePantryQtyString(qtyStr){
+  const m = String(qtyStr).match(/^([\d.,]+)\s*(\S+)/);
+  if(!m) return null;
+  const num = parseFloat(m[1].replace(',','.'));
+  const u = m[2];
+  if(u==="kg") return {baseQty:num*1000, unitCat:"weight"};
+  if(u==="g") return {baseQty:num, unitCat:"weight"};
+  if(u==="l") return {baseQty:num*1000, unitCat:"volume"};
+  if(u==="ml") return {baseQty:num, unitCat:"volume"};
+  if(u==="szt.") return {baseQty:num, unitCat:"count"};
+  if(u==="opak.") return {baseQty:num, unitCat:"pack"};
+  return null;
+}
+function pantryQtyFor(name){
+  const match = Object.values(state.pantry).find(p=>{
+    if(p.type!=="product") return false;
+    const pc = coreName(p.label);
+    return pc && (name.includes(pc) || pc.includes(name));
+  });
+  if(!match) return null;
+  const parsed = parsePantryQtyString(match.qty);
+  return {baseQty: parsed?parsed.baseQty:null, unitCat: parsed?parsed.unitCat:null, raw: match.qty, key: Object.keys(state.pantry).find(k=>state.pantry[k]===match)};
+}
+function pantrySpiceLevel(name){
+  const match = Object.values(state.pantry).find(p=> p.type==="spice" && coreName(p.label) && (name.includes(coreName(p.label)) || coreName(p.label).includes(name)));
+  return match ? match.level : null;
+}
+function buildPantryTag(item){
+  const spiceLevel = pantrySpiceLevel(item.name);
+  if(spiceLevel) return `<span class="pantry-tag">🏺 masz (${spiceLevel})</span>`;
+  const pq = pantryQtyFor(item.name);
+  if(!pq) return "";
+  if(pq.unitCat===null) return `<span class="pantry-tag">🏺 masz</span>`;
+  if(pq.unitCat===item.unitCat){
+    const remaining = item.qty - pq.baseQty;
+    if(remaining<=0.0001) return `<span class="pantry-tag">✅ masz wystarczająco (${pq.raw})</span>`;
+    return `<span class="pantry-tag">🏺 masz (${pq.raw}) — dokup ${formatQty(item.unitCat, remaining)}</span>`;
+  }
+  return `<span class="pantry-tag">🏺 masz (${pq.raw})</span>`;
+}
+function subtractRecipeFromPantry(r){
+  const changes = [];
+  r.ingredients.forEach(ing=>{
+    const {baseQty, unitCat, name} = parseIngredient(ing);
+    const pq = pantryQtyFor(name);
+    if(!pq || pq.unitCat!==unitCat || pq.baseQty===null) return;
+    const remaining = pq.baseQty - baseQty;
+    if(remaining <= 0.0001){
+      delete state.pantry[pq.key];
+      changes.push(`${name}: usunięto (zużyto całość)`);
+    }else{
+      const unitWord = unitCat==="weight" ? (remaining>=1000?"kg":"g") : unitCat==="volume" ? (remaining>=1000?"l":"ml") : (unitCat==="count"?"szt.":"opak.");
+      const num = unitCat==="weight" ? (remaining>=1000?(remaining/1000):remaining) : unitCat==="volume" ? (remaining>=1000?(remaining/1000):remaining) : remaining;
+      state.pantry[pq.key].qty = (Math.round(num*100)/100) + " " + unitWord;
+      changes.push(`${name}: ${pq.raw} → ${state.pantry[pq.key].qty}`);
+    }
+  });
+  if(changes.length){
+    addLog("cook_subtract", `Ugotowano „${r.name}" — odjęto ze spiżarni: ${changes.join("; ")}`);
+  }else{
+    addLog("cook_subtract", `Ugotowano „${r.name}" — brak dopasowanych pozycji w spiżarni do odjęcia`);
+  }
 }
 let ingredientOptions = [];
 function buildIngredientOptions(){
@@ -995,10 +1259,12 @@ document.getElementById("panAddBtn").addEventListener("click", ()=>{
   const key = normalize(name);
   if(type==="spice"){
     state.pantry[key] = {label:name, type:"spice", level: document.getElementById("panLevel").value};
+    addLog("pantry_add", `Dodano do spiżarni: ${name} (${document.getElementById("panLevel").value})`);
   }else{
     const num = document.getElementById("panQtyNum").value.trim() || "1";
     const unit = document.getElementById("panQtyUnit").value;
     state.pantry[key] = {label:name, type:"product", qty: num + " " + unit};
+    addLog("pantry_add", `Dodano do spiżarni: ${name} (${num} ${unit})`);
   }
   saveState();
   document.getElementById("panName").value = "";
@@ -1031,6 +1297,7 @@ function renderPantry(){
         : `<span class="pi-qty">${item.qty}</span>`;
       row.innerHTML = `<span class="pi-name">${item.label}</span><div style="display:flex; align-items:center; gap:10px;">${right}<button class="pi-del" data-del="${key}">✕</button></div>`;
       row.querySelector("[data-del]").addEventListener("click", ()=>{
+        addLog("pantry_delete", `Usunięto ze spiżarni: ${item.label}`);
         delete state.pantry[key];
         saveState(); renderPantry();
       });
@@ -1292,7 +1559,30 @@ function renderProgress(){
   renderWater();
   renderWeights();
   renderTodayTracker();
+  renderHistory();
 }
+function renderHistory(){
+  const box = document.getElementById("historyList");
+  box.innerHTML = "";
+  if(!state.history || state.history.length===0){
+    box.innerHTML = `<div class="empty">Historia jest pusta — pojawią się tu dodania/usunięcia z listy zakupów i spiżarni.</div>`;
+    return;
+  }
+  state.history.slice(0,50).forEach(entry=>{
+    const d = new Date(entry.ts);
+    const dateStr = d.toLocaleDateString('pl-PL', {day:'2-digit', month:'2-digit', year:'numeric'});
+    const timeStr = d.toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'});
+    const row = document.createElement("div");
+    row.className = "history-row";
+    row.innerHTML = `<div class="h-time">${dateStr}, ${timeStr}</div><div class="h-detail">${entry.detail}</div>`;
+    box.appendChild(row);
+  });
+}
+document.getElementById("clearHistoryBtn").addEventListener("click", ()=>{
+  if(!confirm("Wyczyścić całą historię aktywności?")) return;
+  state.history = [];
+  saveState(); renderHistory();
+});
 
 function renderTodayTracker(){
   const box = document.getElementById("todayTracker");
