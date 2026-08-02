@@ -1,0 +1,30 @@
+Wersja 12
+=========
+
+1. Naprawiono "skaczący" nagłówek przy przewijaniu
+   - Poprzedni mechanizm chowania nagłówka śledził względną zmianę pozycji
+     przewijania, co przy urywanym/przerywanym scrollu (typowe na telefonach,
+     zwłaszcza przy przewijaniu kciukiem) powodowało, że trzeba było
+     przewinąć dużo, zanim nagłówek się schował, a przy drobnych ruchach
+     migotał między stanem zwiniętym i rozwiniętym.
+   - Zamieniono to na prostszy mechanizm oparty o bezwzględną pozycję
+     przewijania z histerezą (chowa się po przewinięciu > 80px, pokazuje się
+     z powrotem poniżej 40px) i płynniejsze odświeżanie klatek — nagłówek
+     chowa się teraz szybciej, płynnie, bez "skakania".
+
+2. Wzmocniono aktualizację aplikacji w tle (Service Worker)
+   - Dodano wymuszone sprawdzanie aktualizacji Service Workera przy starcie
+     aplikacji oraz przy powrocie do niej (np. po otwarciu z ekranu
+     głównego) zamiast polegać wyłącznie na domyślnym, rzadkim sprawdzaniu
+     przez przeglądarkę.
+   - Po przejęciu kontroli przez nową wersję aplikacja odświeża się
+     automatycznie raz, aby mieć pewność, że działa najnowszy kod (w tym
+     poprawki dotyczące powiadomień o piciu wody) zamiast pozostawać na
+     starej, zbuforowanej wersji.
+   - Podbito wersję cache Service Workera (dieta-app-v16).
+
+Uwaga: logika dodawania/odejmowania szklanki wody z poziomu powiadomienia
+("+1 💧" / "-1 ↩️") została ponownie sprawdzona w kodzie i jest poprawna —
+najbardziej prawdopodobną przyczyną zgłoszonego błędu było działanie na
+starszej, zbuforowanej wersji Service Workera. Powyższa poprawka aktualizacji
+w tle powinna to wyeliminować.
