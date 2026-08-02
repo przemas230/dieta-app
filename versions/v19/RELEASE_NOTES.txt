@@ -1,0 +1,32 @@
+Wersja 19
+=========
+
+Poprawiono zachowanie chowanego nagłówka — tym razem chodziło o samą logikę,
+nie o migotanie (to zostało już naprawione wcześniej i nadal działa).
+
+Zgłoszony problem: nagłówek rozwijał się z powrotem tylko wtedy, gdy
+użytkownik był dosłownie na samej górze strony (pozycja przewijania 0) —
+przewinięcie w górę, ale bez dotarcia do samej góry (typowe przy czytaniu
+długiej listy przepisów), nie pokazywało nagłówka.
+
+Przyczyna: poprzednia wersja logiki opierała się wyłącznie na tym, "czy
+jestem blisko góry strony" (próg 60px) — co przy liście 50+ przepisów
+oznacza, że nagłówek praktycznie nigdy się nie pokazywał podczas
+przeglądania, bo rzadko kiedy jest się aż tak blisko samej góry.
+
+Naprawiono, wracając do podejścia znanego z innych aplikacji (Gmail,
+Twitter i podobne): nagłówek chowa się przy przewijaniu w dół, a pokazuje
+przy przewijaniu w górę — niezależnie od tego, w którym miejscu długiej
+listy się aktualnie jest. Dodatkowo zawsze pokazuje się blisko samej góry
+strony, żeby powrót na początek nigdy nie był niejednoznaczny.
+
+To podejście oparte na kierunku przewijania było już raz próbowane na
+samym początku tej serii poprawek i wtedy powodowało migotanie — ale
+przyczyną tamtego migotania nie był sam pomysł "kierunku przewijania", tylko
+mechanizm przeglądarki "scroll anchoring" zakłócający odczyt pozycji
+przewijania (naprawiony w poprzedniej wersji przez `overflow-anchor: none`).
+Teraz, gdy to zakłócenie jest wyłączone, podejście oparte na kierunku
+przewijania działa stabilnie — potwierdzone testem: 20 naprzemiennych,
+drobnych (2px) ruchów przewijania w obie strony (symulacja "czytania w
+miejscu") dało tylko 1 zmianę stanu nagłówka, a nie powtarzające się
+migotanie.

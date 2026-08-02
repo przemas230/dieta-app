@@ -1,0 +1,36 @@
+Wersja 21
+=========
+
+Naprawiono grafiki przy przepisach — zamiast losowych zdjęć, teraz ikonka
+głównego składnika.
+
+Poprzednio: miniaturka przy każdym przepisie pobierała na żywo zdjęcie z
+Wikimedia Commons na podstawie szerokiej kategorii słów kluczowych (np.
+KAŻDY przepis z rybą dostawał to samo wyszukiwanie "grilled fish fillet") —
+wolne (zapytanie sieciowe przy każdej karcie), zależne od zewnętrznego API,
+i często dawało zdjęcie luźno związane z konkretnym daniem, stąd wrażenie
+"losowych obrazków".
+
+Teraz: miniaturka to ikonka głównego składnika przepisu — tego samego
+zestawu emoji, które już wcześniej były używane na kafelkach w Spiżarni
+(ten sam wygląd, ta sama "biblioteka" ikon, więc całość jest spójna
+wizualnie). Główny składnik wybierany jest automatycznie jako ten, który
+wnosi najwięcej kalorii do przepisu (na podstawie już poprawionego,
+dokładnego rozbicia na składniki z poprzedniej wersji) — z pominięciem
+przypraw/dodatków, żeby np. oliwa nie została "twarzą" dania z kurczakiem
+tylko dlatego, że reszta składników to sól i pieprz.
+
+Zalety: brak zapytań sieciowych (miniaturka pojawia się natychmiast, bez
+opóźnienia), brak zależności od zewnętrznego, niekontrolowanego źródła
+zdjęć, i — najważniejsze — miniaturka faktycznie odzwierciedla, co jest w
+danym przepisie, a nie ogólną kategorię.
+
+Sprawdzono: wszystkie 213 przepisów mają teraz dopasowaną ikonkę (0 braków,
+zweryfikowane skryptem po wszystkich przepisach).
+
+Dodatkowo: przy okazji tej zmiany przeprowadzono pełny przegląd
+funkcjonalny aplikacji (wszystkie zakładki: Przepisy, Zakupy, Planer,
+Postęp, Spiżarnia, Ustawienia oraz kluczowe interakcje w każdej z nich) —
+nie znaleziono żadnych błędów w kodzie aplikacji. Jedyne napotkane błędy to
+nieudane połączenia do zewnętrznych usług (m.in. właśnie stare zapytania do
+Wikimedia, teraz usunięte) — nie błędy logiki aplikacji.
