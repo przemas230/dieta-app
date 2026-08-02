@@ -1,0 +1,42 @@
+Wersja 22
+=========
+
+Kolejna próba naprawy "+1 działa jak -1" w powiadomieniu o wodzie —
+tym razem pod kątem tego, co dokładnie opisałeś (powiadomienie "zwija się"
+po kliknięciu).
+
+Uczciwie: logika dodawania/odejmowania w service workerze była sprawdzana
+kilkukrotnie i jest poprawna (+1 zawsze dodaje). Nowy opis — że
+powiadomienie się zwija po kliknięciu, zamiast zostać takie samo z jedną
+dodatkową kropelką — wskazuje na coś innego: żeby pokazać nową liczbę
+szklanek, powiadomienie MUSI zostać w całości wysłane od nowa (standardowe
+API powiadomień w przeglądarce nie ma sposobu na "doklejenie jednej
+kropelki" bez pełnego odświeżenia) — a system Android przy takim odświeżeniu
+może na chwilę zmienić układ przycisków. Jeśli w tym momencie pada kolejne,
+szybkie stuknięcie, może trafić w inne miejsce niż zamierzone. To zachowanie
+systemu Android, którego z poziomu aplikacji webowej nie da się w 100%
+wyłączyć — ale można zmniejszyć ryzyko błędnych trafień.
+
+Co zmieniono:
+- Dodano zabezpieczenie przed podwójnym zliczeniem jednego stuknięcia:
+  niektóre wersje Androida/Chrome potrafią czasem wysłać zdarzenie
+  kliknięcia w przycisk powiadomienia DWA razy dla jednego fizycznego
+  stuknięcia (znany, udokumentowany błąd tej platformy) — teraz drugie,
+  "duchowe" zdarzenie w ciągu 150 ms od pierwszego jest ignorowane. To
+  wystarczająco krótki czas, żeby nie zjadać prawdziwego, szybkiego
+  podwójnego stuknięcia (np. gdy chcesz zalogować 2 szklanki pod rząd),
+  a wystarczająco długi, żeby złapać duplikat tego samego stuknięcia.
+- Jawnie wyłączono `renotify`, żeby mieć pewność, że aktualizacja
+  powiadomienia nigdy nie generuje dodatkowego dźwięku/wibracji/ponownego
+  "wyskoczenia" powiadomienia na ekran.
+- Podbito wersję cache Service Workera (dieta-app-v17), żeby ta poprawka
+  na pewno dotarła na urządzenie, a nie czekała na starą, zbuforowaną
+  wersję.
+
+Jeśli po tej zmianie problem nadal będzie się pojawiał — zwłaszcza przy
+POJEDYNCZYCH, spokojnych stuknięciach (nie tylko szybkich, powtarzanych) —
+to znak, że przyczyna leży głębiej w sposobie, w jaki system Android
+renderuje aktualizowane powiadomienia, i wtedy sensowną alternatywą byłoby
+inne rozwiązanie zamiast liczników w powiadomieniu (np. skrót na ekranie
+głównym otwierający od razu widok nawodnienia w aplikacji) — do ustalenia,
+jeśli będzie potrzebne.

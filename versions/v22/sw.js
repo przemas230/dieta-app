@@ -1,4 +1,4 @@
-const CACHE_NAME = "dieta-app-v17";
+const CACHE_NAME = "dieta-app-v16";
 const ASSETS = ["./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -79,27 +79,12 @@ async function pushWaterNotification(count){
     body: `${dropletsText(count)}\n${count} / 8 szklanek`,
     tag: "water-tracker",
     silent: true,
-    renotify: false,
     requireInteraction: true,
     actions: [{ action: "add-water", title: "+1 💧" }, { action: "remove-water", title: "-1 ↩️" }],
     icon: "icon-192.png"
   });
 }
-// Guards against a single physical tap being dispatched as two
-// 'notificationclick' events — a real, documented Android/Chrome bug for web
-// push action buttons on some OS/browser builds. Without this, that duplicate
-// event silently applies the action twice (e.g. +1 landing as +2, which then
-// looks like the wrong button fired when the user taps again against a count
-// that's already ahead of what they expected).
-let lastWaterActionAt = 0;
 async function handleWaterTrackerAction(action){
-  const now = Date.now();
-  // Short window: long enough to swallow a same-tap duplicate dispatch
-  // (those land within single-digit-to-low-double-digit ms), short enough
-  // to never eat a real second tap — lifting and re-pressing a finger takes
-  // people well over 150ms even when double-tapping quickly on purpose.
-  if (now - lastWaterActionAt < 150) return;
-  lastWaterActionAt = now;
   const today = todayStr();
   const storedDate = await getKV("waterDate");
   let count = Number(await getKV("pendingWater"));
