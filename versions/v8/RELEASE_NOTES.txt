@@ -1,0 +1,23 @@
+Wersja v8 — pełna przebudowa cz. 2: przełącznik niskiego IG + przepisy
+"na masę" we wszystkich kategoriach
+
+Zmiany:
+- Nowa opcja w Ustawieniach: "Trzymaj się niskiego indeksu glikemicznego"
+  (domyślnie włączona — zachowuje dotychczasowe działanie). Po wyłączeniu
+  dopasowanie przepisów przestaje obniżać ocenę dań tylko za wyższy
+  ładunek glikemiczny — dla osób bez insulinooporności/cukrzycy, dla
+  których niski IG nie jest potrzebny.
+  Uwaga dot. laktozy: filtr "bez laktozy" zostaje bez zmian jako prosty
+  filtr podstawieniowy (ukrywa dania bez wyraźnie oznaczonego
+  odpowiednika bez laktozy) — nie wymaga osobnej puli przepisów, tak
+  jak zasugerowano.
+- Dodano 12 nowych przepisów oznaczonych "💪 Na masę" — po 4 w każdej
+  z pozostałych kategorii (Śniadania, II Śniadanie, Kolacje), analogicznie
+  do pilotażu w Obiadach z poprzedniej wersji.
+- Efekt: przy profilu "budowanie masy" nowe przepisy zajmują czołowe
+  miejsca sortowania wg dopasowania w KAŻDEJ z 4 kategorii (często #1 i
+  #2), a przy "redukcji" żaden się nie przebija do czołówki — pełna,
+  systemowa różnica w rekomendacjach zależna od celu diety, nie tylko
+  pilotaż jednej kategorii.
+
+Łącznie w bazie jest teraz 137 przepisów (125 poprzednio + 12 nowych).
