@@ -1,0 +1,29 @@
+Wersja v10 — pełna przebudowa cz. 4: 32 sycące przepisy pod utrzymanie
+wagi + baza dobita do ~50 przepisów na kategorię
+
+Druga (ostatnia zaplanowana) partia w kierunku pełnej symetrii puli
+przepisów.
+
+Zmiany:
+- Dodano 32 nowe przepisy (8 na kategorię) oznaczone "⚖️ Sycące" —
+  pod cel "utrzymanie wagi", zoptymalizowane pod sytość: dużo błonnika
+  (6–22g na porcję dzięki roślinom strączkowym, pełnoziarnistemu
+  pieczywu, warzywom), białko i węglowodany dopasowane do celu
+  utrzymania, niezależnie od poziomu indeksu glikemicznego — to osobny,
+  przełączalny wymiar diety, a nie cecha definiująca całą aplikację.
+- Efekt: przy profilu "utrzymanie" nowe przepisy dominują czołówkę
+  sortowania wg dopasowania w II Śniadaniu, Obiadach i Kolacjach
+  (najczęściej #1–#3), a w Śniadaniach zajmują wysokie, choć nie
+  zawsze pierwsze miejsca — obok dobrze dopasowanych przepisów
+  z istniejącej puli (co jest w porządku, różnorodność też się liczy).
+
+Baza przepisów: 201 łącznie (169 poprzednio + 32 nowe), po 50–51 na
+każdą z 4 kategorii — zgodnie z ustalonym celem "do 50 na kategorię".
+
+Pełna symetria profili osiągnięta:
+- redukcja + niski IG → oryginalna pula (120 przepisów)
+- redukcja + bez ograniczenia IG → batch z v9 (32 przepisy)
+- utrzymanie + sycące → ten batch (32 przepisy)
+- budowanie masy → batch z v7/v8 (17 przepisy)
+Każdy profil realnie wybiera inne dania, a przełącznik niskiego IG
+(Ustawienia) działa niezależnie od celu diety.
