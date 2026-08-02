@@ -1,4 +1,4 @@
-const CACHE_NAME = "dieta-app-v13";
+const CACHE_NAME = "dieta-app-v14";
 const ASSETS = ["./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -69,37 +69,103 @@ function dropletsText(count){
   for(let i=0;i<8;i++) out += (i<count ? "💧" : "⚪");
   return out;
 }
+function clampCount(n){
+  n = Number(n);
+  if(!Number.isFinite(n)) n = 0;
+  return Math.max(0, Math.min(8, n));
+}
 async function pushWaterNotification(count){
   await self.registration.showNotification("💧 Nawodnienie", {
     body: `${dropletsText(count)}\n${count} / 8 szklanek`,
     tag: "water-tracker",
     silent: true,
+    requireInteraction: true,
     actions: [{ action: "add-water", title: "+1 💧" }, { action: "remove-water", title: "-1 ↩️" }],
     icon: "icon-192.png"
   });
 }
+async function handleWaterTrackerAction(action){
+  const today = todayStr();
+  const storedDate = await getKV("waterDate");
+  let count = Number(await getKV("pendingWater"));
+  if (!Number.isFinite(count) || storedDate !== today) count = 0;
+  count = action === "add-water" ? clampCount(count + 1) : clampCount(count - 1);
+  await setKV("waterDate", today);
+  await setKV("pendingWater", count);
+  const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  clientsList.forEach((c) => c.postMessage({ type: "water-add", count }));
+  await pushWaterNotification(count);
+}
+function focusOrOpenApp(){
+  return self.clients.matchAll({ type: "window" }).then((clientsList) => {
+    if (clientsList.length > 0) return clientsList[0].focus();
+    return self.clients.openWindow("./index.html");
+  });
+}
+
+// ---------- WATER REMINDER: periodic drink-water alarm ----------
+function parseHM(str){
+  const parts = (str || "08:00").split(":");
+  const h = parseInt(parts[0], 10) || 0, m = parseInt(parts[1], 10) || 0;
+  return h * 60 + m;
+}
+function isActiveMinute(minutesOfDay, fromMin, toMin){
+  if (fromMin === toMin) return true;
+  if (fromMin < toMin) return minutesOfDay >= fromMin && minutesOfDay < toMin;
+  return minutesOfDay >= fromMin || minutesOfDay < toMin;
+}
+function computeNextReminderAt(fromMs, cfg){
+  const intervalMs = Math.max(15, Number(cfg && cfg.intervalMinutes) || 90) * 60000;
+  let next = fromMs + intervalMs;
+  const fromMin = parseHM(cfg && cfg.activeFrom), toMin = parseHM(cfg && cfg.activeTo);
+  const d = new Date(next);
+  const minutesOfDay = d.getHours() * 60 + d.getMinutes();
+  if (!isActiveMinute(minutesOfDay, fromMin, toMin)) {
+    d.setHours(Math.floor(fromMin / 60), fromMin % 60, 0, 0);
+    if (d.getTime() <= next) d.setDate(d.getDate() + 1);
+    next = d.getTime();
+  }
+  return next;
+}
+async function pushWaterReminderNotification(){
+  await self.registration.showNotification("💧 Czas się napić wody!", {
+    body: "Krótkie przypomnienie o nawodnieniu.",
+    tag: "water-reminder",
+    icon: "icon-192.png",
+    actions: [{ action: "snooze-water", title: "Odłóż 15 min" }, { action: "skip-water", title: "Pomiń do następnego" }]
+  });
+}
 
 self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-  if (event.action === "add-water" || event.action === "remove-water") {
-    event.waitUntil((async () => {
-      const today = todayStr();
-      const storedDate = await getKV("waterDate");
-      let count = await getKV("pendingWater");
-      if (storedDate !== today) count = 0;
-      count = event.action === "add-water" ? Math.min(8, (count || 0) + 1) : Math.max(0, (count || 0) - 1);
-      await setKV("waterDate", today);
-      await setKV("pendingWater", count);
-      const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-      clientsList.forEach((c) => c.postMessage({ type: "water-add", count }));
-      await pushWaterNotification(count);
-    })());
-  } else {
-    event.waitUntil(
-      self.clients.matchAll({ type: "window" }).then((clientsList) => {
-        if (clientsList.length > 0) return clientsList[0].focus();
-        return self.clients.openWindow("./index.html");
-      })
-    );
+  const notif = event.notification;
+
+  if (notif.tag === "water-tracker") {
+    if (event.action === "add-water" || event.action === "remove-water") {
+      // Intentionally not closing: the tracker notification stays on screen
+      // until the user dismisses it manually, so repeated taps keep working.
+      event.waitUntil(handleWaterTrackerAction(event.action));
+      return;
+    }
+    notif.close();
+    event.waitUntil(focusOrOpenApp());
+    return;
   }
+
+  if (notif.tag === "water-reminder") {
+    notif.close();
+    event.waitUntil((async () => {
+      const cfg = (await getKV("reminderConfig")) || {};
+      const nextAt = event.action === "snooze-water"
+        ? Date.now() + 15 * 60000
+        : computeNextReminderAt(Date.now(), cfg);
+      await setKV("reminderNextAt", nextAt);
+      const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      clientsList.forEach((c) => c.postMessage({ type: "water-reminder-updated", nextAt }));
+      if (!event.action) await focusOrOpenApp();
+    })());
+    return;
+  }
+
+  notif.close();
+  event.waitUntil(focusOrOpenApp());
 });

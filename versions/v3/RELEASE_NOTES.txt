@@ -1,0 +1,24 @@
+Wersja v3 — powiadomienia o wodzie, przypomnienia i historia z filtrem
+
+Zmiany względem v2:
+- Naprawiono powiadomienie licznika wody ("+1 💧" / "-1 ↩️"):
+  * nie zamyka się już samo po dodaniu/odjęciu — zostaje na ekranie,
+    dopóki użytkownik sam go nie odrzuci,
+  * poprawiono błąd synchronizacji, przez który zmiany zrobione
+    z poziomu powiadomienia (zwłaszcza odejmowanie) mogły się cofać
+    po ponownym otwarciu aplikacji,
+  * dodano automatyczną synchronizację licznika przy powrocie do
+    aplikacji (zmiana widoczności karty).
+- Dodano nową funkcję: cykliczne przypomnienie o piciu wody
+  (Ustawienia → "💧 Przypomnienie o piciu wody"):
+  * można ustawić co ile minut ma przypominać oraz godziny aktywne
+    (np. 08:00–22:00, żeby nie budzić w nocy),
+  * powiadomienie ma przyciski „Odłóż 15 min” i „Pomiń do następnego”,
+  * uwaga: działa tylko, gdy aplikacja/karta pozostaje otwarta
+    (choćby w tle) — przy całkowitym zamknięciu przeglądarki
+    przypomnienia się nie wyślą (brak backendu wysyłającego push).
+- Historia aktywności: dodano filtrowanie po zakresie dat (od/do),
+  domyślnie (bez filtra) pokazywane jest 30 najnowszych wpisów
+  zamiast dotychczasowych 50.
+- Zaktualizowano zasady backupu w CLAUDE.md — kopie zapasowe obejmują
+  teraz każdy zmieniany plik (nie tylko index.html).

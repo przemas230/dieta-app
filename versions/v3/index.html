@@ -523,20 +523,6 @@
     </div>
 
     <div class="card">
-      <h3 style="margin:0 0 10px; font-size:15px;">💧 Przypomnienie o piciu wody</h3>
-      <div class="hint-text" style="margin:0 0 10px;">Cykliczne powiadomienie przypominające o wypiciu wody. Z poziomu powiadomienia można je odłożyć o 15 minut albo pominąć do następnego zaplanowanego terminu. Działa, dopóki aplikacja pozostaje otwarta (choćby w tle) — po całkowitym zamknięciu przeglądarki przypomnienia się nie wyślą.</div>
-      <div class="settings-grid">
-        <label class="span2">Przypominaj co (minut)<input type="number" min="15" step="5" id="setReminderInterval" placeholder="np. 90"></label>
-        <label>Aktywne od<input type="time" id="setReminderFrom"></label>
-        <label>Aktywne do<input type="time" id="setReminderTo"></label>
-      </div>
-      <div class="shop-actions">
-        <button class="btn primary" id="enableReminderBtn" style="width:100%;">🔔 Włącz przypomnienia o piciu wody</button>
-      </div>
-      <div id="reminderStatus" class="settings-result"></div>
-    </div>
-
-    <div class="card">
       <h3 style="margin:0 0 6px; font-size:15px;">⭐ Ulubione składniki</h3>
       <div class="hint-text" style="margin:0 0 10px;">Wybrane tutaj składniki będą pogrubione na liście przepisów (tak samo jak gwiazdka przy składniku w przepisie — to ten sam wybór).</div>
       <input class="search" id="favIngSearch" type="text" placeholder="Szukaj składnika…" style="margin-bottom:10px;">
@@ -586,13 +572,6 @@
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
         <h3 style="margin:0; font-size:14.5px;">📜 Historia aktywności</h3>
         <button class="btn ghost" id="clearHistoryBtn" style="padding:6px 10px; font-size:11.5px;">Wyczyść</button>
-      </div>
-      <div class="settings-grid" style="margin-bottom:8px;">
-        <label>Od<input type="date" id="historyFrom"></label>
-        <label>Do<input type="date" id="historyTo"></label>
-      </div>
-      <div class="shop-actions" style="margin:0 0 10px;">
-        <button class="btn ghost" id="historyFilterClearBtn" style="font-size:11.5px; padding:6px 10px;">Wyczyść filtr (pokaż 30 ostatnich)</button>
       </div>
       <div id="historyList"></div>
     </div>
@@ -860,7 +839,6 @@ const DAYS = ["Poniedziałek","Wtorek","Środa","Czwartek","Piątek","Sobota","N
 // ---------- STATE ----------
 const STORE_KEY = "dietaAppStateV1";
 const DEFAULT_PROFILE = {sex:"k", age:37, height:164, weight:67, targetWeight:62, activity:"1.375", goal:"loss", glutenFree:false, lactoseFree:false, custom:false};
-const DEFAULT_WATER_REMINDER = {enabled:false, intervalMinutes:90, activeFrom:"08:00", activeTo:"22:00", nextAt:null};
 function loadState(){
   try{
     const raw = localStorage.getItem(STORE_KEY);
@@ -879,7 +857,6 @@ function loadState(){
       if(!s.pantryUnitOverride) s.pantryUnitOverride = {};
       if(s.waterNotifEnabled===undefined) s.waterNotifEnabled = false;
       if(!s.theme) s.theme = "teal";
-      if(!s.waterReminder) s.waterReminder = {...DEFAULT_WATER_REMINDER};
       const shoppingVals = Object.values(s.shopping||{});
       if(shoppingVals.some(v=>v && v.unitCat===undefined)){
         s.shopping = {}; s.recipeAdded = {};
@@ -887,7 +864,7 @@ function loadState(){
       return s;
     }
   }catch(e){}
-  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, water:{date:"",count:0}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, waterNotifEnabled:false, theme:"teal", waterReminder:{...DEFAULT_WATER_REMINDER}};
+  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, water:{date:"",count:0}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, waterNotifEnabled:false, theme:"teal"};
 }
 let state = loadState();
 document.documentElement.setAttribute("data-theme", state.theme || "teal");
@@ -1044,7 +1021,6 @@ function loadSettingsForm(){
   document.getElementById("setLactoseFree").checked = !!p.lactoseFree;
   document.getElementById("settingsResult").textContent = "";
   renderThemePicker();
-  loadReminderForm();
   renderFavIngChips("");
 }
 function renderFavIngChips(filterText){
@@ -2277,7 +2253,6 @@ function renderProgress(){
   renderTodayTracker();
   renderHistory();
 }
-const HISTORY_DEFAULT_LIMIT = 30;
 function renderHistory(){
   const box = document.getElementById("historyList");
   box.innerHTML = "";
@@ -2285,25 +2260,7 @@ function renderHistory(){
     box.innerHTML = `<div class="empty">Historia jest pusta — pojawią się tu dodania/usunięcia z listy zakupów i spiżarni.</div>`;
     return;
   }
-  const fromVal = document.getElementById("historyFrom").value;
-  const toVal = document.getElementById("historyTo").value;
-  const filtering = !!(fromVal || toVal);
-  let entries = state.history;
-  if(filtering){
-    entries = entries.filter(e=>{
-      const day = (e.ts||"").slice(0,10);
-      if(fromVal && day < fromVal) return false;
-      if(toVal && day > toVal) return false;
-      return true;
-    });
-  } else {
-    entries = entries.slice(0, HISTORY_DEFAULT_LIMIT);
-  }
-  if(entries.length===0){
-    box.innerHTML = `<div class="empty">Brak wpisów w wybranym zakresie dat.</div>`;
-    return;
-  }
-  entries.forEach(entry=>{
+  state.history.slice(0,50).forEach(entry=>{
     const d = new Date(entry.ts);
     const dateStr = d.toLocaleDateString('pl-PL', {day:'2-digit', month:'2-digit', year:'numeric'});
     const timeStr = d.toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'});
@@ -2317,13 +2274,6 @@ document.getElementById("clearHistoryBtn").addEventListener("click", ()=>{
   if(!confirm("Wyczyścić całą historię aktywności?")) return;
   state.history = [];
   saveState(); renderHistory();
-});
-document.getElementById("historyFrom").addEventListener("change", renderHistory);
-document.getElementById("historyTo").addEventListener("change", renderHistory);
-document.getElementById("historyFilterClearBtn").addEventListener("click", ()=>{
-  document.getElementById("historyFrom").value = "";
-  document.getElementById("historyTo").value = "";
-  renderHistory();
 });
 
 function renderTodayTracker(){
@@ -2408,7 +2358,6 @@ async function refreshWaterNotification(){
       body: `${waterDropletsText(state.water.count)}\n${state.water.count} / 8 szklanek`,
       tag: "water-tracker",
       silent: true,
-      requireInteraction: true,
       actions: [{action:"add-water", title:"+1 💧"}, {action:"remove-water", title:"-1 ↩️"}],
       icon: "icon-192.png"
     });
@@ -2443,13 +2392,9 @@ async function syncPendingWaterFromNotifications(){
   const today = todayStr();
   const storedDate = await getWaterKV("waterDate");
   const pending = await getWaterKV("pendingWater");
-  // Trust the notification-side count outright (it's kept in sync from both
-  // directions already) instead of only ever taking the higher value —
-  // otherwise taps that lower the count (via "-1 ↩️") while the app wasn't
-  // open to receive the live message get silently reverted on reopen.
-  if(storedDate === today && typeof pending === "number" && Number.isFinite(pending)){
+  if(storedDate === today && typeof pending === "number"){
     if(state.water.date !== today){ state.water = {date:today, count:0}; }
-    state.water.count = Math.max(0, Math.min(8, pending));
+    state.water.count = Math.min(8, Math.max(state.water.count, pending));
     saveState();
     renderWater();
   }
@@ -2459,156 +2404,13 @@ if("serviceWorker" in navigator){
     if(event.data && event.data.type === "water-add"){
       const today = todayStr();
       if(state.water.date !== today){ state.water = {date:today, count:0}; }
-      state.water.count = Math.max(0, Math.min(8, event.data.count));
+      state.water.count = Math.min(8, event.data.count);
       saveState();
       renderWater();
     }
-    if(event.data && event.data.type === "water-reminder-updated"){
-      state.waterReminder.nextAt = event.data.nextAt;
-      saveState();
-      renderReminderUI();
-    }
   });
 }
-document.addEventListener("visibilitychange", ()=>{
-  if(document.visibilityState === "visible"){
-    syncPendingWaterFromNotifications();
-    checkWaterReminderSchedule();
-  }
-});
 document.getElementById("enableWaterNotifBtn").addEventListener("click", enableWaterNotification);
-
-// ---------- WATER REMINDER (recurring drink-water alarm) ----------
-function parseHM(str){
-  const parts = (str||"08:00").split(":");
-  const h = parseInt(parts[0],10)||0, m = parseInt(parts[1],10)||0;
-  return h*60+m;
-}
-function isActiveMinute(minutesOfDay, fromMin, toMin){
-  if(fromMin===toMin) return true;
-  if(fromMin<toMin) return minutesOfDay>=fromMin && minutesOfDay<toMin;
-  return minutesOfDay>=fromMin || minutesOfDay<toMin;
-}
-function computeNextReminderAt(fromMs, cfg){
-  const intervalMs = Math.max(15, Number(cfg && cfg.intervalMinutes) || 90) * 60000;
-  let next = fromMs + intervalMs;
-  const fromMin = parseHM(cfg && cfg.activeFrom), toMin = parseHM(cfg && cfg.activeTo);
-  const d = new Date(next);
-  const minutesOfDay = d.getHours()*60 + d.getMinutes();
-  if(!isActiveMinute(minutesOfDay, fromMin, toMin)){
-    d.setHours(Math.floor(fromMin/60), fromMin%60, 0, 0);
-    if(d.getTime() <= next) d.setDate(d.getDate()+1);
-    next = d.getTime();
-  }
-  return next;
-}
-function reminderConfigFromState(){
-  const r = state.waterReminder;
-  return {intervalMinutes:r.intervalMinutes, activeFrom:r.activeFrom, activeTo:r.activeTo};
-}
-async function pushReminderConfigToKV(){
-  await setWaterKV("reminderConfig", reminderConfigFromState());
-}
-function readReminderForm(){
-  const interval = Math.max(15, parseInt(document.getElementById("setReminderInterval").value,10) || DEFAULT_WATER_REMINDER.intervalMinutes);
-  const from = document.getElementById("setReminderFrom").value || DEFAULT_WATER_REMINDER.activeFrom;
-  const to = document.getElementById("setReminderTo").value || DEFAULT_WATER_REMINDER.activeTo;
-  return {intervalMinutes:interval, activeFrom:from, activeTo:to};
-}
-function loadReminderForm(){
-  const r = state.waterReminder;
-  document.getElementById("setReminderInterval").value = r.intervalMinutes;
-  document.getElementById("setReminderFrom").value = r.activeFrom;
-  document.getElementById("setReminderTo").value = r.activeTo;
-  renderReminderUI();
-}
-function renderReminderUI(){
-  const btn = document.getElementById("enableReminderBtn");
-  const status = document.getElementById("reminderStatus");
-  if(!btn || !status) return;
-  btn.textContent = state.waterReminder.enabled ? "🔕 Wyłącz przypomnienia o piciu wody" : "🔔 Włącz przypomnienia o piciu wody";
-  if(state.waterReminder.enabled && state.waterReminder.nextAt){
-    const d = new Date(state.waterReminder.nextAt);
-    const time = d.toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'});
-    const dayLabel = d.toDateString()===new Date().toDateString() ? "dziś" : "jutro";
-    status.textContent = `Następne przypomnienie: ${dayLabel}, ${time}.`;
-  } else {
-    status.textContent = "";
-  }
-}
-async function fireWaterReminderNotification(){
-  if(!("serviceWorker" in navigator) || Notification.permission!=="granted") return;
-  try{
-    const reg = await navigator.serviceWorker.ready;
-    await reg.showNotification("💧 Czas się napić wody!", {
-      body: "Krótkie przypomnienie o nawodnieniu.",
-      tag: "water-reminder",
-      icon: "icon-192.png",
-      actions: [{action:"snooze-water", title:"Odłóż 15 min"}, {action:"skip-water", title:"Pomiń do następnego"}]
-    });
-  }catch(e){}
-}
-async function checkWaterReminderSchedule(){
-  const r = state.waterReminder;
-  if(!r || !r.enabled) return;
-  if(!r.nextAt){
-    r.nextAt = computeNextReminderAt(Date.now(), reminderConfigFromState());
-    saveState();
-    renderReminderUI();
-    return;
-  }
-  if(Date.now() >= r.nextAt){
-    await fireWaterReminderNotification();
-    r.nextAt = computeNextReminderAt(Date.now(), reminderConfigFromState());
-    await setWaterKV("reminderNextAt", r.nextAt);
-    saveState();
-    renderReminderUI();
-  }
-}
-async function enableWaterReminder(){
-  const r = state.waterReminder;
-  if(r.enabled){
-    r.enabled = false;
-    r.nextAt = null;
-    saveState();
-    if("serviceWorker" in navigator){
-      try{ const reg = await navigator.serviceWorker.ready; const n = await reg.getNotifications({tag:"water-reminder"}); n.forEach(x=>x.close()); }catch(e){}
-    }
-    renderReminderUI();
-    toast("Przypomnienia o piciu wody wyłączone");
-    return;
-  }
-  if(!("Notification" in window) || !("serviceWorker" in navigator)){
-    toast("Powiadomienia nie są wspierane w tej przeglądarce");
-    return;
-  }
-  const perm = await Notification.requestPermission();
-  if(perm !== "granted"){ toast("Brak zgody na powiadomienia"); return; }
-  Object.assign(r, readReminderForm());
-  r.enabled = true;
-  r.nextAt = computeNextReminderAt(Date.now(), reminderConfigFromState());
-  saveState();
-  await pushReminderConfigToKV();
-  await setWaterKV("reminderNextAt", r.nextAt);
-  renderReminderUI();
-  toast("Włączono przypomnienia o piciu wody");
-}
-function onReminderSettingsChanged(){
-  const r = state.waterReminder;
-  Object.assign(r, readReminderForm());
-  if(r.enabled){
-    r.nextAt = computeNextReminderAt(Date.now(), reminderConfigFromState());
-    setWaterKV("reminderNextAt", r.nextAt);
-    pushReminderConfigToKV();
-  }
-  saveState();
-  renderReminderUI();
-}
-["setReminderInterval","setReminderFrom","setReminderTo"].forEach(id=>{
-  document.getElementById(id).addEventListener("change", onReminderSettingsChanged);
-});
-document.getElementById("enableReminderBtn").addEventListener("click", enableWaterReminder);
-setInterval(checkWaterReminderSchedule, 30000);
 
 // ---------- INIT ----------
 TILE_UNIT_CAT = computeTileUnitCats();
@@ -2617,7 +2419,6 @@ renderPills();
 renderRecipes();
 if(typeof lucide !== "undefined") lucide.createIcons();
 syncPendingWaterFromNotifications();
-checkWaterReminderSchedule();
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
