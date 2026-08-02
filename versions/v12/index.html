@@ -2781,21 +2781,18 @@ setInterval(checkWaterReminderSchedule, 30000);
 (function(){
   const headerEl = document.querySelector("header.app-top");
   if(!headerEl) return;
-  // Absolute-position hysteresis (collapse past COLLAPSE_AT, expand below
-  // EXPAND_AT) instead of tracking scroll deltas: delta-based tracking was
-  // fragile against jittery/batched touch-scroll events, causing it to need
-  // a big swipe to react and then flicker near the trigger point.
-  const COLLAPSE_AT = 80, EXPAND_AT = 40;
-  let ticking = false;
+  let lastY = window.scrollY;
   window.addEventListener("scroll", ()=>{
-    if(ticking) return;
-    ticking = true;
-    requestAnimationFrame(()=>{
-      const y = window.scrollY;
-      if(y > COLLAPSE_AT) headerEl.classList.add("collapsed");
-      else if(y < EXPAND_AT) headerEl.classList.remove("collapsed");
-      ticking = false;
-    });
+    const y = window.scrollY;
+    if(y < 60){
+      headerEl.classList.remove("collapsed");
+    }else if(y > lastY + 24){
+      headerEl.classList.add("collapsed");
+      lastY = y;
+    }else if(y < lastY - 24){
+      headerEl.classList.remove("collapsed");
+      lastY = y;
+    }
   }, {passive:true});
 })();
 
@@ -2809,24 +2806,8 @@ syncPendingWaterFromNotifications();
 checkWaterReminderSchedule();
 
 if('serviceWorker' in navigator){
-  let swReloaded = false;
-  navigator.serviceWorker.addEventListener('controllerchange', ()=>{
-    // A newly-activated service worker just took over. Since the SW handles
-    // notification taps on its own, the fix is already live for those — but
-    // reload once so the open page's own code is fresh too, instead of
-    // silently running an old page against a new worker (or waiting on the
-    // browser's own up-to-24h update-check throttle to notice it exists).
-    if(swReloaded) return;
-    swReloaded = true;
-    window.location.reload();
-  });
   window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('sw.js').then(reg=>{
-      reg.update().catch(()=>{});
-      document.addEventListener('visibilitychange', ()=>{
-        if(document.visibilityState === 'visible') reg.update().catch(()=>{});
-      });
-    }).catch(()=>{});
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
   });
 }
 </script>
