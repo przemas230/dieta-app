@@ -1,0 +1,23 @@
+Wersja v5 — legenda wartości odżywczych + dane dla wszystkich kategorii
+
+Zmiany względem v4:
+- Dodano okienko z legendą i metodologią: kliknięcie ikonki ℹ️ przy
+  wartościach odżywczych na karcie przepisu pokazuje, co oznaczają
+  B/W/T/Błonnik/IG/ŁG oraz na jakiej podstawie zostały wyliczone
+  (standardowe dane odżywcze per składnik w stylu USDA + publikowane
+  wartości indeksu glikemicznego z bazy Uniwersytetu Sydney,
+  skalibrowane do podanej kaloryczności przepisu).
+- Wzbogacono pozostałe 90 przepisów (II Śniadanie, Obiady, Kolacje) o
+  te same dane co Śniadania w v4: białko/węglowodany/tłuszcz/błonnik,
+  szacowany indeks i ładunek glikemiczny — wszystkie 120 przepisów ma
+  teraz komplet danych, znaczek dopasowania 🎯 i działa dla nich
+  sortowanie wg dopasowania do profilu.
+
+Uwaga jakościowa: przy kilkunastu przepisach (głównie lekkie
+przekąski/kolacje z warzyw i owoców) podana w aplikacji kaloryczność
+wyraźnie nie zgadza się z tym, co wynika z ich składników — wygląda,
+jakby została dobrana "pod kubełek kaloryczny" pory posiłku, a nie
+policzona z przepisu. Żeby uniknąć nierealnych wartości makro,
+ograniczono skalowanie do tych przypadków (np. smoothie z buraka i
+jabłka realnie ma dużo mniej niż podane 305 kcal) — te przepisy warto
+osobno zweryfikować i poprawić im samą kaloryczność.
