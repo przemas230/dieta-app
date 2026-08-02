@@ -1,0 +1,55 @@
+Wersja 18
+=========
+
+Pełny audyt i przeliczenie kalorii/makroskładników we wszystkich 213
+przepisach.
+
+Kontekst: użytkownik poprosił o sprawdzenie, czy przepisy na pewno dobrze
+przeliczają kalorie. Zbudowano skrypt audytujący, który dla każdego
+przepisu porównał "nagłówkowe" wartości (kcal/białko/węglowodany/tłuszcz
+pokazywane na karcie) z sumą ich własnego, szczegółowego rozbicia na
+składniki (ten sam rozkład, który użytkownik widzi po kliknięciu "ℹ️" przy
+przepisie).
+
+Wynik: w 163 z 213 przepisów (77%) wartości nagłówkowe NIE zgadzały się z
+sumą własnych składników przepisu — w większości przypadków (117 przepisów)
+wartości były zawyżone, w mniejszości (46) zaniżone, różnice sięgały nawet
+150-200 kcal na przepis. Zweryfikowano wybrane wartości bazowe składników
+(jajko, oliwa z oliwek, chleb żytni, awokado, pomidor i inne) względem
+realnych danych żywieniowych — same dane składników są prawidłowe i
+wiarygodne. Przyczyną niezgodności było to, że najstarsza pula ~120
+przepisów w aplikacji miała nagłówkowe wartości wpisane "z ręki" na
+początku projektu, a szczegółowe rozbicie na składniki (z prawdziwymi
+danymi żywieniowymi) zostało dodane później, bez cofnięcia się i
+skorygowania nagłówkowych liczb. Nowsze partie przepisów (dodawane w
+kolejnych wersjach aplikacji) były generowane już z automatycznym
+przeliczeniem obu naraz i były w większości zgodne od początku.
+
+Co zrobiono:
+- Dla każdego przepisu przeliczono białko/węglowodany/tłuszcz jako sumę
+  jego własnych składników (z rozbicia widocznego w "ℹ️"), a kalorie — ze
+  standardowego wzoru 4 kcal/g białka, 4 kcal/g węglowodanów, 9 kcal/g
+  tłuszczu (zaokrąglone do pełnych 5 kcal, zgodnie z dotychczasową
+  konwencją w aplikacji).
+- Przeliczono też ładunek glikemiczny (ŁG) na podstawie nowych
+  węglowodanów i dotychczasowego indeksu glikemicznego (IG) — sam IG
+  pozostaje bez zmian, bo to cecha proporcji składników w przepisie, a nie
+  ich ilości, więc nie wymagał przeliczenia.
+- Błonnik pozostał bez zmian — nie jest śledzony osobno dla każdego
+  składnika w zapisanym rozbiciu, więc nie dało się go wiarygodnie
+  przeliczyć z tych samych danych; to jedyna wartość, której nie
+  zweryfikowano w tym przebiegu.
+- Po przeliczeniu każdy przepis jest teraz spójny sam ze sobą: nagłówkowe
+  kcal/białko/węglowodany/tłuszcz zgadzają się z jego własnym rozbiciem na
+  składniki co do grama/kalorii (z dokładnością do zwykłego zaokrąglenia).
+
+Przykład: "Szakszuka ze szpinakiem i pomidorami" (2 jajka, pomidory z
+puszki, szpinak, oliwa, kromka chleba żytniego, czosnek) — poprzednio
+pokazywana jako 390 kcal, faktycznie te składniki dają ok. 320 kcal.
+Kolejny przykład w drugą stronę: "Jajka na miękko z awokado i pomidorem"
+(2 jajka, pół awokado, pomidor, kromka chleba, oliwa) — poprzednio 395
+kcal, faktycznie ok. 455 kcal.
+
+Sprawdzono też, że po zmianie aplikacja nadal działa poprawnie: liczba
+przepisów (213) i podział na kategorie bez zmian, generator planu tygodnia
+i dopasowanie do profilu (🎯) działają na nowych, poprawionych liczbach.
