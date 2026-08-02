@@ -179,6 +179,13 @@
     border-radius:10px; padding:7px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;
   }
   .modal-ing-btn.on{background:var(--teal); color:#fff; border-color:var(--teal);}
+  .cook-history-row{display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line);}
+  .cook-history-row:last-child{border-bottom:none;}
+  .ch-date{font-size:12px; color:var(--text); flex:0 0 70px; line-height:1.35;}
+  .ch-time{color:var(--muted); font-size:11px;}
+  .ch-stars{flex:1; display:flex; gap:2px;}
+  .star-pick{font-size:19px; cursor:pointer; color:var(--honey); line-height:1;}
+  .ch-del{flex:0 0 auto; border:none; background:none; color:var(--danger); font-size:17px; cursor:pointer; padding:4px 6px;}
   .method{font-size:13px; color:var(--muted); line-height:1.5; margin:0 0 12px;}
   .card-actions{display:flex; gap:8px; flex-wrap:wrap;}
   .add-btn{
@@ -452,6 +459,8 @@
       <h3 style="margin:0 0 6px; font-size:14.5px;">💧 Nawodnienie dzisiaj</h3>
       <div class="water-row" id="waterRow"></div>
       <div style="font-size:12px; color:var(--muted);" id="waterLabel"></div>
+      <button class="btn ghost" id="enableWaterNotifBtn" style="width:100%; margin-top:10px; font-size:12px;">🔔 Włącz szybkie dodawanie z powiadomienia</button>
+      <div class="hint-text" style="margin:6px 0 0;">To zwykłe powiadomienie Androida z przyciskiem „+1 szklanka" — można je dotknąć bez otwierania appki. Uwaga: to nie jest przypięte/niemożliwe do usunięcia powiadomienie jak np. w odtwarzaczu muzyki (przeglądarki tego nie udostępniają) — może zniknąć, jeśli je przesuniesz palcem lub wyczyścisz wszystkie powiadomienia.</div>
     </div>
 
     <div class="card">
@@ -579,6 +588,16 @@
       <button id="tileActionClose">✕</button>
     </div>
     <div id="tileActionBody"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="cookHistoryOverlay">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3 id="cookHistoryTitle"></h3>
+      <button id="cookHistoryClose">✕</button>
+    </div>
+    <div id="cookHistoryBody"></div>
   </div>
 </div>
 
@@ -721,8 +740,12 @@ function loadState(){
       if(!s.pantry) s.pantry = {};
       if(!s.history) s.history = [];
       if(!s.cooked) s.cooked = {};
+      Object.keys(s.cooked).forEach(rid=>{
+        s.cooked[rid] = (s.cooked[rid]||[]).map(e=> typeof e === "string" ? {date:e, rating:null} : e);
+      });
       if(!s.customTiles) s.customTiles = {};
       if(!s.pantryUnitOverride) s.pantryUnitOverride = {};
+      if(s.waterNotifEnabled===undefined) s.waterNotifEnabled = false;
       const shoppingVals = Object.values(s.shopping||{});
       if(shoppingVals.some(v=>v && v.unitCat===undefined)){
         s.shopping = {}; s.recipeAdded = {};
@@ -730,7 +753,7 @@ function loadState(){
       return s;
     }
   }catch(e){}
-  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, water:{date:"",count:0}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}};
+  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, water:{date:"",count:0}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, waterNotifEnabled:false};
 }
 let state = loadState();
 function saveState(){
@@ -998,13 +1021,18 @@ function removeRecipeFromShoppingList(r){
   addLog("shopping_remove", `Usunięto z listy zakupów: ${r.name}`);
 }
 
-function recipeCard(r){
+function recipeCard(r, onChange){
   const card = document.createElement("div");
   card.className = "card";
   const fav = !!state.favorites[r.id];
   const added = !!state.recipeAdded[r.id];
-  const cookDates = state.cooked[r.id] || [];
-  const lastCooked = cookDates.length ? formatDatePl(cookDates[cookDates.length-1]) : null;
+  const cookEntries = state.cooked[r.id] || [];
+  const lastCooked = cookEntries.length ? formatDatePl(cookEntries[cookEntries.length-1].date) : null;
+  const refreshAll = ()=>{
+    renderRecipes();
+    renderShop();
+    if(onChange) onChange();
+  };
   card.innerHTML = `
     <div class="card-head">
       <h3 class="recipe-title" data-search="${r.name}">${r.name}</h3>
@@ -1023,7 +1051,7 @@ function recipeCard(r){
     <p class="method">${r.method}</p>
     <div class="card-actions">
       <button class="add-btn ${added?'on':''}" data-add="${r.id}">${added?'✓ Na liście zakupów':'🛒 Dodaj do listy zakupów'}</button>
-      <button class="plan-btn" data-cook="${r.id}" title="Kliknij: odejmij ze spiżarni. Przytrzymaj: historia">✅ Zrobione${cookDates.length?` (${cookDates.length}×)`:""}</button>
+      <button class="plan-btn" data-cook="${r.id}" title="Kliknij: odejmij ze spiżarni. Przytrzymaj: historia i oceny" style="-webkit-user-select:none; user-select:none; touch-action:manipulation;">✅ Zrobione${cookEntries.length?` (${cookEntries.length}×)`:""}</button>
     </div>
   `;
   card.addEventListener("click", ()=> openPantryModal(r));
@@ -1037,13 +1065,13 @@ function recipeCard(r){
       e.stopPropagation();
       const k = btn.dataset.ing;
       state.favIngredients[k] = !state.favIngredients[k];
-      saveState(); renderRecipes();
+      saveState(); refreshAll();
     });
   });
   card.querySelector("[data-fav]").addEventListener("click", (e)=>{
     e.stopPropagation();
     state.favorites[r.id] = !state.favorites[r.id];
-    saveState(); renderRecipes();
+    saveState(); refreshAll();
   });
   card.querySelector("[data-add]").addEventListener("click", (e)=>{
     e.stopPropagation();
@@ -1054,30 +1082,32 @@ function recipeCard(r){
       addRecipeToShoppingList(r);
       toast("Dodano składniki do listy zakupów");
     }
-    saveState(); renderRecipes();
+    saveState(); refreshAll();
   });
   const cookBtn = card.querySelector("[data-cook]");
   let cookPressTimer = null, cookLongFired = false;
   const startCookPress = (e)=>{
     e.stopPropagation();
+    if(e.cancelable) e.preventDefault();
     cookLongFired = false;
     cookPressTimer = setTimeout(()=>{
       cookLongFired = true;
-      showCookHistory(r);
+      openCookHistoryModal(r, refreshAll);
     }, 550);
   };
   const cancelCookPress = ()=>{ clearTimeout(cookPressTimer); };
   cookBtn.addEventListener("pointerdown", startCookPress);
   cookBtn.addEventListener("pointerup", cancelCookPress);
   cookBtn.addEventListener("pointerleave", cancelCookPress);
+  cookBtn.addEventListener("contextmenu", (e)=> e.preventDefault());
   cookBtn.addEventListener("click", (e)=>{
     e.stopPropagation();
     if(cookLongFired){ cookLongFired = false; return; }
     if(!confirm(`Odjąć składniki „${r.name}" ze spiżarni jako zużyte?`)) return;
     subtractRecipeFromPantry(r);
     state.cooked[r.id] = state.cooked[r.id] || [];
-    state.cooked[r.id].push(new Date().toISOString());
-    saveState(); renderPantry(); renderShop(); renderRecipes();
+    state.cooked[r.id].push({date:new Date().toISOString(), rating:null});
+    saveState(); renderPantry(); refreshAll();
     toast("Odjęto składniki ze spiżarni");
   });
   return card;
@@ -1086,12 +1116,58 @@ function formatDatePl(iso){
   const d = new Date(iso);
   return d.toLocaleDateString('pl-PL', {day:'2-digit', month:'2-digit', year:'numeric'});
 }
-function showCookHistory(r){
-  const dates = state.cooked[r.id] || [];
-  if(dates.length===0){ alert(`„${r.name}" — jeszcze nie oznaczone jako zrobione.`); return; }
-  const lines = dates.slice().reverse().map(d=> "- " + formatDatePl(d) + " " + new Date(d).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'}));
-  alert(`„${r.name}" — zrobione ${dates.length}× \n\n` + lines.join("\n"));
+function openCookHistoryModal(r, onChange){
+  document.getElementById("cookHistoryTitle").textContent = r.name;
+  renderCookHistoryBody(r, onChange);
+  document.getElementById("cookHistoryOverlay").classList.add("show");
 }
+function renderCookHistoryBody(r, onChange){
+  const entries = state.cooked[r.id] || [];
+  const body = document.getElementById("cookHistoryBody");
+  body.innerHTML = "";
+  if(entries.length===0){
+    body.innerHTML = `<div class="empty">Jeszcze nie oznaczone jako zrobione.</div>`;
+    return;
+  }
+  const rated = entries.filter(e=>e.rating);
+  const avg = rated.length ? (rated.reduce((s,e)=>s+e.rating,0)/rated.length).toFixed(1) : null;
+  const summary = document.createElement("div");
+  summary.className = "hint-text";
+  summary.style.margin = "0 0 10px";
+  summary.textContent = `Zrobione ${entries.length}×` + (avg ? ` · średnia ocena ${avg}★` : "");
+  body.appendChild(summary);
+  entries.forEach((entry, idx)=>{
+    const row = document.createElement("div");
+    row.className = "cook-history-row";
+    const stars = [1,2,3,4,5].map(n=>`<span class="star-pick" data-n="${n}">${(entry.rating||0)>=n?'★':'☆'}</span>`).join("");
+    row.innerHTML = `
+      <div class="ch-date">${formatDatePl(entry.date)}<br><span class="ch-time">${new Date(entry.date).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})}</span></div>
+      <div class="ch-stars">${stars}</div>
+      <button class="ch-del" title="Usuń wpis">✕</button>
+    `;
+    row.querySelectorAll(".star-pick").forEach(starEl=>{
+      starEl.addEventListener("click", ()=>{
+        const n = parseInt(starEl.dataset.n, 10);
+        entry.rating = (entry.rating === n) ? null : n;
+        saveState();
+        renderCookHistoryBody(r, onChange);
+        if(onChange) onChange();
+      });
+    });
+    row.querySelector(".ch-del").addEventListener("click", ()=>{
+      if(!confirm("Usunąć ten wpis o zrobieniu dania? (np. jeśli kliknięto przypadkiem)")) return;
+      state.cooked[r.id].splice(idx,1);
+      saveState();
+      renderCookHistoryBody(r, onChange);
+      if(onChange) onChange();
+    });
+    body.appendChild(row);
+  });
+}
+document.getElementById("cookHistoryClose").addEventListener("click", ()=> document.getElementById("cookHistoryOverlay").classList.remove("show"));
+document.getElementById("cookHistoryOverlay").addEventListener("click", (e)=>{
+  if(e.target===document.getElementById("cookHistoryOverlay")) e.target.classList.remove("show");
+});
 
 function renderRecipes(){
   const list = document.getElementById("recipeList");
@@ -1507,14 +1583,32 @@ function openTileAction(canonName, catLabel){
   }
   const delBtn = document.createElement("button");
   delBtn.className = "btn ghost";
-  delBtn.style.cssText = "width:100%; color:var(--danger); border-color:var(--danger);";
-  delBtn.textContent = "🗑️ Usuń śledzenie tego produktu";
+  delBtn.style.cssText = "width:100%; color:var(--danger); border-color:var(--danger); margin-bottom:8px;";
+  delBtn.textContent = "🗑️ Usuń śledzenie (wyzeruj stan)";
   delBtn.addEventListener("click", ()=>{
     resetTile(canonName);
     document.getElementById("tileActionOverlay").classList.remove("show");
     renderPantry(); renderShop(); renderRecipes();
   });
   body.appendChild(delBtn);
+  if(state.customTiles[canonName]){
+    const delTileBtn = document.createElement("button");
+    delTileBtn.className = "btn ghost";
+    delTileBtn.style.cssText = "width:100%; color:var(--danger); border-color:var(--danger);";
+    delTileBtn.textContent = "❌ Usuń ten kafelek na stałe (zła kategoria / literówka)";
+    delTileBtn.addEventListener("click", ()=>{
+      if(!confirm("Usunąć ten własny produkt całkowicie? Będziesz mógł dodać go ponownie, poprawnie, przez kafelek „Dodaj własny”.")) return;
+      addLog("pantry_delete", `Usunięto na stałe własny kafelek: ${canonName}`);
+      delete state.pantry[canonName];
+      delete state.customTiles[canonName];
+      delete state.pantryUnitOverride[canonName];
+      saveState();
+      document.getElementById("tileActionOverlay").classList.remove("show");
+      renderPantry(); renderShop(); renderRecipes();
+      toast("Usunięto kafelek");
+    });
+    body.appendChild(delTileBtn);
+  }
   document.getElementById("tileActionOverlay").classList.add("show");
 }
 function showUnitPicker(canonName){
@@ -1602,26 +1696,39 @@ function openPantryModal(r){
     const inPantry = !!state.pantry[canon];
     const row = document.createElement("div");
     row.className = "modal-ing-row";
-    row.innerHTML = `<span>${ing}</span><button class="modal-ing-btn ${inPantry?'on':''}" data-canon="${canon}">${inPantry?'✓ Mam':'+ Mam to'}</button>`;
-    row.querySelector("button").addEventListener("click", (e)=>{
-      const btn = e.currentTarget;
-      const c = btn.dataset.canon;
-      if(state.pantry[c]){
-        delete state.pantry[c];
+    const stockSpan = document.createElement("span");
+    stockSpan.className = "pantry-tag";
+    const renderStock = ()=>{
+      const entry = state.pantry[canon];
+      stockSpan.textContent = entry ? "🏺 " + describePantryEntry(entry) : "";
+      stockSpan.style.display = entry ? "inline-block" : "none";
+    };
+    row.innerHTML = `<span>${ing}</span>`;
+    row.appendChild(stockSpan);
+    renderStock();
+    const btn = document.createElement("button");
+    btn.className = "modal-ing-btn" + (inPantry ? " on" : "");
+    btn.textContent = inPantry ? "✓ Mam" : "+ Mam to";
+    btn.addEventListener("click", ()=>{
+      if(state.pantry[canon]){
+        delete state.pantry[canon];
         btn.classList.remove("on"); btn.textContent = "+ Mam to";
-        addLog("pantry_delete", `Usunięto ze spiżarni: ${c}`);
+        addLog("pantry_delete", `Usunięto ze spiżarni: ${canon}`);
       }else{
-        const unitCat = TILE_UNIT_CAT[c] || p.unitCat || "count";
+        const unitCat = TILE_UNIT_CAT[canon] || p.unitCat || "count";
         if(info.cat === "Przyprawy"){
-          state.pantry[c] = {label:c, cat:info.cat, type:"spice", level:"Wystarczy"};
+          state.pantry[canon] = {label:canon, cat:info.cat, type:"spice", level:"Wystarczy"};
         }else{
-          state.pantry[c] = {label:c, cat:info.cat, type:"product", qty: tileStep(unitCat), unitCat};
+          state.pantry[canon] = {label:canon, cat:info.cat, type:"product", qty: tileStep(unitCat), unitCat};
         }
         btn.classList.add("on"); btn.textContent = "✓ Mam";
-        addLog("pantry_add", `Dodano do spiżarni: ${c}`);
+        addLog("pantry_add", `Dodano do spiżarni: ${canon}`);
       }
       saveState();
+      renderStock();
+      renderShop();
     });
+    row.appendChild(btn);
     list.appendChild(row);
   });
   modalOverlay.classList.add("show");
@@ -1729,7 +1836,7 @@ function openPlannerDetailModal(day, cat, recipeId){
   changeBtn.textContent = "🔁 Wybierz inne danie z listy";
   changeBtn.addEventListener("click", ()=> openPlannerPickerModal(day, cat));
   list.appendChild(changeBtn);
-  list.appendChild(recipeCard(r));
+  list.appendChild(recipeCard(r, ()=> openPlannerDetailModal(day, cat, recipeId)));
   plannerModalOverlay.classList.add("show");
 }
 function openPlannerPickerModal(day, cat){
@@ -1780,7 +1887,7 @@ function openPlannerPreview(day, cat, recipeId){
     openPlannerDetailModal(day, cat, r.id);
   });
   list.appendChild(chooseBtn);
-  list.appendChild(recipeCard(r));
+  list.appendChild(recipeCard(r, ()=> openPlannerPreview(day, cat, recipeId)));
 }
 document.getElementById("plannerModalClose").addEventListener("click", ()=> plannerModalOverlay.classList.remove("show"));
 plannerModalOverlay.addEventListener("click", (e)=>{ if(e.target===plannerModalOverlay) plannerModalOverlay.classList.remove("show"); });
@@ -1799,10 +1906,13 @@ function renderWater(){
     cup.addEventListener("click", ()=>{
       state.water.count = (state.water.count === i+1) ? i : i+1;
       saveState(); renderWater();
+      refreshWaterNotification();
     });
     row.appendChild(cup);
   }
   document.getElementById("waterLabel").textContent = state.water.count + " / 8 szklanek (~" + (state.water.count*250) + " ml z 2000 ml celu)";
+  const btn = document.getElementById("enableWaterNotifBtn");
+  if(btn) btn.textContent = state.waterNotifEnabled ? "🔔 Powiadomienie włączone (stuknij, by wyłączyć)" : "🔔 Włącz szybkie dodawanie z powiadomienia";
 }
 
 let weightChartInstance = null;
@@ -1938,12 +2048,109 @@ function renderTodayTracker(){
   box.appendChild(info);
 }
 
+// ---------- WATER NOTIFICATION (IndexedDB bridge to service worker) ----------
+const WATER_DB_NAME = "dieta-water-db";
+function openWaterDBApp(){
+  return new Promise((resolve,reject)=>{
+    if(!("indexedDB" in window)){ reject(new Error("no idb")); return; }
+    const req = indexedDB.open(WATER_DB_NAME, 1);
+    req.onupgradeneeded = ()=>{ req.result.createObjectStore("kv"); };
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function getWaterKV(key){
+  try{
+    const db = await openWaterDBApp();
+    return await new Promise((resolve)=>{
+      const tx = db.transaction("kv","readonly");
+      const req = tx.objectStore("kv").get(key);
+      req.onsuccess = ()=> resolve(req.result);
+      req.onerror = ()=> resolve(undefined);
+    });
+  }catch(e){ return undefined; }
+}
+async function setWaterKV(key, val){
+  try{
+    const db = await openWaterDBApp();
+    await new Promise((resolve)=>{
+      const tx = db.transaction("kv","readwrite");
+      tx.objectStore("kv").put(val, key);
+      tx.oncomplete = ()=> resolve();
+      tx.onerror = ()=> resolve();
+    });
+  }catch(e){}
+}
+async function refreshWaterNotification(){
+  if(!state.waterNotifEnabled) return;
+  if(!("serviceWorker" in navigator) || Notification.permission!=="granted") return;
+  try{
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification("💧 Nawodnienie", {
+      body: `Wypito dziś: ${state.water.count} / 8 szklanek`,
+      tag: "water-tracker",
+      silent: true,
+      actions: [{action:"add-water", title:"+1 szklanka 💧"}],
+      icon: "icon-192.png"
+    });
+    await setWaterKV("waterDate", todayStr());
+    await setWaterKV("pendingWater", state.water.count);
+  }catch(e){}
+}
+async function enableWaterNotification(){
+  if(state.waterNotifEnabled){
+    state.waterNotifEnabled = false;
+    saveState();
+    if("serviceWorker" in navigator){
+      try{ const reg = await navigator.serviceWorker.ready; const n = await reg.getNotifications({tag:"water-tracker"}); n.forEach(x=>x.close()); }catch(e){}
+    }
+    renderWater();
+    toast("Powiadomienie wyłączone");
+    return;
+  }
+  if(!("Notification" in window) || !("serviceWorker" in navigator)){
+    toast("Powiadomienia nie są wspierane w tej przeglądarce");
+    return;
+  }
+  const perm = await Notification.requestPermission();
+  if(perm !== "granted"){ toast("Brak zgody na powiadomienia"); return; }
+  state.waterNotifEnabled = true;
+  saveState();
+  renderWater();
+  await refreshWaterNotification();
+  toast("Włączono — stuknij „+1 szklanka” w powiadomieniu");
+}
+async function syncPendingWaterFromNotifications(){
+  const today = todayStr();
+  const storedDate = await getWaterKV("waterDate");
+  const pending = await getWaterKV("pendingWater");
+  if(storedDate === today && typeof pending === "number"){
+    if(state.water.date !== today){ state.water = {date:today, count:0}; }
+    state.water.count = Math.min(8, Math.max(state.water.count, pending));
+    saveState();
+    renderWater();
+  }
+}
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.addEventListener("message", (event)=>{
+    if(event.data && event.data.type === "water-add"){
+      const today = todayStr();
+      if(state.water.date !== today){ state.water = {date:today, count:0}; }
+      state.water.count = Math.min(8, event.data.count);
+      saveState();
+      renderWater();
+    }
+  });
+}
+document.getElementById("enableWaterNotifBtn").addEventListener("click", enableWaterNotification);
+
 // ---------- INIT ----------
 TILE_UNIT_CAT = computeTileUnitCats();
 renderHeader();
 renderPills();
 renderRecipes();
 if(typeof lucide !== "undefined") lucide.createIcons();
+syncPendingWaterFromNotifications();
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
