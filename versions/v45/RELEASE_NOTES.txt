@@ -1,0 +1,54 @@
+Wersja 45
+=========
+
+Duża tura poprawek UX zgłoszonych przez użytkownika oraz gruntowny przegląd
+wizualny aplikacji inspirowany stylistyką Windows 11 i klasycznych kafelków
+Windows (Metro).
+
+Poprawki błędów:
+- Naprawiono prawdziwą przyczynę ponownego rozwijania się nagłówka po
+  zamknięciu okienka z legendą makroskładników/IG przyciskiem "X". Poprzednia
+  poprawka (blokada przewijania tła) adresowała inny, poboczny scenariusz —
+  tym razem namierzono właściwy mechanizm: zamknięcie modala przyciskiem X
+  cofa historię przeglądarki (history.back()), co po drodze wywoływało też
+  reset stanu zwinięcia nagłówka. Dodano flagę pomijającą to zbędne
+  przełączenie widoku.
+- Przycisk "Sprawdź stan spiżarni" na karcie przepisu wygląda i zachowuje się
+  teraz jak prawdziwy przycisk (obramowanie, tło, większy obszar kliknięcia)
+  zamiast trudnego do trafienia samego napisu.
+
+Nagłówek:
+- Usunięto osobny, oprawiony w kwadratowy przycisk mechanizm
+  zwijania/rozwijania nagłówka — zastąpiono go subtelną strzałeczką przy
+  nazwie aplikacji, która obraca się w zależności od stanu.
+- Zamieniono kolejność pozostałych przycisków w nagłówku (ustawienia i
+  szybkie dodawanie).
+
+Ocenianie przepisów (swipe):
+- Duży napis "Podoba się to dla mnie!" / "Nie podoba się to dla mnie!" stoi
+  teraz nieruchomo na środku ekranu podczas przeciągania karty — to karta
+  przesuwa się pod spodem, a nie napis razem z nią.
+- Litery napisu są teraz bardziej "pękate" — grubszy balonowy kontur i
+  mocniejszy cień nadają im pełniejszy, bardziej trójwymiarowy kształt.
+
+Lista zakupów:
+- Dodano mini kalendarzyk bieżącego tygodnia nad listą zakupów. Przy każdym
+  dniu tygodnia widoczny jest pierścień, który wypełnia się proporcjonalnie
+  do tego, ile zaplanowanych na ten dzień posiłków trafiło już na listę
+  zakupów (np. 2 z 4 zaplanowanych dań na liście = pierścień wypełniony w
+  połowie). Bieżący dzień jest dodatkowo wyróżniony.
+
+Spiżarnia:
+- Kafelki produktów rozciągają się teraz na pełną szerokość ekranu w równej
+  siatce, zamiast układać się luźno z nierówną przerwą na końcu wiersza.
+
+Nowe motywy wizualne i ogólny redesign:
+- Dodano motyw "Fluent" inspirowany Windows 11 — stonowana szarość i
+  stłumiony niebiesko-fioletowy akcent, płynne, spowalniające przejścia.
+- Dodano motyw "Kafelki" inspirowany klasycznym interfejsem kafelkowym
+  Windows (Metro) — mocne, nasycone barwy, płaskie karty z ostrymi rogami i
+  kolorowym paskiem akcentu, szybkie, mechaniczne przejścia — dla
+  autentycznego, a nie tylko kolorystycznego, nawiązania do tego stylu.
+- Delikatnie zaokrąglono wszystkie przyciski w całej aplikacji (12→16px),
+  co ujednolica bardziej "prestiżowy" i nowoczesny wygląd we wszystkich
+  motywach, nie tylko nowych.
