@@ -1,0 +1,85 @@
+Wersja 29
+=========
+
+Duża tura poprawek po kolejnej rundzie testów, plus nowa, piąta pora posiłku.
+
+1. Nagłówek — domyślnie schowany wszędzie poza Przepisami
+   Zmieniono domyślne zachowanie: na każdej karcie poza Przepisami nagłówek
+   jest teraz domyślnie zwinięty (schowany), a nie rozwinięty jak wcześniej.
+   Tylko na Przepisach nadal wysuwa się automatycznie przy przewijaniu w
+   górę i chowa przy przewijaniu w dół — tak jak dotychczas. Dodatkowo: gdy
+   sam zwiniesz nagłówek na Przepisach, nie będzie się już sam rozwijał przy
+   przewijaniu, dopóki ręcznie go nie rozwiniesz przyciskiem — Twoja
+   decyzja się teraz "trzyma", zamiast być cofana przez przewijanie do góry.
+
+2. Naprawiono "miganie" złego profilu przy odświeżaniu strony
+   Przy odświeżeniu strony przez ułamek sekundy w nagłówku pojawiały się
+   domyślne dane "Kobieta, 37 lat..." zanim załadowały się prawdziwe dane
+   profilu. Usunięto sztywno wpisany domyślny tekst ze statycznego HTML —
+   teraz nic błędnego się nie pojawia przed wczytaniem właściwych danych.
+
+3. "Zrobione" na karcie przepisu — okienko od razu po kliknięciu
+   Wcześniej trzeba było przytrzymać przycisk "Zrobione", żeby zobaczyć
+   historię/oceny — zwykłe kliknięcie od razu oznaczało danie jako zrobione
+   (bez możliwości cofnięcia się z tej decyzji). Teraz zwykłe kliknięcie
+   zawsze najpierw otwiera okienko (z historią i ocenami), a w środku jest
+   wyraźny przycisk "✅ Zrobione dzisiaj" do faktycznego oznaczenia — mniej
+   przypadkowych, niezamierzonych oznaczeń.
+
+4. "Zaplanuj" — można wybrać inną porę dnia, nie tylko dzień
+   W oknie planowania dania (przycisk "📅 Zaplanuj" na karcie przepisu)
+   pojawił się wybór pory posiłku (Śniadanie / II Śniadanie / Obiad /
+   Kolacja / Deser), domyślnie ustawiony na własną porę dania, ale możliwy
+   do zmiany — np. żeby zaplanować danie obiadowe na śniadanie, jeśli tak
+   Ci pasuje. Porcja automatycznie dopasowuje się do celu kalorycznego tej
+   nowej pory.
+
+5. Spiżarnia — bez przypadkowego zaznaczania tekstu, zmiana kategorii
+   Przytrzymanie kafelka w Spiżarni nie zaznacza już tekstu (nie pojawia
+   się menu "kopiuj/zaznacz" telefonu). W okienku po przytrzymaniu kafelka
+   doszła nowa opcja "🗂️ Zmień kategorię" — przydatna, gdy produkt trafił
+   nie tam, gdzie trzeba (np. coś zapisało się jako "Inne" zamiast
+   "Warzywa"). Zmiana kategorii zeruje stan śledzenia tego produktu (tak
+   jak zmiana jednostki) — dodajesz go ponownie kliknięciem w nowym miejscu.
+
+6. Polska odmiana nazw produktów w Spiżarni i na Liście zakupów
+   Nazwy produktów były czasem w złym przypadku gramatycznym (np. "dżemu"
+   zamiast "dżem" w Spiżarni, bo tak było zapisane w przepisie) albo nie
+   odmieniały się przez liczbę (zawsze "jajka", niezależnie od tego, czy
+   masz 1, 2 czy 5 jajek). Naprawione:
+   - Przejrzano wszystkie składniki wszystkich przepisów (audyt
+     automatyczny) i poprawiono każdą nazwę produktu, która trafiała do
+     Spiżarni w złej formie (m.in. dżem, chleb pszenny, bułka pszenna,
+     płatki kukurydziane, makaron pszenny, kasza kuskus i kilkanaście
+     innych literówek/form gramatycznych).
+   - Dla produktów liczonych sztukowo (jajka, warzywa, owoce — 32 pozycje)
+     dodano poprawną polską odmianę zależną od ilości: 1 jajko, 2-4 jajka,
+     5+ jajek — widoczne zarówno na kafelku w Spiżarni, jak i na Liście
+     zakupów.
+
+7. Piąta pora posiłku: Deser / Przekąska
+   Odpowiedź na "5 posiłków dziennie" — doszła piąta, w pełni obsługiwana
+   pora posiłku w Planerze, na Liście zakupów i w nagłówku, z 16 nowymi
+   przepisami (jogurty i skyr bez laktozy z owocami, kulki mocy, pieczone
+   jabłko, domowe batoniki, chia pudding, mus bananowo-kakaowy i inne —
+   wszystkie bez laktozy i bez glutenu). To piąty slot obok istniejących
+   czterech, nie przełącznik włącz/wyłącz: jeśli go nie zaplanujesz,
+   zostaje po prostu pusty i nic się nie zmienia w Twoim dotychczasowym
+   rytmie 4 posiłków — dokładnie tak samo, jak puste miejsce w dowolnej
+   innej porze. Dzienny cel kaloryczny rozdzielono na nowo między 5 pór
+   (deser dostaje ok. 7% dziennych kalorii, pozostałe pory są odpowiednio
+   mniejsze niż wcześniej — łączny dzienny cel się nie zmienia).
+   Przy okazji: znaleziono i naprawiono błąd, który ujawniłby się dopiero
+   przy korzystaniu z nowej, piątej pory — generator losowego planu
+   tygodniowego miał na sztywno wpisane cztery pory posiłków w liczniku
+   rotacji dań, więc piąta pora spowodowałaby błąd przy losowaniu planu.
+
+Przetestowane w headless Chromium: pełny przegląd funkcjonalny wszystkich
+zakładek (0 błędów JS) oraz osobne testy każdej zmiany — zachowanie
+nagłówka (domyślnie schowany/rozwinięty, zamrożenie po ręcznym zwinięciu),
+przycisk "Zrobione" otwierający okienko, wybór innej pory w oknie
+"Zaplanuj", blokada zaznaczania tekstu i zmiana kategorii w Spiżarni,
+poprawność odmiany nazw (m.in. "jajko/jajka/jajek" dla 1/2/5 sztuk),
+generator planu tygodniowego z piątą porą (wszystkie 7 dni poprawnie
+wypełnione, bez błędu), zgodność wszystkich 16 nowych przepisów z filtrami
+"bez glutenu"/"bez laktozy".
