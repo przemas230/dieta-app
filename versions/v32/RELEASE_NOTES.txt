@@ -1,0 +1,7 @@
+Wersja 32
+=========
+
+Samo podbicie wersji cache Service Workera (dieta-app-v22), bez zmian w
+kodzie aplikacji — żeby suwak skalowania i rozpoznawanie przekąsek z
+wersji 31 na pewno dotarły przy najbliższym otwarciu aplikacji. Ten sam
+powód co przy wersjach 28 i 30.
