@@ -1,0 +1,8 @@
+Wersja 42
+=========
+
+Samo podbicie wersji cache Service Workera (dieta-app-v27), bez zmian w
+kodzie aplikacji — żeby zmiany z wersji 41 (nowy styl balonowej czcionki,
+odmiana na liście zakupów, przyciski dni, wyśrodkowane okienka, warunkowe
+zasady Hashimoto) dotarły przy najbliższym otwarciu aplikacji. Ten sam
+powód co przy wersjach 28, 30, 32, 34, 36, 38 i 40.
