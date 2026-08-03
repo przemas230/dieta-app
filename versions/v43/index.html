@@ -590,7 +590,7 @@
     box-shadow:0 -8px 40px rgba(0,0,0,.16);
   }
   .modal-sheet.center-sheet{
-    border-radius:20px; max-width:600px; box-shadow:0 20px 60px rgba(0,0,0,.22);
+    border-radius:20px; max-width:340px; box-shadow:0 20px 60px rgba(0,0,0,.22);
     /* Was max-height:none — fine for the short confirm dialogs this class
        was built for, but a real bug for longer content (e.g. the macro-info
        breakdown): centered inside a fixed, non-scrolling overlay, an
@@ -2704,13 +2704,13 @@ function attachSwipeRating(card, r, refreshBadge){
           card.style.borderColor = `rgba(60,170,110,${(0.3+0.6*intensity).toFixed(2)})`;
           card.style.boxShadow = `0 0 0 2px rgba(60,170,110,${(0.12*intensity).toFixed(2)}), 0 14px 30px rgba(60,170,110,${(0.22*intensity).toFixed(2)})`;
         }
-        setLabel("Podoba się to dla mnie!", "like", intensity.toFixed(2));
+        setLabel("Lubię to!", "like", intensity.toFixed(2));
       }else if(dx < -4){
         if(useGlow){
           card.style.borderColor = `rgba(190,70,60,${(0.3+0.6*intensity).toFixed(2)})`;
           card.style.boxShadow = `0 0 0 2px rgba(190,70,60,${(0.12*intensity).toFixed(2)}), 0 14px 30px rgba(190,70,60,${(0.22*intensity).toFixed(2)})`;
         }
-        setLabel("Nie podoba się to dla mnie!", "dislike", intensity.toFixed(2));
+        setLabel("Nie lubię!", "dislike", intensity.toFixed(2));
       }else{
         clearDragStyle();
         setLabel("", "", 0);

@@ -70,7 +70,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-45: Ręczne zwijanie/rozwijanie nagłówka ma pierwszeństwo nad automatyką](#fr-45-ręczne-zwijanierozwijanie-nagłówka-ma-pierwszeństwo-nad-automatyką)
 - [FR-46: Zabezpieczenie przed przypadkowym zamknięciem aplikacji (Android „Wstecz”)](#fr-46-zabezpieczenie-przed-przypadkowym-zamknięciem-aplikacji-android-wstecz)
 - [FR-47: Brak migotania (FOUC) domyślnych danych profilu przy odświeżeniu](#fr-47-brak-migotania-fouc-domyślnych-danych-profilu-przy-odświeżeniu)
-- [FR-59: Wyśrodkowane okienka modalne](#fr-59-wyśrodkowane-okienka-modalne)
+- [FR-59: Wyśrodkowane okienka modalne, na pełną dostępną szerokość](#fr-59-wyśrodkowane-okienka-modalne-na-pełną-dostępną-szerokość)
 
 ### Wygląd i motywy
 - [FR-48: Wybór motywu kolorystycznego aplikacji](#fr-48-wybór-motywu-kolorystycznego-aplikacji)
@@ -997,7 +997,7 @@ Na liście przepisów kartę można przesunąć w prawo (❤️ „lubię”) lu
 **Status:** Zaimplementowane
 
 ## Opis
-Podczas przesuwania karty w trakcie oceniania (FR-55), na środku karty pojawia się rosnący wraz z siłą przesunięcia napis „Lubię to!” albo „Nie lubię!”, w dużej, zaokrąglonej czcionce z efektem liter jak z cienkiego, skręcanego balonu (baloniki do zwierzątek): gruby kolorowy kontur niosący kształt litery, jasny pastelowy wypełniacz, jasna smuga u góry i cień u dołu budujące wrażenie okrągłej, napompowanej rurki. Napis znika po puszczeniu karty. Domyślnie sama karta NIE zmienia koloru/obramowania podczas przesuwania — feedback wizualny niesie wyłącznie napis (patrz FR-61: styl można zmienić w Ustawieniach).
+Podczas przesuwania karty w trakcie oceniania (FR-55), na środku karty pojawia się rosnący wraz z siłą przesunięcia napis „Podoba się to dla mnie!” albo „Nie podoba się to dla mnie!”, w dużej, zaokrąglonej czcionce z efektem liter jak z cienkiego, skręcanego balonu (baloniki do zwierzątek): gruby kolorowy kontur niosący kształt litery, jasny pastelowy wypełniacz, jasna smuga u góry i cień u dołu budujące wrażenie okrągłej, napompowanej rurki. Napis znika po puszczeniu karty. Domyślnie sama karta NIE zmienia koloru/obramowania podczas przesuwania — feedback wizualny niesie wyłącznie napis (patrz FR-61: styl można zmienić w Ustawieniach).
 
 ## Kryteria akceptacji
 - Rozmiar napisu rośnie proporcjonalnie do siły przesunięcia (od ok. 70% do 120% skali bazowej).
@@ -1006,12 +1006,15 @@ Podczas przesuwania karty w trakcie oceniania (FR-55), na środku karty pojawia 
 - Alternatywny styl „Kolorowa karta” (wybierany w Ustawieniach, patrz FR-61) przywraca klasyczne kolorowe obramowanie/poświatę karty podczas przesuwania, niezależnie od napisu.
 
 ## Uwagi
-Zrewidowane 2026-08-03 (v2): pierwsza wersja używała zwykłego pogrubionego tekstu z gradientowym wypełnieniem w jednolitym kolorze i ZAWSZE tintowała też całą kartę na zielono/czerwono. Na prośbę użytkownika: (1) zmieniono treść napisów na „Lubię to!”/„Nie lubię!”, (2) przeprojektowano wygląd liter na bardziej dosłowny efekt „balonika-zwierzątka” (gruby kontur + jasny cienki wypełniacz zamiast jednolitego gradientu), (3) tintowanie całej karty przeniesiono do osobnego, opcjonalnego stylu wybieranego w Ustawieniach (FR-61), a nowym domyślnym zachowaniem jest sam napis bez kolorowania karty.
+Zrewidowane 2026-08-03 (v2): pierwsza wersja używała zwykłego pogrubionego tekstu z gradientowym wypełnieniem w jednolitym kolorze i ZAWSZE tintowała też całą kartę na zielono/czerwono. Na prośbę użytkownika: (1) zmieniono treść napisów, (2) przeprojektowano wygląd liter na bardziej dosłowny efekt „balonika-zwierzątka” (gruby kontur + jasny cienki wypełniacz zamiast jednolitego gradientu), (3) tintowanie całej karty przeniesiono do osobnego, opcjonalnego stylu wybieranego w Ustawieniach (FR-61), a nowym domyślnym zachowaniem jest sam napis bez kolorowania karty.
+
+Zrewidowane 2026-08-03 (v3, treść napisów): pierwsza poprawka (v3 poniżej) zmieniła treść na „Lubię to!”/„Nie lubię!” — to nie było tym, o co prosił użytkownik. Poprawiono na dokładnie zgłoszoną treść: „Podoba się to dla mnie!” / „Nie podoba się to dla mnie!”.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-03): Doprecyzowano zachowanie na podstawie zgłoszonej poprawki — patrz sekcja "Uwagi" powyżej.
-- **v3** (2026-08-03): Zmieniono treść napisów, przeprojektowano na efekt "balonika-zwierzątka" i wydzielono tintowanie karty do osobnego, opcjonalnego stylu (FR-61) — patrz zaktualizowana sekcja "Uwagi".
+- **v3** (2026-08-03): Zmieniono treść napisów na „Lubię to!”/„Nie lubię!”, przeprojektowano na efekt "balonika-zwierzątka" i wydzielono tintowanie karty do osobnego, opcjonalnego stylu (FR-61).
+- **v4** (2026-08-03): Treść napisów poprawiona na dokładnie zgłoszoną wersję „Podoba się to dla mnie!”/„Nie podoba się to dla mnie!”, po tym jak v3 nie trafiła w to, o co prosił użytkownik — patrz zaktualizowana sekcja "Uwagi".
 ---
 
 # FR-57: Trwałe oznaczenie oceny i ranking sort
@@ -1047,24 +1050,26 @@ Zakładka Zakupy pokazuje, obok istniejącego przycisku dodania składników z c
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie polecenia użytkownika.
 ---
 
-# FR-59: Wyśrodkowane okienka modalne
+# FR-59: Wyśrodkowane okienka modalne, na pełną dostępną szerokość
 
 **Obszar:** Nagłówek i nawigacja  
 **Status:** Zaimplementowane
 
 ## Opis
-Wszystkie okienka modalne w aplikacji wyświetlają się jako wyśrodkowana na ekranie karta (`modal-overlay center` + `modal-sheet center-sheet`), a nie jako arkusz wysuwający się z dołu ekranu. Dotyczy to zarówno okienek, które od początku były wyśrodkowane (np. FR-12 „Skąd te liczby?”, FR-16 stan spiżarni, skaner kodów kreskowych), jak i pozostałych, które pierwotnie były arkuszem dolnym: wybór dania dla slotu Planera, „Pomysł na danie”, dodanie własnego produktu do spiżarni, akcje na kafelku spiżarni, historia gotowania dania.
+Wszystkie okienka modalne w aplikacji wyświetlają się jako wyśrodkowana na ekranie karta (`modal-overlay center` + `modal-sheet center-sheet`), a nie jako arkusz wysuwający się z dołu ekranu. Dotyczy to zarówno okienek, które od początku były wyśrodkowane (np. FR-12 „Skąd te liczby?”, FR-16 stan spiżarni, skaner kodów kreskowych), jak i pozostałych, które pierwotnie były arkuszem dolnym: wybór dania dla slotu Planera, „Pomysł na danie”, dodanie własnego produktu do spiżarni, akcje na kafelku spiżarni, historia gotowania dania. Wyśrodkowana karta wykorzystuje pełną dostępną szerokość ekranu (do 600px, z 16px marginesem od krawędzi z każdej strony), a nie sztywno wąski pasek na środku.
 
 ## Kryteria akceptacji
 - Każdy element `.modal-overlay` w aplikacji ma klasę `center`, a jego wewnętrzny `.modal-sheet` klasę `center-sheet`.
+- Szerokość okienka skaluje się z szerokością ekranu (margines tylko 16px z każdej strony), a nie jest ograniczona do wąskiego, stałego paska pozostawiającego duże puste marginesy po bokach.
 - Wyśrodkowane okienko ma ograniczoną wysokość (`max-height:82vh`) i przewija się wewnętrznie, jeśli treść jest dłuższa niż ekran — nie ucina treści bez możliwości dotarcia do niej.
 - Zamykanie (przycisk ✕, dotknięcie tła, systemowe „Wstecz” — FR-46) działa tak samo niezależnie od tego, że okienko jest teraz wyśrodkowane, nie przypięte do dołu.
 
 ## Uwagi
-Zrewidowane 2026-08-03: pierwotnie tylko część okienek (m.in. FR-12, FR-16, FR-19, quick-add) była wyśrodkowana — pozostałe (wybór dania do Planera, pomysł na danie, dodanie własnego produktu, akcje kafelka spiżarni, historia gotowania) wysuwały się z dołu ekranu jako arkusz. Na prośbę użytkownika ujednolicono wszystkie do stylu wyśrodkowanego jako wygodniejszego.
+Zrewidowane 2026-08-03 (v2): pierwotny limit szerokości wyśrodkowanych okienek (`max-width:340px`, dobrany dawniej pod krótkie okienka potwierdzeń) po ujednoliceniu wszystkich okienek do stylu wyśrodkowanego (v1 tej rewizji) okazał się zdecydowanie za wąski dla okienek z bogatszą treścią (np. wybór dania/dnia w Planerze) — zrzut ekranu użytkownika pokazał wyraźne puste marginesy po bokach. Podniesiono limit do 600px (ten sam, co szerokość treści reszty aplikacji), więc okienko realnie wykorzystuje niemal całą szerokość ekranu telefonu.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie polecenia użytkownika ujednolicenia stylu wszystkich okienek modalnych.
+- **v2** (2026-08-03): Poszerzono okienka do pełnej dostępnej szerokości ekranu — patrz sekcja "Uwagi".
 ---
 
 # FR-60: Warunkowe wyświetlanie „Złotych zasad przy Hashimoto i insulinooporności”
