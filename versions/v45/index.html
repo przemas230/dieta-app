@@ -230,54 +230,6 @@
     /* A little pop on the way in, like a photo sliding out of the camera. */
     --dur-fast:.18s; --dur-med:.3s; --ease:cubic-bezier(.22,1.4,.36,1);
   }
-  :root[data-theme="fluent"]{
-    --teal:#0F6CBD;
-    --teal-dark:#0A4A82;
-    --teal-pale:#E8F1FA;
-    --honey:#8764B8;
-    --honey-pale:#F1ECFA;
-    --honey-dark:#5C4189;
-    --plum:#5B8DB8;
-    --plum-pale:#EAF1F7;
-    --bg:#F3F3F3;
-    --card:#FFFFFF;
-    --text:#1B1B1B;
-    --muted:#5C5C5C;
-    --line:#E0E0E0;
-    --danger:#C42B1C;
-    --danger-pale:#FDE7E4;
-    --star-off:#D6D6D6;
-    --font-heading:"Manrope", -apple-system, sans-serif;
-    --font-body:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --font-mono:"IBM Plex Mono","SF Mono",monospace;
-    /* Fluent's signature "decelerate" curve — confident and smooth, settles
-       without any bounce or overshoot. */
-    --dur-fast:.16s; --dur-med:.28s; --ease:cubic-bezier(.16,1,.3,1);
-  }
-  :root[data-theme="metro"]{
-    --teal:#2D89EF;
-    --teal-dark:#1B5FAD;
-    --teal-pale:#E3EFFC;
-    --honey:#D80073;
-    --honey-pale:#FCE3EF;
-    --honey-dark:#9C0053;
-    --plum:#00ABA9;
-    --plum-pale:#E0F5F4;
-    --bg:#F0F0F0;
-    --card:#FFFFFF;
-    --text:#1D1D1D;
-    --muted:#6B6B6B;
-    --line:#DADADA;
-    --danger:#E51400;
-    --danger-pale:#FBE0DC;
-    --star-off:#D2D2D2;
-    --font-heading:"Work Sans", -apple-system, sans-serif;
-    --font-body:"Manrope",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --font-mono:"IBM Plex Mono","SF Mono",monospace;
-    /* Flat and immediate — no bounce, no lingering ease, mirroring how
-       Metro's live tiles used to flip and snap rather than glide. */
-    --dur-fast:.12s; --dur-med:.2s; --ease:cubic-bezier(.4,0,.2,1);
-  }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0; overflow-anchor:none;}
   body{
@@ -329,11 +281,6 @@
     display:flex; align-items:baseline; gap:8px; min-width:0; flex:1 1 auto;
   }
   header.app-top h1 .app-name{white-space:nowrap; flex:0 0 auto;}
-  header.app-top h1 .header-chevron{
-    display:inline-block; flex:0 0 auto; font-size:13px; line-height:1;
-    opacity:.6; transition:transform var(--dur-fast,.2s) var(--ease,ease);
-  }
-  header.app-top.collapsed h1 .header-chevron{ transform:rotate(180deg); }
   header.app-top h1 .header-profile-inline{
     font-size:11px; font-weight:500; opacity:.85; letter-spacing:0;
     white-space:nowrap; overflow-x:auto; min-width:0;
@@ -347,6 +294,11 @@
     background:rgba(255,255,255,.16); border:none; color:#fff; width:32px; height:32px; border-radius:10px;
     display:flex; align-items:center; justify-content:center; cursor:pointer; flex:0 0 auto;
   }
+  header.app-top .header-collapse-btn .chevron{
+    display:inline-block; font-size:13px; line-height:1;
+    transition:transform var(--dur-fast,.2s) var(--ease,ease);
+  }
+  header.app-top.collapsed .header-collapse-btn .chevron{ transform:rotate(180deg); }
   header.app-top .quick-add-btn{
     background:rgba(90,210,140,.32);
     transition:transform var(--dur-fast,.2s) var(--ease,ease), background var(--dur-fast,.2s) var(--ease,ease);
@@ -440,36 +392,33 @@
     transition:box-shadow var(--dur-med,.3s) var(--ease,ease), border-color var(--dur-med,.3s) var(--ease,ease);
   }
   .card.recipe-card:focus-visible{ outline:2px solid var(--teal); outline-offset:2px; }
-  /* Fixed to the viewport, not the card: the card slides underneath while
-     this stays put dead-center on screen — a single shared element (not one
-     per card) since only one card is ever being dragged at a time. */
-  .swipe-label-global{
-    position:fixed; top:50%; left:50%; z-index:70;
-    display:flex; align-items:center; justify-content:center;
-    pointer-events:none; opacity:0; width:min(92vw, 480px); text-align:center;
+  .swipe-label{
+    position:absolute; inset:6px; display:flex; align-items:center; justify-content:center;
+    pointer-events:none; opacity:0; z-index:6; border-radius:inherit;
     font-family:"Baloo 2","Quicksand",sans-serif; font-weight:800;
-    font-size:clamp(32px, 12vw, 56px); line-height:1.02; text-wrap:balance;
-    transform:translate(-50%, -50%) scale(var(--swipe-label-scale, .6));
+    font-size:clamp(26px, 8.5vw, 40px); line-height:1.05; text-align:center;
+    padding:0 10px; text-wrap:balance;
+    transform:scale(var(--swipe-label-scale, .7));
     transition:transform .05s linear;
   }
-  /* Balloon-animal letters: a thick, rounded tube outline carries the shape
-     (like the rubber wall of a chubby twisted party balloon) around a pale,
+  /* Balloon-animal letters: a thick colored tube outline carries the shape
+     (like the rubber wall of a twisted party balloon) around a pale,
      translucent-looking fill, with a bright highlight along the top edge
      and darker shading along the bottom to fake the roundness of an
      inflated tube — instead of a flat color filling the whole letter (which
      read as "the whole card going green/red", not as balloon lettering). */
-  .swipe-label-global.like, .swipe-label-global.dislike{
-    font-weight:800; letter-spacing:.5px;
-    -webkit-text-stroke:7px var(--balloon-stroke);
+  .swipe-label.like, .swipe-label.dislike{
+    font-weight:700; letter-spacing:.5px;
+    -webkit-text-stroke:4px var(--balloon-stroke);
     paint-order:stroke fill;
     color:var(--balloon-fill);
     text-shadow:
-      0 -3px 0 rgba(255,255,255,.7),
-      0 4px 3px rgba(0,0,0,.18);
-    filter:drop-shadow(0 8px 18px rgba(0,0,0,.25));
+      0 -2px 0 rgba(255,255,255,.65),
+      0 3px 2px rgba(0,0,0,.18);
+    filter:drop-shadow(0 6px 14px rgba(0,0,0,.2));
   }
-  .swipe-label-global.like{ --balloon-stroke:#2E9A5E; --balloon-fill:#BEF0D6; }
-  .swipe-label-global.dislike{ --balloon-stroke:#AE3A2F; --balloon-fill:#F5CFC9; }
+  .swipe-label.like{ --balloon-stroke:#2E9A5E; --balloon-fill:#BEF0D6; }
+  .swipe-label.dislike{ --balloon-stroke:#AE3A2F; --balloon-fill:#F5CFC9; }
   .card.recipe-card.expanded{
     border-color:var(--teal);
     box-shadow:0 2px 6px rgba(30,30,20,.06), 0 14px 32px rgba(30,30,20,.09);
@@ -506,24 +455,6 @@
     font-size:21px; font-weight:700; letter-spacing:.2px; text-decoration:none;
   }
   [data-theme="polaroid"] .thumb{ border-radius:3px; }
-  /* Metro theme: authentic flat-tile treatment — no gradients, no soft
-     shadows, sharp corners, a bold color-block edge standing in for the
-     tile's own color instead of a whole-card wash. Applied to the two
-     surfaces that are already literally grids of tiles (pantry) or read
-     as cards (recipes), rather than reskinning every component. */
-  [data-theme="metro"] .card.recipe-card{
-    background:var(--card); border:none; border-left:5px solid var(--teal);
-    border-radius:2px; box-shadow:none;
-  }
-  [data-theme="metro"] .card.recipe-card.expanded{
-    border-left-color:var(--honey);
-    box-shadow:0 2px 14px rgba(0,0,0,.1);
-  }
-  [data-theme="metro"] .card.recipe-card .recipe-title{ font-weight:800; letter-spacing:.1px; }
-  [data-theme="metro"] .thumb{ border-radius:2px; }
-  [data-theme="metro"] .pantry-tile{ border:none; border-radius:2px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.06); }
-  [data-theme="metro"] .pantry-tile.active{ background:var(--teal); border-color:var(--teal); }
-  [data-theme="metro"] .pantry-tile.active .pt-name{ color:#fff; }
   .card-head{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
   .card-head h3{margin:0; font-size:15.5px; line-height:1.3; min-width:0;}
   .card-head-side{display:flex; flex-direction:column; align-items:center; gap:5px; flex:0 0 auto;}
@@ -560,12 +491,9 @@
   .card.expanded .card-collapsible-inner{ opacity:1; transition-delay:.05s; }
   .card.no-expand .expand-toggle{ display:none; }
   .pantry-check-btn{
-    display:flex; align-items:center; justify-content:center; gap:6px; width:100%;
-    border:1px solid var(--teal); background:var(--teal-pale); border-radius:11px;
-    padding:9px 10px; margin:6px 0 10px; min-height:38px;
-    font-size:12.5px; font-weight:700; color:var(--teal-dark); cursor:pointer;
+    display:block; border:none; background:none; padding:0; margin:6px 0 8px;
+    font-size:11.5px; font-weight:700; color:var(--teal-dark); cursor:pointer;
   }
-  .pantry-check-btn:active{ transform:scale(.98); }
   .macro-row{display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:11px; color:var(--muted); margin:0 0 10px; font-family:var(--font-mono);}
   .match-badge{background:var(--teal-pale); color:var(--teal-dark); font-weight:700; padding:1px 7px; border-radius:999px; font-family:var(--font-body);}
   .micro-row{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;}
@@ -605,19 +533,16 @@
   .have-it{font-weight:700; color:var(--teal-dark);}
   .pantry-group-title{font-size:12.5px; text-transform:uppercase; letter-spacing:.5px; color:var(--teal-dark); font-weight:800; margin:16px 0 8px;}
   .pantry-item{display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:7px;}
-  /* Grid, not flex-wrap: tiles stretch to fill the full row edge-to-edge
-     (Windows-tile style) instead of a fixed 76px square leaving a ragged
-     gap at the end of each category's last row. */
-  .tile-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(78px, 1fr)); gap:8px; margin-bottom:6px;}
+  .tile-grid{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px;}
   .pantry-tile{
-    position:relative; width:auto; min-height:76px; border:1.5px solid var(--line); background:var(--card);
+    position:relative; width:76px; min-height:72px; border:1.5px solid var(--line); background:var(--card);
     border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:3px; padding:8px 4px; cursor:pointer; -webkit-tap-highlight-color:transparent;
     user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
   }
   .pantry-tile.active{border-color:var(--teal); background:var(--teal-pale);}
   .pt-emoji{font-size:21px; line-height:1;}
-  .pt-name{font-size:9.5px; text-align:center; line-height:1.2; color:var(--text); max-width:100%; word-break:break-word;}
+  .pt-name{font-size:9.5px; text-align:center; line-height:1.2; color:var(--text); max-width:68px; word-break:break-word;}
   .pantry-tile.active .pt-name{color:var(--teal-dark); font-weight:700;}
   .pantry-tile.add-tile{border-style:dashed; background:transparent; color:var(--muted);}
   .pantry-tile.add-tile .pt-emoji{color:var(--teal); opacity:.8;}
@@ -634,16 +559,6 @@
   .pantry-level.wystarczy{background:var(--honey-pale); color:var(--honey-dark);}
   .pantry-level.malo{background:var(--danger-pale); color:var(--danger);}
   .pantry-tag{font-size:11px; background:var(--teal-pale); color:var(--teal-dark); padding:2px 8px; border-radius:999px; white-space:nowrap;}
-
-  .week-cal{display:flex; justify-content:space-between; gap:4px; margin:0 0 16px;}
-  .week-cal-day{display:flex; flex-direction:column; align-items:center; gap:4px; flex:1 1 0; min-width:0;}
-  .week-cal-ring-wrap{position:relative; width:34px; height:34px;}
-  .week-cal-ring{width:100%; height:100%; display:block;}
-  .week-cal-day.today .week-cal-label{color:var(--teal-dark); font-weight:800;}
-  .week-cal-day.today .week-cal-ring-wrap::after{
-    content:""; position:absolute; inset:-3px; border:1.5px solid var(--teal); border-radius:50%;
-  }
-  .week-cal-label{font-size:10px; font-weight:600; color:var(--muted); font-family:var(--font-mono);}
 
   .suggest-wrap{position:relative;}
   .suggest-panel{
@@ -771,7 +686,7 @@
   .shop-item.checked .label{text-decoration:line-through; color:var(--muted);}
   .shop-actions{display:flex; gap:8px; flex-wrap:wrap; margin:16px 0 4px;}
   .btn{
-    border:none; border-radius:16px; padding:11px 16px; font-size:13.5px;
+    border:none; border-radius:12px; padding:11px 16px; font-size:13.5px;
     font-weight:700; cursor:pointer;
     transition:transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
   }
@@ -930,10 +845,11 @@
 <div class="app-shell">
 <header class="app-top">
   <div class="header-title-row">
-    <h1><span class="app-name">🍲 Dieta App</span><span class="header-chevron" id="headerChevron" aria-hidden="true">⌃</span><span class="header-profile-inline" id="headerSub"></span></h1>
+    <h1><span class="app-name">🍲 Dieta App</span><span class="header-profile-inline" id="headerSub"></span></h1>
     <div class="header-btn-row">
-      <button id="settingsBtn" style="background:rgba(255,255,255,.16); border:none; color:#fff; width:36px; height:36px; border-radius:10px; flex:0 0 auto; display:flex; align-items:center; justify-content:center;"><i data-lucide="settings" style="width:18px;height:18px;"></i></button>
       <button id="quickAddBtn" class="header-collapse-btn quick-add-btn" title="Dodaj przekąskę lub dodatkowe danie" aria-label="Dodaj przekąskę lub dodatkowe danie"><span style="font-size:17px; line-height:1;">➕</span></button>
+      <button id="headerCollapseToggle" class="header-collapse-btn" title="Zwiń/rozwiń nagłówek" aria-label="Zwiń/rozwiń nagłówek"><span class="chevron">⌃</span></button>
+      <button id="settingsBtn" style="background:rgba(255,255,255,.16); border:none; color:#fff; width:36px; height:36px; border-radius:10px; flex:0 0 auto; display:flex; align-items:center; justify-content:center;"><i data-lucide="settings" style="width:18px;height:18px;"></i></button>
     </div>
   </div>
   <div class="header-water-row" id="headerWaterRow" title="Nawodnienie dzisiaj — stuknij, aby dodać szklankę"></div>
@@ -987,7 +903,6 @@
       <strong>🛒 Lista zakupów</strong>
       <span class="count" id="shopCount">0 pozycji</span>
     </div>
-    <div class="week-cal" id="shopWeekCal"></div>
     <div class="shop-actions" style="margin:0 0 8px;">
       <button class="btn ghost" id="addWeekBtn" style="width:100%;">📅 Dodaj składniki z całego tygodnia w Planerze</button>
     </div>
@@ -1196,8 +1111,6 @@
 </nav>
 
 <div class="toast" id="toast"></div>
-
-<div class="swipe-label-global" id="globalSwipeLabel" aria-hidden="true"></div>
 
 <div class="modal-overlay center" id="pantryModalOverlay">
   <div class="modal-sheet pantry-check-sheet">
@@ -2142,9 +2055,7 @@ const THEMES = [
   {id:"citrus", label:"Cytrusowy", swatch:"#4C9A2A", metaColor:"#4C9A2A"},
   {id:"mint", label:"Miętowy", swatch:"#1B7A7A", metaColor:"#1B7A7A"},
   {id:"berry", label:"Jagodowa noc", swatch:"#7A2F55", metaColor:"#0D0710"},
-  {id:"polaroid", label:"Polaroid", swatch:"#C1503A", metaColor:"#C1503A"},
-  {id:"fluent", label:"Fluent", swatch:"#0F6CBD", metaColor:"#0F6CBD"},
-  {id:"metro", label:"Kafelki", swatch:"#2D89EF", metaColor:"#2D89EF"}
+  {id:"polaroid", label:"Polaroid", swatch:"#C1503A", metaColor:"#C1503A"}
 ];
 (function syncMetaColor(){
   const meta = document.querySelector('meta[name="theme-color"]');
@@ -2206,8 +2117,8 @@ function switchView(name, opts){
   // Auto-show-on-scroll is a Recipes-only affordance (that's the one long,
   // fast-scrolling list where it's worth the screen space it reclaims).
   // Elsewhere the header defaults to hidden/collapsed on every visit — the
-  // scroll handler below no-ops there — but stays manually expandable by
-  // tapping the title row. Entering Recipes resumes the normal auto
+  // scroll handler below no-ops there — but stays manually expandable via
+  // headerCollapseToggle. Entering Recipes resumes the normal auto
   // behavior (expanded, scroll-driven) fresh, clearing any manual freeze
   // from a previous visit to that tab.
   const headerEl = document.querySelector("header.app-top");
@@ -2749,11 +2660,11 @@ function attachSwipeRating(card, r, refreshBadge){
   const AXIS_LOCK = 10, SWIPE_MAX = 120, SWIPE_COMMIT = 90;
   let startX=null, startY=null, dx=0, axis=null, ignore=false, startScrollY=0;
   const clearDragStyle = ()=>{ card.style.borderColor = ""; card.style.boxShadow = ""; };
-  const label = document.getElementById("globalSwipeLabel");
+  const label = card.querySelector("[data-swipe-label]");
   const setLabel = (text, cls, intensity)=>{
     if(!label) return;
     label.textContent = text;
-    label.className = "swipe-label-global" + (cls ? " "+cls : "");
+    label.className = "swipe-label" + (cls ? " "+cls : "");
     label.style.opacity = intensity;
     // Grows like it's being inflated as the swipe commits further, instead
     // of just fading in at a fixed size.
@@ -2859,6 +2770,7 @@ function recipeCard(r, onChange, opts={}){
     ? `<span class="gi-badge" title="Ten przepis ma podwyższony indeks glikemiczny — dobry wybór, jeśli nie trzymasz się niskiego IG (patrz Ustawienia)">🍚 Podwyższony IG</span>`
     : "";
   card.innerHTML = `
+    <div class="swipe-label" data-swipe-label></div>
     <div class="card-head">
       <h3 class="recipe-title" data-search="${r.name}">${r.name}</h3>
       <div class="card-head-side">
@@ -3287,7 +3199,6 @@ const GROUP_ORDER = ["Nabiał bez laktozy","Warzywa i owoce","Mięso, ryby i jaj
 
 function renderShop(){
   renderShopDayButtons();
-  renderShopWeekCal();
   const box = document.getElementById("shopList");
   box.innerHTML = "";
   const keys = Object.keys(state.shopping);
@@ -3365,44 +3276,6 @@ function renderShopDayButtons(){
     btn.title = day;
     btn.addEventListener("click", ()=> addDayToShoppingList(di, label));
     box.appendChild(btn);
-  });
-}
-// Small week-at-a-glance strip: one ring per day, filled proportionally to
-// how many of that day's PLANNED meals are currently represented on the
-// shopping list (e.g. breakfast + lunch on the list out of 4 planned that
-// day = a half-filled ring) — a fast visual read of "have I already shopped
-// for this day" without opening the Planner.
-function renderShopWeekCal(){
-  const box = document.getElementById("shopWeekCal");
-  if(!box) return;
-  const jsDay = new Date().getDay();
-  const todayIdx = jsDay === 0 ? 6 : jsDay - 1;
-  const CIRC = 2 * Math.PI * 15;
-  box.innerHTML = "";
-  DAYS.forEach((day, di)=>{
-    const dayMeals = state.planner[di] || {};
-    let planned = 0, onList = 0;
-    CATS.forEach(c=>{
-      const rid = dayMeals[c.id];
-      if(!rid) return;
-      planned++;
-      if(state.recipeAdded[rid]) onList++;
-    });
-    const frac = planned > 0 ? onList / planned : 0;
-    const dash = (frac * CIRC).toFixed(1);
-    const cell = document.createElement("div");
-    cell.className = "week-cal-day" + (di === todayIdx ? " today" : "");
-    cell.title = planned > 0 ? `${day}: ${onList}/${planned} dań na liście zakupów` : `${day}: brak zaplanowanych dań`;
-    cell.innerHTML = `
-      <div class="week-cal-ring-wrap">
-        <svg viewBox="0 0 36 36" class="week-cal-ring">
-          <circle cx="18" cy="18" r="15" fill="none" stroke="var(--line)" stroke-width="4"/>
-          <circle cx="18" cy="18" r="15" fill="none" stroke="var(--teal)" stroke-width="4" stroke-linecap="round"
-            stroke-dasharray="${dash} ${CIRC.toFixed(1)}" transform="rotate(-90 18 18)"/>
-        </svg>
-      </div>
-      <span class="week-cal-label">${day.slice(0,3)}</span>`;
-    box.appendChild(cell);
   });
 }
 function addDayToShoppingList(di, dayLabel){
@@ -5160,11 +5033,11 @@ if(forceUpdateBtn){
     // control back to the normal scroll-driven behavior.
     headerAutoSuspended = collapsing;
   }
-  // Tapping anywhere on the title row (app name / subtle chevron / profile
-  // line) toggles the header — there's no dedicated boxed button for this
-  // anymore, just the small chevron next to the app name as a visual hint.
-  // A tap on one of the actual icon buttons (settings, quick-add) must keep
-  // doing its own thing, not also toggle collapse underneath it.
+  document.getElementById("headerCollapseToggle").addEventListener("click", toggleHeaderCollapsed);
+  // Tapping anywhere on the title row (app name / profile line) also
+  // toggles the header, not just the dedicated chevron button — but a tap
+  // on one of the actual icon buttons (quick-add, collapse, settings) must
+  // keep doing its own thing, not also toggle collapse underneath it.
   const titleRow = document.querySelector("header.app-top .header-title-row");
   if(titleRow){
     titleRow.addEventListener("click", (e)=>{
@@ -5196,7 +5069,7 @@ if(forceUpdateBtn){
       el.classList.remove("show");
     }
   }
-  let modalPushed = false, closingFromPopstate = false, suppressNextPopstateSwitch = false;
+  let modalPushed = false, closingFromPopstate = false;
   // Background scroll can otherwise still "leak" through the fixed-position
   // overlay on a real touchscreen (a well-known mobile-web quirk — the
   // backdrop absorbs taps but not every scroll gesture). That leaked scroll
@@ -5213,20 +5086,7 @@ if(forceUpdateBtn){
       history.pushState({dietaAppModal:true}, "");
     }else if(!shown && modalPushed){
       modalPushed = false;
-      if(!closingFromPopstate){
-        // Closing via the X button / backdrop tap (not a real back-press)
-        // removes the "show" class synchronously, so by the time this
-        // history.back() actually fires its popstate event, shownOverlay()
-        // already reports nothing open — the popstate handler below used to
-        // fall through to switchView("recipes"), which unconditionally
-        // resets the header's collapsed state. That's what was silently
-        // re-expanding a manually-collapsed header the moment ANY modal
-        // (not just the macro-info one) was closed by its own X button.
-        // This flag tells the handler "this pop is just our own modal-entry
-        // cleanup, not a real navigation" so it can skip that reset.
-        suppressNextPopstateSwitch = true;
-        history.back();
-      }
+      if(!closingFromPopstate) history.back();
     }
   });
   document.querySelectorAll(".modal-overlay").forEach(el=>{
@@ -5240,10 +5100,6 @@ if(forceUpdateBtn){
       closeOverlay(shown);
       modalPushed = false;
       closingFromPopstate = false;
-      return;
-    }
-    if(suppressNextPopstateSwitch){
-      suppressNextPopstateSwitch = false;
       return;
     }
     switchView((e.state && e.state.dietaAppView) || "recipes", {fromPopstate:true});
