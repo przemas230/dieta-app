@@ -1,0 +1,8 @@
+Wersja 30
+=========
+
+Samo podbicie wersji cache Service Workera (dieta-app-v21), bez zmian w
+kodzie aplikacji — żeby cała duża tura poprawek z wersji 29 (nagłówek,
+okienko "Zrobione", wybór pory w "Zaplanuj", Spiżarnia, odmiana nazw
+produktów, piąta pora posiłku) na pewno dotarła przy najbliższym otwarciu
+aplikacji, a nie dopiero za drugim razem. Ten sam powód co przy wersji 28.
