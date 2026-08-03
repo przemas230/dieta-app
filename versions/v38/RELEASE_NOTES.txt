@@ -1,0 +1,8 @@
+Wersja 38
+=========
+
+Samo podbicie wersji cache Service Workera (dieta-app-v25), bez zmian w
+kodzie aplikacji — żeby zmiany z wersji 37 (napis przy ocenianiu, naprawa
+nagłówka, nowa karta spiżarni, rozszerzona baza przekąsek) dotarły przy
+najbliższym otwarciu aplikacji. Ten sam powód co przy wersjach 28, 30, 32,
+34 i 36.
