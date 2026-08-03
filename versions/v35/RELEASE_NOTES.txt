@@ -1,0 +1,63 @@
+Wersja 35
+=========
+
+1. Pasek filtrów i kategorii przyklejony pod nagłówkiem (Przepisy)
+   - Kategorie (Śniadania/II Śniadanie/Obiady/Kolacje/Deser) oraz pasek
+     wyszukiwania i filtrów są teraz zadokowane tuż pod nagłówkiem i zawsze
+     widoczne podczas przewijania listy przepisów — niezależnie od tego,
+     czy nagłówek jest akurat zwinięty, czy rozwinięty.
+   - Na dole listy przepisów pojawił się pływający przycisk „⬆️”, który od
+     razu przenosi na górę strony.
+
+2. Nowy motyw „Polaroid”
+   - Do wyboru w Ustawieniach → Wygląd aplikacji. Karty dań są bardziej
+     prostokątne (ostre rogi zamiast zaokrąglonych), z grubszym białym
+     marginesem na dole jak odbitka z aparatu natychmiastowego, delikatnie
+     przekrzywione na liście (prostują się po rozwinięciu karty) i tytułem
+     dania w odręcznym, „pisanym" foncie.
+
+3. Rozszerzona baza przekąsek do szacowania kalorii
+   - Dodano ok. 40 nowych produktów: arbuz, winogrona, śliwki, brzoskwinia,
+     grejpfrut, mandarynka, czereśnie, wiśnie, rzodkiewka, seler naciowy,
+     brokuł, ser żółty, maślanka, kefir, kawa (czarna, z mlekiem, z cukrem,
+     z syropem — w różnych kombinacjach), herbata (też z miodem), soki,
+     cola, piwo, wino, oraz batoniki/słodycze: Prince Polo, Snickers, Mars,
+     Twix, Bounty, Kinder Bueno, czekolada mleczna, ciastka, wafelek,
+     pączek, drożdżówka, rogalik, lody, chipsy, paluszki, popcorn, precel,
+     a także kabanos, parówka, kanapka, tost, orzechy włoskie.
+
+4. Emotikonki przy rozpoznanych produktach
+   - Gdy wpisywana przekąska (albo składnik na karcie przepisu) zostanie
+     rozpoznana i ma przypisaną emotikonkę, doklejana jest ona po spacji
+     za nazwą — np. „2 jajka 🥚", „prince polo 🍫".
+
+5. Nagłówek zwija się po dotknięciu całego paska nazwy
+   - Nie trzeba już trafiać dokładnie w mały przycisk strzałki — dotknięcie
+     samej nazwy aplikacji (albo linijki z profilem) też zwija/rozwija
+     nagłówek. Przyciski „+", strzałka i ustawienia w rogu nadal działają
+     tylko na swoje własne akcje.
+
+6. Krople wody w nagłówku
+   - W nagłówku (widoczne nawet gdy jest zwinięty) pojawił się kompaktowy
+     pasek kropelek pokazujący dzisiejsze nawodnienie (np. 💧💧💧⚪⚪⚪⚪⚪ 3/8).
+     Dotknięcie paska dodaje kolejną szklankę — zsynchronizowane z licznikiem
+     w zakładce Postępy.
+
+7. Historia aktywności domyślnie ograniczona do 20 wpisów
+   - Cała historia jest zachowywana, ale domyślnie pokazuje się 20
+     najnowszych wpisów z przyciskiem „Pokaż całą historię (N)". Filtrowanie
+     po zakresie dat działa tak jak wcześniej, bez ograniczenia liczby wyników.
+
+8. Losowanie i czyszczenie pojedynczego dnia w Planerze
+   - Obok generowania losowego planu na cały tydzień, każda karta dnia ma
+     teraz własne przyciski „🎲 Losuj ten dzień" i „🗑️ Wyczyść ten dzień".
+
+9. Podpowiedź gotowania na kolejny dzień
+   - Dania, które zwykle dobrze się odgrzewają (kasze, gulasze, zapiekanki,
+     zupy, risotto itp.) w kategorii Obiady/Kolacje, są teraz wykrywane
+     automatycznie. Jeśli taki dzień ma puste miejsce w planerze następnego
+     dnia w tej samej kategorii, pojawia się podpowiedź „🍱 Ugotowano na
+     więcej dni... — powtórzyć jako resztki?" z przyciskiem jednym kliknięciem
+     kopiującym danie. Opcja „Ugotuj na 2 dni" w oknie szczegółów dania jest
+     też teraz widoczna od razu dla takich dań, bez konieczności ręcznego
+     zwiększania porcji do 2×.
