@@ -1,0 +1,85 @@
+Wersja 25
+=========
+
+Duża tura nowych funkcji, wybranych z listy 10 propozycji (research rynkowy)
+i Twoich własnych pomysłów.
+
+1. Serie (streaks)
+   Nowa sekcja "🔥 Serie" na Postępie pokazuje, ile dni z rzędu udało się
+   trzymać w celu kalorycznym (70–115% dziennego celu) i ile dni z rzędu
+   udało się osiągnąć pełne nawodnienie (8/8 szklanek). Dzisiejszy,
+   niedokończony dzień nie zeruje serii z poprzednich dni — liczy się
+   dopiero, gdy też spełni kryterium.
+
+2. Zjedzone posiłki — przesuwanie w nagłówku
+   W nagłówku, przy każdym zaplanowanym posiłku, można teraz przesunąć
+   danie w prawo, żeby oznaczyć je jako zjedzone (i przesunąć z powrotem,
+   żeby cofnąć). Pod paskiem posiłków pojawia się pogrubione podsumowanie:
+   "🍽️ Zjedzone: X kcal · Zostało: Y kcal". To ten sam mechanizm co
+   istniejąca lista "Dzisiaj — co zjadłam" na Postępie — oba miejsca są
+   teraz zsynchronizowane.
+   Technicznie: kalorie zjedzonego posiłku są teraz zapisywane w momencie
+   oznaczenia (nie wyliczane później na nowo z planera) — dzięki temu
+   zmiana planu na dany dzień tygodnia w przyszłości nie nadpisuje po cichu
+   historii tego, co faktycznie zjedzono wcześniej.
+
+3. Przekąski
+   W "Dzisiaj — co zjadłam" można dodać szybką przekąskę (nazwa + kcal),
+   która liczy się do dziennej sumy zjedzonych kalorii, niezależnie od 4
+   zaplanowanych posiłków.
+
+4. Historia kalorii
+   Nowy wykres na Postępie (ostatnie 14 dni) pokazujący, ile kalorii
+   faktycznie zjedzono każdego dnia, z przerywaną linią pokazującą dzienny
+   cel. Poniżej — bilans ostatnich 7 dni (zjedzone vs cel, z różnicą).
+
+5. "Ugotuj na 2 dni" — planowanie resztek
+   Gdy w Planerze zwiększysz porcję dania do 2× lub więcej, pojawia się
+   przycisk "🍱 Ugotuj na 2 dni — zaplanuj resztki na [dzień]", który
+   automatycznie wstawia to samo danie (w bazowej wielkości) dwa dni
+   później — bez ponownego dodawania składników do listy zakupów, bo te są
+   już policzone w większej porcji. Zaplanowane w ten sposób danie ma przy
+   sobie oznaczenie 🍱.
+
+6. Skaner kodów kreskowych w Spiżarni
+   Nowy przycisk "📷 Skanuj kod kreskowy produktu" w Spiżarni. Używa
+   wbudowanej w przeglądarkę funkcji rozpoznawania kodów kreskowych (bez
+   dodatkowej biblioteki) oraz darmowej, otwartej bazy Open Food Facts (bez
+   klucza API) do rozpoznania produktu ze skanu i wstępnego wypełnienia
+   formularza "Dodaj własny" (nazwa + zgadnięta kategoria) — ilość i
+   jednostkę potwierdzasz sam. Jeśli przeglądarka nie obsługuje skanowania
+   albo brak dostępu do kamery, pokazuje jasny komunikat i można dodać
+   produkt ręcznie jak dotychczas.
+   Uwaga co do testów: mogłem przetestować całą ścieżkę kodu (uprawnienia
+   kamery, rozpoznanie, zapytanie do Open Food Facts, wypełnienie
+   formularza) w symulowanym środowisku, ale nie mam fizycznej kamery ani
+   prawdziwego produktu do zeskanowania — pierwsze prawdziwe użycie na
+   telefonie będzie ostatecznym testem.
+
+7. Mikroskładniki: wapń, witamina D, B12
+   W oknie "ℹ️ Jak policzono" przy przepisie pojawiły się teraz orientacyjne
+   wartości wapnia, witaminy D i B12 — wybrane specjalnie pod kątem diety
+   bez laktozy (to właśnie te trzy najłatwiej niedoszacować, gdy nabiał
+   znika z diety). Pokrycie: 203 z 213 przepisów (95%) ma przynajmniej jeden
+   dopasowany składnik z tabeli (jajka, ryby, nabiał bez laktozy, rośliny
+   strączkowe, zielone warzywa, nasiona, napoje roślinne). To dane
+   orientacyjne, nie pełny audyt — jasno opisane w interfejsie.
+
+Co świadomie odłożone na później:
+- Integracje z Google Fit / Apple Health i współdzielenie planu przez
+  wspólną bazę online — jak ustalono, wymagają osobnej rozmowy o zakresie.
+- Porównywarka cen produktów (Lidl / Stokrotka / Biedronka / Żabka) — nie
+  ma darmowego, stabilnego źródła danych o cenach dla tych sieci w Polsce;
+  scrapowanie ich stron byłoby kruche i ryzykowne prawnie (regulaminy),
+  a apka nie ma backendu, który mógłby to utrzymywać. Zamiast zgadywać i
+  budować coś zawodnego, zostawiam to do wspólnej decyzji — możliwa,
+  bezpieczna alternatywa: ręczne notowanie cen przy produktach (budowanie
+  własnej historii cen bez scrapowania), jeśli to się przyda.
+
+Wszystko przetestowane w headless Chromium: pełny przegląd funkcjonalny
+wszystkich zakładek (0 błędów JS), oraz szczegółowe testy każdej nowej
+funkcji osobno (przesuwanie w nagłówku, serie, przekąski, resztki,
+skaner kodów z symulowaną kamerą, mikroskładniki). Przy okazji testowania
+serii znalazłem i naprawiłem błąd we własnej, świeżo napisanej logice
+(niedokończony dzisiejszy dzień z samą przekąską błędnie zerował serię) —
+poprawione przed oddaniem.

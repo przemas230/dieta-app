@@ -1,4 +1,4 @@
-const CACHE_NAME = "dieta-app-v19";
+const CACHE_NAME = "dieta-app-v18";
 const ASSETS = ["./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -81,17 +81,7 @@ async function pushWaterNotification(count){
     silent: true,
     renotify: false,
     requireInteraction: true,
-    // Order swapped from the "obvious" add-then-remove: the diagnostic log
-    // showed every single tap on the button labeled "+1" (always the first
-    // declared action, i.e. the one the user taps expecting to add) coming
-    // back as action=remove-water — 7 times in a row, never once
-    // add-water. Whatever the underlying mechanism (this Android/Chrome
-    // build renders the two actions in reverse of declaration order, or
-    // consistently reports the last declared action for the first button —
-    // both fit the evidence equally), moving add-water into the slot that
-    // was actually firing puts the right action behind the button the user
-    // taps expecting +1.
-    actions: [{ action: "remove-water", title: "-1 ↩️" }, { action: "add-water", title: "+1 💧" }],
+    actions: [{ action: "add-water", title: "+1 💧" }, { action: "remove-water", title: "-1 ↩️" }],
     icon: "icon-192.png"
   });
 }

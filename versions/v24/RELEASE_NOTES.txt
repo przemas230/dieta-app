@@ -1,0 +1,33 @@
+Wersja 24
+=========
+
+Naprawiono (na podstawie dowodu z dziennika diagnostycznego) "+1 w
+powiadomieniu wodnym odejmuje zamiast dodawać".
+
+Dziennik diagnostyczny dodany w poprzedniej wersji dał jednoznaczny dowód:
+7 na 7 zarejestrowanych stuknięć w przycisk "+1" zostało zapisanych jako
+`action=remove-water` — ani razu jako `add-water`. To była w 100%
+powtarzalna, systematyczna sytuacja, nie przypadkowy błąd — a licznik
+zachowywał się dokładnie tak, jak powinien dla odebranej wartości
+(malał), więc logika w service workerze nigdy nie była zepsuta. Problem
+leżał w tym, że na tym konkretnym telefonie/systemie przycisk pokazywany
+jako pierwszy ("+1", zgodnie z kolejnością, w jakiej aplikacja go
+deklarowała) zwracał do aplikacji akcję zadeklarowaną jako druga
+("-1"/"remove-water").
+
+Naprawiono, zamieniając kolejność deklarowania obu przycisków w
+powiadomieniu (i w service workerze, i w aplikacji) — teraz "-1"
+deklarowane jest jako pierwsze, a "+1" jako drugie. Niezależnie od
+dokładnego mechanizmu po stronie systemu (czy to odwrócona kolejność
+renderowania przycisków, czy inny sposób mapowania), taka zamiana powinna
+skierować właściwą akcję pod przycisk, w który faktycznie stukasz oczekując
+dodania szklanki.
+
+Podbito wersję cache Service Workera (dieta-app-v19), żeby ta poprawka na
+pewno dotarła.
+
+Uwaga: zostaw włączoną diagnostykę (Ustawienia → "🔧 Diagnostyka
+powiadomień o wodzie") na kilka najbliższych dni — jeśli po tej poprawce
+dziennik dalej pokazuje `remove-water` przy próbie dodania, to znaczy, że
+przyczyna jest inna niż zakładano i dziennik znów da nam potrzebne dane do
+dalszego dochodzenia.

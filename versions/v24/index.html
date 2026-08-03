@@ -268,27 +268,10 @@
   .kcal-ring-center{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;}
   .kcal-ring-value{font-size:16px; font-weight:600; color:#fff; line-height:1.1;}
   .kcal-ring-caption{font-size:8px; color:rgba(255,255,255,.75); margin-top:1px;}
-  .kcal-meal-list-wrap{flex:1; min-width:0;}
-  .kcal-meal-list{display:flex; flex-direction:column; gap:5px; min-width:0;}
-  .kcal-meal-row{
-    display:flex; flex-direction:column; touch-action:pan-y; cursor:grab; user-select:none;
-    padding:2px 4px; margin:0 -4px; border-radius:6px;
-  }
-  .kcal-meal-row.eatable{ background:rgba(255,255,255,.06); }
-  .kmr-check{
-    display:inline-block; width:0; overflow:hidden; opacity:0; color:#8FE0C7; font-weight:700; font-size:10.5px;
-    transition:width .15s ease, opacity .15s ease; vertical-align:middle;
-  }
-  .kcal-meal-row[data-eaten="true"] .kmr-check{ width:13px; opacity:1; }
-  .kcal-meal-row[data-eaten="true"] .kmr-dish{ opacity:.55; text-decoration:line-through; }
+  .kcal-meal-list{flex:1; display:flex; flex-direction:column; gap:5px; min-width:0;}
+  .kcal-meal-row{display:flex; flex-direction:column;}
   .kmr-label{font-size:10.5px; font-weight:600; color:rgba(255,255,255,.92); font-family:var(--font-mono);}
-  .kmr-dish{font-size:10px; color:rgba(255,255,255,.72); line-height:1.25; white-space:normal; word-break:break-word; transition:opacity .15s ease;}
-  .kmr-hint{font-size:9px; color:rgba(255,255,255,.5); margin-top:4px; font-style:italic;}
-  .eaten-summary{
-    margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,.18);
-    font-size:12px; color:rgba(255,255,255,.85);
-  }
-  .eaten-summary b{font-size:14px; color:#fff;}
+  .kmr-dish{font-size:10px; color:rgba(255,255,255,.72); line-height:1.25; white-space:normal; word-break:break-word;}
   main{padding:14px 14px 6px;}
   .pill-row{display:flex; gap:7px; overflow-x:auto; padding-bottom:2px; margin-bottom:10px;}
   .pill{
@@ -333,8 +316,6 @@
   .meta{display:flex; gap:10px; margin:6px 0 10px; font-size:12px; color:var(--muted); font-weight:600;}
   .macro-row{display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:11px; color:var(--muted); margin:-4px 0 10px; font-family:var(--font-mono);}
   .match-badge{background:var(--teal-pale); color:var(--teal-dark); font-weight:700; padding:1px 7px; border-radius:999px; font-family:var(--font-body);}
-  .micro-row{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;}
-  .micro-chip{background:var(--plum-pale); color:var(--plum); font-weight:700; font-size:11px; padding:3px 9px; border-radius:999px;}
   .goal-badge{background:var(--honey-pale); color:var(--honey-dark); font-weight:700; padding:1px 7px; border-radius:999px; font-size:11px;}
   .goal-badge.maintain-badge{background:var(--plum-pale); color:var(--plum);}
   .gi-badge{background:var(--danger-pale); color:var(--danger); font-weight:700; padding:1px 7px; border-radius:999px; font-size:11px;}
@@ -404,15 +385,6 @@
     padding:18px 16px calc(18px + env(safe-area-inset-bottom)); max-height:78vh; overflow-y:auto;
   }
   .modal-sheet.center-sheet{border-radius:20px; max-width:340px; max-height:none;}
-  .barcode-video-wrap{
-    position:relative; width:100%; aspect-ratio:1/1; border-radius:14px; overflow:hidden;
-    background:#000; margin-top:10px;
-  }
-  .barcode-video-wrap video{width:100%; height:100%; object-fit:cover; display:block;}
-  .barcode-scan-frame{
-    position:absolute; inset:16%; border:2px solid rgba(255,255,255,.85); border-radius:10px;
-    box-shadow:0 0 0 999px rgba(0,0,0,.28); pointer-events:none;
-  }
   .modal-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;}
   .modal-head h3{margin:0; font-size:16px;}
   .modal-head button{border:none; background:var(--teal-pale); color:var(--teal-dark); width:30px; height:30px; border-radius:9px; font-size:15px; cursor:pointer;}
@@ -533,12 +505,6 @@
   .weight-bar-track{flex:1; background:var(--teal-pale); border-radius:6px; height:14px; overflow:hidden;}
   .weight-bar-fill{height:100%; background:var(--teal); border-radius:6px;}
   .weight-bar-row .val{width:48px; text-align:right; font-weight:700;}
-  .streaks-row{display:flex; gap:10px;}
-  .streak-tile{
-    flex:1; background:var(--teal-pale); border-radius:12px; padding:14px 10px; text-align:center;
-  }
-  .streak-num{font-family:var(--font-mono); font-size:26px; font-weight:700; color:var(--teal-dark); line-height:1;}
-  .streak-label{font-size:11px; color:var(--muted); margin-top:6px; line-height:1.3;}
   .history-row{padding:8px 0; border-bottom:1px solid var(--line);}
   .history-row:last-child{border-bottom:none;}
   .history-row .h-time{color:var(--muted); font-size:11px; margin-bottom:2px;}
@@ -599,12 +565,8 @@
           <div class="kcal-ring-caption" id="kcalRingCaption">z 0 kcal</div>
         </div>
       </div>
-      <div class="kcal-meal-list-wrap">
-        <div class="kcal-meal-list" id="kcalMealList"></div>
-        <div class="kmr-hint">Przesuń danie w prawo, aby oznaczyć jako zjedzone</div>
-      </div>
+      <div class="kcal-meal-list" id="kcalMealList"></div>
     </div>
-    <div class="eaten-summary" id="eatenSummary"></div>
   </div>
 </header>
 
@@ -662,7 +624,6 @@
   <!-- VIEW: SPIŻARNIA -->
   <section id="view-pantry" class="view">
     <div class="hint-text" style="margin:0 0 10px;">Górna połowa kafelka = dodaj, dolna połowa = odejmij. Przytrzymaj kafelek, by zmienić jednostkę albo usunąć śledzenie. Przyprawy: Mało → Wystarczy → Dużo. Na końcu każdej kategorii jest kafelek „➕ Dodaj własny".</div>
-    <button class="btn ghost" id="openBarcodeScanBtn" style="width:100%; margin-bottom:14px;">📷 Skanuj kod kreskowy produktu</button>
     <div id="pantryTiles"></div>
   </section>
 
@@ -759,11 +720,6 @@
     </div>
 
     <div class="card">
-      <h3 style="margin:0 0 10px; font-size:14.5px;">🔥 Serie</h3>
-      <div class="streaks-row" id="streaksBox"></div>
-    </div>
-
-    <div class="card">
       <h3 style="margin:0 0 6px; font-size:14.5px;">💧 Nawodnienie dzisiaj</h3>
       <div class="water-row" id="waterRow"></div>
       <div style="font-size:12px; color:var(--muted);" id="waterLabel"></div>
@@ -786,14 +742,6 @@
     <div class="card">
       <h3 style="margin:0 0 6px; font-size:14.5px;">📆 Dzisiaj — co zjadłam</h3>
       <div id="todayTracker"></div>
-    </div>
-
-    <div class="card">
-      <h3 style="margin:0 0 6px; font-size:14.5px;">📈 Historia kalorii</h3>
-      <div style="position:relative; height:160px; margin-top:8px;">
-        <canvas id="kcalHistoryChartCanvas"></canvas>
-      </div>
-      <div id="kcalWeeklyBalance" style="font-size:12.5px; color:var(--muted); margin-top:8px;"></div>
     </div>
 
     <div class="card">
@@ -901,20 +849,6 @@
       </label>
     </div>
     <button class="btn primary" id="customTileSaveBtn" style="width:100%;">Dodaj do spiżarni</button>
-  </div>
-</div>
-
-<div class="modal-overlay center" id="barcodeScanOverlay">
-  <div class="modal-sheet center-sheet">
-    <div class="modal-head">
-      <h3>📷 Skanuj kod kreskowy</h3>
-      <button id="barcodeScanClose">✕</button>
-    </div>
-    <div id="barcodeScanVideoWrap" class="barcode-video-wrap">
-      <video id="barcodeScanVideo" playsinline muted></video>
-      <div class="barcode-scan-frame"></div>
-    </div>
-    <div id="barcodeScanStatus" class="hint-text" style="margin-top:10px; text-align:center;">Uruchamianie kamery…</div>
   </div>
 </div>
 
@@ -1075,66 +1009,6 @@ function thumbCanon(label){
   const canon = pantryCanon(raw);
   return THUMB_CANON_ALIASES[canon] || canon;
 }
-// ---------- MICRONUTRIENTS (calcium, vitamin D, B12) ----------
-// Calcium/vitamin D/B12 specifically because a lactose-free diet is the one
-// thing every profile in this app has in common, and those three are exactly
-// what's easiest to fall short on when dairy is off the table. This is NOT
-// exhaustive — only the ingredients that actually matter for these three are
-// covered (dairy-free swaps, fish, eggs, legumes, leafy greens, seeds), each
-// value estimated per the same unit that ingredient's calc[] entry already
-// uses (i.e. scales with qty exactly like baseKcal does). Treat the result as
-// a rough, partial estimate, not a lab figure — it's flagged as such in the UI.
-const MICRO_TABLE = {
-  "jajka": {ca:25, vitD:1.1, b12:0.45},
-  "kurczak (pierś)": {ca:6, vitD:0.1, b12:0.3},
-  "indyk": {ca:15, vitD:0.1, b12:0.4},
-  "wołowina": {ca:10, vitD:0.05, b12:2.0},
-  "wieprzowina": {ca:8, vitD:0.5, b12:0.6},
-  "łosoś": {ca:12, vitD:12, b12:3.5},
-  "dorsz": {ca:12, vitD:1.5, b12:1.1},
-  "makrela": {ca:15, vitD:8, b12:8},
-  "pstrąg": {ca:60, vitD:8, b12:5},
-  "tuńczyk": {ca:10, vitD:2, b12:2.5},
-  "krewetki": {ca:70, vitD:0, b12:1.1},
-  "serek bez laktozy": {ca:110, vitD:0, b12:0.5},
-  "twaróg bez laktozy": {ca:130, vitD:0, b12:0.6},
-  "jogurt bez laktozy": {ca:150, vitD:0, b12:0.4},
-  "skyr bez laktozy": {ca:180, vitD:0, b12:0.5},
-  "feta / ser bez laktozy": {ca:100, vitD:0, b12:0.3},
-  "napój roślinny (migdałowy/owsiany/kokosowy)": {ca:180, vitD:0.75, b12:0},
-  "mleko kokosowe": {ca:15, vitD:0, b12:0},
-  "tofu": {ca:200, vitD:0, b12:0},
-  "ciecierzyca": {ca:45, vitD:0, b12:0},
-  "fasola": {ca:35, vitD:0, b12:0},
-  "soczewica": {ca:20, vitD:0, b12:0},
-  "hummus": {ca:20, vitD:0, b12:0},
-  "szpinak": {ca:27, vitD:0, b12:0},
-  "jarmuż": {ca:40, vitD:0, b12:0},
-  "brokuł": {ca:47, vitD:0, b12:0},
-  "migdały": {ca:38, vitD:0, b12:0},
-  "orzechy": {ca:15, vitD:0, b12:0},
-  "sezam": {ca:90, vitD:0, b12:0},
-  "siemię lniane / chia": {ca:18, vitD:0, b12:0},
-  "kasza gryczana": {ca:9, vitD:0, b12:0},
-  "chleb żytni": {ca:15, vitD:0, b12:0}
-};
-// Fortification varies by brand in Poland — plant milks are commonly (not
-// universally) enriched with calcium/vitamin D, almost never with B12.
-const MICRO_APPROX_NOTE = "Wartości orientacyjne, dla części typowych składników (nabiał bez laktozy, ryby, jajka, rośliny strączkowe, zielone warzywa, nasiona) — nie wszystkie składniki przepisu są uwzględnione. Fortyfikacja napojów roślinnych w wapń/wit. D zależy od marki.";
-function computeMicronutrients(r){
-  if(!r.calc || !r.calc.length) return null;
-  let ca=0, vitD=0, b12=0, matched=0;
-  r.calc.forEach(item=>{
-    const canon = thumbCanon(item.label);
-    const m = MICRO_TABLE[canon];
-    if(!m) return;
-    matched++;
-    ca += m.ca*item.qty; vitD += m.vitD*item.qty; b12 += m.b12*item.qty;
-  });
-  if(matched===0) return null;
-  return {ca:Math.round(ca), vitD:Math.round(vitD*10)/10, b12:Math.round(b12*10)/10};
-}
-
 // Picks the recipe's own biggest (by kcal) ingredient that maps to a known
 // pantry icon, skipping seasonings/condiments unless nothing else qualifies —
 // so "Oliwa z oliwek" doesn't become the face of a chicken dish just because
@@ -1192,8 +1066,6 @@ function loadState(){
       if(!s.theme) s.theme = "teal";
       if(!s.waterReminder) s.waterReminder = {...DEFAULT_WATER_REMINDER};
       if(!s.plannerScale) s.plannerScale = {};
-      if(!s.plannerLeftover) s.plannerLeftover = {};
-      if(!s.waterHistory) s.waterHistory = {};
       const shoppingVals = Object.values(s.shopping||{});
       if(shoppingVals.some(v=>v && v.unitCat===undefined)){
         s.shopping = {}; s.recipeAdded = {};
@@ -1201,7 +1073,7 @@ function loadState(){
       return s;
     }
   }catch(e){}
-  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, plannerLeftover:{}, water:{date:"",count:0}, waterHistory:{}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, waterNotifEnabled:false, theme:"teal", waterReminder:{...DEFAULT_WATER_REMINDER}};
+  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, water:{date:"",count:0}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, waterNotifEnabled:false, theme:"teal", waterReminder:{...DEFAULT_WATER_REMINDER}};
 }
 let state = loadState();
 document.documentElement.setAttribute("data-theme", state.theme || "teal");
@@ -1369,12 +1241,6 @@ function setPlannerScale(day, cat, scale){
   state.plannerScale[day] = state.plannerScale[day] || {};
   state.plannerScale[day][cat] = scale;
 }
-// Clears the "🍱 resztki" badge — call whenever a slot gets a deliberate new
-// pick (or is cleared), so the badge never survives pointing at a dish that
-// isn't actually leftovers from the batch-cook flow anymore.
-function clearPlannerLeftover(day, cat){
-  if(state.plannerLeftover[day]) delete state.plannerLeftover[day][cat];
-}
 function nextScaleStep(scale){
   const i = SCALE_STEPS.indexOf(scale);
   return SCALE_STEPS[(i<0?0:i+1) % SCALE_STEPS.length];
@@ -1456,61 +1322,12 @@ function renderHeader(){
   document.getElementById("kcalRingProgress").setAttribute("stroke-dasharray", `${(pct*circumference).toFixed(1)} ${circumference.toFixed(1)}`);
   document.getElementById("kcalRingValue").textContent = planned;
   document.getElementById("kcalRingCaption").textContent = `z ${t.daily} kcal`;
-  const today = todayStr();
   document.getElementById("kcalMealList").innerHTML = CATS.map(c=>{
     const r = meals[c.id];
     const scaleSuffix = r && r._scale && r._scale!==1 ? ` · ${String(r._scale).replace(".",",")}×` : "";
-    const eaten = r ? isEaten(today, c.id) : false;
-    return `<div class="kcal-meal-row${r?' eatable':''}" data-cat="${c.id}" data-eaten="${eaten}"><span class="kmr-label"><span class="kmr-check">✓</span>${c.icon} ${c.label} · ${t[c.id]} kcal</span>${r?`<span class="kmr-dish">${r.name}${scaleSuffix}</span>`:""}</div>`;
+    return `<div class="kcal-meal-row"><span class="kmr-label">${c.icon} ${c.label} · ${t[c.id]} kcal</span>${r?`<span class="kmr-dish">${r.name}${scaleSuffix}</span>`:""}</div>`;
   }).join("");
-  attachSwipeToEat();
-  renderEatenSummary(t.daily);
   document.getElementById("weightGoalTitle").textContent = `⚖️ Postęp wagi (cel: ${p.targetWeight} kg)`;
-}
-
-function renderEatenSummary(dailyTarget){
-  const box = document.getElementById("eatenSummary");
-  if(!box) return;
-  const eaten = dailyEatenKcal(todayStr());
-  const remaining = Math.max(0, dailyTarget - eaten);
-  box.innerHTML = `🍽️ Zjedzone: <b>${eaten} kcal</b> · Zostało: <b>${remaining} kcal</b>`;
-}
-
-// Swipe-right-to-mark-eaten on the header's meal rows. Pointer Events cover
-// touch and mouse alike, so it also works with a mouse drag on desktop.
-function attachSwipeToEat(){
-  const rows = document.querySelectorAll(".kcal-meal-row.eatable");
-  const SWIPE_MAX = 60, SWIPE_COMMIT = 32;
-  rows.forEach(row=>{
-    let startX = null, dx = 0, dragging = false;
-    row.addEventListener("pointerdown", (e)=>{
-      startX = e.clientX; dx = 0; dragging = true;
-      row.setPointerCapture(e.pointerId);
-      row.style.transition = "none";
-    });
-    row.addEventListener("pointermove", (e)=>{
-      if(!dragging || startX===null) return;
-      dx = Math.max(0, Math.min(SWIPE_MAX, e.clientX - startX));
-      row.style.transform = `translateX(${dx}px)`;
-    });
-    const finish = (e)=>{
-      if(!dragging) return;
-      dragging = false;
-      row.style.transition = "transform .15s ease";
-      row.style.transform = "translateX(0)";
-      if(dx > SWIPE_COMMIT){
-        const cat = row.dataset.cat;
-        const today = todayStr();
-        const wasEaten = isEaten(today, cat);
-        setEaten(today, cat, !wasEaten);
-        saveState();
-        setTimeout(()=>{ renderHeader(); renderTodayTracker(); }, 140);
-      }
-      startX = null; dx = 0;
-    };
-    row.addEventListener("pointerup", finish);
-    row.addEventListener("pointercancel", finish);
-  });
 }
 
 const GLUTEN_KEYWORDS = ["chleb","bułk","pęczak","peczak","bulgur","jęczmien","jeczmien","orkiszow","tortilla","wafle żytnie","wafle gryczane","kuskus","kasza manna","makaron"];
@@ -1907,7 +1724,6 @@ function openPlanPicker(r){
     btn.addEventListener("click", ()=>{
       state.planner[di] = state.planner[di] || {};
       state.planner[di][r.cat] = r.id;
-      clearPlannerLeftover(di, r.cat);
       setPlannerScale(di, r.cat, idealScaleFor(r, calcTargets(state.profile)[r.cat]));
       saveState(); renderPlanner(); renderHeader();
       document.getElementById("planPickerOverlay").classList.remove("show");
@@ -1945,16 +1761,7 @@ function openMacroInfoModal(r){
     const scaleNote = Math.abs(rawSum - r.kcal) > Math.max(15, r.kcal*0.08)
       ? `Suma z powyższych składników (~${Math.round(rawSum)} kcal) skalibrowano do ${r.kcal} kcal podanych przy przepisie (proporcjonalnie do B/W/T), by dopasować do znanej kaloryczności dania.`
       : `Suma powyższych składników (~${Math.round(rawSum)} kcal) odpowiada kaloryczności ${r.kcal} kcal podanej przy przepisie — bez dodatkowej kalibracji.`;
-    const micro = computeMicronutrients(r);
-    const microHtml = micro ? `
-      <div class="micro-row">
-        <span class="micro-chip">🦴 Wapń ~${micro.ca} mg</span>
-        <span class="micro-chip">☀️ Wit. D ~${micro.vitD} µg</span>
-        <span class="micro-chip">🥩 B12 ~${micro.b12} µg</span>
-      </div>
-      <p class="hint-text" style="margin:6px 0 0;">${MICRO_APPROX_NOTE}</p>
-    ` : "";
-    calcBox.innerHTML = `<div class="calc-list">${rows}</div><p class="hint-text" style="margin:8px 0 0;">${scaleNote}</p>${microHtml}<div class="calc-divider"></div>`;
+    calcBox.innerHTML = `<div class="calc-list">${rows}</div><p class="hint-text" style="margin:8px 0 0;">${scaleNote}</p><div class="calc-divider"></div>`;
   }else{
     titleEl.textContent = "📊 Skąd te liczby?";
     calcBox.innerHTML = "";
@@ -2389,105 +2196,6 @@ document.getElementById("customTileModalOverlay").addEventListener("click", (e)=
   if(e.target===document.getElementById("customTileModalOverlay")) e.target.classList.remove("show");
 });
 
-// ---------- BARCODE SCANNER (camera + BarcodeDetector + Open Food Facts) ----------
-// Uses the browser-native BarcodeDetector (no library to ship) and Open Food
-// Facts' free, keyless product API. Scanning only pre-fills the "add custom
-// product" form (name + best-guess category) rather than saving directly —
-// OFF's category/unit conventions don't map cleanly onto this app's, so a
-// human glance before saving is worth the one extra tap.
-let barcodeStream = null, barcodeDetectLoop = null;
-const OFF_CATEGORY_TO_PANTRY = [
-  [["dairies","milks","cheeses","yogurts","fermented-milk-products"], "Nabiał"],
-  [["meats","poultry","fishes","seafood","eggs"], "Mięso, ryby, jajka"],
-  [["vegetables","fresh-vegetables"], "Warzywa"],
-  [["fruits","fresh-fruits"], "Owoce"],
-  [["legumes","nuts","seeds"], "Strączki i orzechy"],
-  [["breads","cereals","flours","pastas","rices"], "Pieczywo i zboża"],
-  [["spices","condiments","sauces","herbs"], "Przyprawy"]
-];
-function guessPantryCategoryFromOFF(tags){
-  const t = (tags||[]).join(" ").toLowerCase();
-  for(const [keys,cat] of OFF_CATEGORY_TO_PANTRY){ if(keys.some(k=>t.includes(k))) return cat; }
-  return "Inne";
-}
-function setBarcodeStatus(msg){
-  const el = document.getElementById("barcodeScanStatus");
-  if(el) el.textContent = msg;
-}
-async function lookupOFFProduct(code){
-  const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json`);
-  const data = await res.json();
-  if(!data || data.status!==1 || !data.product) return null;
-  const p = data.product;
-  const name = p.product_name_pl || p.product_name || p.generic_name || null;
-  if(!name) return null;
-  const tags = (p.categories_tags||[]).map(t=>t.replace(/^\w+:/,""));
-  return { name, cat: guessPantryCategoryFromOFF(tags) };
-}
-function stopBarcodeScanner(){
-  if(barcodeDetectLoop){ cancelAnimationFrame(barcodeDetectLoop); barcodeDetectLoop = null; }
-  if(barcodeStream){ barcodeStream.getTracks().forEach(t=>t.stop()); barcodeStream = null; }
-  document.getElementById("barcodeScanOverlay").classList.remove("show");
-}
-async function openBarcodeScanner(){
-  const overlay = document.getElementById("barcodeScanOverlay");
-  const video = document.getElementById("barcodeScanVideo");
-  overlay.classList.add("show");
-  setBarcodeStatus("Uruchamianie kamery…");
-  if(!("mediaDevices" in navigator) || !navigator.mediaDevices.getUserMedia){
-    setBarcodeStatus("Ta przeglądarka nie obsługuje dostępu do kamery. Dodaj produkt ręcznie.");
-    return;
-  }
-  if(!("BarcodeDetector" in window)){
-    setBarcodeStatus("Ta przeglądarka nie obsługuje skanowania kodów kreskowych (funkcja BarcodeDetector). Dodaj produkt ręcznie.");
-    return;
-  }
-  try{
-    barcodeStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-  }catch(e){
-    setBarcodeStatus("Brak dostępu do kamery (odmowa uprawnień lub kamera niedostępna). Dodaj produkt ręcznie.");
-    return;
-  }
-  video.srcObject = barcodeStream;
-  await video.play().catch(()=>{});
-  setBarcodeStatus("Wyceluj w kod kreskowy produktu…");
-  const detector = new BarcodeDetector({ formats: ["ean_13","ean_8","upc_a","upc_e"] });
-  const tick = async ()=>{
-    if(!barcodeStream) return;
-    try{
-      const codes = await detector.detect(video);
-      if(codes && codes.length){
-        const code = codes[0].rawValue;
-        stopBarcodeScanner();
-        setBarcodeStatus("");
-        toast("Wykryto kod: " + code + " — szukam produktu…");
-        try{
-          const product = await lookupOFFProduct(code);
-          if(product){
-            openCustomTileModal(product.cat);
-            document.getElementById("customTileName").value = product.name;
-            toast(`Znaleziono: ${product.name}`);
-          }else{
-            openCustomTileModal("Inne");
-            toast("Nie znaleziono tego produktu w bazie — wpisz nazwę ręcznie");
-          }
-        }catch(e){
-          openCustomTileModal("Inne");
-          toast("Błąd wyszukiwania produktu — wpisz nazwę ręcznie");
-        }
-        return;
-      }
-    }catch(e){ /* detection glitch on a single frame — keep trying */ }
-    barcodeDetectLoop = requestAnimationFrame(tick);
-  };
-  barcodeDetectLoop = requestAnimationFrame(tick);
-}
-document.getElementById("openBarcodeScanBtn").addEventListener("click", openBarcodeScanner);
-document.getElementById("barcodeScanClose").addEventListener("click", stopBarcodeScanner);
-document.getElementById("barcodeScanOverlay").addEventListener("click", (e)=>{
-  if(e.target===document.getElementById("barcodeScanOverlay")) stopBarcodeScanner();
-});
-
 // ---------- TILE ACTION MENU (long-press: change unit / remove tracking) ----------
 const UNIT_PICKER_OPTIONS = [["count","szt."],["weight","g / kg"],["volume","ml / l"],["tbsp","łyżki"],["tsp","łyżeczki"],["cup","szklanki"],["handful","garści"],["clove","ząbki"],["pack","opak."],["can","puszki"],["slice","kromki / plastry"]];
 function openTileAction(canonName, catLabel){
@@ -2708,11 +2416,9 @@ function renderPlanner(){
       const chosenRecipe = baseRecipe ? scaleRecipe(baseRecipe, scale) : null;
       if(chosenRecipe) total += chosenRecipe.kcal;
       const scaleLabel = String(scale).replace(".", ",") + "×";
-      const isLeftover = !!(state.plannerLeftover[di] && state.plannerLeftover[di][c.id]);
-      const pickLabel = chosenRecipe ? (isLeftover ? `🍱 ${chosenRecipe.name}` : chosenRecipe.name) : "— wybierz danie —";
       return `<div class="slot-row">
         <label>${c.icon} ${c.label}</label>
-        <button class="slot-pick" data-pick-day="${di}" data-pick-cat="${c.id}" title="${isLeftover?'Resztki z wcześniej ugotowanej większej porcji':''}">${pickLabel}</button>
+        <button class="slot-pick" data-pick-day="${di}" data-pick-cat="${c.id}">${chosenRecipe ? chosenRecipe.name : "— wybierz danie —"}</button>
         ${baseRecipe?`<button class="scale-btn" data-scale-day="${di}" data-scale-cat="${c.id}" title="Wielkość porcji — kliknij, by zmienić">${scaleLabel}</button>`:""}
         <button class="regen-btn" data-regen-day="${di}" data-regen-cat="${c.id}" title="Losuj inne danie">🔁</button>
       </div>`;
@@ -2756,7 +2462,6 @@ function renderPlanner(){
         const pick = candidates[Math.floor(Math.random()*candidates.length)];
         state.planner[d] = state.planner[d] || {};
         state.planner[d][c] = pick.id;
-        clearPlannerLeftover(d, c);
         setPlannerScale(d, c, idealScaleFor(pick, calcTargets(state.profile)[c]));
         saveState(); renderPlanner(); renderHeader();
         toast("Nowa propozycja: " + pick.name);
@@ -2775,7 +2480,6 @@ document.getElementById("autoPlanBtn").addEventListener("click", ()=>{
   DAYS.forEach((day,di)=>{
     state.planner[di] = {};
     state.plannerScale[di] = {};
-    state.plannerLeftover[di] = {};
     CATS.forEach(c=>{
       const pool = pools[c.id];
       const r = pool[idx[c.id] % pool.length];
@@ -2831,33 +2535,6 @@ function openPlannerDetailModal(day, cat, recipeId){
   });
   list.appendChild(scaleRow);
 
-  // "Gotuj na 2 dni" — once a dish is scaled up (2x+), the extra portion is
-  // meant to be leftovers, not a second cooking session. Offer to plan the
-  // same dish, at base size, two days later — no re-shopping needed, since
-  // the shopping list already accounts for the bigger batch.
-  if(scale >= 2){
-    const targetDay = (Number(day) + 2) % 7;
-    const alreadyLeftover = (state.planner[targetDay]||{})[cat] === recipeId;
-    const leftoverBtn = document.createElement("button");
-    leftoverBtn.className = "btn ghost";
-    leftoverBtn.style.cssText = "width:100%; margin-bottom:12px;";
-    leftoverBtn.textContent = alreadyLeftover
-      ? `🍱 Resztki już zaplanowane na ${DAYS[targetDay]}`
-      : `🍱 Ugotuj na 2 dni — zaplanuj resztki na ${DAYS[targetDay]}`;
-    leftoverBtn.disabled = alreadyLeftover;
-    leftoverBtn.addEventListener("click", ()=>{
-      state.planner[targetDay] = state.planner[targetDay] || {};
-      state.planner[targetDay][cat] = recipeId;
-      setPlannerScale(targetDay, cat, 1);
-      state.plannerLeftover[targetDay] = state.plannerLeftover[targetDay] || {};
-      state.plannerLeftover[targetDay][cat] = true;
-      saveState(); renderPlanner(); renderHeader();
-      toast(`Zaplanowano resztki „${r.name}" na ${DAYS[targetDay]}`);
-      openPlannerDetailModal(day, cat, recipeId);
-    });
-    list.appendChild(leftoverBtn);
-  }
-
   list.appendChild(recipeCard(scaleRecipe(r, scale), ()=> openPlannerDetailModal(day, cat, recipeId)));
   plannerModalOverlay.classList.add("show");
 }
@@ -2873,7 +2550,6 @@ function openPlannerPickerModal(day, cat){
   noneRow.addEventListener("click", ()=>{
     state.planner[day] = state.planner[day] || {};
     state.planner[day][cat] = "";
-    clearPlannerLeftover(day, cat);
     setPlannerScale(day, cat, 1);
     saveState(); renderPlanner(); renderHeader(); plannerModalOverlay.classList.remove("show");
   });
@@ -2911,7 +2587,6 @@ function openPlannerPreview(day, cat, recipeId){
   chooseBtn.addEventListener("click", ()=>{
     state.planner[day] = state.planner[day] || {};
     state.planner[day][cat] = r.id;
-    clearPlannerLeftover(day, cat);
     setPlannerScale(day, cat, idealScaleFor(r, calcTargets(state.profile)[cat]));
     saveState(); renderPlanner(); renderHeader();
     openPlannerDetailModal(day, cat, r.id);
@@ -2935,7 +2610,6 @@ function renderWater(){
     cup.textContent = "💧";
     cup.addEventListener("click", ()=>{
       state.water.count = (state.water.count === i+1) ? i : i+1;
-      state.waterHistory[state.water.date] = state.water.count;
       saveState(); renderWater();
       refreshWaterNotification();
     });
@@ -3015,68 +2689,6 @@ function renderWeights(){
   list.appendChild(info);
 }
 
-let kcalHistoryChartInstance = null;
-function renderKcalHistoryChart(){
-  const canvas = document.getElementById("kcalHistoryChartCanvas");
-  const balanceBox = document.getElementById("kcalWeeklyBalance");
-  if(!canvas) return;
-  const t = calcTargets(state.profile);
-  const days = [];
-  for(let i=13; i>=0; i--) days.push(dateStrDaysAgo(i));
-  const labels = days.map(d=> d.slice(5));
-  const data = days.map(d=> dailyEatenKcal(d));
-  if(typeof Chart !== "undefined"){
-    if(kcalHistoryChartInstance){ kcalHistoryChartInstance.destroy(); }
-    const ctx = canvas.getContext("2d");
-    const cs = getComputedStyle(document.documentElement);
-    const cVar = (name, fallback)=> (cs.getPropertyValue(name).trim() || fallback);
-    const tealColor = cVar("--teal", "#1F6B5C");
-    const honeyColor = cVar("--honey", "#C98A3E");
-    const paleColor = cVar("--teal-pale", "#EAF3EE");
-    const mutedColor = cVar("--muted", "#64756C");
-    kcalHistoryChartInstance = new Chart(ctx, {
-      data: {
-        labels,
-        datasets: [
-          {
-            type: "bar",
-            data,
-            backgroundColor: data.map(v=> v>0 ? tealColor : paleColor),
-            borderRadius: 4,
-            barThickness: 12
-          },
-          {
-            type: "line",
-            data: days.map(()=> t.daily),
-            borderColor: honeyColor,
-            borderDash: [5,4],
-            borderWidth: 1.5,
-            pointRadius: 0,
-            fill: false
-          }
-        ]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins:{ legend:{display:false} },
-        scales:{
-          x:{ grid:{display:false}, ticks:{font:{size:9}, color:mutedColor} },
-          y:{ grid:{color:paleColor}, ticks:{font:{size:9}, color:mutedColor}, beginAtZero:true }
-        }
-      }
-    });
-  }
-  const weekDays = [];
-  for(let i=6; i>=0; i--) weekDays.push(dateStrDaysAgo(i));
-  const weekTotal = weekDays.reduce((s,d)=> s+dailyEatenKcal(d), 0);
-  const weekTarget = t.daily * 7;
-  const diff = weekTotal - weekTarget;
-  const sign = diff>0 ? "+" : "";
-  if(balanceBox){
-    balanceBox.textContent = `Bilans ostatnich 7 dni: ${weekTotal} / ${weekTarget} kcal (${sign}${diff} kcal). Przerywana linia na wykresie to Twój dzienny cel.`;
-  }
-}
-
 document.getElementById("addWeightBtn").addEventListener("click", ()=>{
   const input = document.getElementById("weightInput");
   const val = parseFloat(input.value.replace(",","."));
@@ -3093,9 +2705,7 @@ document.getElementById("addWeightBtn").addEventListener("click", ()=>{
 function renderProgress(){
   renderWater();
   renderWeights();
-  renderStreaks();
   renderTodayTracker();
-  renderKcalHistoryChart();
   renderHistory();
 }
 const HISTORY_DEFAULT_LIMIT = 30;
@@ -3147,124 +2757,21 @@ document.getElementById("historyFilterClearBtn").addEventListener("click", ()=>{
   renderHistory();
 });
 
-// ---------- EATEN TRACKING (shared by header swipe, "co zjadłam" list, snacks, history/streaks) ----------
-// state.eaten[date][catId] used to be a plain boolean. Now it's
-// {done, kcal, name} — the kcal is captured at the moment something is
-// marked eaten, not re-derived later from state.planner (which is a
-// reusable weekly template, not a per-date record — re-deriving would
-// silently rewrite history whenever that weekday's plan changes later).
-// eatenEntry()/isEaten() still read old plain-boolean entries from before
-// this change.
-function polIndexForDate(dateStr){
-  const jsDay = new Date(dateStr+"T00:00:00").getDay();
-  return jsDay===0 ? 6 : jsDay-1;
-}
-function eatenEntry(date, cat){
-  const raw = (state.eaten[date]||{})[cat];
-  if(raw && typeof raw==="object") return raw;
-  if(raw===true) return {done:true, kcal:null, name:null};
-  return null;
-}
-function isEaten(date, cat){
-  const e = eatenEntry(date, cat);
-  return !!(e && e.done);
-}
-function plannedRecipeFor(date, cat){
-  const polIndex = polIndexForDate(date);
-  const rid = (state.planner[polIndex]||{})[cat];
-  const base = rid ? RECIPES.find(x=>x.id===rid) : null;
-  if(!base) return null;
-  return scaleRecipe(base, getPlannerScale(polIndex, cat));
-}
-function setEaten(date, cat, done){
-  state.eaten[date] = state.eaten[date] || {};
-  if(done){
-    const r = plannedRecipeFor(date, cat);
-    state.eaten[date][cat] = {done:true, kcal: r ? r.kcal : 0, name: r ? r.name : null};
-  }else{
-    const prev = eatenEntry(date, cat);
-    state.eaten[date][cat] = {done:false, kcal: prev ? prev.kcal : null, name: prev ? prev.name : null};
-  }
-}
-function addSnack(date, name, kcal){
-  state.eaten[date] = state.eaten[date] || {};
-  state.eaten[date].snacks = state.eaten[date].snacks || [];
-  state.eaten[date].snacks.push({id: Date.now()+"-"+Math.random().toString(36).slice(2,7), name, kcal});
-}
-function removeSnack(date, snackId){
-  const day = state.eaten[date];
-  if(!day || !day.snacks) return;
-  day.snacks = day.snacks.filter(s=>s.id!==snackId);
-}
-function dailyEatenKcal(date){
-  let total = 0;
-  CATS.forEach(c=>{
-    const e = eatenEntry(date, c.id);
-    if(!e || !e.done) return;
-    if(typeof e.kcal === "number" && e.kcal>0){ total += e.kcal; return; }
-    // Legacy entry (true, no captured kcal) — best-effort fallback against
-    // the CURRENT weekly planner; only accurate if that weekday's plan
-    // hasn't changed since.
-    const r = plannedRecipeFor(date, c.id);
-    if(r) total += r.kcal;
-  });
-  const day = state.eaten[date];
-  (day && day.snacks || []).forEach(s=> total += (s.kcal||0));
-  return total;
-}
-function dateStrDaysAgo(n){
-  const d = new Date();
-  d.setDate(d.getDate()-n);
-  return d.toISOString().slice(0,10);
-}
-// Consecutive days (counting back from today) where eaten kcal is recorded
-// and lands within 15% of that day's target — today itself doesn't break
-// the streak just for being in progress, it's simply not counted until it
-// also qualifies.
-function calcKcalStreak(){
-  const t = calcTargets(state.profile);
-  let streak = 0;
-  for(let i=0; i<365; i++){
-    const ds = dateStrDaysAgo(i);
-    const kcal = dailyEatenKcal(ds);
-    // Both bounds matter: a near-empty day (barely anything logged) shouldn't
-    // read as "hit the target" any more than a big overshoot should.
-    const inRange = !!(t.daily && kcal >= t.daily*0.7 && kcal <= t.daily*1.15);
-    if(inRange){ streak++; continue; }
-    // Today not qualifying doesn't mean today "failed" — it just isn't done
-    // yet. Skip it without breaking a streak built on prior days. (A logged
-    // snack alone used to be enough to make today look like a real-but-failed
-    // day here; checking the actual kcal range instead of "any data at all"
-    // fixed that.)
-    if(i===0) continue;
-    break;
-  }
-  return streak;
-}
-function calcWaterStreak(){
-  let streak = 0;
-  for(let i=0; i<365; i++){
-    const ds = dateStrDaysAgo(i);
-    const count = state.waterHistory[ds];
-    const metGoal = typeof count==="number" && count>=8;
-    if(metGoal){ streak++; continue; }
-    if(i===0) continue; // today not finished yet
-    break;
-  }
-  return streak;
-}
-
 function renderTodayTracker(){
   const box = document.getElementById("todayTracker");
-  const polIndex = polIndexForDate(todayStr());
+  const jsDay = new Date().getDay();
+  const polIndex = jsDay===0 ? 6 : jsDay-1;
   const dayMeals = state.planner[polIndex] || {};
   const today = todayStr();
   state.eaten[today] = state.eaten[today] || {};
   box.innerHTML = "";
+  let eatenKcal = 0;
   const t = calcTargets(state.profile);
   CATS.forEach(c=>{
-    const r = plannedRecipeFor(today, c.id);
-    const checked = isEaten(today, c.id);
+    const rid = dayMeals[c.id];
+    const r = rid ? RECIPES.find(x=>x.id===rid) : null;
+    const checked = !!state.eaten[today][c.id];
+    if(r && checked) eatenKcal += r.kcal;
     const row = document.createElement("label");
     row.className = "toggle-row";
     row.style.marginBottom = "10px";
@@ -3272,63 +2779,17 @@ function renderTodayTracker(){
       <span>${c.icon} ${c.label}: ${r ? r.name + " (" + r.kcal + " kcal)" : "— nie zaplanowano w Planerze —"}</span>`;
     if(r){
       row.querySelector("input").addEventListener("change", e=>{
-        setEaten(today, c.id, e.target.checked);
-        saveState(); renderTodayTracker(); renderHeader();
+        state.eaten[today][c.id] = e.target.checked;
+        saveState(); renderTodayTracker();
       });
     }
     box.appendChild(row);
   });
-
-  // snacks
-  const snackList = document.createElement("div");
-  snackList.style.cssText = "margin-top:6px;";
-  (state.eaten[today].snacks||[]).forEach(s=>{
-    const row = document.createElement("div");
-    row.style.cssText = "display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid var(--line); font-size:13px;";
-    row.innerHTML = `<span>🍪 ${s.name} <span style="color:var(--muted);">(${s.kcal} kcal)</span></span><button type="button" style="border:none; background:none; color:var(--danger); font-size:16px; cursor:pointer; line-height:1;">×</button>`;
-    row.querySelector("button").addEventListener("click", ()=>{
-      removeSnack(today, s.id);
-      saveState(); renderTodayTracker(); renderHeader();
-    });
-    snackList.appendChild(row);
-  });
-  box.appendChild(snackList);
-
-  const snackForm = document.createElement("div");
-  snackForm.style.cssText = "display:flex; gap:6px; margin-top:8px;";
-  snackForm.innerHTML = `
-    <input type="text" placeholder="Przekąska, np. banan" style="flex:1; min-width:0; border:1px solid var(--line); border-radius:9px; padding:8px 10px; font-size:13px;">
-    <input type="number" min="0" step="10" placeholder="kcal" style="width:70px; border:1px solid var(--line); border-radius:9px; padding:8px 10px; font-size:13px;">
-    <button type="button" class="btn ghost" style="flex:0 0 auto; padding:8px 12px; font-size:13px;">+ Dodaj</button>
-  `;
-  const [nameInput, kcalInput, addBtn] = snackForm.querySelectorAll("input, button");
-  addBtn.addEventListener("click", ()=>{
-    const name = nameInput.value.trim();
-    const kcal = Math.round(Number(kcalInput.value));
-    if(!name || !Number.isFinite(kcal) || kcal<=0){ toast("Podaj nazwę i liczbę kcal przekąski"); return; }
-    addSnack(today, name, kcal);
-    saveState(); renderTodayTracker(); renderHeader();
-    toast(`Dodano przekąskę: ${name}`);
-  });
-  box.appendChild(snackForm);
-
-  const eatenKcal = dailyEatenKcal(today);
   const info = document.createElement("div");
   const pct = t.daily ? Math.round(eatenKcal/t.daily*100) : 0;
-  info.style.cssText = "font-size:12.5px; color:var(--muted); margin-top:10px;";
+  info.style.cssText = "font-size:12.5px; color:var(--muted); margin-top:4px;";
   info.textContent = `Zjedzono dziś: ${eatenKcal} / ${t.daily} kcal (${pct}%).`;
   box.appendChild(info);
-}
-
-function renderStreaks(){
-  const box = document.getElementById("streaksBox");
-  if(!box) return;
-  const kcalStreak = calcKcalStreak();
-  const waterStreak = calcWaterStreak();
-  box.innerHTML = `
-    <div class="streak-tile"><div class="streak-num">${kcalStreak}</div><div class="streak-label">🔥 dni w celu kalorycznym</div></div>
-    <div class="streak-tile"><div class="streak-num">${waterStreak}</div><div class="streak-label">💧 dni z pełnym nawodnieniem</div></div>
-  `;
 }
 
 // ---------- WATER NOTIFICATION (IndexedDB bridge to service worker) ----------
@@ -3379,9 +2840,7 @@ async function refreshWaterNotification(){
       tag: "water-tracker",
       silent: true,
       requireInteraction: true,
-      // Order matches sw.js's pushWaterNotification — see the comment there
-      // for why add-water comes second (diagnostic log evidence).
-      actions: [{action:"remove-water", title:"-1 ↩️"}, {action:"add-water", title:"+1 💧"}],
+      actions: [{action:"add-water", title:"+1 💧"}, {action:"remove-water", title:"-1 ↩️"}],
       icon: "icon-192.png"
     });
     await setWaterKV("waterDate", todayStr());
@@ -3422,7 +2881,6 @@ async function syncPendingWaterFromNotifications(){
   if(storedDate === today && typeof pending === "number" && Number.isFinite(pending)){
     if(state.water.date !== today){ state.water = {date:today, count:0}; }
     state.water.count = Math.max(0, Math.min(8, pending));
-    state.waterHistory[today] = state.water.count;
     saveState();
     renderWater();
   }
@@ -3433,7 +2891,6 @@ if("serviceWorker" in navigator){
       const today = todayStr();
       if(state.water.date !== today){ state.water = {date:today, count:0}; }
       state.water.count = Math.max(0, Math.min(8, event.data.count));
-      state.waterHistory[today] = state.water.count;
       saveState();
       renderWater();
     }
