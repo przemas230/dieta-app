@@ -1,0 +1,7 @@
+Wersja 34
+=========
+
+Samo podbicie wersji cache Service Workera (dieta-app-v23), bez zmian w
+kodzie aplikacji — żeby przycisk szybkiego dodawania przekąski i ocenianie
+przepisów przesuwaniem (wersja 33) na pewno dotarły przy najbliższym
+otwarciu aplikacji. Ten sam powód co przy wersjach 28, 30 i 32.

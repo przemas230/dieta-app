@@ -1,0 +1,27 @@
+Wersja 33
+=========
+
+1. Szybkie dodawanie przekąski z każdego miejsca w aplikacji
+   - W nagłówku, obok innych przycisków, pojawił się zielony przycisk "+".
+   - Widoczny na każdej zakładce (w tym w Planerze), więc przekąskę albo
+     dodatkowe zjedzone danie można zapisać z dowolnego miejsca w aplikacji,
+     bez przechodzenia na zakładkę Postępy.
+   - Po kliknięciu pojawia się okienko z polem tekstowym (np. "1 banan",
+     "kanapka z serem") oraz kaloriami - kalorie liczą się automatycznie:
+     bez podanej gramatury program szacuje typową wartość dla danego
+     produktu/dania, a jeśli poda się gramaturę, przelicza dokładnie
+     na jej podstawie.
+
+2. Ocenianie przepisów jak w Tinderze (przesuwanie kart)
+   - Na liście przepisów każdą kartę można przesunąć palcem/myszką:
+     w prawo = lubię (zielona poświata), w lewo = nie przepadam
+     (czerwona poświata).
+   - Ocena zostaje zapisana na stałe - oceniona karta dostaje kolorowe
+     obramowanie z boku i mała plakietkę (👍/👎), którą można kliknąć,
+     żeby skasować ocenę.
+   - Zwykłe przewijanie listy w pionie oraz zwykłe stuknięcie w kartę
+     (żeby ją rozwinąć) działają jak wcześniej - system rozpoznaje kierunek
+     ruchu i tylko wyraźne przesunięcie w bok liczy się jako ocena.
+   - Nowy przycisk "❤️" w Przepisach włącza sortowanie: najpierw dania
+     lubiane, potem nieocenione ("nowe"), na końcu nielubiane - to jest
+     wspomniany ranking dań.
