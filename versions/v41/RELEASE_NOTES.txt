@@ -1,0 +1,39 @@
+Wersja 41
+=========
+
+1. Zmieniono napis przy ocenianiu przepisów przesunięciem
+   - Zamiast „Podoba mi się”/„Nie podoba mi się” — teraz „Lubię to!”/„Nie lubię!”.
+
+2. Nowy wygląd balonowej czcionki + osobne ustawienie stylu
+   - Litery napisu przy ocenianiu mają teraz wygląd bardziej zbliżony do
+     cienkiego, skręcanego balonika (jak te do zwierzątek): gruby kolorowy
+     kontur, jasny pastelowy środek, jasna smuga u góry i cień u dołu —
+     zamiast poprzedniego jednolitego gradientu.
+   - Cała karta domyślnie NIE zmienia już koloru podczas przesuwania —
+     feedback niesie wyłącznie napis. W Ustawieniach → Wygląd aplikacji
+     dodano przełącznik „🎈 Styl oceniania kart”: „Balonowa czcionka”
+     (nowy domyślny) albo „Kolorowa karta” (dawne kolorowe obramowanie),
+     działający niezależnie od wybranego motywu kolorystycznego.
+
+3. Poprawna polska odmiana na liście zakupów
+   - Nazwy produktów na liście zakupów są teraz poprawnie odmienione przez
+     przypadki — np. „10 g migdałów” zamiast „10g migdały”, „4 łyżki
+     płatków owsianych” zamiast „4 łyżki płatki owsiane”. Dodano tabelę
+     form dopełniaczowych dla 176 produktów.
+
+4. Przyciski dodania składników z konkretnego dnia na liście zakupów
+   - Obok istniejącego przycisku dodania składników z całego tygodnia,
+     w Zakupach pojawił się rząd przycisków dla każdego dnia — pierwsze
+     dwa oznaczone jako „Jutro” i „Pojutrze” względem dzisiejszej daty,
+     pozostałe nazwami dni tygodnia.
+
+5. Wszystkie okienka modalne wyśrodkowane
+   - Okienka, które dotąd wysuwały się z dołu ekranu (wybór dania do
+     Planera, „Pomysł na danie”, dodanie własnego produktu do spiżarni,
+     akcje na kafelku spiżarni, historia gotowania), są teraz wyśrodkowane
+     jak pozostałe — wygodniej się z nimi korzysta.
+
+6. „Złote zasady przy Hashimoto i insulinooporności” tylko gdy relewantne
+   - Karta z zasadami w zakładce Postępy pokazuje się teraz tylko wtedy,
+     gdy w Ustawieniach włączony jest rygor niskiego indeksu glikemicznego
+     — dla osób, które go wyłączyły, karta znika jako nieadekwatna.

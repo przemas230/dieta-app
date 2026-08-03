@@ -8,7 +8,7 @@ Każdy przepis wyświetlany jest jako karta z nazwą, czasem przygotowania, kalo
 
 ## Kryteria akceptacji
 - Karta w stanie zwiniętym pokazuje tylko nagłówek i podstawowe metadane.
-- Rozwinięcie karty odbywa się WYŁĄCZNIE przez wyraźne, stacjonarne stuknięcie — nie przez przypadkowe zatrzymanie przewijania listy (patrz FR-58/44 w historii rewizji).
+- Rozwinięcie karty odbywa się WYŁĄCZNIE przez wyraźne, stacjonarne stuknięcie — nie przez przypadkowe zatrzymanie przewijania listy (patrz historia rewizji poniżej i FR-44).
 - Tylko jedna karta na liście może być rozwinięta jednocześnie.
 
 ## Uwagi

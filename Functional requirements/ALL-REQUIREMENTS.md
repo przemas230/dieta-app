@@ -40,6 +40,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-25: Budowanie listy zakupów ze składników przepisów](#fr-25-budowanie-listy-zakupów-ze-składników-przepisów)
 - [FR-26: Odhaczanie, udostępnianie i czyszczenie listy zakupów](#fr-26-odhaczanie-udostępnianie-i-czyszczenie-listy-zakupów)
 - [FR-27: Dodanie składników z całego tygodnia z Planera](#fr-27-dodanie-składników-z-całego-tygodnia-z-planera)
+- [FR-58: Dodawanie składników z konkretnego dnia na liście zakupów](#fr-58-dodawanie-składników-z-konkretnego-dnia-na-liście-zakupów)
 
 ### Spiżarnia
 - [FR-28: Śledzenie stanu spiżarni w kafelkach pogrupowanych kategoriami](#fr-28-śledzenie-stanu-spiżarni-w-kafelkach-pogrupowanych-kategoriami)
@@ -61,6 +62,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-40: Śledzenie wagi z wykresem](#fr-40-śledzenie-wagi-z-wykresem)
 - [FR-41: Historia kalorii z bilansem tygodniowym](#fr-41-historia-kalorii-z-bilansem-tygodniowym)
 - [FR-42: Serie (streaks) i historia aktywności](#fr-42-serie-streaks-i-historia-aktywności)
+- [FR-60: Warunkowe wyświetlanie „Złotych zasad przy Hashimoto i insulinooporności”](#fr-60-warunkowe-wyświetlanie-złotych-zasad-przy-hashimoto-i-insulinooporności)
 
 ### Nagłówek i nawigacja
 - [FR-43: Pasek filtrów i kategorii przyklejony pod nagłówkiem](#fr-43-pasek-filtrów-i-kategorii-przyklejony-pod-nagłówkiem)
@@ -68,22 +70,24 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-45: Ręczne zwijanie/rozwijanie nagłówka ma pierwszeństwo nad automatyką](#fr-45-ręczne-zwijanierozwijanie-nagłówka-ma-pierwszeństwo-nad-automatyką)
 - [FR-46: Zabezpieczenie przed przypadkowym zamknięciem aplikacji (Android „Wstecz”)](#fr-46-zabezpieczenie-przed-przypadkowym-zamknięciem-aplikacji-android-wstecz)
 - [FR-47: Brak migotania (FOUC) domyślnych danych profilu przy odświeżeniu](#fr-47-brak-migotania-fouc-domyślnych-danych-profilu-przy-odświeżeniu)
-
-### Ocenianie i ranking przepisów
-- [FR-55: Ocenianie przepisów przesunięciem karty (lubię / nie lubię)](#fr-55-ocenianie-przepisów-przesunięciem-karty-lubię--nie-lubię)
-- [FR-56: Duży, balonowy napis podczas oceniania przesunięciem](#fr-56-duży-balonowy-napis-podczas-oceniania-przesunięciem)
-- [FR-57: Trwałe oznaczenie oceny i ranking sort](#fr-57-trwałe-oznaczenie-oceny-i-ranking-sort)
+- [FR-59: Wyśrodkowane okienka modalne](#fr-59-wyśrodkowane-okienka-modalne)
 
 ### Wygląd i motywy
 - [FR-48: Wybór motywu kolorystycznego aplikacji](#fr-48-wybór-motywu-kolorystycznego-aplikacji)
 - [FR-49: Motyw „Polaroid” z kartami w stylu odbitek natychmiastowych](#fr-49-motyw-polaroid-z-kartami-w-stylu-odbitek-natychmiastowych)
 - [FR-50: Redukcja animacji (prefers-reduced-motion)](#fr-50-redukcja-animacji-prefers-reduced-motion)
+- [FR-61: Wybór stylu oceniania kart przesunięciem w Ustawieniach](#fr-61-wybór-stylu-oceniania-kart-przesunięciem-w-ustawieniach)
 
 ### PWA i działanie offline
 - [FR-51: Instalowalna aplikacja PWA z ikoną i manifestem](#fr-51-instalowalna-aplikacja-pwa-z-ikoną-i-manifestem)
 - [FR-52: Cache offline przez Service Worker ze strategią stale-while-revalidate](#fr-52-cache-offline-przez-service-worker-ze-strategią-stale-while-revalidate)
 - [FR-53: Ręczne wymuszenie aktualizacji i diagnostyka powiadomień](#fr-53-ręczne-wymuszenie-aktualizacji-i-diagnostyka-powiadomień)
 - [FR-54: Kopie zapasowe wersji plików aplikacji w repozytorium](#fr-54-kopie-zapasowe-wersji-plików-aplikacji-w-repozytorium)
+
+### Ocenianie i ranking przepisów
+- [FR-55: Ocenianie przepisów przesunięciem karty (lubię / nie lubię)](#fr-55-ocenianie-przepisów-przesunięciem-karty-lubię--nie-lubię)
+- [FR-56: Duży, balonowy napis podczas oceniania przesunięciem](#fr-56-duży-balonowy-napis-podczas-oceniania-przesunięciem)
+- [FR-57: Trwałe oznaczenie oceny i ranking sort](#fr-57-trwałe-oznaczenie-oceny-i-ranking-sort)
 
 
 ---
@@ -99,6 +103,8 @@ Przegląd wymagań pod kątem wzajemnych sprzeczności. Żadna z poniższych par
 5. **FR-23 („Ugotuj na 2 dni”, przesunięcie +2 dni, wymaga ręcznej skali ≥2×) vs FR-24 (proaktywna podpowiedź, przesunięcie +1 dzień, automatyczna wg słów kluczowych).** To jedyny punkt oznaczony jako **świadomie zaakceptowana niespójność UX**, nie błąd: oba mechanizmy działają niezależnie i żaden nie nadpisuje danych bez jawnej akcji użytkownika, ale różne przesunięcie czasowe (2 dni vs 1 dzień) między dwoma podobnymi w założeniu funkcjami może być mylące. Do rozważenia w przyszłej rewizji: ujednolicić przesunięcie albo jasno zróżnicować nazewnictwo obu mechanizmów.
 6. **FR-42 (limit 20 wpisów historii aktywności) vs pozostałe funkcje korzystające z pełnej historii (FR-40 wykres wagi, FR-41 historia kalorii).** Nie wykluczają się — limit 20 jest wyłącznie ograniczeniem WYŚWIETLANIA jednej konkretnej listy (dziennik aktywności), nie ogranicza danych źródłowych używanych przez inne wykresy/funkcje.
 7. **FR-34 (baza 336 przekąsek) vs FR-35 (emotikonki przy rozpoznanych produktach).** Częściowe pokrycie, nie sprzeczność: nie każda z 336 pozycji bazy kalorycznej ma dziś przypisaną emotikonkę w osobnej tabeli `CANON_INFO` — brak emotikonki nie blokuje rozpoznania kalorii (FR-34 działa w pełni niezależnie od FR-35), po prostu nazwa pojawia się bez sufiksu. Możliwe rozszerzenie w przyszłości.
+8. **FR-60 (widoczność „Złotych zasad” tylko przy rygorze niskiego IG) vs FR-9 (przełącznik rygoru niskiego IG).** Nie wykluczają się — FR-60 to bezpośrednia konsekwencja FR-9: karta jest po prostu ukrywana, gdy FR-9 jest wyłączone. Jedno wymaganie steruje drugim, bez sprzeczności.
+9. **FR-61 (wybór stylu oceniania: balonowa czcionka / kolorowa karta) vs FR-48 (wybór motywu kolorystycznego).** Nie wykluczają się — to dwa niezależne ustawienia. FR-61 celowo działa tak samo w każdym z ośmiu motywów z FR-48, w tym Polaroid (FR-49).
 
 ---
 
@@ -117,7 +123,6 @@ Aplikacja przechowuje 229 przepisów, każdy przypisany do jednej z pięciu kate
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-2: Wyszukiwanie i filtrowanie przepisów
@@ -135,7 +140,6 @@ Nad listą przepisów znajduje się pole wyszukiwania (po nazwie dania i składn
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-3: Karta przepisu — widok skrócony i rozwinięty
@@ -148,7 +152,7 @@ Każdy przepis wyświetlany jest jako karta z nazwą, czasem przygotowania, kalo
 
 ## Kryteria akceptacji
 - Karta w stanie zwiniętym pokazuje tylko nagłówek i podstawowe metadane.
-- Rozwinięcie karty odbywa się WYŁĄCZNIE przez wyraźne, stacjonarne stuknięcie — nie przez przypadkowe zatrzymanie przewijania listy (patrz FR-58/44 w historii rewizji).
+- Rozwinięcie karty odbywa się WYŁĄCZNIE przez wyraźne, stacjonarne stuknięcie — nie przez przypadkowe zatrzymanie przewijania listy (patrz historia rewizji poniżej i FR-44).
 - Tylko jedna karta na liście może być rozwinięta jednocześnie.
 
 ## Uwagi
@@ -157,7 +161,6 @@ Zrewidowane w rundzie z 2026-08-03: pierwotna wersja pozwalała, by dotknięcie 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-03): Doprecyzowano zachowanie na podstawie zgłoszonej poprawki — patrz sekcja "Uwagi" powyżej.
-
 ---
 
 # FR-4: Miniatura przepisu jako emoji głównego składnika
@@ -174,7 +177,6 @@ Zamiast losowego zdjęcia z internetu, każda karta przepisu pokazuje emoji repr
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-5: Przycisk powrotu do góry listy przepisów
@@ -191,7 +193,6 @@ Na dole widoku Przepisy znajduje się pływający przycisk „⬆️”, który 
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-6: Profil użytkownika i wyliczanie zapotrzebowania kalorycznego
@@ -208,7 +209,6 @@ W Ustawieniach użytkownik podaje płeć, wiek, wzrost, wagę obecną i docelow�
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-7: Podział dziennego celu kalorycznego na 5 posiłków
@@ -226,7 +226,6 @@ Dzienny cel kaloryczny jest rozdzielany na pięć posiłków wg stałych proporc
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-8: Filtr bez glutenu / bez laktozy
@@ -246,7 +245,6 @@ Ograniczenie znane i udokumentowane w samej aplikacji: filtr bazuje na oznaczeni
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-9: Przełącznik rygoru niskiego indeksu glikemicznego
@@ -263,7 +261,6 @@ Domyślnie aktywny przełącznik „Trzymaj się niskiego IG” obniża ocenę d
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-10: Docelowe proporcje makroskładników zależne od celu
@@ -279,7 +276,6 @@ Docelowy rozkład białka/węglowodanów/tłuszczu w gramach różni się w zale
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-11: Wynik dopasowania przepisu do profilu (🎯)
@@ -297,7 +293,6 @@ Każdy przepis z danymi odżywczymi otrzymuje procentowy wynik dopasowania do pr
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-12: Modal wyjaśniający wyliczenia makro/IG/ŁG
@@ -315,7 +310,6 @@ Przycisk „ℹ️” przy linii makroskładników otwiera okienko pokazujące d
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-13: Piąta kategoria posiłku: Deser/Przekąska
@@ -332,7 +326,6 @@ Piąty, zawsze dostępny slot posiłkowy (dodatkowy, nie zastępujący pozostał
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-14: Skalowanie rozmiaru interfejsu (UI scale)
@@ -350,7 +343,6 @@ Suwak w Ustawieniach (zakres 0.7–1.3, krok 0.05) skaluje całą aplikację prz
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-15: Oznaczanie dania jako ugotowane, z historią i ocenami
@@ -372,7 +364,6 @@ Zrewidowane: pierwotnie zwykłe kliknięcie od razu oznaczało danie jako zrobio
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-03): Doprecyzowano zachowanie na podstawie zgłoszonej poprawki — patrz sekcja "Uwagi" powyżej.
-
 ---
 
 # FR-16: Sprawdzenie stanu spiżarni dla konkretnego przepisu
@@ -394,7 +385,6 @@ Zrewidowane w rundzie z 2026-08-03: poprzednia wersja miała stłoczony, jednowi
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-03): Doprecyzowano zachowanie na podstawie zgłoszonej poprawki — patrz sekcja "Uwagi" powyżej.
-
 ---
 
 # FR-17: Ocena dania po ugotowaniu (gwiazdki)
@@ -410,7 +400,6 @@ W historii gotowania (FR-15) każdy wpis można ocenić w skali gwiazdkowej, nie
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-18: Planer tygodniowy z 5 slotami posiłków dziennie
@@ -427,7 +416,6 @@ Zakładka Planer pokazuje siedem kart dni tygodnia, każda z pięcioma wierszami
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-19: Wybór innego slotu posiłkowego z poziomu karty przepisu
@@ -444,7 +432,6 @@ Przycisk „📅 Zaplanuj” na karcie przepisu otwiera okienko, w którym możn
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-20: Skalowanie wielkości porcji w planerze
@@ -460,7 +447,6 @@ Dla każdego zaplanowanego dania można zmienić mnożnik porcji (predefiniowane
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-21: Losowe generowanie planu — cały tydzień lub pojedynczy dzień
@@ -477,7 +463,6 @@ Przycisk „🎲 Wygeneruj losowo cały tydzień” losuje dania dla wszystkich 
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-22: Czyszczenie planu — cały tydzień lub pojedynczy dzień
@@ -494,7 +479,6 @@ Oprócz generowania, każda karta dnia ma przycisk „🗑️ Wyczyść ten dzie
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-23: „Ugotuj na 2 dni” — planowanie resztek po zwiększeniu porcji
@@ -511,7 +495,6 @@ Gdy w oknie szczegółów zaplanowanego dania porcja jest skalowana ×2 lub wię
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-24: Proaktywna podpowiedź gotowania na kolejny dzień
@@ -531,7 +514,6 @@ Uwaga projektowa (patrz sekcja 'Analiza wykluczeń' w pliku zbiorczym): FR-23 pr
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-25: Budowanie listy zakupów ze składników przepisów
@@ -540,15 +522,20 @@ Uwaga projektowa (patrz sekcja 'Analiza wykluczeń' w pliku zbiorczym): FR-23 pr
 **Status:** Zaimplementowane
 
 ## Opis
-Składniki przepisu można dodać do wspólnej listy zakupów pojedynczo (przycisk 🛒 przy składniku), całym przepisem (przycisk „Dodaj do listy zakupów” na karcie) albo zbiorczo dla całego dnia/tygodnia z Planera. Pozycje o tej samej kanonicznej nazwie i jednostce sumują się.
+Składniki przepisu można dodać do wspólnej listy zakupów pojedynczo (przycisk 🛒 przy składniku), całym przepisem (przycisk „Dodaj do listy zakupów” na karcie) albo zbiorczo dla całego dnia/tygodnia z Planera lub bezpośrednio z zakładki Zakupy (patrz FR-58). Pozycje o tej samej kanonicznej nazwie i jednostce sumują się. Nazwa produktu przy pozycji jest wyświetlana w poprawnej polskiej odmianie dopełniaczowej pasującej do poprzedzającej ją ilości i jednostki (np. „10 g migdałów”, „4 łyżki płatków owsianych”, „150 g dżemu”) — nie w formie mianownikowej wprost z tabeli nazw kanonicznych.
 
 ## Kryteria akceptacji
 - Dodanie tego samego składnika z dwóch różnych przepisów tworzy jedną pozycję z sumą ilości.
 - Usunięcie przepisu z listy odejmuje tylko jego udział, nie całą pozycję (jeśli inny przepis też jej używa).
+- Dla pozycji liczonych sztukowo (`unitCat==="count"`) obowiązuje odmiana liczebnikowa jak w spiżarni (FR-29: jedna/kilka/wiele sztuk), a nie dopełniacz — np. „3 jajka”, nie „3 jajek”.
+- Dla pozostałych jednostek (waga, objętość, łyżki itd.) używana jest forma dopełniacza z dedykowanej tabeli (`CANON_GENITIVE`), z bezpiecznym fallbackiem do nazwy kanonicznej, jeśli dany produkt nie ma jeszcze wpisanej formy.
+
+## Uwagi
+Zrewidowane 2026-08-03: pierwotnie nazwa produktu na liście zakupów była wyświetlana wprost z tabeli nazw kanonicznych (mianownik), co dawało niegramatyczne zestawienia typu „10g migdały” zamiast „10g migdałów”. Dodano osobną tabelę form dopełniaczowych (176 produktów) i funkcję `shopDisplayName()`, która wybiera właściwą odmianę w zależności od jednostki.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
+- **v2** (2026-08-03): Dodano wymaganie poprawnej odmiany dopełniaczowej nazw produktów na liście zakupów — patrz sekcja "Uwagi".
 ---
 
 # FR-26: Odhaczanie, udostępnianie i czyszczenie listy zakupów
@@ -565,7 +552,6 @@ Pozycje na liście można odhaczyć jako kupione. Listę można udostępnić prz
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-27: Dodanie składników z całego tygodnia z Planera
@@ -581,7 +567,6 @@ Przycisk w zakładce Zakupy zbiorczo dodaje do listy wszystkie składniki wszyst
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-28: Śledzenie stanu spiżarni w kafelkach pogrupowanych kategoriami
@@ -597,7 +582,6 @@ Zakładka Spiżarnia pokazuje kafelki produktów pogrupowane w kategorie (Nabia�
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-29: Odmiana gramatyczna nazw produktów w spiżarni
@@ -614,7 +598,6 @@ Nazwy produktów liczonych sztukowo (np. jajka, bułki) odmieniają się poprawn
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-30: Zmiana kategorii i usuwanie śledzenia kafelka spiżarni
@@ -630,7 +613,6 @@ Przytrzymanie kafelka otwiera wyśrodkowane okienko z opcjami: zmiana jednostki,
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-31: Skanowanie kodu kreskowego produktu
@@ -646,7 +628,6 @@ Przycisk w Spiżarni uruchamia podgląd z kamery urządzenia do skanowania kodu 
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-32: Podpowiedź „🏺 masz w spiżarni” i „Pomysł na danie z ulubionych składników”
@@ -659,7 +640,6 @@ Lista składników na karcie przepisu pokazuje, które pozycje są już w spiża
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-33: Globalny przycisk szybkiego dodania przekąski/dania z każdego miejsca
@@ -675,7 +655,6 @@ Zielony przycisk „➕” w nagłówku, widoczny na każdej zakładce (w tym w 
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-34: Automatyczne szacowanie kalorii przekąski z bazy 336 produktów
@@ -694,7 +673,6 @@ Formularz dodawania przekąski przyjmuje wolny tekst (np. „1 banan”, „150g
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-35: Emotikonki przy rozpoznanych składnikach/przekąskach
@@ -711,7 +689,6 @@ Gdy wpisywany tekst (w formularzu przekąski) albo nazwa składnika (na karcie p
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-36: Dzienny pierścień kalorii w nagłówku ze zjadanymi posiłkami
@@ -728,7 +705,6 @@ Nagłówek pokazuje pierścień postępu dziennego spożycia kalorii względem c
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-37: Śledzenie nawodnienia — pełny widok i kompaktowy pasek w nagłówku
@@ -745,7 +721,6 @@ Zakładka Postępy pokazuje interaktywny rząd 8 „szklanek” do zaznaczenia d
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-38: Powiadomienia z szybkimi akcjami do liczenia wody
@@ -762,7 +737,6 @@ Opcjonalne systemowe powiadomienie Androida z przyciskami „+1 💧” / „-1 
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-39: Cykliczne przypomnienie o piciu wody
@@ -778,7 +752,6 @@ Ustawienia pozwalają skonfigurować cykliczne przypomnienie (co N minut, w okni
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-40: Śledzenie wagi z wykresem
@@ -791,7 +764,6 @@ Zakładka Postępy pozwala wpisać dzisiejszą wagę i pokazuje historię na wyk
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-41: Historia kalorii z bilansem tygodniowym
@@ -804,7 +776,6 @@ Wykres historii dziennego spożycia kalorii wraz z podsumowaniem bilansu tygodni
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-42: Serie (streaks) i historia aktywności
@@ -821,7 +792,6 @@ Aplikacja liczy serie kolejnych dni spełniających kryteria (np. pełne nawodni
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-43: Pasek filtrów i kategorii przyklejony pod nagłówkiem
@@ -842,7 +812,6 @@ Zrewidowane 2026-08-03: pierwotna wersja paska pigułek kategorii nie ukrywała 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-03): Doprecyzowano zachowanie na podstawie zgłoszonej poprawki — patrz sekcja "Uwagi" powyżej.
-
 ---
 
 # FR-44: Automatyczne chowanie/pokazywanie nagłówka na przewijanie (tylko Przepisy)
@@ -858,7 +827,6 @@ Na widoku Przepisy nagłówek chowa się przy przewijaniu w dół i pokazuje prz
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-45: Ręczne zwijanie/rozwijanie nagłówka ma pierwszeństwo nad automatyką
@@ -879,7 +847,6 @@ Zrewidowane 2026-08-03: znaleziono i naprawiono błąd, w którym otwarcie okien
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-03): Doprecyzowano zachowanie na podstawie zgłoszonej poprawki — patrz sekcja "Uwagi" powyżej.
-
 ---
 
 # FR-46: Zabezpieczenie przed przypadkowym zamknięciem aplikacji (Android „Wstecz”)
@@ -896,7 +863,6 @@ Przełączanie zakładek i otwieranie dowolnego okienka modalnego rejestruje wpi
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-47: Brak migotania (FOUC) domyślnych danych profilu przy odświeżeniu
@@ -909,61 +875,6 @@ Przy odświeżeniu strony nagłówek nie pokazuje na ułamek sekundy domyślnych
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
----
-
-# FR-55: Ocenianie przepisów przesunięciem karty (lubię / nie lubię)
-
-**Obszar:** Ocenianie i ranking przepisów  
-**Status:** Zaimplementowane
-
-## Opis
-Na liście przepisów kartę można przesunąć w prawo (❤️ „lubię”) lub w lewo (👎 „nie lubię”). Gest wykorzystuje blokadę osi: dopiero przekroczenie progu ruchu w jednym kierunku „zamyka” gest na oś poziomą (ocena) albo pionową (zwykłe przewijanie listy) — więc przewijanie strony nigdy nie jest przechwytywane jako próba oceny.
-
-## Kryteria akceptacji
-- Przesunięcie poniżej progu zatwierdzenia (90px) wraca do pozycji wyjściowej bez zapisania oceny.
-- Sam gest oceniania nigdy nie blokuje zwykłego przewijania listy w pionie.
-
-## Historia rewizji
-- **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
----
-
-# FR-56: Duży, balonowy napis podczas oceniania przesunięciem
-
-**Obszar:** Ocenianie i ranking przepisów  
-**Status:** Zaimplementowane
-
-## Opis
-Podczas przesuwania karty w trakcie oceniania (FR-55), na środku karty pojawia się rosnący wraz z siłą przesunięcia napis „Podoba mi się” albo „Nie podoba mi się”, w dużej, zaokrąglonej czcionce z efektem błyszczących, „napompowanych” liter (gradientowe wypełnienie z podświetleniem + biały kontur), znikający po puszczeniu karty.
-
-## Kryteria akceptacji
-- Rozmiar napisu rośnie proporcjonalnie do siły przesunięcia (od ok. 70% do 120% skali bazowej).
-- Napis nie blokuje interakcji z kartą (pointer-events wyłączone) i nie wpływa na próg zatwierdzenia oceny.
-
-## Uwagi
-Zrewidowane 2026-08-03: pierwsza wersja używała zwykłego pogrubionego tekstu w jednolitym kolorze; na prośbę zmieniono na efekt przypominający napompowany balon.
-
-## Historia rewizji
-- **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-- **v2** (2026-08-03): Doprecyzowano zachowanie na podstawie zgłoszonej poprawki — patrz sekcja "Uwagi" powyżej.
-
----
-
-# FR-57: Trwałe oznaczenie oceny i ranking sort
-
-**Obszar:** Ocenianie i ranking przepisów  
-**Status:** Zaimplementowane
-
-## Opis
-Oceniona karta zachowuje kolorowe obramowanie z boku i małą plakietkę (👍/👎), którą można dotknąć, by skasować ocenę. Osobny przełącznik „❤️” sortuje listę: najpierw lubiane, potem nieocenione („nowe”), na końcu nielubiane.
-
-## Kryteria akceptacji
-- Ocenione karty NIE znikają z listy (świadoma różnica względem klasycznego 'Tindera' z pojedynczym stosem kart) — Przepisy to przewijalna lista wielu dań, nie stos pojedynczych kart.
-
-## Historia rewizji
-- **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-48: Wybór motywu kolorystycznego aplikacji
@@ -980,7 +891,6 @@ Ustawienia pozwalają wybrać jeden z ośmiu motywów wizualnych (m.in. domyśln
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-49: Motyw „Polaroid” z kartami w stylu odbitek natychmiastowych
@@ -996,7 +906,6 @@ Dedykowany motyw, w którym karty przepisów mają ostre (nie zaokrąglone) rogi
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-50: Redukcja animacji (prefers-reduced-motion)
@@ -1009,7 +918,6 @@ Gdy system użytkownika ma włączone ograniczenie animacji, aplikacja wyłącza
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-51: Instalowalna aplikacja PWA z ikoną i manifestem
@@ -1022,7 +930,6 @@ Aplikacja spełnia wymogi Progressive Web App (manifest.json, ikony 192/512px) i
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-52: Cache offline przez Service Worker ze strategią stale-while-revalidate
@@ -1038,7 +945,6 @@ Service Worker cache'uje zasoby aplikacji, serwując wersję z pamięci podręcz
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-53: Ręczne wymuszenie aktualizacji i diagnostyka powiadomień
@@ -1051,7 +957,6 @@ Ustawienia zawierają przycisk wymuszający sprawdzenie i pobranie najnowszej we
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
-
 ---
 
 # FR-54: Kopie zapasowe wersji plików aplikacji w repozytorium
@@ -1068,5 +973,134 @@ Przed każdą zmianą plików aplikacji (index.html, manifest.json, sw.js, ikony
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+---
 
+# FR-55: Ocenianie przepisów przesunięciem karty (lubię / nie lubię)
+
+**Obszar:** Ocenianie i ranking przepisów  
+**Status:** Zaimplementowane
+
+## Opis
+Na liście przepisów kartę można przesunąć w prawo (❤️ „lubię”) lub w lewo (👎 „nie lubię”). Gest wykorzystuje blokadę osi: dopiero przekroczenie progu ruchu w jednym kierunku „zamyka” gest na oś poziomą (ocena) albo pionową (zwykłe przewijanie listy) — więc przewijanie strony nigdy nie jest przechwytywane jako próba oceny.
+
+## Kryteria akceptacji
+- Przesunięcie poniżej progu zatwierdzenia (90px) wraca do pozycji wyjściowej bez zapisania oceny.
+- Sam gest oceniania nigdy nie blokuje zwykłego przewijania listy w pionie.
+
+## Historia rewizji
+- **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+---
+
+# FR-56: Duży, balonowy napis podczas oceniania przesunięciem
+
+**Obszar:** Ocenianie i ranking przepisów  
+**Status:** Zaimplementowane
+
+## Opis
+Podczas przesuwania karty w trakcie oceniania (FR-55), na środku karty pojawia się rosnący wraz z siłą przesunięcia napis „Lubię to!” albo „Nie lubię!”, w dużej, zaokrąglonej czcionce z efektem liter jak z cienkiego, skręcanego balonu (baloniki do zwierzątek): gruby kolorowy kontur niosący kształt litery, jasny pastelowy wypełniacz, jasna smuga u góry i cień u dołu budujące wrażenie okrągłej, napompowanej rurki. Napis znika po puszczeniu karty. Domyślnie sama karta NIE zmienia koloru/obramowania podczas przesuwania — feedback wizualny niesie wyłącznie napis (patrz FR-61: styl można zmienić w Ustawieniach).
+
+## Kryteria akceptacji
+- Rozmiar napisu rośnie proporcjonalnie do siły przesunięcia (od ok. 70% do 120% skali bazowej).
+- Napis nie blokuje interakcji z kartą (pointer-events wyłączone) i nie wpływa na próg zatwierdzenia oceny.
+- W domyślnym stylu „Balonowa czcionka” karta pod napisem pozostaje w swoim normalnym kolorze — nie jest tintowana na zielono/czerwono.
+- Alternatywny styl „Kolorowa karta” (wybierany w Ustawieniach, patrz FR-61) przywraca klasyczne kolorowe obramowanie/poświatę karty podczas przesuwania, niezależnie od napisu.
+
+## Uwagi
+Zrewidowane 2026-08-03 (v2): pierwsza wersja używała zwykłego pogrubionego tekstu z gradientowym wypełnieniem w jednolitym kolorze i ZAWSZE tintowała też całą kartę na zielono/czerwono. Na prośbę użytkownika: (1) zmieniono treść napisów na „Lubię to!”/„Nie lubię!”, (2) przeprojektowano wygląd liter na bardziej dosłowny efekt „balonika-zwierzątka” (gruby kontur + jasny cienki wypełniacz zamiast jednolitego gradientu), (3) tintowanie całej karty przeniesiono do osobnego, opcjonalnego stylu wybieranego w Ustawieniach (FR-61), a nowym domyślnym zachowaniem jest sam napis bez kolorowania karty.
+
+## Historia rewizji
+- **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-03): Doprecyzowano zachowanie na podstawie zgłoszonej poprawki — patrz sekcja "Uwagi" powyżej.
+- **v3** (2026-08-03): Zmieniono treść napisów, przeprojektowano na efekt "balonika-zwierzątka" i wydzielono tintowanie karty do osobnego, opcjonalnego stylu (FR-61) — patrz zaktualizowana sekcja "Uwagi".
+---
+
+# FR-57: Trwałe oznaczenie oceny i ranking sort
+
+**Obszar:** Ocenianie i ranking przepisów  
+**Status:** Zaimplementowane
+
+## Opis
+Oceniona karta zachowuje kolorowe obramowanie z boku i małą plakietkę (👍/👎), którą można dotknąć, by skasować ocenę. Osobny przełącznik „❤️” sortuje listę: najpierw lubiane, potem nieocenione („nowe”), na końcu nielubiane.
+
+## Kryteria akceptacji
+- Ocenione karty NIE znikają z listy (świadoma różnica względem klasycznego 'Tindera' z pojedynczym stosem kart) — Przepisy to przewijalna lista wielu dań, nie stos pojedynczych kart.
+
+## Historia rewizji
+- **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+---
+
+# FR-58: Dodawanie składników z konkretnego dnia na liście zakupów
+
+**Obszar:** Lista zakupów  
+**Status:** Zaimplementowane
+
+## Opis
+Zakładka Zakupy pokazuje, obok istniejącego przycisku dodania składników z całego tygodnia (FR-25/FR-27), rząd przycisków dla każdego dnia tygodnia. Dwa pierwsze dostępne dni są etykietowane względem dzisiejszej daty jako „Dziś” i „Jutro”/„Pojutrze” (obliczane na bieżąco z rzeczywistej daty systemowej), pozostałe pokazują zwykłe nazwy dni tygodnia. Kliknięcie dodaje do listy zakupów składniki wszystkich dań zaplanowanych w Planerze na ten jeden dzień, z uwzględnieniem ustawionej skali porcji (FR-20).
+
+## Kryteria akceptacji
+- Etykiety „Dziś”/„Jutro”/„Pojutrze” zawsze odpowiadają rzeczywistemu dzisiejszemu dniowi tygodnia, nie stałemu indeksowi.
+- Kliknięcie przycisku dodaje składniki TYLKO z wybranego dnia, nie z całego tygodnia.
+- Dania już wcześniej dodane do listy nie są duplikowane (ta sama logika co FR-25).
+- Pusty dzień (bez zaplanowanych dań) pokazuje odpowiedni komunikat zamiast cichego braku reakcji.
+
+## Historia rewizji
+- **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie polecenia użytkownika.
+---
+
+# FR-59: Wyśrodkowane okienka modalne
+
+**Obszar:** Nagłówek i nawigacja  
+**Status:** Zaimplementowane
+
+## Opis
+Wszystkie okienka modalne w aplikacji wyświetlają się jako wyśrodkowana na ekranie karta (`modal-overlay center` + `modal-sheet center-sheet`), a nie jako arkusz wysuwający się z dołu ekranu. Dotyczy to zarówno okienek, które od początku były wyśrodkowane (np. FR-12 „Skąd te liczby?”, FR-16 stan spiżarni, skaner kodów kreskowych), jak i pozostałych, które pierwotnie były arkuszem dolnym: wybór dania dla slotu Planera, „Pomysł na danie”, dodanie własnego produktu do spiżarni, akcje na kafelku spiżarni, historia gotowania dania.
+
+## Kryteria akceptacji
+- Każdy element `.modal-overlay` w aplikacji ma klasę `center`, a jego wewnętrzny `.modal-sheet` klasę `center-sheet`.
+- Wyśrodkowane okienko ma ograniczoną wysokość (`max-height:82vh`) i przewija się wewnętrznie, jeśli treść jest dłuższa niż ekran — nie ucina treści bez możliwości dotarcia do niej.
+- Zamykanie (przycisk ✕, dotknięcie tła, systemowe „Wstecz” — FR-46) działa tak samo niezależnie od tego, że okienko jest teraz wyśrodkowane, nie przypięte do dołu.
+
+## Uwagi
+Zrewidowane 2026-08-03: pierwotnie tylko część okienek (m.in. FR-12, FR-16, FR-19, quick-add) była wyśrodkowana — pozostałe (wybór dania do Planera, pomysł na danie, dodanie własnego produktu, akcje kafelka spiżarni, historia gotowania) wysuwały się z dołu ekranu jako arkusz. Na prośbę użytkownika ujednolicono wszystkie do stylu wyśrodkowanego jako wygodniejszego.
+
+## Historia rewizji
+- **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie polecenia użytkownika ujednolicenia stylu wszystkich okienek modalnych.
+---
+
+# FR-60: Warunkowe wyświetlanie „Złotych zasad przy Hashimoto i insulinooporności”
+
+**Obszar:** Śledzenie postępów  
+**Status:** Zaimplementowane
+
+## Opis
+Karta „⭐ Złote zasady przy Hashimoto i insulinooporności” w zakładce Postępy wyświetla się TYLKO wtedy, gdy przełącznik „Trzymaj się niskiego indeksu glikemicznego” (FR-9, `profile.strictLowGI`) jest włączony — czyli gdy ustawienia diety faktycznie odpowiadają kontekstowi, dla którego te zasady mają sens. Gdy użytkownik jawnie wyłączył ten przełącznik (bo np. nie ma insulinooporności/cukrzycy), karta jest ukrywana jako nierelevantna.
+
+## Kryteria akceptacji
+- Domyślny stan przełącznika (`strictLowGI: true`) pokazuje kartę — zachowanie zgodne z dotychczasowym.
+- Wyłączenie przełącznika w Ustawieniach i zapisanie profilu ukrywa kartę przy najbliższym wejściu na zakładkę Postępy.
+- Ponowne włączenie przełącznika przywraca widoczność karty.
+
+## Uwagi
+Zrewidowane 2026-08-03: pierwotnie karta była pokazywana zawsze, niezależnie od ustawień diety, co dla osób bez insulinooporności/cukrzycy (a więc z wyłączonym rygorem niskiego IG) nie miało sensu. Powiązane z FR-9.
+
+## Historia rewizji
+- **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie polecenia użytkownika.
+---
+
+# FR-61: Wybór stylu oceniania kart przesunięciem w Ustawieniach
+
+**Obszar:** Wygląd i motywy  
+**Status:** Zaimplementowane
+
+## Opis
+Ustawienia (karta „🎨 Wygląd aplikacji”) zawierają przełącznik dwuopcyjny „🎈 Styl oceniania kart przesunięciem”: **Balonowa czcionka** (domyślny — patrz FR-56: tylko napis, karta nie zmienia koloru) i **Kolorowa karta** (klasyczne kolorowe obramowanie/poświata całej karty podczas przesuwania, tak jak w pierwszej wersji funkcji oceniania — FR-55/FR-56 sprzed rewizji). Wybór jest zapisywany niezależnie od wybranego motywu kolorystycznego (FR-48) — działa tak samo w każdym z ośmiu motywów, w tym Polaroid (FR-49).
+
+## Kryteria akceptacji
+- Domyślna wartość to `balloon`.
+- Zmiana wyboru w Ustawieniach jest natychmiastowa i zapisywana w profilu.
+- Wybór jest widoczny/wpływa na kartę wyłącznie podczas gestu przesuwania (FR-55) — nie zmienia niczego innego w wyglądzie karty w spoczynku.
+- Zmiana motywu kolorystycznego (FR-48) nie resetuje ani nie zmienia wybranego stylu oceniania.
+
+## Historia rewizji
+- **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie polecenia użytkownika o wydzielenie kolorowania karty jako osobnej, opcjonalnej funkcji.
 ---

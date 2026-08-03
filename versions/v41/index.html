@@ -401,24 +401,18 @@
     transform:scale(var(--swipe-label-scale, .7));
     transition:transform .05s linear;
   }
-  /* Balloon-animal letters: a thick colored tube outline carries the shape
-     (like the rubber wall of a twisted party balloon) around a pale,
-     translucent-looking fill, with a bright highlight along the top edge
-     and darker shading along the bottom to fake the roundness of an
-     inflated tube — instead of a flat color filling the whole letter (which
-     read as "the whole card going green/red", not as balloon lettering). */
+  /* Balloon-letter look: a round gloss highlight near the top-left (like
+     light bouncing off a taut balloon skin) via a radial gradient clipped
+     to the text, plus a soft white rim and a punchy drop shadow to keep the
+     puffed-up letterforms readable against any card background. */
   .swipe-label.like, .swipe-label.dislike{
-    font-weight:700; letter-spacing:.5px;
-    -webkit-text-stroke:4px var(--balloon-stroke);
+    -webkit-text-stroke:1.5px rgba(255,255,255,.6);
     paint-order:stroke fill;
-    color:var(--balloon-fill);
-    text-shadow:
-      0 -2px 0 rgba(255,255,255,.65),
-      0 3px 2px rgba(0,0,0,.18);
-    filter:drop-shadow(0 6px 14px rgba(0,0,0,.2));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 3px 0 rgba(0,0,0,.12)) drop-shadow(0 10px 18px rgba(0,0,0,.22));
   }
-  .swipe-label.like{ --balloon-stroke:#2E9A5E; --balloon-fill:#BEF0D6; }
-  .swipe-label.dislike{ --balloon-stroke:#AE3A2F; --balloon-fill:#F5CFC9; }
+  .swipe-label.like{ background:radial-gradient(circle at 32% 28%, #A8F0C6 0%, #3CAA6E 55%, #1E7A4C 100%); }
+  .swipe-label.dislike{ background:radial-gradient(circle at 32% 28%, #F3B0A8 0%, #C5564A 55%, #8A2E24 100%); }
   .card.recipe-card.expanded{
     border-color:var(--teal);
     box-shadow:0 2px 6px rgba(30,30,20,.06), 0 14px 32px rgba(30,30,20,.09);
@@ -903,11 +897,9 @@
       <strong>🛒 Lista zakupów</strong>
       <span class="count" id="shopCount">0 pozycji</span>
     </div>
-    <div class="shop-actions" style="margin:0 0 8px;">
+    <div class="shop-actions" style="margin:0 0 12px;">
       <button class="btn ghost" id="addWeekBtn" style="width:100%;">📅 Dodaj składniki z całego tygodnia w Planerze</button>
     </div>
-    <div class="hint-text" style="margin:0 0 6px;">Albo tylko z konkretnego dnia:</div>
-    <div class="chip-grid" id="shopDayButtons" style="margin-bottom:14px;"></div>
     <div id="shopList"></div>
     <div class="shop-actions">
       <button class="btn primary" id="shareBtn">📤 Udostępnij (SMS / Messenger)</button>
@@ -988,14 +980,6 @@
         <input type="range" id="setUiScale" min="0.7" max="1.3" step="0.05" style="width:100%; accent-color:var(--teal);">
         <div class="hint-text" style="margin:6px 0 0;">Jeśli elementy aplikacji wyglądają za duże (albo za małe) na Twoim telefonie, dostosuj tutaj. Wartość początkowa jest dobierana automatycznie na podstawie szerokości ekranu, ale to tylko przybliżenie — swobodnie ją zmień, jeśli nie pasuje.</div>
       </div>
-      <div style="margin-top:16px;">
-        <label style="display:block; font-size:13px; font-weight:600; margin-bottom:6px;">🎈 Styl oceniania kart przesunięciem</label>
-        <div class="chip-grid">
-          <button type="button" class="ing-chip" data-swipe-style="balloon">🎈 Balonowa czcionka</button>
-          <button type="button" class="ing-chip" data-swipe-style="glow">🎨 Kolorowa karta</button>
-        </div>
-        <div class="hint-text" style="margin:6px 0 0;">Niezależnie od wybranego motywu kolorystycznego powyżej — decyduje tylko o wyglądzie napisu „Lubię to!”/„Nie lubię!” podczas przesuwania karty przepisu.</div>
-      </div>
     </div>
 
     <div class="card">
@@ -1034,7 +1018,7 @@
 
   <!-- VIEW: POSTEP -->
   <section id="view-progress" class="view">
-    <div class="rules-card" id="hashimotoRulesCard">
+    <div class="rules-card">
       <h3>⭐ Złote zasady przy Hashimoto i insulinooporności</h3>
       <ol>
         <li>Kolejność jedzenia: zawsze zaczynaj od warzyw i białka, węglowodany (kasze, chleb) na końcu.</li>
@@ -1123,8 +1107,8 @@
   </div>
 </div>
 
-<div class="modal-overlay center" id="plannerModalOverlay">
-  <div class="modal-sheet center-sheet">
+<div class="modal-overlay" id="plannerModalOverlay">
+  <div class="modal-sheet">
     <div class="modal-head">
       <h3 id="plannerModalTitle"></h3>
       <button id="plannerModalClose">✕</button>
@@ -1133,8 +1117,8 @@
   </div>
 </div>
 
-<div class="modal-overlay center" id="ideaModalOverlay">
-  <div class="modal-sheet center-sheet">
+<div class="modal-overlay" id="ideaModalOverlay">
+  <div class="modal-sheet">
     <div class="modal-head">
       <h3>💡 Pomysł na danie</h3>
       <button id="ideaModalClose">✕</button>
@@ -1143,8 +1127,8 @@
   </div>
 </div>
 
-<div class="modal-overlay center" id="customTileModalOverlay">
-  <div class="modal-sheet center-sheet">
+<div class="modal-overlay" id="customTileModalOverlay">
+  <div class="modal-sheet">
     <div class="modal-head">
       <h3>➕ Dodaj własny: <span id="customTileCatLabel"></span></h3>
       <button id="customTileModalClose">✕</button>
@@ -1205,8 +1189,8 @@
   </div>
 </div>
 
-<div class="modal-overlay center" id="tileActionOverlay">
-  <div class="modal-sheet center-sheet">
+<div class="modal-overlay" id="tileActionOverlay">
+  <div class="modal-sheet">
     <div class="modal-head">
       <h3 id="tileActionTitle"></h3>
       <button id="tileActionClose">✕</button>
@@ -1215,8 +1199,8 @@
   </div>
 </div>
 
-<div class="modal-overlay center" id="cookHistoryOverlay">
-  <div class="modal-sheet center-sheet">
+<div class="modal-overlay" id="cookHistoryOverlay">
+  <div class="modal-sheet">
     <div class="modal-head">
       <h3 id="cookHistoryTitle"></h3>
       <button id="cookHistoryClose">✕</button>
@@ -1368,63 +1352,6 @@ function pantryDisplayName(canonName, qty){
   if(!forms) return canonName;
   if(qty === undefined || qty === null) return forms.one;
   return forms[polishPluralCategory(qty)];
-}
-
-// Genitive (dopełniacz) form per canonical ingredient — Polish requires this
-// case after any quantity+unit ("10g migdałów", "4 łyżki płatków owsianych"),
-// not the bare nominative name the canon table otherwise uses everywhere
-// else (pantry tile titles, recipe cards). Used only on the shopping list,
-// where items are quantity-first display, unlike pantry tiles which lead
-// with the plain product name.
-const CANON_GENITIVE = {
-  "jogurt bez laktozy":"jogurtu bez laktozy", "skyr bez laktozy":"skyru bez laktozy", "serek bez laktozy":"serka bez laktozy", "twaróg bez laktozy":"twarogu bez laktozy",
-  "feta / ser bez laktozy":"fety / sera bez laktozy", "masło klarowane":"masła klarowanego", "odżywka białkowa":"odżywki białkowej", "cebula":"cebuli",
-  "czerwona cebula":"czerwonej cebuli", "cukinia":"cukinii", "marchewka":"marchewki", "pietruszka (korzeń)":"pietruszki (korzeń)",
-  "burak":"buraka", "ogórek":"ogórka", "ogórek kiszony":"ogórka kiszonego", "papryka":"papryki",
-  "pomidor":"pomidora", "pomidorki koktajlowe":"pomidorków koktajlowych", "rzodkiewka":"rzodkiewki", "szpinak":"szpinaku",
-  "jarmuż":"jarmużu", "sałata / mix sałat":"sałaty / mix sałat", "brokuł":"brokułu", "kalafior":"kalafiora",
-  "seler naciowy":"selera naciowego", "czosnek":"czosnku", "koperek":"koperku", "szczypiorek":"szczypiorku",
-  "kiełki":"kiełków", "mrożone warzywa":"mrożonych warzyw", "ziemniaki":"ziemniaków", "batat":"batata",
-  "awokado":"awokado", "banan":"banana", "jabłko":"jabłka", "gruszka":"gruszki",
-  "cytryna":"cytryny", "limonka":"limonki", "kiwi":"kiwi", "maliny":"malin",
-  "borówki / jagody":"borówek / jagód", "truskawki":"truskawek", "morele suszone":"moreli suszonych", "ananas":"ananasa",
-  "imbir":"imbiru", "rodzynki / żurawina":"rodzynek / żurawiny", "jajka":"jajek", "kurczak (pierś)":"kurczaka (pierś)",
-  "indyk":"indyka", "wołowina":"wołowiny", "wieprzowina":"wieprzowiny", "dorsz":"dorsza",
-  "łosoś":"łososia", "pstrąg":"pstrąga", "makrela":"makreli", "tuńczyk":"tuńczyka",
-  "krewetki":"krewetek", "tofu":"tofu", "ciecierzyca":"ciecierzycy", "fasola":"fasoli",
-  "soczewica":"soczewicy", "hummus":"hummusu", "orzechy":"orzechów", "migdały":"migdałów",
-  "pestki (dyni/słonecznika)":"pestek (dyni/słonecznika)", "siemię lniane / chia":"siemienia lnianego / chia", "sezam":"sezamu", "masło orzechowe / migdałowe":"masła orzechowego / migdałowego",
-  "chleb żytni":"chleba żytniego", "wafle chrupkie":"wafli chrupkich", "tortilla":"tortilli", "kasza gryczana":"kaszy gryczanej",
-  "kasza jaglana":"kaszy jaglanej", "kasza pęczak":"kaszy pęczak", "kasza bulgur":"kaszy bulgur", "komosa ryżowa":"komosy ryżowej",
-  "ryż":"ryżu", "makaron soba":"makaronu soba", "płatki owsiane":"płatków owsianych", "mąka":"mąki",
-  "granola":"granoli", "cynamon":"cynamonu", "chili":"chili", "curry (przyprawa)":"curry (przyprawa)",
-  "kumin":"kuminu", "kurkuma":"kurkumy", "majeranek":"majeranku", "musztarda":"musztardy",
-  "oregano":"oregano", "tymianek":"tymianku", "sól":"soli", "pieprz":"pieprzu",
-  "koncentrat / passata pomidorowa":"koncentratu / passaty pomidorowej", "pasta curry":"pasty curry", "sos sojowy / tamari":"sosu sojowego / tamari", "oliwa z oliwek":"oliwy z oliwek",
-  "oliwki":"oliwek", "olej kokosowy":"oleju kokosowego", "olej sezamowy":"oleju sezamowego", "ocet balsamiczny":"octu balsamicznego",
-  "miód":"miodu", "zioła prowansalskie":"ziół prowansalskich", "natka pietruszki":"natki pietruszki", "bazylia":"bazylii",
-  "mięta":"mięty", "papryka słodka (mielona)":"papryki słodkiej (mielonej)", "wanilia":"wanilii", "gałka muszkatołowa":"gałki muszkatołowej",
-  "sok z cytryny":"soku z cytryny", "sok z limonki":"soku z limonki", "napój roślinny (migdałowy/owsiany/kokosowy)":"napoju roślinnego (migdałowego/owsianego/kokosowego)", "mleko kokosowe":"mleka kokosowego",
-  "wiórki kokosowe":"wiórków kokosowych", "woda":"wody", "bulion warzywny":"bulionu warzywnego", "dynia":"dyni",
-  "fasolka szparagowa":"fasolki szparagowej", "groszek zielony":"groszku zielonego", "pieczarki":"pieczarek", "owsiano-bananowa muffinka":"owsiano-bananowej muffinki",
-  "chleb pszenny":"chleba pszennego", "płatki kukurydziane":"płatków kukurydzianych", "dżem":"dżemu", "bułka pszenna":"bułki pszennej",
-  "makaron pszenny":"makaronu pszennego", "kasza kuskus":"kaszy kuskus", "kakao":"kakao", "daktyle suszone":"daktyli suszonych",
-  "gorzka czekolada":"gorzkiej czekolady", "pomarańcza":"pomarańczy", "arbuz":"arbuza", "winogrona":"winogron",
-  "śliwki":"śliwek", "brzoskwinia":"brzoskwini", "grejpfrut":"grejpfruta", "mandarynka":"mandarynki",
-  "czereśnie":"czereśni", "wiśnie":"wiśni", "ser żółty":"sera żółtego", "maślanka":"maślanki",
-  "kefir":"kefiru", "kawa":"kawy", "kawa z mlekiem":"kawy z mlekiem", "kawa z cukrem":"kawy z cukrem",
-  "kawa z mlekiem i cukrem":"kawy z mlekiem i cukrem", "kawa z syropem":"kawy z syropem", "kawa z mlekiem i syropem":"kawy z mlekiem i syropem", "herbata":"herbaty",
-  "herbata z miodem":"herbaty z miodem", "sok pomarańczowy":"soku pomarańczowego", "sok jabłkowy":"soku jabłkowego", "cola":"coli",
-  "piwo":"piwa", "wino":"wina", "prince polo":"prince polo", "snickers":"snickersa",
-  "mars":"marsa", "twix":"twixa", "bounty":"bounty", "kinder bueno":"kinder bueno",
-  "czekolada mleczna":"czekolady mlecznej", "ciastka":"ciastek", "wafelek":"wafelka", "pączek":"pączka",
-  "drożdżówka":"drożdżówki", "rogalik":"rogalika", "lody":"lodów", "chipsy":"chipsów",
-  "paluszki":"paluszków", "popcorn":"popcornu", "precel":"precla", "kabanos":"kabanosa",
-  "parówka":"parówki", "kanapka":"kanapki", "tost":"tostu", "orzechy włoskie":"orzechów włoskich",
-};
-function shopDisplayName(canonName, unitCat, qty){
-  if(unitCat === "count") return pantryDisplayName(canonName, qty);
-  return CANON_GENITIVE[canonName] || canonName;
 }
 function tileStep(unitCat){
   if(unitCat==="weight") return 100;
@@ -2026,7 +1953,6 @@ function loadState(){
       if(!s.waterHistory) s.waterHistory = {};
       if(s.uiScale===undefined) s.uiScale = detectDefaultUiScale();
       if(!s.recipeRating) s.recipeRating = {};
-      if(!s.swipeRatingStyle) s.swipeRatingStyle = "balloon";
       const shoppingVals = Object.values(s.shopping||{});
       if(shoppingVals.some(v=>v && v.unitCat===undefined)){
         s.shopping = {}; s.recipeAdded = {};
@@ -2034,7 +1960,7 @@ function loadState(){
       return s;
     }
   }catch(e){}
-  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, plannerLeftover:{}, water:{date:"",count:0}, waterHistory:{}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, pantryCategoryOverride:{}, waterNotifEnabled:false, theme:"teal", waterReminder:{...DEFAULT_WATER_REMINDER}, uiScale:detectDefaultUiScale(), recipeRating:{}, swipeRatingStyle:"balloon"};
+  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, plannerLeftover:{}, water:{date:"",count:0}, waterHistory:{}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, pantryCategoryOverride:{}, waterNotifEnabled:false, theme:"teal", waterReminder:{...DEFAULT_WATER_REMINDER}, uiScale:detectDefaultUiScale(), recipeRating:{}};
 }
 let state = loadState();
 document.documentElement.setAttribute("data-theme", state.theme || "teal");
@@ -2443,7 +2369,6 @@ function loadSettingsForm(){
   renderFavIngChips("");
   document.getElementById("setUiScale").value = state.uiScale;
   document.getElementById("uiScaleLabel").textContent = Math.round(state.uiScale*100) + "%";
-  renderSwipeStylePicker();
 }
 document.getElementById("setUiScale").addEventListener("input", (e)=>{
   const scale = parseFloat(e.target.value);
@@ -2451,18 +2376,6 @@ document.getElementById("setUiScale").addEventListener("input", (e)=>{
   applyUiScale(scale);
   state.uiScale = scale;
   saveState();
-});
-function renderSwipeStylePicker(){
-  document.querySelectorAll("[data-swipe-style]").forEach(btn=>{
-    btn.classList.toggle("active", btn.dataset.swipeStyle === (state.swipeRatingStyle||"balloon"));
-  });
-}
-document.querySelectorAll("[data-swipe-style]").forEach(btn=>{
-  btn.addEventListener("click", ()=>{
-    state.swipeRatingStyle = btn.dataset.swipeStyle;
-    saveState();
-    renderSwipeStylePicker();
-  });
 });
 function renderFavIngChips(filterText){
   const box = document.getElementById("favIngChips");
@@ -2695,22 +2608,14 @@ function attachSwipeRating(card, r, refreshBadge){
       dx = Math.max(-SWIPE_MAX, Math.min(SWIPE_MAX, ddx));
       card.style.transform = `translateX(${dx}px) rotate(${(dx/SWIPE_MAX*6).toFixed(1)}deg)`;
       const intensity = Math.min(1, Math.abs(dx)/SWIPE_COMMIT);
-      // "glow" is the classic whole-card tint; "balloon" (default) leaves the
-      // card alone and lets the inflated label alone carry the feedback —
-      // both read from a Settings toggle independent of the color theme.
-      const useGlow = (state.swipeRatingStyle||"balloon") === "glow";
       if(dx > 4){
-        if(useGlow){
-          card.style.borderColor = `rgba(60,170,110,${(0.3+0.6*intensity).toFixed(2)})`;
-          card.style.boxShadow = `0 0 0 2px rgba(60,170,110,${(0.12*intensity).toFixed(2)}), 0 14px 30px rgba(60,170,110,${(0.22*intensity).toFixed(2)})`;
-        }
-        setLabel("Lubię to!", "like", intensity.toFixed(2));
+        card.style.borderColor = `rgba(60,170,110,${(0.3+0.6*intensity).toFixed(2)})`;
+        card.style.boxShadow = `0 0 0 2px rgba(60,170,110,${(0.12*intensity).toFixed(2)}), 0 14px 30px rgba(60,170,110,${(0.22*intensity).toFixed(2)})`;
+        setLabel("Podoba mi się", "like", intensity.toFixed(2));
       }else if(dx < -4){
-        if(useGlow){
-          card.style.borderColor = `rgba(190,70,60,${(0.3+0.6*intensity).toFixed(2)})`;
-          card.style.boxShadow = `0 0 0 2px rgba(190,70,60,${(0.12*intensity).toFixed(2)}), 0 14px 30px rgba(190,70,60,${(0.22*intensity).toFixed(2)})`;
-        }
-        setLabel("Nie lubię!", "dislike", intensity.toFixed(2));
+        card.style.borderColor = `rgba(190,70,60,${(0.3+0.6*intensity).toFixed(2)})`;
+        card.style.boxShadow = `0 0 0 2px rgba(190,70,60,${(0.12*intensity).toFixed(2)}), 0 14px 30px rgba(190,70,60,${(0.22*intensity).toFixed(2)})`;
+        setLabel("Nie podoba mi się", "dislike", intensity.toFixed(2));
       }else{
         clearDragStyle();
         setLabel("", "", 0);
@@ -3198,7 +3103,6 @@ function classify(label){
 const GROUP_ORDER = ["Nabiał bez laktozy","Warzywa i owoce","Mięso, ryby i jajka","Strączki, orzechy i nasiona","Pieczywo i zboża","Przyprawy i dodatki","Inne"];
 
 function renderShop(){
-  renderShopDayButtons();
   const box = document.getElementById("shopList");
   box.innerHTML = "";
   const keys = Object.keys(state.shopping);
@@ -3223,7 +3127,7 @@ function renderShop(){
       const row = document.createElement("div");
       row.className = "shop-item" + (item.checked ? " checked":"");
       const qtyLabel = formatQty(item.unitCat, item.qty);
-      const displayName = shopDisplayName(item.name, item.unitCat, item.qty);
+      const displayName = pantryDisplayName(item.name, item.unitCat==="count" ? item.qty : undefined);
       row.innerHTML = `<input type="checkbox" ${item.checked?'checked':''}><span class="label">${qtyLabel} ${displayName}</span>${buildPantryTag(item)}`;
       row.querySelector("input").addEventListener("change", e=>{
         state.shopping[item.key].checked = e.target.checked;
@@ -3248,53 +3152,13 @@ function buildListText(){
     if(!groups[g]) return;
     out += "\n" + g + ":\n";
     groups[g].sort((a,b)=>a.name.localeCompare(b.name,'pl')).forEach(item=>{
-      const displayName = shopDisplayName(item.name, item.unitCat, item.qty);
+      const displayName = pantryDisplayName(item.name, item.unitCat==="count" ? item.qty : undefined);
       out += "- " + formatQty(item.unitCat, item.qty) + " " + displayName + "\n";
     });
   });
   return out.trim();
 }
 
-// Same weekly-template DAYS array the Planner uses (index 0=Poniedziałek),
-// so "jutro"/"pojutrze" are computed relative to the real current weekday
-// rather than being a fixed slot — the plan itself repeats every week, but
-// the shortcut labels should still mean what they say today.
-function renderShopDayButtons(){
-  const box = document.getElementById("shopDayButtons");
-  if(!box) return;
-  const jsDay = new Date().getDay();
-  const todayIdx = jsDay === 0 ? 6 : jsDay - 1;
-  box.innerHTML = "";
-  DAYS.forEach((day, di)=>{
-    const btn = document.createElement("button");
-    btn.className = "ing-chip";
-    let label = day;
-    if(di === todayIdx) label = "Dziś";
-    else if(di === (todayIdx+1)%7) label = "Jutro";
-    else if(di === (todayIdx+2)%7) label = "Pojutrze";
-    btn.textContent = label;
-    btn.title = day;
-    btn.addEventListener("click", ()=> addDayToShoppingList(di, label));
-    box.appendChild(btn);
-  });
-}
-function addDayToShoppingList(di, dayLabel){
-  const dayMeals = state.planner[di] || {};
-  let added = 0, already = 0, empty = 0;
-  CATS.forEach(c=>{
-    const rid = dayMeals[c.id];
-    if(!rid){ empty++; return; }
-    const base = RECIPES.find(x=>x.id===rid);
-    if(!base) return;
-    const r = scaleRecipe(base, getPlannerScale(di, c.id));
-    if(state.recipeAdded[r.id]){ already++; return; }
-    addRecipeToShoppingList(r);
-    added++;
-  });
-  saveState(); renderShop(); renderRecipes();
-  if(added===0) toast(already ? `Dania na ${dayLabel.toLowerCase()} są już na liście` : `Brak zaplanowanych dań na ${dayLabel.toLowerCase()} w Planerze`);
-  else toast(`Dodano składniki z ${added} dań na ${dayLabel.toLowerCase()}${already?` (${already} już było na liście)`:""}`);
-}
 document.getElementById("addWeekBtn").addEventListener("click", ()=>{
   let added = 0, already = 0, empty = 0;
   DAYS.forEach((day,di)=>{
@@ -4360,12 +4224,6 @@ document.getElementById("addWeightBtn").addEventListener("click", ()=>{
 });
 
 function renderProgress(){
-  // These "golden rules" only make sense for the low-GI/insulin-resistance
-  // diet mode this app was originally built around — showing them to
-  // someone who explicitly turned that off in Ustawienia (FR-9) is just
-  // irrelevant clutter, not general advice.
-  const rulesCard = document.getElementById("hashimotoRulesCard");
-  if(rulesCard) rulesCard.style.display = (state.profile.strictLowGI!==false) ? "" : "none";
   renderWater();
   renderWeights();
   renderStreaks();
