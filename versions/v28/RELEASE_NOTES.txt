@@ -1,0 +1,17 @@
+Wersja 28
+=========
+
+Samo podbicie wersji cache Service Workera (dieta-app-v20), bez zmian w
+kodzie aplikacji.
+
+Powód: Service Worker serwuje `index.html` w trybie "pokaż z cache
+natychmiast, a w tle pobierz świeżą wersję na następny raz" — to znaczy, że
+zwykła aktualizacja treści `index.html` na serwerze, bez zmiany samego pliku
+`sw.js`, wymagałaby otwarcia aplikacji dwa razy, zanim nowa treść faktycznie
+się pokaże (za pierwszym razem dalej widać starą wersję z cache, dopiero w
+tle pobiera się nowa). Podbicie numeru wersji cache zmienia zawartość
+`sw.js`, co przeglądarka wykrywa jako prawdziwą aktualizację Service
+Workera — to z kolei uruchamia już istniejący w aplikacji mechanizm
+automatycznego przeładowania strony po instalacji nowego Service Workera,
+więc zmiany z poprzednich wersji (26 i 27) powinny się teraz pokazać od razu
+przy najbliższym otwarciu aplikacji, bez ręcznego czyszczenia danych.
