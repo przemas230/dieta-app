@@ -1,0 +1,41 @@
+Wersja 27
+=========
+
+Poprawki po pierwszym teście na telefonie: przycisk "wstecz" i okienko
+"Jak policzono".
+
+1. Przycisk "wstecz" już nie zamyka od razu aplikacji
+   Wcześniej, z otwartym okienkiem (np. "Jak policzono", historia
+   gotowania, wybór dnia w planerze, skaner kodów) albo na innej karcie niż
+   Przepisy, przycisk "wstecz" telefonu natychmiast zamykał całą aplikację
+   zamiast po prostu cofnąć o krok. Powód: aplikacja nigdy nie korzystała z
+   historii przeglądarki, więc dla systemu "cofnij" nie miało dokąd cofnąć
+   poza wyjściem z aplikacji.
+   Naprawione: teraz otwarcie dowolnego okienka i przełączenie karty (Zakupy
+   /Planer/Postęp/Spiżarnia/Ustawienia) odkłada krok w historii. "Wstecz"
+   najpierw zamyka otwarte okienko, potem cofa do poprzedniej karty, i
+   dopiero gdy nie ma już nic do cofnięcia — zamyka aplikację (tak jak
+   powinno). Dotyczy to również skanera kodów kreskowych — "wstecz" w
+   trakcie skanowania poprawnie wyłącza kamerę, a nie tylko chowa okienko.
+
+2. Okienko "Jak policzono" — obliczenia na pierwszym miejscu
+   Długi tekst z legendą (co znaczy B/W/T, IG, ŁG) i opisem metodologii
+   sprawiał, że przy dłuższych przepisach samo okienko robiło się wyższe niż
+   ekran telefonu — a ponieważ było wyśrodkowane w nieprzewijalnym
+   kontenerze, część zawartości (łącznie z samymi wyliczeniami!) była
+   całkowicie niedostępna, nie dało się do niej doprzewinąć.
+   Naprawione dwutorowo:
+   - Okienko ma teraz ograniczoną wysokość i przewija się samo w sobie —
+     nic już nie "wypada" poza ekran bez możliwości przewinięcia.
+   - Długa legenda i opis metodologii są domyślnie zwinięte pod przyciskiem
+     "ℹ️ Legenda i metodologia" — widać go, ale trzeba w niego kliknąć, żeby
+     rozwinąć pełny tekst. Na pierwszy rzut oka widoczne są tylko same
+     wyliczenia (rozbicie na składniki, kalorie, B/W/T) i krótkie
+     podsumowanie kalibracji — to, po co się właściwie otwiera to okienko.
+
+Przetestowane w headless Chromium: pełny przegląd funkcjonalny wszystkich
+zakładek (0 błędów JS), oraz osobne testy: wstecz zamyka otwarte okienko
+(bez wyjścia z aplikacji), wstecz cofa między kartami, wstecz podczas
+skanowania kodu faktycznie wyłącza kamerę (zweryfikowane przez podmianę
+funkcji), okienko "Jak policzono" — legenda domyślnie zwinięta, wyliczenia
+widoczne i o prawidłowej, ograniczonej wysokości okienka z przewijaniem.

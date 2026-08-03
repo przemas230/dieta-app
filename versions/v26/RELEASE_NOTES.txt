@@ -1,0 +1,57 @@
+Wersja 26
+=========
+
+Poprawki nagłówka, kompaktowe karty przepisów i ogólny szlif wizualny.
+
+1. Nagłówek — podsumowanie profilu w jednej linijce z nazwą aplikacji
+   Tekst "Kobieta, 37 lat · 164 cm · 67 kg → cel 62 kg · ~1500 kcal/dzień"
+   przeniesiony obok "🍲 Dieta App", w tej samej linijce, zamiast pod spodem.
+   Ponieważ pełny tekst nie mieści się w jednej linijce na wąskim ekranie
+   telefonu, linijka jest teraz przewijalna w poziomie (z delikatnym
+   wygaszeniem na końcu) zamiast obcinać informację wielokropkiem — nic się
+   nie gubi, tylko ewentualnie trzeba przesunąć palcem, żeby zobaczyć koniec.
+
+2. Automatyczne zwijanie nagłówka — tylko na Przepisach
+   Zwijanie nagłówka przy przewijaniu działa teraz wyłącznie na karcie
+   Przepisy (to tam jest długa, szybko przewijana lista, dla której to miało
+   sens). Na pozostałych kartach (Zakupy, Planer, Postęp, Spiżarnia,
+   Ustawienia) nagłówek domyślnie jest rozwinięty i nie zwija się sam przy
+   przewijaniu. Dodano nowy przycisk (strzałka obok ikony ustawień), którym
+   można ręcznie zwinąć/rozwinąć nagłówek na każdej karcie, jeśli ktoś chce
+   więcej miejsca na ekranie.
+
+3. Kompaktowe karty przepisów — składniki dopiero po rozwinięciu
+   Karty przepisów (na liście Przepisów, w podglądzie w Planerze — wszędzie,
+   gdzie się pojawiają) są teraz domyślnie zwinięte: widać nazwę, czas,
+   kalorie, znaczki i przyciski akcji, ale nie pełną listę składników ani
+   sposób przygotowania. Kliknięcie/dotknięcie karty rozwija ją, pokazując
+   składniki, sposób przygotowania i szczegóły makroskładników; rozwinięcie
+   innej karty automatycznie zwija poprzednią, więc na liście zawsze widać
+   najwyżej jedną w pełni rozwiniętą kartę naraz. W oknach szczegółów dania
+   (podgląd w Planerze) karta jest od razu w pełni rozwinięta — tam liczy
+   się tylko jedno danie, więc zwijanie nie ma sensu.
+   Dawne kliknięcie w kartę otwierające "sprawdź co mam w spiżarni" zostało
+   zastąpione małym, dedykowanym przyciskiem "🏺 Sprawdź stan spiżarni dla
+   tego dania" wewnątrz rozwiniętej karty — funkcja nie zniknęła, tylko nie
+   koliduje już z rozwijaniem/zwijaniem karty.
+
+4. Ogólny szlif wizualny
+   - Płynne, animowane wjeżdżanie okien modalnych (od dołu albo ze
+     środka, zależnie od typu) zamiast nagłego pojawiania się, plus lekkie
+     rozmycie tła pod modalem.
+   - Delikatna reakcja "wciśnięcia" (subtelne zmniejszenie) na przyciskach,
+     gwiazdkach ulubionych i filtrach kategorii — bardziej namacalny dotyk.
+   - Głównym przyciskom (np. "Dodaj do listy zakupów" po dodaniu, aktywne
+     filtry) dodano miękki cień dla wrażenia głębi zamiast płaskiego koloru.
+   - Dolny pasek nawigacji: mała kropka pod aktywną zakładką i delikatny
+     cień nad paskiem, zamiast samej zmiany koloru ikony.
+   Całość uwzględnia wcześniejsze ustawienie "ogranicz animacje"
+   (prefers-reduced-motion) — te efekty się wtedy wyłączają.
+
+Przetestowane w headless Chromium: pełny przegląd funkcjonalny wszystkich
+zakładek (0 błędów JS), oddzielne testy nowego zachowania nagłówka
+(zwijanie tylko na Przepisach, ręczny przełącznik na innych kartach,
+tekst profilu w jednej linijce) oraz kompaktowych kart (domyślnie zwinięte,
+rozwijanie/zwijanie przy kliknięciu, tylko jedna rozwinięta naraz, klik w
+przycisk wewnątrz karty nie rozwija/zwija jej przypadkiem, przycisk
+sprawdzenia spiżarni nadal działa).

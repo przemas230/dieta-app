@@ -397,23 +397,8 @@
   .goal-badge.maintain-badge{background:var(--plum-pale); color:var(--plum);}
   .gi-badge{background:var(--danger-pale); color:var(--danger); font-weight:700; padding:1px 7px; border-radius:999px; font-size:11px;}
   .macro-info-btn{border:none; background:none; color:var(--muted); cursor:pointer; font-size:13px; padding:0 2px; line-height:1;}
-  .macro-legend p{font-size:11.5px; line-height:1.5; margin:0 0 9px; color:var(--muted);}
+  .macro-legend p{font-size:12.5px; line-height:1.5; margin:0 0 10px; color:var(--text);}
   .macro-legend p:last-child{margin-bottom:0;}
-  .legend-toggle{
-    display:flex; align-items:center; justify-content:space-between; width:100%;
-    border:none; background:var(--teal-pale); color:var(--teal-dark); border-radius:10px;
-    padding:9px 12px; margin:12px 0 0; cursor:pointer; font-size:12px; font-weight:700;
-    font-family:var(--font-body);
-    transition:transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
-  }
-  .legend-toggle:active{transform:scale(.97);}
-  .legend-toggle .expand-chevron{display:inline-block; transition:transform var(--dur-fast) var(--ease);}
-  .legend-wrap.expanded .legend-toggle .expand-chevron{transform:rotate(180deg);}
-  .legend-body{display:grid; grid-template-rows:0fr; transition:grid-template-rows var(--dur-med) var(--ease);}
-  .legend-body-inner{overflow:hidden; min-height:0; opacity:0; transition:opacity var(--dur-fast) var(--ease);}
-  .legend-wrap.expanded .legend-body{grid-template-rows:1fr;}
-  .legend-wrap.expanded .legend-body-inner{opacity:1; transition-delay:.05s;}
-  .legend-body-inner .macro-legend{padding-top:10px;}
   .calc-list{margin:0 0 4px; max-height:220px; overflow-y:auto;}
   .calc-row{display:flex; justify-content:space-between; align-items:flex-start; gap:10px; padding:7px 0; border-bottom:1px solid var(--line);}
   .calc-row:last-child{border-bottom:none;}
@@ -483,15 +468,7 @@
     padding:18px 16px calc(18px + env(safe-area-inset-bottom)); max-height:78vh; overflow-y:auto;
     box-shadow:0 -8px 40px rgba(0,0,0,.16);
   }
-  .modal-sheet.center-sheet{
-    border-radius:20px; max-width:340px; box-shadow:0 20px 60px rgba(0,0,0,.22);
-    /* Was max-height:none — fine for the short confirm dialogs this class
-       was built for, but a real bug for longer content (e.g. the macro-info
-       breakdown): centered inside a fixed, non-scrolling overlay, an
-       overflowing sheet just gets silently clipped top and bottom with no
-       way to scroll to the rest. Bound it and let it scroll internally. */
-    max-height:82vh; overflow-y:auto;
-  }
+  .modal-sheet.center-sheet{border-radius:20px; max-width:340px; max-height:none; box-shadow:0 20px 60px rgba(0,0,0,.22);}
   .barcode-video-wrap{
     position:relative; width:100%; aspect-ratio:1/1; border-radius:14px; overflow:hidden;
     background:#000; margin-top:10px;
@@ -1074,22 +1051,14 @@
       <button id="macroInfoClose">✕</button>
     </div>
     <div id="macroInfoRecipeCalc"></div>
-    <div class="legend-wrap" id="macroLegendWrap">
-      <button type="button" class="legend-toggle" id="macroLegendToggle">
-        <span>ℹ️ Legenda i metodologia (B/W/T, IG, ŁG)</span><span class="expand-chevron">⌄</span>
-      </button>
-      <div class="legend-body"><div class="legend-body-inner">
-        <div class="macro-legend">
-          <p><strong>B — białko (g)</strong> na porcję. Buduje i chroni mięśnie, daje sytość.</p>
-          <p><strong>W — węglowodany (g)</strong> na porcję, razem z błonnikiem. Główne źródło energii.</p>
-          <p><strong>T — tłuszcz (g)</strong> na porcję.</p>
-          <p><strong>Błonnik (g)</strong> — spowalnia trawienie węglowodanów i wchłanianie cukru.</p>
-          <p><strong>IG — indeks glikemiczny (0–100)</strong> tego posiłku: jak szybko jego węglowodany podnoszą poziom cukru we krwi. Niżej = wolniej i łagodniej (dobre przy insulinooporności). Liczony jako średnia IG poszczególnych składników ważona ilością węglowodanów, jakie każdy z nich wnosi.</p>
-          <p><strong>ŁG — ładunek glikemiczny</strong> = (węglowodany [g] × IG) / 100. To realny wpływ całej porcji na cukier — ŁG ≤10 uznaje się za niski, 11–19 za średni, 20+ za wysoki. Liczy się bardziej niż samo IG, bo uwzględnia ilość węgli w porcji, nie tylko ich "jakość".</p>
-          <p class="hint-text" style="margin:10px 0 0;">Jak to policzyliśmy: dla każdego składnika przyjęto standardowe wartości odżywcze (w stylu bazy USDA FoodData Central) oraz publikowane wartości indeksu glikemicznego (baza Uniwersytetu Sydney, glycemicindex.com), a następnie całość skalibrowano tak, by suma kalorii odpowiadała kaloryczności podanej przy przepisie. To rzetelne szacunki na podstawie uznanych źródeł, a nie wyniki laboratoryjnego badania konkretnego dania — realne wartości mogą się nieco różnić w zależności od dokładnych proporcji i sposobu przygotowania.</p>
-          <p class="hint-text" id="macroLegendMicroNote" style="margin:10px 0 0;"></p>
-        </div>
-      </div></div>
+    <div class="macro-legend">
+      <p><strong>B — białko (g)</strong> na porcję. Buduje i chroni mięśnie, daje sytość.</p>
+      <p><strong>W — węglowodany (g)</strong> na porcję, razem z błonnikiem. Główne źródło energii.</p>
+      <p><strong>T — tłuszcz (g)</strong> na porcję.</p>
+      <p><strong>Błonnik (g)</strong> — spowalnia trawienie węglowodanów i wchłanianie cukru.</p>
+      <p><strong>IG — indeks glikemiczny (0–100)</strong> tego posiłku: jak szybko jego węglowodany podnoszą poziom cukru we krwi. Niżej = wolniej i łagodniej (dobre przy insulinooporności). Liczony jako średnia IG poszczególnych składników ważona ilością węglowodanów, jakie każdy z nich wnosi.</p>
+      <p><strong>ŁG — ładunek glikemiczny</strong> = (węglowodany [g] × IG) / 100. To realny wpływ całej porcji na cukier — ŁG ≤10 uznaje się za niski, 11–19 za średni, 20+ za wysoki. Liczy się bardziej niż samo IG, bo uwzględnia ilość węgli w porcji, nie tylko ich "jakość".</p>
+      <p class="hint-text" style="margin:10px 0 0;">Jak to policzyliśmy: dla każdego składnika przyjęto standardowe wartości odżywcze (w stylu bazy USDA FoodData Central) oraz publikowane wartości indeksu glikemicznego (baza Uniwersytetu Sydney, glycemicindex.com), a następnie całość skalibrowano tak, by suma kalorii odpowiadała kaloryczności podanej przy przepisie. To rzetelne szacunki na podstawie uznanych źródeł, a nie wyniki laboratoryjnego badania konkretnego dania — realne wartości mogą się nieco różnić w zależności od dokładnych proporcji i sposobu przygotowania.</p>
     </div>
   </div>
 </div>
@@ -1378,7 +1347,7 @@ function toast(msg){
 }
 
 // ---------- NAV ----------
-function switchView(name, opts){
+function switchView(name){
   document.querySelectorAll("nav.bottom button").forEach(b=>b.classList.toggle("active", b.dataset.view===name));
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
   document.getElementById("view-"+name).classList.add("active");
@@ -1393,14 +1362,6 @@ function switchView(name, opts){
   // manually collapsible via headerCollapseToggle.
   if(name!=="recipes"){
     document.querySelector("header.app-top").classList.remove("collapsed");
-  }
-  // Tab switches go on the browser history stack too (see the back-button
-  // guard near the end of the script), so the Android back gesture steps
-  // back through tabs/modals instead of instantly exiting the app. Skip the
-  // push when we're already restoring a view *because of* a back-press.
-  if(!(opts && opts.fromPopstate)){
-    const cur = (history.state && history.state.dietaAppView) || "recipes";
-    if(name !== cur) history.pushState({dietaAppView:name}, "");
   }
 }
 document.querySelectorAll("nav.bottom button").forEach(btn=>{
@@ -2087,10 +2048,6 @@ document.getElementById("macroInfoClose").addEventListener("click", ()=> documen
 document.getElementById("macroInfoOverlay").addEventListener("click", (e)=>{
   if(e.target===document.getElementById("macroInfoOverlay")) e.target.classList.remove("show");
 });
-document.getElementById("macroLegendMicroNote").textContent = MICRO_APPROX_NOTE;
-document.getElementById("macroLegendToggle").addEventListener("click", ()=>{
-  document.getElementById("macroLegendWrap").classList.toggle("expanded");
-});
 function openMacroInfoModal(r){
   const titleEl = document.getElementById("macroInfoTitle");
   const calcBox = document.getElementById("macroInfoRecipeCalc");
@@ -2111,25 +2068,19 @@ function openMacroInfoModal(r){
       ? `Suma z powyższych składników (~${Math.round(rawSum)} kcal) skalibrowano do ${r.kcal} kcal podanych przy przepisie (proporcjonalnie do B/W/T), by dopasować do znanej kaloryczności dania.`
       : `Suma powyższych składników (~${Math.round(rawSum)} kcal) odpowiada kaloryczności ${r.kcal} kcal podanej przy przepisie — bez dodatkowej kalibracji.`;
     const micro = computeMicronutrients(r);
-    // The "these are approximate" caveat is general background info, not
-    // part of *this* recipe's result — it lives once in the (collapsed)
-    // legend below instead of repeating inline every time a card matches.
     const microHtml = micro ? `
       <div class="micro-row">
         <span class="micro-chip">🦴 Wapń ~${micro.ca} mg</span>
         <span class="micro-chip">☀️ Wit. D ~${micro.vitD} µg</span>
         <span class="micro-chip">🥩 B12 ~${micro.b12} µg</span>
       </div>
+      <p class="hint-text" style="margin:6px 0 0;">${MICRO_APPROX_NOTE}</p>
     ` : "";
     calcBox.innerHTML = `<div class="calc-list">${rows}</div><p class="hint-text" style="margin:8px 0 0;">${scaleNote}</p>${microHtml}<div class="calc-divider"></div>`;
   }else{
     titleEl.textContent = "📊 Skąd te liczby?";
     calcBox.innerHTML = "";
   }
-  // The calc numbers are what the user actually came here for — keep the
-  // legend/methodology text collapsed by default on every fresh open, even
-  // if it was left expanded for a previously-viewed recipe.
-  document.getElementById("macroLegendWrap").classList.remove("expanded");
   document.getElementById("macroInfoOverlay").classList.add("show");
 }
 
@@ -3835,56 +3786,6 @@ if(forceUpdateBtn){
   }, {passive:true});
   document.getElementById("headerCollapseToggle").addEventListener("click", ()=>{
     headerEl.classList.toggle("collapsed");
-  });
-})();
-
-// ---------- BACK BUTTON / SWIPE GUARD ----------
-// Without this, the Android back gesture on a modal (or on a non-Przepisy
-// tab) doesn't step back a level — since nothing here ever pushes browser
-// history, there's nothing "back" to go to, so the browser just exits the
-// installed PWA outright. Fix: piggyback on the History API. switchView()
-// (above) already pushes a state per tab switch; here we additionally push
-// one whenever any .modal-overlay opens (watched generically via
-// MutationObserver so every existing open/close call site — there are
-// about a dozen across the app — doesn't need to be touched individually),
-// and pop it again if the modal gets closed some other way (X button,
-// backdrop tap) so a stale entry doesn't eat a later back-press for nothing.
-(function(){
-  function shownOverlay(){ return document.querySelector(".modal-overlay.show"); }
-  function closeOverlay(el){
-    // The barcode scanner holds a live camera stream — closing it must go
-    // through its own teardown (stops the camera), not a bare class removal.
-    if(el.id === "barcodeScanOverlay" && typeof stopBarcodeScanner === "function"){
-      stopBarcodeScanner();
-    }else{
-      el.classList.remove("show");
-    }
-  }
-  let modalPushed = false, closingFromPopstate = false;
-  const observer = new MutationObserver(()=>{
-    const shown = shownOverlay();
-    if(shown && !modalPushed){
-      modalPushed = true;
-      history.pushState({dietaAppModal:true}, "");
-    }else if(!shown && modalPushed){
-      modalPushed = false;
-      if(!closingFromPopstate) history.back();
-    }
-  });
-  document.querySelectorAll(".modal-overlay").forEach(el=>{
-    observer.observe(el, {attributes:true, attributeFilter:["class"]});
-  });
-  history.replaceState({dietaAppView:"recipes"}, "");
-  window.addEventListener("popstate", (e)=>{
-    const shown = shownOverlay();
-    if(shown){
-      closingFromPopstate = true;
-      closeOverlay(shown);
-      modalPushed = false;
-      closingFromPopstate = false;
-      return;
-    }
-    switchView((e.state && e.state.dietaAppView) || "recipes", {fromPopstate:true});
   });
 })();
 
