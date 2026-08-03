@@ -1,0 +1,9 @@
+Wersja 46
+=========
+
+Samo podbicie wersji cache Service Workera (dieta-app-v29), bez zmian w
+kodzie aplikacji — żeby zmiany z wersji 45 (naprawa nagłówka, przycisk
+spiżarni, reorganizacja nagłówka, odpięty napis oceniania, kalendarzyk na
+liście zakupów, pełnoszerokie kafelki spiżarni, nowe motywy Fluent i
+Kafelki) dotarły przy najbliższym otwarciu aplikacji. Ten sam powód co przy
+wersjach 28, 30, 32, 34, 36, 38, 40, 42 i 44.
