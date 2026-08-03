@@ -1,0 +1,8 @@
+Wersja 40
+=========
+
+Samo podbicie wersji cache Service Workera (dieta-app-v26), bez zmian w
+kodzie aplikacji — żeby zmiany z wersji 39 (ukryty pasek przewijania,
+naprawa przypadkowego rozwijania kart, balonowy napis) dotarły przy
+najbliższym otwarciu aplikacji. Ten sam powód co przy wersjach 28, 30, 32,
+34, 36 i 38.

@@ -1,0 +1,21 @@
+Wersja 39
+=========
+
+1. Naprawiono widoczny pasek przewijania nad kategoriami przepisów
+   - Rząd pigułek kategorii (Śniadania/II Śniadanie/Obiady/Kolacje/Deser),
+     teraz przyklejony na stałe pod nagłówkiem, pokazywał brzydki natywny
+     pasek przewijania przeglądarki. Ukryty — rząd nadal przewija się
+     dotykiem/palcem, tylko bez widocznego paska.
+
+2. Karty przepisów nie rozwijają się już przypadkowo podczas przewijania
+   - Dotknięcie kończące przewijanie listy (np. żeby ją zatrzymać) mogło
+     mieć bardzo mały ruch samego palca, mimo że strona w tym czasie
+     przewijała się z rozpędu — takie dotknięcie było mylnie odczytywane
+     jako zwykłe stuknięcie i rozwijało kartę pod palcem, co powodowało
+     „skakanie” ekranu. Naprawiono porównując pozycję przewijania strony
+     w momencie dotknięcia i puszczenia palca.
+
+3. Nowy wygląd napisu przy ocenianiu przepisów przesunięciem
+   - „Podoba mi się” / „Nie podoba mi się” ma teraz efekt napompowanego
+     balonu: błyszczące, gradientowe litery z jasnym podświetleniem i
+     jasnym konturem, rosnące w miarę przesuwania karty.

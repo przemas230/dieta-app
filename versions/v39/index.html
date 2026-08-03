@@ -355,11 +355,7 @@
     position:sticky; top:var(--header-h, 78px); z-index:15;
     background:var(--bg); margin:0 -14px; padding:10px 14px 0;
   }
-  .pill-row{
-    display:flex; gap:7px; overflow-x:auto; padding-bottom:2px; margin-bottom:10px;
-    scrollbar-width:none; -ms-overflow-style:none;
-  }
-  .pill-row::-webkit-scrollbar{display:none;}
+  .pill-row{display:flex; gap:7px; overflow-x:auto; padding-bottom:2px; margin-bottom:10px;}
   .pill{
     flex:0 0 auto; border:1px solid var(--line); background:var(--card);
     color:var(--text); padding:8px 14px; border-radius:999px; font-size:13px;
@@ -397,22 +393,11 @@
     pointer-events:none; opacity:0; z-index:6; border-radius:inherit;
     font-family:"Baloo 2","Quicksand",sans-serif; font-weight:800;
     font-size:clamp(26px, 8.5vw, 40px); line-height:1.05; text-align:center;
-    padding:0 10px; text-wrap:balance;
-    transform:scale(var(--swipe-label-scale, .7));
-    transition:transform .05s linear;
+    padding:0 10px; text-shadow:0 2px 10px rgba(0,0,0,.2);
+    text-wrap:balance;
   }
-  /* Balloon-letter look: a round gloss highlight near the top-left (like
-     light bouncing off a taut balloon skin) via a radial gradient clipped
-     to the text, plus a soft white rim and a punchy drop shadow to keep the
-     puffed-up letterforms readable against any card background. */
-  .swipe-label.like, .swipe-label.dislike{
-    -webkit-text-stroke:1.5px rgba(255,255,255,.6);
-    paint-order:stroke fill;
-    -webkit-background-clip:text; background-clip:text; color:transparent;
-    filter:drop-shadow(0 3px 0 rgba(0,0,0,.12)) drop-shadow(0 10px 18px rgba(0,0,0,.22));
-  }
-  .swipe-label.like{ background:radial-gradient(circle at 32% 28%, #A8F0C6 0%, #3CAA6E 55%, #1E7A4C 100%); }
-  .swipe-label.dislike{ background:radial-gradient(circle at 32% 28%, #F3B0A8 0%, #C5564A 55%, #8A2E24 100%); }
+  .swipe-label.like{ color:#2E9A5E; }
+  .swipe-label.dislike{ color:#AE3A2F; }
   .card.recipe-card.expanded{
     border-color:var(--teal);
     box-shadow:0 2px 6px rgba(30,30,20,.06), 0 14px 32px rgba(30,30,20,.09);
@@ -2571,30 +2556,19 @@ function updateRatingBadge(card, id){
 // preventDefault, so the recipe list underneath still scrolls normally.
 function attachSwipeRating(card, r, refreshBadge){
   const AXIS_LOCK = 10, SWIPE_MAX = 120, SWIPE_COMMIT = 90;
-  let startX=null, startY=null, dx=0, axis=null, ignore=false, startScrollY=0;
+  let startX=null, startY=null, dx=0, axis=null, ignore=false;
   const clearDragStyle = ()=>{ card.style.borderColor = ""; card.style.boxShadow = ""; };
   const label = card.querySelector("[data-swipe-label]");
-  const setLabel = (text, cls, intensity)=>{
+  const setLabel = (text, cls, opacity)=>{
     if(!label) return;
     label.textContent = text;
     label.className = "swipe-label" + (cls ? " "+cls : "");
-    label.style.opacity = intensity;
-    // Grows like it's being inflated as the swipe commits further, instead
-    // of just fading in at a fixed size.
-    label.style.setProperty("--swipe-label-scale", (0.7 + 0.5 * intensity).toFixed(2));
+    label.style.opacity = opacity;
   };
   card.addEventListener("pointerdown", (e)=>{
     if(e.target.closest("button, input, a")){ ignore = true; return; }
     ignore = false;
     startX = e.clientX; startY = e.clientY; dx = 0; axis = null;
-    // A touch used to stop a still-flinging list can register as near-zero
-    // finger movement (the finger barely moves; the page keeps scrolling
-    // underneath it from momentum) — that used to read as a "tap" and
-    // expand whatever card happened to end up under the finger, which is
-    // exactly the "screen jumps while scrolling" complaint. Recording the
-    // scroll position here and comparing it on release catches that case
-    // even when the touch itself looks stationary.
-    startScrollY = window.scrollY;
     card.style.transition = "none";
   });
   card.addEventListener("pointermove", (e)=>{
@@ -2626,8 +2600,7 @@ function attachSwipeRating(card, r, refreshBadge){
     if(ignore){ ignore = false; return; }
     if(startX===null) return;
     const committed = axis==="x" && Math.abs(dx) > SWIPE_COMMIT;
-    const scrollMoved = Math.abs(window.scrollY - startScrollY) > 3;
-    const wasTap = axis===null && !scrollMoved;
+    const wasTap = axis===null;
     card.style.transition = "transform .25s ease, border-color .25s ease, box-shadow .25s ease";
     card.style.transform = "";
     clearDragStyle();
