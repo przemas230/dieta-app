@@ -1,0 +1,53 @@
+Wersja 31
+=========
+
+1. Skalowanie całej aplikacji (dla ekranów o innej rozdzielczości)
+   W Ustawieniach → "🎨 Wygląd aplikacji" doszedł suwak "🔍 Rozmiar
+   aplikacji" (70–130%). Zmniejsza/powiększa całą aplikację naraz —
+   nagłówek, przyciski, karty, okienka — tak jakby zmniejszyć/powiększyć
+   przeglądarkę.
+   Wartość początkowa jest zgadywana automatycznie na podstawie szerokości
+   ekranu telefonu: węższe/gęstsze ekrany (na których ten sam układ robi się
+   proporcjonalnie większy — czy to przez fizycznie mniejszy ekran, czy
+   zwiększone „Rozmiar wyświetlacza” w ustawieniach Androida) dostają
+   mniejszą wartość, bliżej 75%; szersze zostają przy 100%. To tylko
+   przybliżenie — nie da się ze strony internetowej odczytać wprost
+   „prawdziwej” rozdzielczości fizycznej ani czy ktoś ma włączone
+   powiększenie systemowe — dlatego suwak jest zawsze dostępny do ręcznej
+   korekty, jeśli zgadnięte 75%/100%/cokolwiek innego nie pasuje idealnie.
+
+2. Przekąski poza menu — kalorie liczone same
+   Dotąd trzeba było samemu znać i wpisać kcal przekąski. Teraz w polu
+   "Co zjadłaś/eś?" można wpisać np. "1 banan", "150g ryżu" albo "jogurt
+   200g" — aplikacja sama rozpozna produkt (korzystając z tej samej bazy,
+   która już rozpoznaje składniki przepisów) i wyliczy przybliżone kcal:
+   dla produktów liczonych sztukowo (banan, jabłko, jajko...) bierze
+   typowy rozmiar jednej sztuki, a jeśli podasz gramaturę — przelicza
+   dokładnie z niej. Wyliczoną wartość zawsze można poprawić ręcznie w
+   polu kcal obok — to podpowiedź, nie sztywne ograniczenie. Jeśli produkt
+   nie zostanie rozpoznany, pojawia się jasny komunikat i kcal trzeba
+   podać samodzielnie, tak jak wcześniej.
+   Baza obejmuje na razie ok. 40 najpopularniejszych produktów (owoce,
+   nabiał bez laktozy, mięso/ryby, pieczywo, kasze, orzechy, słodycze) —
+   rozpoznawanie działa najlepiej dla liczby pojedynczej i/lub podanej
+   wprost gramatury; rzadsze odmiany gramatyczne mogą nie zostać
+   rozpoznane (wtedy też wystarczy wpisać kcal ręcznie).
+
+3. Wyjaśnienie mechanizmu doboru diety
+   Na prośbę o rozpisanie „jak to działa”: opublikowana strona (link
+   wysłany na czacie) krok po kroku pokazuje, skąd biorą się wszystkie
+   liczby w aplikacji — dzienny cel kaloryczny (wzór Mifflin-St Jeor +
+   mnożnik aktywności + korekta pod cel), podział na 5 posiłków, podział
+   na białko/węgle/tłuszcz zależny od celu, jak liczony jest wynik
+   dopasowania przepisu (🎯 %), rola indeksu/ładunku glikemicznego, oraz
+   jak działa losowanie w Planerze — wszystko na żywym przykładzie
+   (domyślny profil: kobieta, 37 lat, 164 cm, 67 kg, redukcja → 1480
+   kcal/dzień), z dokładnie tymi wzorami, które faktycznie są w kodzie.
+
+Przetestowane w headless Chromium: pełny przegląd funkcjonalny wszystkich
+zakładek (0 błędów JS), oraz osobne testy: suwak skalowania (zmiana na
+żywo, zapis, utrzymanie się po odświeżeniu, poprawność wzoru zgadywania
+domyślnej wartości dla różnych szerokości ekranu), rozpoznawanie
+przekąsek (kilkanaście przykładów tekstu — sztuki, gramy, liczba mnoga,
+produkt nierozpoznany — plus pełny przepływ w interfejsie: wpisanie
+tekstu, podgląd podpowiedzi, ręczna korekta kcal).
