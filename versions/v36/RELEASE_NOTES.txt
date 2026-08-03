@@ -1,0 +1,7 @@
+Wersja 36
+=========
+
+Samo podbicie wersji cache Service Workera (dieta-app-v24), bez zmian w
+kodzie aplikacji — żeby przyklejony pasek filtrów, motyw Polaroid,
+rozszerzona baza przekąsek i pozostałe zmiany z wersji 35 dotarły przy
+najbliższym otwarciu aplikacji. Ten sam powód co przy wersjach 28, 30, 32 i 34.
