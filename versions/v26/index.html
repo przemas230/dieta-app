@@ -248,30 +248,8 @@
        near the top" bug. Opt this element out of being used as an anchor. */
     overflow-anchor:none;
   }
-  header.app-top .header-title-row{display:flex; justify-content:space-between; align-items:center; gap:8px;}
-  header.app-top h1{
-    margin:0; font-size:16px; font-weight:700; letter-spacing:.2px;
-    display:flex; align-items:baseline; gap:8px; min-width:0; flex:1 1 auto;
-  }
-  header.app-top h1 .app-name{white-space:nowrap; flex:0 0 auto;}
-  header.app-top h1 .header-profile-inline{
-    font-size:11px; font-weight:500; opacity:.85; letter-spacing:0;
-    white-space:nowrap; overflow-x:auto; min-width:0;
-    scrollbar-width:none; -ms-overflow-style:none;
-    -webkit-mask-image:linear-gradient(to right, #000 82%, transparent 100%);
-    mask-image:linear-gradient(to right, #000 82%, transparent 100%);
-  }
-  header.app-top h1 .header-profile-inline::-webkit-scrollbar{display:none;}
-  header.app-top .header-btn-row{display:flex; align-items:center; gap:6px; flex:0 0 auto;}
-  header.app-top .header-collapse-btn{
-    background:rgba(255,255,255,.16); border:none; color:#fff; width:32px; height:32px; border-radius:10px;
-    display:flex; align-items:center; justify-content:center; cursor:pointer; flex:0 0 auto;
-  }
-  header.app-top .header-collapse-btn .chevron{
-    display:inline-block; font-size:13px; line-height:1;
-    transition:transform var(--dur-fast,.2s) var(--ease,ease);
-  }
-  header.app-top.collapsed .header-collapse-btn .chevron{ transform:rotate(180deg); }
+  header.app-top h1{margin:0; font-size:17px; font-weight:700; letter-spacing:.2px;}
+  header.app-top .sub{font-size:12.5px; opacity:.85; margin-top:3px;}
   header.app-top .header-collapsible{
     max-height:280px; opacity:1; overflow:hidden;
     transition:max-height .2s ease, opacity .15s ease;
@@ -317,10 +295,8 @@
     flex:0 0 auto; border:1px solid var(--line); background:var(--card);
     color:var(--text); padding:8px 14px; border-radius:999px; font-size:13px;
     font-weight:600; cursor:pointer;
-    transition:transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
   }
-  .pill.active{background:var(--teal); color:#fff; border-color:var(--teal); box-shadow:0 4px 12px -3px rgba(0,0,0,.25);}
-  .pill:active{transform:scale(.94);}
+  .pill.active{background:var(--teal); color:#fff; border-color:var(--teal);}
   .toolbar{display:flex; gap:8px; margin-bottom:12px;}
   .search{
     flex:1; border:1px solid var(--line); border-radius:12px; padding:10px 12px;
@@ -340,16 +316,6 @@
     padding:14px; margin-bottom:12px;
     box-shadow:0 1px 2px rgba(30,30,20,.04), 0 8px 20px rgba(30,30,20,.05);
   }
-  .card.recipe-card{
-    cursor:pointer;
-    transition:box-shadow var(--dur-med,.3s) var(--ease,ease), border-color var(--dur-med,.3s) var(--ease,ease);
-  }
-  .card.recipe-card:focus-visible{ outline:2px solid var(--teal); outline-offset:2px; }
-  .card.recipe-card.expanded{
-    border-color:var(--teal);
-    box-shadow:0 2px 6px rgba(30,30,20,.06), 0 14px 32px rgba(30,30,20,.09);
-  }
-  .card.recipe-card.no-expand{ cursor:default; }
   .card-head{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
   .card-head h3{margin:0; font-size:15.5px; line-height:1.3; min-width:0;}
   .card-head-side{display:flex; flex-direction:column; align-items:center; gap:5px; flex:0 0 auto;}
@@ -362,34 +328,10 @@
   .star-btn{
     border:none; background:none; font-size:20px; cursor:pointer; padding:0 2px;
     line-height:1; color:var(--star-off);
-    transition:transform var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
   }
   .star-btn.active{color:var(--honey);}
-  .star-btn:active{transform:scale(1.25);}
-  .meta{display:flex; gap:10px; margin:6px 0 0; font-size:12px; color:var(--muted); font-weight:600; flex-wrap:wrap;}
-  .expand-toggle{
-    display:flex; align-items:center; justify-content:space-between; width:100%;
-    border:none; background:none; padding:8px 0 4px; margin:2px 0 0; cursor:pointer;
-    font-size:11.5px; font-weight:700; color:var(--teal-dark); font-family:var(--font-body);
-  }
-  .expand-chevron{display:inline-block; transition:transform var(--dur-fast,.2s) var(--ease,ease);}
-  .card.expanded .expand-chevron{transform:rotate(180deg);}
-  .card-collapsible-body{
-    display:grid; grid-template-rows:0fr;
-    transition:grid-template-rows var(--dur-med,.35s) var(--ease,ease);
-  }
-  .card-collapsible-inner{
-    overflow:hidden; min-height:0; opacity:0;
-    transition:opacity var(--dur-fast,.2s) var(--ease,ease);
-  }
-  .card.expanded .card-collapsible-body{ grid-template-rows:1fr; }
-  .card.expanded .card-collapsible-inner{ opacity:1; transition-delay:.05s; }
-  .card.no-expand .expand-toggle{ display:none; }
-  .pantry-check-btn{
-    display:block; border:none; background:none; padding:0; margin:6px 0 8px;
-    font-size:11.5px; font-weight:700; color:var(--teal-dark); cursor:pointer;
-  }
-  .macro-row{display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:11px; color:var(--muted); margin:0 0 10px; font-family:var(--font-mono);}
+  .meta{display:flex; gap:10px; margin:6px 0 10px; font-size:12px; color:var(--muted); font-weight:600;}
+  .macro-row{display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:11px; color:var(--muted); margin:-4px 0 10px; font-family:var(--font-mono);}
   .match-badge{background:var(--teal-pale); color:var(--teal-dark); font-weight:700; padding:1px 7px; border-radius:999px; font-family:var(--font-body);}
   .micro-row{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;}
   .micro-chip{background:var(--plum-pale); color:var(--plum); font-weight:700; font-size:11px; padding:3px 9px; border-radius:999px;}
@@ -454,21 +396,14 @@
   .modal-overlay{
     position:fixed; inset:0; background:rgba(20,20,15,.5); z-index:80;
     display:none; align-items:flex-end; justify-content:center;
-    backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
   }
-  .modal-overlay.show{display:flex; animation:overlayFadeIn var(--dur-fast) var(--ease);}
+  .modal-overlay.show{display:flex;}
   .modal-overlay.center{align-items:center; padding:16px;}
-  .modal-overlay.show .modal-sheet{animation:sheetSlideUp var(--dur-med) var(--ease);}
-  .modal-overlay.center.show .modal-sheet{animation:sheetPopIn var(--dur-med) var(--ease);}
-  @keyframes overlayFadeIn{ from{opacity:0;} to{opacity:1;} }
-  @keyframes sheetSlideUp{ from{transform:translateY(28px); opacity:0;} to{transform:translateY(0); opacity:1;} }
-  @keyframes sheetPopIn{ from{transform:scale(.94); opacity:0;} to{transform:scale(1); opacity:1;} }
   .modal-sheet{
     background:var(--card); width:100%; max-width:520px; border-radius:20px 20px 0 0;
     padding:18px 16px calc(18px + env(safe-area-inset-bottom)); max-height:78vh; overflow-y:auto;
-    box-shadow:0 -8px 40px rgba(0,0,0,.16);
   }
-  .modal-sheet.center-sheet{border-radius:20px; max-width:340px; max-height:none; box-shadow:0 20px 60px rgba(0,0,0,.22);}
+  .modal-sheet.center-sheet{border-radius:20px; max-width:340px; max-height:none;}
   .barcode-video-wrap{
     position:relative; width:100%; aspect-ratio:1/1; border-radius:14px; overflow:hidden;
     background:#000; margin-top:10px;
@@ -500,14 +435,11 @@
   .add-btn{
     flex:1 1 auto; min-width:0; border:none; border-radius:11px; padding:10px 8px; font-size:13px;
     font-weight:700; cursor:pointer; background:var(--teal-pale); color:var(--teal-dark);
-    transition:transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
   }
-  .add-btn.on{background:var(--teal); color:#fff; box-shadow:0 4px 12px -3px rgba(0,0,0,.28);}
-  .add-btn:active, .plan-btn:active{transform:scale(.95);}
+  .add-btn.on{background:var(--teal); color:#fff;}
   .plan-btn{
     border:1px solid var(--line); background:var(--card); border-radius:11px;
     padding:10px 12px; font-size:13px; cursor:pointer; color:var(--text);
-    transition:transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
   }
 
   /* Shopping list */
@@ -528,10 +460,8 @@
   .btn{
     border:none; border-radius:12px; padding:11px 16px; font-size:13.5px;
     font-weight:700; cursor:pointer;
-    transition:transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
   }
-  .btn:active{transform:scale(.96);}
-  .btn.primary{background:var(--teal); color:#fff; flex:1; box-shadow:0 6px 16px -4px rgba(0,0,0,.3);}
+  .btn.primary{background:var(--teal); color:#fff; flex:1;}
   .btn.ghost{background:var(--card); color:var(--text); border:1px solid var(--line);}
   .btn.link-sm{background:var(--teal-pale); color:var(--teal-dark); font-size:12.5px; padding:9px 12px;}
 
@@ -620,26 +550,15 @@
     background:var(--card);
     border-top:1px solid var(--line); display:flex; z-index:30;
     padding-bottom:env(safe-area-inset-bottom);
-    box-shadow:0 -6px 20px rgba(0,0,0,.05);
   }
   nav.bottom button{
-    position:relative;
     flex:1; border:none; background:none; padding:10px 4px 8px; cursor:pointer;
     font-size:10.5px; color:var(--muted); font-weight:700; display:flex; flex-direction:column; align-items:center; gap:3px;
-    transition:color var(--dur-fast) var(--ease);
   }
-  nav.bottom button .ic{font-size:19px; transition:transform var(--dur-fast) var(--ease);}
+  nav.bottom button .ic{font-size:19px;}
   nav.bottom button .ic i{width:19px; height:19px; display:block; margin:0 auto;}
   nav.bottom button.active .ic i{color:var(--teal);}
   nav.bottom button.active{color:var(--teal);}
-  nav.bottom button.active .ic{transform:translateY(-1px);}
-  nav.bottom button:active .ic{transform:scale(.88);}
-  nav.bottom button::after{
-    content:""; position:absolute; bottom:3px; left:50%; width:4px; height:4px; border-radius:50%;
-    background:var(--teal); transform:translateX(-50%) scale(0);
-    transition:transform var(--dur-fast) var(--ease);
-  }
-  nav.bottom button.active::after{transform:translateX(-50%) scale(1);}
   .toast{
     position:fixed; bottom:88px; left:50%; transform:translateX(-50%) translateY(8px);
     background:#2A2A2A; color:#fff; padding:9px 16px; border-radius:20px;
@@ -655,7 +574,6 @@
   @media (prefers-reduced-motion: reduce){
     .view.active{animation:none;}
     .card:active, .day-card:active, .pantry-tile:active{transform:none;}
-    .modal-overlay.show, .modal-overlay.show .modal-sheet{animation:none;}
     *{transition-duration:.001ms !important;}
   }
 </style>
@@ -664,14 +582,12 @@
 
 <div class="app-shell">
 <header class="app-top">
-  <div class="header-title-row">
-    <h1><span class="app-name">🍲 Dieta App</span><span class="header-profile-inline" id="headerSub">Kobieta, 37 lat · 164 cm · 67&nbsp;kg → cel 62&nbsp;kg · ~1500–1550&nbsp;kcal/dzień</span></h1>
-    <div class="header-btn-row">
-      <button id="headerCollapseToggle" class="header-collapse-btn" title="Zwiń/rozwiń nagłówek" aria-label="Zwiń/rozwiń nagłówek"><span class="chevron">⌃</span></button>
-      <button id="settingsBtn" style="background:rgba(255,255,255,.16); border:none; color:#fff; width:36px; height:36px; border-radius:10px; flex:0 0 auto; display:flex; align-items:center; justify-content:center;"><i data-lucide="settings" style="width:18px;height:18px;"></i></button>
-    </div>
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+    <h1>🍲 Dieta App</h1>
+    <button id="settingsBtn" style="background:rgba(255,255,255,.16); border:none; color:#fff; width:36px; height:36px; border-radius:10px; flex:0 0 auto; display:flex; align-items:center; justify-content:center;"><i data-lucide="settings" style="width:18px;height:18px;"></i></button>
   </div>
   <div class="header-collapsible">
+    <div class="sub" id="headerSub">Kobieta, 37 lat · 164 cm · 67&nbsp;kg → cel 62&nbsp;kg · ~1500–1550&nbsp;kcal/dzień</div>
     <div class="kcal-row">
       <div class="kcal-ring-wrap">
         <svg viewBox="0 0 120 120" class="kcal-ring-svg">
@@ -1356,13 +1272,6 @@ function switchView(name){
   if(name==="progress") renderProgress();
   if(name==="settings"){ loadSettingsForm(); renderWaterActionLog(); }
   if(name==="pantry") renderPantry();
-  // Auto-collapse-on-scroll is a Recipes-only affordance (that's the one
-  // long, fast-scrolling list). Elsewhere the header defaults to expanded
-  // on every visit — the scroll handler below no-ops there — but stays
-  // manually collapsible via headerCollapseToggle.
-  if(name!=="recipes"){
-    document.querySelector("header.app-top").classList.remove("collapsed");
-  }
 }
 document.querySelectorAll("nav.bottom button").forEach(btn=>{
   btn.addEventListener("click", ()=> switchView(btn.dataset.view));
@@ -1700,18 +1609,6 @@ let onlyIngFav = false;
 let onlyPantryReady = false;
 let sortByMatch = false;
 let searchTerm = "";
-let expandedCardEl = null;
-function setCardExpanded(card, expand){
-  if(expand){
-    if(expandedCardEl && expandedCardEl!==card) expandedCardEl.classList.remove("expanded");
-    card.classList.add("expanded");
-    expandedCardEl = card;
-  }else{
-    card.classList.remove("expanded");
-    if(expandedCardEl===card) expandedCardEl = null;
-  }
-  card.setAttribute("aria-expanded", expand ? "true" : "false");
-}
 
 function renderPills(){
   const box = document.getElementById("catPills");
@@ -1803,13 +1700,9 @@ function removeRecipeFromShoppingList(r){
   addLog("shopping_remove", `Usunięto z listy zakupów: ${r.name}`);
 }
 
-function recipeCard(r, onChange, opts={}){
-  const expandable = opts.expandable !== false;
-  const startExpanded = !expandable || !!opts.startExpanded;
+function recipeCard(r, onChange){
   const card = document.createElement("div");
-  card.className = "card recipe-card" + (startExpanded ? " expanded" : "") + (expandable ? "" : " no-expand");
-  card.setAttribute("aria-expanded", startExpanded ? "true" : "false");
-  if(expandable){ card.tabIndex = 0; }
+  card.className = "card";
   const fav = !!state.favorites[r.id];
   const added = !!state.recipeAdded[r.id];
   const cookEntries = state.cooked[r.id] || [];
@@ -1841,36 +1734,21 @@ function recipeCard(r, onChange, opts={}){
       </div>
     </div>
     <div class="meta"><span>⏱ ${r.time}</span><span>🔥 ${r.kcal} kcal</span>${lastCooked?`<span>✅ ${lastCooked}</span>`:""}${goalBadge}${giBadge}</div>
-    ${expandable ? `<button type="button" class="expand-toggle" data-expand-toggle><span>Składniki i przygotowanie</span><span class="expand-chevron">⌄</span></button>` : ""}
-    <div class="card-collapsible-body"><div class="card-collapsible-inner">
-      ${macroLine}
-      <button type="button" class="pantry-check-btn" data-pantry-check>🏺 Sprawdź stan spiżarni dla tego dania</button>
-      <ul class="ingredients">${r.ingredients.map(i=>{
-        const canon = pantryCanon(coreName(i));
-        const f = !!state.favIngredients[canon];
-        const have = !!pantryMatch(i);
-        return `<li><button class="ing-fav ${f?'active':''}" data-ing="${canon}">${f?'★':'☆'}</button><span${(have||f)?' class="have-it"':''}>${i}</span></li>`;
-      }).join("")}</ul>
-      <p class="method">${r.method}</p>
-    </div></div>
+    ${macroLine}
+    <ul class="ingredients">${r.ingredients.map(i=>{
+      const canon = pantryCanon(coreName(i));
+      const f = !!state.favIngredients[canon];
+      const have = !!pantryMatch(i);
+      return `<li><button class="ing-fav ${f?'active':''}" data-ing="${canon}">${f?'★':'☆'}</button><span${(have||f)?' class="have-it"':''}>${i}</span></li>`;
+    }).join("")}</ul>
+    <p class="method">${r.method}</p>
     <div class="card-actions">
       <button class="add-btn ${added?'on':''}" data-add="${r.id}">${added?'✓ Na liście zakupów':'🛒 Dodaj do listy zakupów'}</button>
       <button class="plan-btn" data-cook="${r.id}" title="Kliknij: oznacz jako zrobione. Przytrzymaj: historia i oceny" style="-webkit-user-select:none; user-select:none; touch-action:manipulation;">✅ Zrobione${cookEntries.length?` (${cookEntries.length}×)`:""}</button>
       <button class="plan-btn" data-schedule="${r.id}">📅 Zaplanuj</button>
     </div>
   `;
-  if(expandable){
-    const toggle = (e)=>{ if(e) e.stopPropagation(); setCardExpanded(card, !card.classList.contains("expanded")); };
-    card.addEventListener("click", toggle);
-    card.addEventListener("keydown", (e)=>{
-      if((e.key==="Enter" || e.key===" ") && e.target===card){ e.preventDefault(); toggle(); }
-    });
-    card.querySelector("[data-expand-toggle]").addEventListener("click", toggle);
-  }
-  card.querySelector("[data-pantry-check]").addEventListener("click", (e)=>{
-    e.stopPropagation();
-    openPantryModal(r);
-  });
+  card.addEventListener("click", ()=> openPantryModal(r));
   attachThumb(card, r);
   card.querySelector(".recipe-title").addEventListener("click", (e)=>{
     e.stopPropagation();
@@ -2087,7 +1965,6 @@ function openMacroInfoModal(r){
 function renderRecipes(){
   const list = document.getElementById("recipeList");
   list.innerHTML = "";
-  expandedCardEl = null;
   let items = RECIPES.filter(r=>r.cat===currentCat);
   if(state.profile.glutenFree) items = items.filter(isGlutenFree);
   if(state.profile.lactoseFree) items = items.filter(isLactoseFree);
@@ -2981,7 +2858,7 @@ function openPlannerDetailModal(day, cat, recipeId){
     list.appendChild(leftoverBtn);
   }
 
-  list.appendChild(recipeCard(scaleRecipe(r, scale), ()=> openPlannerDetailModal(day, cat, recipeId), {expandable:false}));
+  list.appendChild(recipeCard(scaleRecipe(r, scale), ()=> openPlannerDetailModal(day, cat, recipeId)));
   plannerModalOverlay.classList.add("show");
 }
 function openPlannerPickerModal(day, cat){
@@ -3040,7 +2917,7 @@ function openPlannerPreview(day, cat, recipeId){
     openPlannerDetailModal(day, cat, r.id);
   });
   list.appendChild(chooseBtn);
-  list.appendChild(recipeCard(r, ()=> openPlannerPreview(day, cat, recipeId), {expandable:false}));
+  list.appendChild(recipeCard(r, ()=> openPlannerPreview(day, cat, recipeId)));
 }
 document.getElementById("plannerModalClose").addEventListener("click", ()=> plannerModalOverlay.classList.remove("show"));
 plannerModalOverlay.addEventListener("click", (e)=>{ if(e.target===plannerModalOverlay) plannerModalOverlay.classList.remove("show"); });
@@ -3756,10 +3633,6 @@ if(forceUpdateBtn){
   const NEAR_TOP = 60, DELTA = 4;
   let lastY = window.scrollY;
   function applyState(){
-    // Only the Recipes view auto-collapses on scroll; other views default
-    // to expanded and are only collapsed via the manual toggle button.
-    const recipesView = document.getElementById("view-recipes");
-    if(!recipesView || !recipesView.classList.contains("active")) return;
     const y = window.scrollY;
     const isCollapsed = headerEl.classList.contains("collapsed");
     if(y < NEAR_TOP){
@@ -3784,9 +3657,6 @@ if(forceUpdateBtn){
     clearTimeout(idleTimer);
     idleTimer = setTimeout(applyState, 150);
   }, {passive:true});
-  document.getElementById("headerCollapseToggle").addEventListener("click", ()=>{
-    headerEl.classList.toggle("collapsed");
-  });
 })();
 
 // ---------- INIT ----------
