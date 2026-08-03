@@ -1,0 +1,41 @@
+Wersja 37
+=========
+
+1. Duży napis przy przesuwaniu karty przepisu
+   - Podczas przesuwania karty w prawo/lewo (ocenianie dania) na środku
+     karty pojawia się teraz duży, zaokrąglony napis „Podoba mi się" albo
+     „Nie podoba mi się", rosnący wraz z siłą przesunięcia i znikający po
+     puszczeniu — obok istniejącej kolorowej poświaty.
+
+2. Naprawiono: nagłówek sam się rozwijał po otwarciu okienka „i”
+   - Znaleziono przyczynę: na dotykowym ekranie przewijanie tła potrafiło
+     „przeciekać" spod otwartego okienka (znany problem stron mobilnych
+     z elementami position:fixed), co uruchamiało normalne — ale w tej
+     sytuacji niechciane — automatyczne rozwijanie nagłówka przy przewijaniu
+     w górę. Teraz przewijanie strony jest zablokowane na czas, gdy
+     jakiekolwiek okienko jest otwarte, więc ręcznie zwinięty nagłówek
+     zostaje zwinięty.
+
+3. Przebudowano „Sprawdź stan spiżarni”
+   - Okienko wygląda teraz jak karta przepisu (zaokrąglone rogi, cień,
+     ten sam styl), z każdym składnikiem w osobnym wierszu pokazującym
+     wyraźnie: aktualny stan w spiżarni (albo „Brak w spiżarni") oraz
+     duży, łatwy do trafienia przycisk „+ Mam to” / „✓ Mam” zamiast
+     poprzedniego stłoczonego rzędu małych elementów.
+   - Poprawiono też mylącą podpowiedź nad listą przepisów — teraz kieruje
+     do właściwego przycisku zamiast sugerować stukanie w samo danie.
+
+4. Rozszerzona baza przekąsek — z ok. 90 do 336 produktów
+   - Dodano ~250 nowych pozycji: więcej owoców (świeżych i suszonych),
+     warzyw, nabiału (różne rodzaje mleka/śmietany/serów), mięs i wędlin,
+     pieczywa i kasz, orzechów/strączków, napojów (cappuccino, latte,
+     espresso, soki, napoje energetyczne), słodyczy (Kit Kat, Toblerone,
+     M&Ms, ciasta, lody, żelki i więcej), słonych przekąsek (pizza,
+     frytki, burger, kebab, zapiekanka, sushi, pierogi) oraz popularnych
+     dań gotowych/restauracyjnych (żurek, bigos, ramen, pad thai, curry,
+     lasagne, gulasz i inne) — bo różni ludzie różnie jedzą.
+   - Każda nowa pozycja zweryfikowana automatycznym testem, że faktycznie
+     daje się rozpoznać po wpisaniu w okienku dodawania przekąski (nie
+     tylko istnieje w bazie) — przy okazji naprawiono też dwie drobne,
+     wcześniej istniejące luki („kurczak” i „daktyle” wpisane samodzielnie
+     teraz też są rozpoznawane).

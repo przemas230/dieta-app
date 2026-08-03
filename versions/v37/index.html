@@ -242,10 +242,6 @@
     overflow-x:hidden;
     transition:background var(--dur-med) var(--ease), color var(--dur-med) var(--ease);
   }
-  /* document.scrollingElement is <html> here (no fixed height on body), so
-     the lock has to go on html, not just body, or window scroll still gets
-     through underneath the modal. */
-  html.modal-open, html.modal-open body{ overflow-y:hidden; }
   .app-shell{
     max-width:600px;
     margin:0 auto;
@@ -384,20 +380,10 @@
     box-shadow:0 1px 2px rgba(30,30,20,.04), 0 8px 20px rgba(30,30,20,.05);
   }
   .card.recipe-card{
-    cursor:pointer; position:relative;
+    cursor:pointer;
     transition:box-shadow var(--dur-med,.3s) var(--ease,ease), border-color var(--dur-med,.3s) var(--ease,ease);
   }
   .card.recipe-card:focus-visible{ outline:2px solid var(--teal); outline-offset:2px; }
-  .swipe-label{
-    position:absolute; inset:6px; display:flex; align-items:center; justify-content:center;
-    pointer-events:none; opacity:0; z-index:6; border-radius:inherit;
-    font-family:"Baloo 2","Quicksand",sans-serif; font-weight:800;
-    font-size:clamp(26px, 8.5vw, 40px); line-height:1.05; text-align:center;
-    padding:0 10px; text-shadow:0 2px 10px rgba(0,0,0,.2);
-    text-wrap:balance;
-  }
-  .swipe-label.like{ color:#2E9A5E; }
-  .swipe-label.dislike{ color:#AE3A2F; }
   .card.recipe-card.expanded{
     border-color:var(--teal);
     box-shadow:0 2px 6px rgba(30,30,20,.06), 0 14px 32px rgba(30,30,20,.09);
@@ -596,37 +582,6 @@
     border-radius:10px; padding:7px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;
   }
   .modal-ing-btn.on{background:var(--teal); color:#fff; border-color:var(--teal);}
-  /* "Sprawdź stan spiżarni" popup, restyled to read like a recipe card
-     (same rounded/shadowed card language, same ingredient-list rhythm)
-     instead of a generic bottom-sheet drawer, with the pantry status and
-     the have/haven't-got-it action pulled into their own dedicated row so
-     there's one big, unambiguous button per ingredient instead of a cramped
-     inline strip of small tap targets. */
-  .pantry-check-sheet{
-    background:linear-gradient(165deg, var(--card) 0%, var(--teal-pale) 145%);
-    border:1px solid var(--line); border-radius:16px; max-width:560px;
-    box-shadow:0 1px 2px rgba(30,30,20,.04), 0 20px 50px rgba(30,30,20,.18);
-  }
-  .pantry-check-row{padding:10px 0; border-bottom:1px solid var(--line);}
-  .pantry-check-row:last-child{border-bottom:none;}
-  .pcr-name{font-size:13.5px; margin-bottom:7px; line-height:1.35;}
-  .pcr-cols{display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center;}
-  .pcr-status{
-    font-size:11.5px; color:var(--muted); background:var(--card); border:1px solid var(--line);
-    border-radius:9px; padding:7px 9px; min-height:34px; display:flex; align-items:center;
-  }
-  .pcr-status.have{ color:var(--teal-dark); background:var(--teal-pale); border-color:var(--teal); font-weight:600; }
-  .pcr-actions{display:flex; gap:6px; flex:0 0 auto;}
-  .pcr-have-btn{
-    flex:0 0 auto; border:1.5px solid var(--teal); background:var(--card); color:var(--teal-dark);
-    border-radius:10px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer;
-    white-space:nowrap; min-height:34px;
-  }
-  .pcr-have-btn.on{background:var(--teal); color:#fff;}
-  .pcr-shop-btn{
-    flex:0 0 auto; border:1.5px solid var(--line); background:var(--card); color:var(--text);
-    border-radius:10px; width:34px; height:34px; font-size:14px; cursor:pointer;
-  }
   .cook-history-row{display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line);}
   .cook-history-row:last-child{border-bottom:none;}
   .ch-date{font-size:12px; color:var(--text); flex:0 0 70px; line-height:1.35;}
@@ -871,7 +826,7 @@
     <div class="shop-actions" style="margin:0 0 10px;">
       <button class="btn ghost" id="ideaBtn" style="width:100%;">💡 Pomysł na danie z ulubionych składników</button>
     </div>
-    <div class="hint-text" style="margin:-4px 0 10px;">💡 Rozwiń danie i użyj przycisku „🏺 Sprawdź stan spiżarni", aby oznaczyć, które składniki już masz.</div>
+    <div class="hint-text" style="margin:-4px 0 10px;">💡 Stuknij w danie, aby oznaczyć składniki, które już masz w spiżarni.</div>
     <div id="recipeList"></div>
     <button class="back-to-top-btn" id="backToTopBtn" title="Wróć do góry" aria-label="Wróć do góry">⬆️</button>
   </section>
@@ -1081,13 +1036,13 @@
 
 <div class="toast" id="toast"></div>
 
-<div class="modal-overlay center" id="pantryModalOverlay">
-  <div class="modal-sheet pantry-check-sheet">
+<div class="modal-overlay" id="pantryModalOverlay">
+  <div class="modal-sheet">
     <div class="modal-head">
       <h3 id="modalRecipeName"></h3>
       <button id="modalCloseBtn">✕</button>
     </div>
-    <div class="hint-text" style="margin:0 0 10px;">Stan spiżarni na teraz dla każdego składnika. Stuknij „Mam to", żeby dodać/usunąć ze spiżarni.</div>
+    <div class="hint-text" style="margin:0 0 10px;">Zaznacz składniki, które już masz w spiżarni — dodadzą się automatycznie.</div>
     <div id="modalIngList"></div>
   </div>
 </div>
@@ -1257,9 +1212,7 @@ const RAW_TO_CANON = {"jogurtu bez laktozy": "jogurt bez laktozy", "jogurtu natu
 "batonik prince polo": "prince polo", "baton prince polo": "prince polo", "baton snickers": "snickers", "batonik snickers": "snickers",
 "baton mars": "mars", "batonik mars": "mars", "baton twix": "twix", "batonik twix": "twix", "baton bounty": "bounty", "batonik bounty": "bounty",
 "czekolada milka": "czekolada mleczna", "tabliczka czekolady": "czekolada mleczna", "kawa czarna": "kawa", "kawa bez mleka": "kawa",
-"herbata czarna": "herbata", "herbata zielona": "herbata", "gałka lodów": "lody", "lody gałka": "lody", "chipsy ziemniaczane": "chipsy",
-"rodzynki": "rodzynki / żurawina", "chia": "siemię lniane / chia", "nasiona chia": "siemię lniane / chia",
-"kurczak": "kurczak (pierś)", "daktyle": "daktyle suszone"};
+"herbata czarna": "herbata", "herbata zielona": "herbata", "gałka lodów": "lody", "lody gałka": "lody", "chipsy ziemniaczane": "chipsy"};
 const CANON_INFO = {"jogurt bez laktozy": {"cat": "Nabiał", "emoji": "🥛"}, "skyr bez laktozy": {"cat": "Nabiał", "emoji": "🥛"}, "serek bez laktozy": {"cat": "Nabiał", "emoji": "🧀"}, "twaróg bez laktozy": {"cat": "Nabiał", "emoji": "🧀"}, "feta / ser bez laktozy": {"cat": "Nabiał", "emoji": "🧀"}, "masło klarowane": {"cat": "Nabiał", "emoji": "🧈"}, "odżywka białkowa": {"cat": "Nabiał", "emoji": "🥛"}, "cebula": {"cat": "Warzywa", "emoji": "🧅"}, "czerwona cebula": {"cat": "Warzywa", "emoji": "🧅"}, "cukinia": {"cat": "Warzywa", "emoji": "🥒"}, "marchewka": {"cat": "Warzywa", "emoji": "🥕"}, "pietruszka (korzeń)": {"cat": "Warzywa", "emoji": "🥕"}, "burak": {"cat": "Warzywa", "emoji": "🔴"}, "ogórek": {"cat": "Warzywa", "emoji": "🥒"}, "ogórek kiszony": {"cat": "Warzywa", "emoji": "🥒"}, "papryka": {"cat": "Warzywa", "emoji": "🫑"}, "pomidor": {"cat": "Warzywa", "emoji": "🍅"}, "pomidorki koktajlowe": {"cat": "Warzywa", "emoji": "🍅"}, "rzodkiewka": {"cat": "Warzywa", "emoji": "🌸"}, "szpinak": {"cat": "Warzywa", "emoji": "🥬"}, "jarmuż": {"cat": "Warzywa", "emoji": "🥬"}, "sałata / mix sałat": {"cat": "Warzywa", "emoji": "🥬"}, "brokuł": {"cat": "Warzywa", "emoji": "🥦"}, "kalafior": {"cat": "Warzywa", "emoji": "🥦"}, "seler naciowy": {"cat": "Warzywa", "emoji": "🌿"}, "czosnek": {"cat": "Warzywa", "emoji": "🧄"}, "koperek": {"cat": "Warzywa", "emoji": "🌿"}, "szczypiorek": {"cat": "Warzywa", "emoji": "🌿"}, "kiełki": {"cat": "Warzywa", "emoji": "🌱"}, "mrożone warzywa": {"cat": "Warzywa", "emoji": "🥦"}, "ziemniaki": {"cat": "Warzywa", "emoji": "🥔"}, "batat": {"cat": "Warzywa", "emoji": "🍠"}, "awokado": {"cat": "Owoce", "emoji": "🥑"}, "banan": {"cat": "Owoce", "emoji": "🍌"}, "jabłko": {"cat": "Owoce", "emoji": "🍎"}, "gruszka": {"cat": "Owoce", "emoji": "🍐"}, "cytryna": {"cat": "Owoce", "emoji": "🍋"}, "limonka": {"cat": "Owoce", "emoji": "🍋"}, "kiwi": {"cat": "Owoce", "emoji": "🥝"}, "maliny": {"cat": "Owoce", "emoji": "🍓"}, "borówki / jagody": {"cat": "Owoce", "emoji": "🫐"}, "truskawki": {"cat": "Owoce", "emoji": "🍓"}, "morele suszone": {"cat": "Owoce", "emoji": "🍑"}, "ananas": {"cat": "Owoce", "emoji": "🍍"}, "imbir": {"cat": "Owoce", "emoji": "🫚"}, "rodzynki / żurawina": {"cat": "Owoce", "emoji": "🍇"}, "jajka": {"cat": "Mięso, ryby, jajka", "emoji": "🥚"}, "kurczak (pierś)": {"cat": "Mięso, ryby, jajka", "emoji": "🍗"}, "indyk": {"cat": "Mięso, ryby, jajka", "emoji": "🦃"}, "wołowina": {"cat": "Mięso, ryby, jajka", "emoji": "🥩"}, "wieprzowina": {"cat": "Mięso, ryby, jajka", "emoji": "🥩"}, "dorsz": {"cat": "Mięso, ryby, jajka", "emoji": "🐟"}, "łosoś": {"cat": "Mięso, ryby, jajka", "emoji": "🐟"}, "pstrąg": {"cat": "Mięso, ryby, jajka", "emoji": "🐟"}, "makrela": {"cat": "Mięso, ryby, jajka", "emoji": "🐟"}, "tuńczyk": {"cat": "Mięso, ryby, jajka", "emoji": "🐟"}, "krewetki": {"cat": "Mięso, ryby, jajka", "emoji": "🍤"}, "tofu": {"cat": "Mięso, ryby, jajka", "emoji": "🌱"}, "ciecierzyca": {"cat": "Strączki i orzechy", "emoji": "🫘"}, "fasola": {"cat": "Strączki i orzechy", "emoji": "🫘"}, "soczewica": {"cat": "Strączki i orzechy", "emoji": "🫘"}, "hummus": {"cat": "Strączki i orzechy", "emoji": "🫘"}, "orzechy": {"cat": "Strączki i orzechy", "emoji": "🥜"}, "migdały": {"cat": "Strączki i orzechy", "emoji": "🥜"}, "pestki (dyni/słonecznika)": {"cat": "Strączki i orzechy", "emoji": "🌻"}, "siemię lniane / chia": {"cat": "Strączki i orzechy", "emoji": "🌱"}, "sezam": {"cat": "Strączki i orzechy", "emoji": "🌱"}, "masło orzechowe / migdałowe": {"cat": "Strączki i orzechy", "emoji": "🥜"}, "chleb żytni": {"cat": "Pieczywo i zboża", "emoji": "🍞"}, "wafle chrupkie": {"cat": "Pieczywo i zboża", "emoji": "🍘"}, "tortilla": {"cat": "Pieczywo i zboża", "emoji": "🌯"}, "kasza gryczana": {"cat": "Pieczywo i zboża", "emoji": "🌾"}, "kasza jaglana": {"cat": "Pieczywo i zboża", "emoji": "🌾"}, "kasza pęczak": {"cat": "Pieczywo i zboża", "emoji": "🌾"}, "kasza bulgur": {"cat": "Pieczywo i zboża", "emoji": "🌾"}, "komosa ryżowa": {"cat": "Pieczywo i zboża", "emoji": "🌾"}, "ryż": {"cat": "Pieczywo i zboża", "emoji": "🍚"}, "makaron soba": {"cat": "Pieczywo i zboża", "emoji": "🍜"}, "płatki owsiane": {"cat": "Pieczywo i zboża", "emoji": "🥣"}, "mąka": {"cat": "Pieczywo i zboża", "emoji": "🌾"}, "granola": {"cat": "Pieczywo i zboża", "emoji": "🥣"}, "cynamon": {"cat": "Przyprawy", "emoji": "🧂"}, "chili": {"cat": "Przyprawy", "emoji": "🌶️"}, "curry (przyprawa)": {"cat": "Przyprawy", "emoji": "🧂"}, "kumin": {"cat": "Przyprawy", "emoji": "🧂"}, "kurkuma": {"cat": "Przyprawy", "emoji": "🧂"}, "majeranek": {"cat": "Przyprawy", "emoji": "🌿"}, "musztarda": {"cat": "Przyprawy", "emoji": "🟡"}, "oregano": {"cat": "Przyprawy", "emoji": "🌿"}, "tymianek": {"cat": "Przyprawy", "emoji": "🌿"}, "sól": {"cat": "Przyprawy", "emoji": "🧂"}, "pieprz": {"cat": "Przyprawy", "emoji": "🧂"}, "koncentrat / passata pomidorowa": {"cat": "Przyprawy", "emoji": "🍅"}, "pasta curry": {"cat": "Przyprawy", "emoji": "🧂"}, "sos sojowy / tamari": {"cat": "Przyprawy", "emoji": "🍶"}, "oliwa z oliwek": {"cat": "Przyprawy", "emoji": "🫒"}, "oliwki": {"cat": "Przyprawy", "emoji": "🫒"}, "olej kokosowy": {"cat": "Przyprawy", "emoji": "🥥"}, "olej sezamowy": {"cat": "Przyprawy", "emoji": "🧴"}, "ocet balsamiczny": {"cat": "Przyprawy", "emoji": "🍶"}, "miód": {"cat": "Przyprawy", "emoji": "🍯"}, "zioła prowansalskie": {"cat": "Przyprawy", "emoji": "🌿"}, "natka pietruszki": {"cat": "Przyprawy", "emoji": "🌿"}, "bazylia": {"cat": "Przyprawy", "emoji": "🌿"}, "mięta": {"cat": "Przyprawy", "emoji": "🌿"}, "papryka słodka (mielona)": {"cat": "Przyprawy", "emoji": "🌶️"}, "wanilia": {"cat": "Przyprawy", "emoji": "🧂"}, "gałka muszkatołowa": {"cat": "Przyprawy", "emoji": "🧂"}, "sok z cytryny": {"cat": "Przyprawy", "emoji": "🍋"}, "sok z limonki": {"cat": "Przyprawy", "emoji": "🍋"}, "napój roślinny (migdałowy/owsiany/kokosowy)": {"cat": "Nabiał", "emoji": "🥛"}, "mleko kokosowe": {"cat": "Nabiał", "emoji": "🥥"}, "wiórki kokosowe": {"cat": "Przyprawy", "emoji": "🥥"}, "woda": {"cat": "Przyprawy", "emoji": "💧"}, "bulion warzywny": {"cat": "Przyprawy", "emoji": "🍲"}, "dynia": {"cat": "Warzywa", "emoji": "🎃"}, "fasolka szparagowa": {"cat": "Warzywa", "emoji": "🫛"}, "groszek zielony": {"cat": "Warzywa", "emoji": "🟢"}, "pieczarki": {"cat": "Warzywa", "emoji": "🍄"}, "owsiano-bananowa muffinka": {"cat": "Pieczywo i zboża", "emoji": "🧁"}, "chleb pszenny": {"cat": "Pieczywo i zboża", "emoji": "🍞"}, "płatki kukurydziane": {"cat": "Pieczywo i zboża", "emoji": "🥣"}, "dżem": {"cat": "Przyprawy", "emoji": "🫙"}, "bułka pszenna": {"cat": "Pieczywo i zboża", "emoji": "🥖"}, "makaron pszenny": {"cat": "Pieczywo i zboża", "emoji": "🍝"}, "kasza kuskus": {"cat": "Pieczywo i zboża", "emoji": "🌾"}, "kakao": {"cat": "Przyprawy", "emoji": "🍫"}, "daktyle suszone": {"cat": "Owoce", "emoji": "🌴"}, "gorzka czekolada": {"cat": "Przyprawy", "emoji": "🍫"}, "pomarańcza": {"cat": "Owoce", "emoji": "🍊"},
 "arbuz": {"cat": "Owoce", "emoji": "🍉"}, "winogrona": {"cat": "Owoce", "emoji": "🍇"}, "śliwki": {"cat": "Owoce", "emoji": "🟣"},
 "brzoskwinia": {"cat": "Owoce", "emoji": "🍑"}, "grejpfrut": {"cat": "Owoce", "emoji": "🍊"}, "mandarynka": {"cat": "Owoce", "emoji": "🍊"},
@@ -1537,250 +1490,7 @@ const SNACK_NUTRITION_DB = {
   "parówka": {per:"1szt", kcal:130},
   "kanapka": {per:"1szt", kcal:250},
   "tost": {per:"1szt", kcal:200},
-  "morela": {per:"1szt", kcal:17},
-  "nektarynka": {per:"1szt", kcal:60},
-  "figa": {per:"1szt", kcal:47},
-  "figi": {per:"100g", kcal:249, typicalG:30},
-  "kaki": {per:"1szt", kcal:118},
-  "granat": {per:"100g", kcal:83, typicalG:150},
-  "mango": {per:"100g", kcal:60, typicalG:200},
-  "papaja": {per:"100g", kcal:43, typicalG:200},
-  "liczi": {per:"1szt", kcal:6},
-  "marakuja": {per:"1szt", kcal:17},
-  "gujawa": {per:"100g", kcal:68, typicalG:100},
-  "pomelo": {per:"100g", kcal:38, typicalG:200},
-  "agrest": {per:"100g", kcal:44, typicalG:100},
-  "porzeczki czerwone": {per:"100g", kcal:56, typicalG:100},
-  "porzeczki czarne": {per:"100g", kcal:63, typicalG:100},
-  "jeżyny": {per:"100g", kcal:43, typicalG:100},
-  "żurawina": {per:"100g", kcal:46, typicalG:50},
-  "melon": {per:"100g", kcal:34, typicalG:200},
-  "rabarbar": {per:"100g", kcal:21, typicalG:100},
-  "jabłko suszone": {per:"100g", kcal:244, typicalG:20},
-  "gruszka suszona": {per:"100g", kcal:262, typicalG:20},
-  "chipsy bananowe": {per:"100g", kcal:346, typicalG:20},
-  "śliwki suszone": {per:"100g", kcal:240, typicalG:30},
-  "rodzynki / żurawina": {per:"100g", kcal:299, typicalG:20},
-  "owoc smoka": {per:"100g", kcal:60, typicalG:150},
-  "karambola": {per:"100g", kcal:31, typicalG:100},
-  "longan": {per:"100g", kcal:60, typicalG:100},
-  "ananas suszony": {per:"100g", kcal:260, typicalG:20},
-  "kokos": {per:"100g", kcal:354, typicalG:30},
-  "wiórki kokosowe": {per:"100g", kcal:660, typicalG:15},
-  "ogórek kiszony": {per:"1szt", kcal:7},
-  "kapusta biała": {per:"100g", kcal:25, typicalG:100},
-  "kapusta kiszona": {per:"100g", kcal:19, typicalG:100},
-  "kapusta czerwona": {per:"100g", kcal:31, typicalG:100},
-  "kalafior": {per:"100g", kcal:25, typicalG:100},
-  "cukinia": {per:"100g", kcal:17, typicalG:100},
-  "bakłażan": {per:"100g", kcal:25, typicalG:100},
-  "por": {per:"100g", kcal:61, typicalG:50},
-  "cebula": {per:"100g", kcal:40, typicalG:50},
-  "czosnek": {per:"1szt", kcal:4},
-  "pieczarki": {per:"100g", kcal:22, typicalG:100},
-  "szpinak": {per:"100g", kcal:23, typicalG:80},
-  "jarmuż": {per:"100g", kcal:49, typicalG:80},
-  "kukurydza": {per:"100g", kcal:86, typicalG:100},
-  "groszek zielony": {per:"100g", kcal:81, typicalG:100},
-  "fasolka szparagowa": {per:"100g", kcal:31, typicalG:100},
-  "dynia": {per:"100g", kcal:26, typicalG:150},
-  "burak": {per:"100g", kcal:43, typicalG:100},
-  "seler korzeniowy": {per:"100g", kcal:42, typicalG:100},
-  "pietruszka korzeń": {per:"100g", kcal:43, typicalG:100},
-  "szparagi": {per:"100g", kcal:20, typicalG:100},
-  "chrzan": {per:"100g", kcal:48, typicalG:10},
-  "oliwki": {per:"100g", kcal:115, typicalG:30},
-  "kiszony ogórek małosolny": {per:"1szt", kcal:5},
-  "kalarepa": {per:"100g", kcal:27, typicalG:100},
-  "pomidory suszone": {per:"100g", kcal:258, typicalG:20},
-  "papryczka chili": {per:"1szt", kcal:4},
-  "imbir": {per:"100g", kcal:80, typicalG:10},
-  "warzywa mieszane": {per:"100g", kcal:45, typicalG:200},
-  "mleko półtłuste": {per:"100g", kcal:50, typicalG:250},
-  "mleko pełnotłuste": {per:"100g", kcal:61, typicalG:250},
-  "jogurt naturalny": {per:"100g", kcal:61, typicalG:150},
-  "jogurt grecki": {per:"100g", kcal:97, typicalG:150},
-  "jogurt owocowy": {per:"100g", kcal:95, typicalG:150},
-  "serek wiejski": {per:"100g", kcal:98, typicalG:150},
-  "ser mozzarella": {per:"100g", kcal:280, typicalG:30},
-  "ser feta": {per:"100g", kcal:264, typicalG:30},
-  "ser pleśniowy": {per:"100g", kcal:353, typicalG:20},
-  "ser topiony": {per:"100g", kcal:280, typicalG:20},
-  "ser parmezan": {per:"100g", kcal:431, typicalG:15},
-  "śmietana do kawy": {per:"100g", kcal:195, typicalG:30},
-  "śmietana kremówka": {per:"100g", kcal:292, typicalG:30},
-  "masło": {per:"100g", kcal:717, typicalG:10},
-  "margaryna": {per:"100g", kcal:600, typicalG:10},
-  "mleko migdałowe": {per:"100g", kcal:17, typicalG:250},
-  "mleko owsiane": {per:"100g", kcal:47, typicalG:250},
-  "mleko sojowe": {per:"100g", kcal:33, typicalG:250},
-  "ricotta": {per:"100g", kcal:174, typicalG:50},
-  "twarożek": {per:"100g", kcal:98, typicalG:100},
-  "jajko sadzone": {per:"1szt", kcal:90},
-  "omlet": {per:"1szt", kcal:300},
-  "jajecznica": {per:"1szt", kcal:220},
-  "skyr": {per:"100g", kcal:63, typicalG:150},
-  "wołowina": {per:"100g", kcal:250, typicalG:150},
-  "wieprzowina": {per:"100g", kcal:242, typicalG:150},
-  "schab": {per:"100g", kcal:143, typicalG:150},
-  "boczek": {per:"100g", kcal:541, typicalG:30},
-  "szynka": {per:"100g", kcal:120, typicalG:30},
-  "kiełbasa": {per:"100g", kcal:300, typicalG:50},
-  "salami": {per:"100g", kcal:380, typicalG:20},
-  "bekon": {per:"100g", kcal:541, typicalG:20},
-  "pasztet": {per:"100g", kcal:312, typicalG:30},
-  "kurczak panierowany": {per:"100g", kcal:220, typicalG:150},
-  "skrzydełka kurczaka": {per:"1szt", kcal:90},
-  "kaczka": {per:"100g", kcal:337, typicalG:150},
-  "makrela": {per:"100g", kcal:205, typicalG:100},
-  "śledź": {per:"100g", kcal:158, typicalG:100},
-  "pstrąg": {per:"100g", kcal:148, typicalG:150},
-  "krewetki": {per:"100g", kcal:99, typicalG:100},
-  "łosoś wędzony": {per:"100g", kcal:142, typicalG:50},
-  "tuńczyk w oleju": {per:"100g", kcal:189, typicalG:80},
-  "kabanosy drobiowe": {per:"1szt", kcal:65},
-  "klopsiki": {per:"1szt", kcal:60},
-  "kotlet schabowy": {per:"1szt", kcal:320},
-  "kotlet z mięsa mielonego": {per:"1szt", kcal:250},
-  "gołąbki": {per:"1szt", kcal:180},
-  "pulpety": {per:"1szt", kcal:55},
-  "bagietka": {per:"1szt", kcal:270},
-  "kawałek bagietki": {per:"1szt", kcal:80},
-  "chleb graham": {per:"1szt", kcal:90},
-  "chleb razowy": {per:"1szt", kcal:85},
-  "pumpernikiel": {per:"1szt", kcal:65},
-  "ryż brązowy": {per:"100g", kcal:111, typicalG:150},
-  "kasza pęczak": {per:"100g", kcal:123, typicalG:150},
-  "kasza bulgur": {per:"100g", kcal:83, typicalG:150},
-  "komosa ryżowa": {per:"100g", kcal:120, typicalG:150},
-  "makaron": {per:"100g", kcal:158, typicalG:150},
-  "makaron pełnoziarnisty": {per:"100g", kcal:124, typicalG:150},
-  "płatki kukurydziane": {per:"100g", kcal:357, typicalG:30},
-  "musli": {per:"100g", kcal:375, typicalG:40},
-  "otręby": {per:"100g", kcal:216, typicalG:15},
-  "kuskus": {per:"100g", kcal:112, typicalG:150},
-  "chleb chrupki": {per:"1szt", kcal:25},
-  "tortilla": {per:"1szt", kcal:140},
-  "pita": {per:"1szt", kcal:165},
-  "bułka grahamka": {per:"1szt", kcal:130},
-  "rogal świętomarciński": {per:"1szt", kcal:450},
-  "fasola": {per:"100g", kcal:127, typicalG:150},
-  "soczewica": {per:"100g", kcal:116, typicalG:150},
-  "groch": {per:"100g", kcal:118, typicalG:150},
-  "orzechy nerkowca": {per:"100g", kcal:553, typicalG:30},
-  "orzechy laskowe": {per:"100g", kcal:628, typicalG:30},
-  "orzeszki ziemne": {per:"100g", kcal:567, typicalG:30},
-  "pistacje": {per:"100g", kcal:560, typicalG:30},
-  "masło orzechowe": {per:"100g", kcal:588, typicalG:20},
-  "masło migdałowe": {per:"100g", kcal:614, typicalG:20},
-  "siemię lniane / chia": {per:"100g", kcal:510, typicalG:15},
-  "pestki dyni": {per:"100g", kcal:559, typicalG:20},
-  "pestki słonecznika": {per:"100g", kcal:584, typicalG:20},
-  "cappuccino": {per:"1szt", kcal:80},
-  "latte": {per:"1szt", kcal:120},
-  "espresso": {per:"1szt", kcal:3},
-  "kawa mrożona": {per:"1szt", kcal:200},
-  "herbata mrożona": {per:"100g", kcal:30, typicalG:330},
-  "woda smakowa": {per:"100g", kcal:20, typicalG:500},
-  "napój energetyczny": {per:"100g", kcal:45, typicalG:250},
-  "izotonik": {per:"100g", kcal:24, typicalG:500},
-  "kakao": {per:"1szt", kcal:150},
-  "sok pomidorowy": {per:"100g", kcal:17, typicalG:200},
-  "sok grejpfrutowy": {per:"100g", kcal:39, typicalG:200},
-  "sok multiwitamina": {per:"100g", kcal:48, typicalG:200},
-  "smoothie owocowe": {per:"100g", kcal:60, typicalG:250},
-  "lemoniada": {per:"100g", kcal:40, typicalG:330},
-  "baton corny": {per:"1szt", kcal:96},
-  "baton musli": {per:"1szt", kcal:110},
-  "kit kat": {per:"1szt", kcal:218},
-  "toblerone": {per:"1szt", kcal:45},
-  "m&ms": {per:"1szt", kcal:240},
-  "żelki": {per:"100g", kcal:343, typicalG:50},
-  "lizak": {per:"1szt", kcal:45},
-  "guma do żucia": {per:"1szt", kcal:5},
-  "ciasto": {per:"1szt", kcal:350},
-  "sernik": {per:"1szt", kcal:400},
-  "szarlotka": {per:"1szt", kcal:300},
-  "tiramisu": {per:"1szt", kcal:350},
-  "brownie": {per:"1szt", kcal:280},
-  "muffinka": {per:"1szt", kcal:350},
-  "eklerka": {per:"1szt", kcal:250},
-  "beza": {per:"1szt", kcal:100},
-  "lody w rożku": {per:"1szt", kcal:200},
-  "lody na patyku": {per:"1szt", kcal:250},
-  "galaretka": {per:"100g", kcal:70, typicalG:150},
-  "budyń": {per:"100g", kcal:105, typicalG:150},
-  "pudding ryżowy": {per:"100g", kcal:120, typicalG:150},
-  "cukier": {per:"1szt", kcal:16},
-  "landrynki": {per:"100g", kcal:394, typicalG:20},
-  "ptasie mleczko": {per:"1szt", kcal:60},
-  "rurka z kremem": {per:"1szt", kcal:220},
-  "pierniczki": {per:"100g", kcal:380, typicalG:30},
-  "makowiec": {per:"1szt", kcal:320},
-  "keks": {per:"1szt", kcal:300},
-  "bita śmietana": {per:"100g", kcal:257, typicalG:20},
-  "nutella": {per:"100g", kcal:539, typicalG:20},
-  "oreo": {per:"1szt", kcal:53},
-  "digestive": {per:"1szt", kcal:71},
-  "krakersy": {per:"100g", kcal:440, typicalG:30},
-  "chrupki kukurydziane": {per:"100g", kcal:480, typicalG:30},
-  "orzeszki oblane czekoladą": {per:"100g", kcal:480, typicalG:30},
-  "nachos": {per:"100g", kcal:490, typicalG:50},
-  "pizza": {per:"1szt", kcal:285},
-  "frytki": {per:"1szt", kcal:365},
-  "hot dog": {per:"1szt", kcal:290},
-  "hamburger": {per:"1szt", kcal:350},
-  "cheeseburger": {per:"1szt", kcal:420},
-  "kebab": {per:"1szt", kcal:700},
-  "zapiekanka": {per:"1szt", kcal:550},
-  "burrito": {per:"1szt", kcal:450},
-  "taco": {per:"1szt", kcal:170},
-  "sushi": {per:"1szt", kcal:40},
-  "pierogi": {per:"1szt", kcal:60},
-  "pierogi ruskie": {per:"1szt", kcal:400},
-  "naleśnik": {per:"1szt", kcal:200},
-  "gofr": {per:"1szt", kcal:280},
-  "tortilla wrap": {per:"1szt", kcal:280},
-  "chipsy tortilla": {per:"100g", kcal:490, typicalG:30},
-  "precelki solone": {per:"100g", kcal:380, typicalG:30},
-  "chrupki serowe": {per:"100g", kcal:520, typicalG:30},
-  "orzeszki solone": {per:"100g", kcal:590, typicalG:30},
-  "rosół": {per:"1szt", kcal:120},
-  "żurek": {per:"1szt", kcal:250},
-  "bigos": {per:"1szt", kcal:350},
-  "schabowy z ziemniakami": {per:"1szt", kcal:650},
-  "kurczak curry": {per:"1szt", kcal:450},
-  "makaron carbonara": {per:"1szt", kcal:600},
-  "pad thai": {per:"1szt", kcal:500},
-  "ramen": {per:"1szt", kcal:450},
-  "pho": {per:"1szt", kcal:350},
-  "sałatka cesar": {per:"1szt", kcal:350},
-  "sałatka grecka": {per:"1szt", kcal:300},
-  "lasagne": {per:"1szt", kcal:480},
-  "risotto": {per:"1szt", kcal:400},
-  "chili con carne": {per:"1szt", kcal:380},
-  "gulasz": {per:"1szt", kcal:350},
-  "placki ziemniaczane": {per:"1szt", kcal:220},
-  "kopytka": {per:"1szt", kcal:320},
-  "kluski śląskie": {per:"1szt", kcal:280},
-  "leczo": {per:"1szt", kcal:250},
-  "flaki": {per:"1szt", kcal:200},
-  "zupa pomidorowa": {per:"1szt", kcal:150},
-  "zupa ogórkowa": {per:"1szt", kcal:180},
-  "zupa krem z brokułów": {per:"1szt", kcal:160},
-  "zupa dyniowa": {per:"1szt", kcal:170},
-  "barszcz czerwony": {per:"1szt", kcal:90},
-  "kapuśniak": {per:"1szt", kcal:180},
-  "pizza margherita": {per:"1szt", kcal:250},
-  "spaghetti bolognese": {per:"1szt", kcal:550},
-  "curry z ciecierzycą": {per:"1szt", kcal:380},
-  "falafel": {per:"1szt", kcal:60},
-  "gyros": {per:"1szt", kcal:600},
-  "pad see ew": {per:"1szt", kcal:480},
-  "katsu curry": {per:"1szt", kcal:550},
-  "poke bowl": {per:"1szt", kcal:450},
-  "bowl z quinoa": {per:"1szt", kcal:420},
-  "sałata / mix sałat": {per:"100g", kcal:18, typicalG:50},
+  "orzechy włoskie": {per:"100g", kcal:654, typicalG:30},
 };
 // Small "does this ingredient/snack have an emoji?" lookup reused wherever a
 // recognized food name is shown to the user — recipe ingredient lists, the
@@ -2558,13 +2268,6 @@ function attachSwipeRating(card, r, refreshBadge){
   const AXIS_LOCK = 10, SWIPE_MAX = 120, SWIPE_COMMIT = 90;
   let startX=null, startY=null, dx=0, axis=null, ignore=false;
   const clearDragStyle = ()=>{ card.style.borderColor = ""; card.style.boxShadow = ""; };
-  const label = card.querySelector("[data-swipe-label]");
-  const setLabel = (text, cls, opacity)=>{
-    if(!label) return;
-    label.textContent = text;
-    label.className = "swipe-label" + (cls ? " "+cls : "");
-    label.style.opacity = opacity;
-  };
   card.addEventListener("pointerdown", (e)=>{
     if(e.target.closest("button, input, a")){ ignore = true; return; }
     ignore = false;
@@ -2585,14 +2288,11 @@ function attachSwipeRating(card, r, refreshBadge){
       if(dx > 4){
         card.style.borderColor = `rgba(60,170,110,${(0.3+0.6*intensity).toFixed(2)})`;
         card.style.boxShadow = `0 0 0 2px rgba(60,170,110,${(0.12*intensity).toFixed(2)}), 0 14px 30px rgba(60,170,110,${(0.22*intensity).toFixed(2)})`;
-        setLabel("Podoba mi się", "like", intensity.toFixed(2));
       }else if(dx < -4){
         card.style.borderColor = `rgba(190,70,60,${(0.3+0.6*intensity).toFixed(2)})`;
         card.style.boxShadow = `0 0 0 2px rgba(190,70,60,${(0.12*intensity).toFixed(2)}), 0 14px 30px rgba(190,70,60,${(0.22*intensity).toFixed(2)})`;
-        setLabel("Nie podoba mi się", "dislike", intensity.toFixed(2));
       }else{
         clearDragStyle();
-        setLabel("", "", 0);
       }
     }
   });
@@ -2604,8 +2304,6 @@ function attachSwipeRating(card, r, refreshBadge){
     card.style.transition = "transform .25s ease, border-color .25s ease, box-shadow .25s ease";
     card.style.transform = "";
     clearDragStyle();
-    if(label) label.style.transition = "opacity .2s ease";
-    setLabel("", "", 0);
     if(committed){
       setRecipeRating(r.id, dx > 0 ? "like" : "dislike");
       saveState();
@@ -2648,7 +2346,6 @@ function recipeCard(r, onChange, opts={}){
     ? `<span class="gi-badge" title="Ten przepis ma podwyższony indeks glikemiczny — dobry wybór, jeśli nie trzymasz się niskiego IG (patrz Ustawienia)">🍚 Podwyższony IG</span>`
     : "";
   card.innerHTML = `
-    <div class="swipe-label" data-swipe-label></div>
     <div class="card-head">
       <h3 class="recipe-title" data-search="${r.name}">${r.name}</h3>
       <div class="card-head-side">
@@ -3671,27 +3368,22 @@ function openPantryModal(r){
     const info = CANON_INFO[canon] || {cat:"Inne"};
     const inPantry = !!state.pantry[canon];
     const row = document.createElement("div");
-    row.className = "pantry-check-row";
-    row.innerHTML = `<div class="pcr-name">${withEmoji(ing, canon)}</div>
-      <div class="pcr-cols">
-        <span class="pcr-status"></span>
-        <div class="pcr-actions">
-          <button type="button" class="pcr-shop-btn" title="Dodaj ten składnik do listy zakupów">🛒</button>
-          <button type="button" class="pcr-have-btn"></button>
-        </div>
-      </div>`;
-    const statusSpan = row.querySelector(".pcr-status");
-    const shopBtn = row.querySelector(".pcr-shop-btn");
-    const haveBtn = row.querySelector(".pcr-have-btn");
+    row.className = "modal-ing-row";
+    const stockSpan = document.createElement("span");
+    stockSpan.className = "pantry-tag";
     const renderStock = ()=>{
       const entry = state.pantry[canon];
-      statusSpan.textContent = entry ? "🏺 " + describePantryEntry(entry) : "Brak w spiżarni";
-      statusSpan.classList.toggle("have", !!entry);
-      shopBtn.style.display = entry ? "none" : "inline-flex";
-      haveBtn.classList.toggle("on", !!entry);
-      haveBtn.textContent = entry ? "✓ Mam" : "+ Mam to";
+      stockSpan.textContent = entry ? "🏺 " + describePantryEntry(entry) : "";
+      stockSpan.style.display = entry ? "inline-block" : "none";
     };
+    row.innerHTML = `<span>${ing}</span>`;
+    row.appendChild(stockSpan);
     renderStock();
+    const shopBtn = document.createElement("button");
+    shopBtn.className = "modal-ing-btn";
+    shopBtn.textContent = "🛒";
+    shopBtn.title = "Dodaj ten składnik do listy zakupów";
+    shopBtn.style.display = inPantry ? "none" : "inline-block";
     shopBtn.addEventListener("click", ()=>{
       addSingleIngredientToShopping(ing, `single:${r.id}:${canon}`);
       renderShop();
@@ -3699,9 +3391,15 @@ function openPantryModal(r){
       shopBtn.disabled = true;
       toast("Dodano składnik do listy zakupów");
     });
-    haveBtn.addEventListener("click", ()=>{
+    row.appendChild(shopBtn);
+    const btn = document.createElement("button");
+    btn.className = "modal-ing-btn" + (inPantry ? " on" : "");
+    btn.textContent = inPantry ? "✓ Mam" : "+ Mam to";
+    btn.addEventListener("click", ()=>{
       if(state.pantry[canon]){
         delete state.pantry[canon];
+        btn.classList.remove("on"); btn.textContent = "+ Mam to";
+        shopBtn.style.display = "inline-block";
         addLog("pantry_delete", `Usunięto ze spiżarni: ${canon}`);
       }else{
         const unitCat = TILE_UNIT_CAT[canon] || p.unitCat || "count";
@@ -3710,12 +3408,15 @@ function openPantryModal(r){
         }else{
           state.pantry[canon] = {label:canon, cat:info.cat, type:"product", qty: tileStep(unitCat), unitCat};
         }
+        btn.classList.add("on"); btn.textContent = "✓ Mam";
+        shopBtn.style.display = "none";
         addLog("pantry_add", `Dodano do spiżarni: ${canon}`);
       }
       saveState();
       renderStock();
       renderShop();
     });
+    row.appendChild(btn);
     list.appendChild(row);
   });
   modalOverlay.classList.add("show");
@@ -4901,17 +4602,8 @@ if(forceUpdateBtn){
     }
   }
   let modalPushed = false, closingFromPopstate = false;
-  // Background scroll can otherwise still "leak" through the fixed-position
-  // overlay on a real touchscreen (a well-known mobile-web quirk — the
-  // backdrop absorbs taps but not every scroll gesture). That leaked scroll
-  // was firing the header's normal auto-show-on-scroll-up logic while a
-  // modal — e.g. the macro-info "i" legend — was open, silently re-expanding
-  // a header the user had just deliberately collapsed. Locking body scroll
-  // for the duration of any modal removes the leak at the source.
-  document.documentElement.classList.toggle("modal-open", !!shownOverlay());
   const observer = new MutationObserver(()=>{
     const shown = shownOverlay();
-    document.documentElement.classList.toggle("modal-open", !!shown);
     if(shown && !modalPushed){
       modalPushed = true;
       history.pushState({dietaAppModal:true}, "");
