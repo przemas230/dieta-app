@@ -1,0 +1,14 @@
+Wersja 43
+=========
+
+1. Poszerzono wyśrodkowane okienka modalne
+   - Wszystkie okienka wyśrodkowane na środku ekranu (wprowadzone w wersji
+     41) miały sztywny limit szerokości 340px, przez co na typowym
+     telefonie zostawały widoczne szerokie puste marginesy po bokach.
+     Podniesiono limit do 600px, więc okienko wykorzystuje teraz niemal
+     całą dostępną szerokość ekranu (z 16px marginesem od krawędzi).
+
+2. Poprawiono treść napisu przy ocenianiu przesunięciem
+   - Poprzednia zmiana treści na „Lubię to!”/„Nie lubię!” nie była tym,
+     o co prosił użytkownik. Poprawiono na dokładnie zgłoszoną wersję:
+     „Podoba się to dla mnie!” / „Nie podoba się to dla mnie!”.
