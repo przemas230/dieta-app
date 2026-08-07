@@ -635,25 +635,15 @@
   .pantry-level.malo{background:var(--danger-pale); color:var(--danger);}
   .pantry-tag{font-size:11px; background:var(--teal-pale); color:var(--teal-dark); padding:2px 8px; border-radius:999px; white-space:nowrap;}
 
-  .shop-day-strip{display:grid; grid-template-columns:repeat(7, 1fr); gap:6px; margin:0 0 16px;}
-  .shop-day-card{
-    display:flex; flex-direction:column; align-items:center; gap:5px; min-width:0;
-    padding:9px 3px 8px; border:1.5px solid var(--line); border-radius:13px; background:var(--card);
-    cursor:pointer; font:inherit; -webkit-tap-highlight-color:transparent; transition:transform var(--dur-fast,.15s) var(--ease,ease), border-color var(--dur-fast,.15s) var(--ease,ease);
+  .week-cal{display:flex; justify-content:space-between; gap:4px; margin:0 0 16px;}
+  .week-cal-day{display:flex; flex-direction:column; align-items:center; gap:4px; flex:1 1 0; min-width:0;}
+  .week-cal-ring-wrap{position:relative; width:34px; height:34px;}
+  .week-cal-ring{width:100%; height:100%; display:block;}
+  .week-cal-day.today .week-cal-label{color:var(--teal-dark); font-weight:800;}
+  .week-cal-day.today .week-cal-ring-wrap::after{
+    content:""; position:absolute; inset:-3px; border:1.5px solid var(--teal); border-radius:50%;
   }
-  .shop-day-card:active{transform:scale(.94);}
-  .shop-day-card.today{border-color:var(--teal); border-width:2px;}
-  .sdc-label{font-size:11px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;}
-  .shop-day-card.today .sdc-label{color:var(--teal-dark);}
-  .sdc-status{font-size:10px; font-weight:700; color:var(--muted); font-family:var(--font-mono); white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis;}
-  .shop-day-card.empty{opacity:.55;}
-  .shop-day-card.todo .sdc-status{color:var(--honey-dark);}
-  .shop-day-card.started .sdc-status, .shop-day-card.done .sdc-status{color:var(--teal-dark);}
-  .shop-day-card.done{background:var(--teal-pale); border-color:var(--teal-pale);}
-  .shop-day-card.done.today{border-color:var(--teal);}
-  .sdc-bar{display:block; width:100%; height:4px; border-radius:999px; background:var(--line); overflow:hidden;}
-  .sdc-bar-fill{display:block; height:100%; border-radius:999px; background:var(--honey); transition:width .3s var(--ease,ease);}
-  .shop-day-card.started .sdc-bar-fill, .shop-day-card.done .sdc-bar-fill{background:var(--teal);}
+  .week-cal-label{font-size:10px; font-weight:600; color:var(--muted); font-family:var(--font-mono);}
 
   .suggest-wrap{position:relative;}
   .suggest-panel{
@@ -743,13 +733,12 @@
     flex:0 0 auto; border:1.5px solid var(--line); background:var(--card); color:var(--text);
     border-radius:10px; width:34px; height:34px; font-size:14px; cursor:pointer;
   }
-  .cook-history-row{display:flex; flex-direction:column; gap:6px; padding:10px 0; border-bottom:1px solid var(--line);}
+  .cook-history-row{display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line);}
   .cook-history-row:last-child{border-bottom:none;}
-  .ch-top-line{display:flex; align-items:center; gap:10px;}
-  .ch-date{font-size:12px; color:var(--text); flex:1 1 auto; line-height:1.35;}
+  .ch-date{font-size:12px; color:var(--text); flex:0 0 70px; line-height:1.35;}
   .ch-time{color:var(--muted); font-size:11px;}
-  .ch-stars{display:flex; width:100%;}
-  .star-pick{flex:1 1 0; text-align:center; font-size:28px; cursor:pointer; color:var(--honey); line-height:1; padding:6px 0; min-height:34px; display:flex; align-items:center; justify-content:center;}
+  .ch-stars{flex:1; display:flex; gap:2px;}
+  .star-pick{font-size:19px; cursor:pointer; color:var(--honey); line-height:1;}
   .ch-del{flex:0 0 auto; border:none; background:none; color:var(--danger); font-size:17px; cursor:pointer; padding:4px 6px;}
   .method{font-size:13px; color:var(--muted); line-height:1.5; margin:0 0 12px;}
   .card-actions{display:flex; gap:8px; flex-wrap:wrap;}
@@ -998,11 +987,12 @@
       <strong>🛒 Lista zakupów</strong>
       <span class="count" id="shopCount">0 pozycji</span>
     </div>
+    <div class="week-cal" id="shopWeekCal"></div>
     <div class="shop-actions" style="margin:0 0 8px;">
       <button class="btn ghost" id="addWeekBtn" style="width:100%;">📅 Dodaj składniki z całego tygodnia w Planerze</button>
     </div>
-    <div class="hint-text" style="margin:0 0 6px;">Albo tylko z konkretnego dnia — stuknij dzień, aby dodać jego składniki:</div>
-    <div class="shop-day-strip" id="shopDayStrip"></div>
+    <div class="hint-text" style="margin:0 0 6px;">Albo tylko z konkretnego dnia:</div>
+    <div class="chip-grid" id="shopDayButtons" style="margin-bottom:14px;"></div>
     <div id="shopList"></div>
     <div class="shop-actions">
       <button class="btn primary" id="shareBtn">📤 Udostępnij (SMS / Messenger)</button>
@@ -2249,14 +2239,7 @@ document.getElementById("settingsBtn").addEventListener("click", ()=> switchView
 // entirely undisturbed. Its share is carved out of the other four (which
 // is why sniadania/drugie/obiady/kolacje are each a little smaller than
 // before) rather than added on top, so the daily kcal target is unchanged.
-// The 200/1500 share (raised from an initial 100/1500) was recalibrated
-// against the actual 16-recipe dessert pool, which averages ~218 kcal
-// (169-314 kcal range): at the original 100-140 kcal target, every real
-// dessert recipe overshot the macro target so far that recipeMatchScore's
-// relative-deviation formula floored to 0% for every single one, on every
-// profile — the category was structurally unmatchable, not just poorly
-// scored.
-const MEAL_RATIOS = {sniadania:340/1500, drugie:260/1500, obiady:420/1500, kolacje:280/1500, deser:200/1500};
+const MEAL_RATIOS = {sniadania:370/1500, drugie:280/1500, obiady:450/1500, kolacje:300/1500, deser:100/1500};
 function calcTargets(p){
   const bmr = p.sex==="m"
     ? 10*p.weight + 6.25*p.height - 5*p.age + 5
@@ -3017,11 +3000,9 @@ function renderCookHistoryBody(r, onChange){
     row.className = "cook-history-row";
     const stars = [1,2,3,4,5].map(n=>`<span class="star-pick" data-n="${n}">${(entry.rating||0)>=n?'★':'☆'}</span>`).join("");
     row.innerHTML = `
-      <div class="ch-top-line">
-        <div class="ch-date">${formatDatePl(entry.date)} <span class="ch-time">${new Date(entry.date).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})}</span></div>
-        <button class="ch-del" title="Usuń wpis">✕</button>
-      </div>
+      <div class="ch-date">${formatDatePl(entry.date)}<br><span class="ch-time">${new Date(entry.date).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})}</span></div>
       <div class="ch-stars">${stars}</div>
+      <button class="ch-del" title="Usuń wpis">✕</button>
     `;
     row.querySelectorAll(".star-pick").forEach(starEl=>{
       starEl.addEventListener("click", ()=>{
@@ -3305,7 +3286,8 @@ function classify(label){
 const GROUP_ORDER = ["Nabiał bez laktozy","Warzywa i owoce","Mięso, ryby i jajka","Strączki, orzechy i nasiona","Pieczywo i zboża","Przyprawy i dodatki","Inne"];
 
 function renderShop(){
-  renderShopDayStrip();
+  renderShopDayButtons();
+  renderShopWeekCal();
   const box = document.getElementById("shopList");
   box.innerHTML = "";
   const keys = Object.keys(state.shopping);
@@ -3366,21 +3348,36 @@ function buildListText(){
 // so "jutro"/"pojutrze" are computed relative to the real current weekday
 // rather than being a fixed slot — the plan itself repeats every week, but
 // the shortcut labels should still mean what they say today.
-//
-// Replaces two earlier, separately-rendered widgets (a row of add-buttons,
-// and a row of abstract fill-rings above them) that users found confusing —
-// two visually similar day-strips right on top of each other, one read-only
-// and one clickable, with the read-only one only explainable via a tooltip.
-// This single strip is both: each day card states its own status in plain
-// Polish text ("Dodaj" / "2/3" / "✓ Gotowe" / "Brak planu") plus a linear
-// progress bar, and tapping it is the same add action as before
-// (addDayToShoppingList, already idempotent — tapping a finished day just
-// shows a "already on the list" toast instead of double-adding anything).
-function renderShopDayStrip(){
-  const box = document.getElementById("shopDayStrip");
+function renderShopDayButtons(){
+  const box = document.getElementById("shopDayButtons");
   if(!box) return;
   const jsDay = new Date().getDay();
   const todayIdx = jsDay === 0 ? 6 : jsDay - 1;
+  box.innerHTML = "";
+  DAYS.forEach((day, di)=>{
+    const btn = document.createElement("button");
+    btn.className = "ing-chip";
+    let label = day;
+    if(di === todayIdx) label = "Dziś";
+    else if(di === (todayIdx+1)%7) label = "Jutro";
+    else if(di === (todayIdx+2)%7) label = "Pojutrze";
+    btn.textContent = label;
+    btn.title = day;
+    btn.addEventListener("click", ()=> addDayToShoppingList(di, label));
+    box.appendChild(btn);
+  });
+}
+// Small week-at-a-glance strip: one ring per day, filled proportionally to
+// how many of that day's PLANNED meals are currently represented on the
+// shopping list (e.g. breakfast + lunch on the list out of 4 planned that
+// day = a half-filled ring) — a fast visual read of "have I already shopped
+// for this day" without opening the Planner.
+function renderShopWeekCal(){
+  const box = document.getElementById("shopWeekCal");
+  if(!box) return;
+  const jsDay = new Date().getDay();
+  const todayIdx = jsDay === 0 ? 6 : jsDay - 1;
+  const CIRC = 2 * Math.PI * 15;
   box.innerHTML = "";
   DAYS.forEach((day, di)=>{
     const dayMeals = state.planner[di] || {};
@@ -3391,27 +3388,21 @@ function renderShopDayStrip(){
       planned++;
       if(state.recipeAdded[rid]) onList++;
     });
-    let label = day.slice(0,3);
-    if(di === todayIdx) label = "Dziś";
-    else if(di === (todayIdx+1)%7) label = "Jutro";
-    else if(di === (todayIdx+2)%7) label = "Pojutrze";
-    const done = planned > 0 && onList === planned;
-    const started = onList > 0 && !done;
-    let status, pct, stateClass;
-    if(planned === 0){ status = "—"; pct = 0; stateClass = "empty"; }
-    else if(done){ status = "Gotowe"; pct = 100; stateClass = "done"; }
-    else if(started){ status = `${onList}/${planned}`; pct = Math.round(onList/planned*100); stateClass = "started"; }
-    else { status = "Dodaj"; pct = 0; stateClass = "todo"; }
-    const card = document.createElement("button");
-    card.type = "button";
-    card.className = `shop-day-card ${stateClass}` + (di === todayIdx ? " today" : "");
-    card.title = planned > 0 ? `${day}: ${onList}/${planned} dań na liście zakupów` : `${day}: brak zaplanowanych dań`;
-    card.innerHTML = `
-      <span class="sdc-label">${label}</span>
-      <span class="sdc-status">${status}</span>
-      <span class="sdc-bar"><span class="sdc-bar-fill" style="width:${pct}%"></span></span>`;
-    card.addEventListener("click", ()=> addDayToShoppingList(di, label==="Dziś"||label==="Jutro"||label==="Pojutrze" ? label : day));
-    box.appendChild(card);
+    const frac = planned > 0 ? onList / planned : 0;
+    const dash = (frac * CIRC).toFixed(1);
+    const cell = document.createElement("div");
+    cell.className = "week-cal-day" + (di === todayIdx ? " today" : "");
+    cell.title = planned > 0 ? `${day}: ${onList}/${planned} dań na liście zakupów` : `${day}: brak zaplanowanych dań`;
+    cell.innerHTML = `
+      <div class="week-cal-ring-wrap">
+        <svg viewBox="0 0 36 36" class="week-cal-ring">
+          <circle cx="18" cy="18" r="15" fill="none" stroke="var(--line)" stroke-width="4"/>
+          <circle cx="18" cy="18" r="15" fill="none" stroke="var(--teal)" stroke-width="4" stroke-linecap="round"
+            stroke-dasharray="${dash} ${CIRC.toFixed(1)}" transform="rotate(-90 18 18)"/>
+        </svg>
+      </div>
+      <span class="week-cal-label">${day.slice(0,3)}</span>`;
+    box.appendChild(cell);
   });
 }
 function addDayToShoppingList(di, dayLabel){

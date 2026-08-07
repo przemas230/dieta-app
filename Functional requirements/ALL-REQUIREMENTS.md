@@ -21,6 +21,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-12: Modal wyjaśniający wyliczenia makro/IG/ŁG](#fr-12-modal-wyjaśniający-wyliczenia-makroigłg)
 - [FR-13: Piąta kategoria posiłku: Deser/Przekąska](#fr-13-piąta-kategoria-posiłku-deserprzekąska)
 - [FR-14: Skalowanie rozmiaru interfejsu (UI scale)](#fr-14-skalowanie-rozmiaru-interfejsu-ui-scale)
+- [FR-64: Orientacyjne wartości mikroskładników (wapń, wit. D, B12) w okienku wyliczeń](#fr-64-orientacyjne-wartości-mikroskładników-wapń-wit-d-b12-w-okienku-wyliczeń)
 
 ### Gotowanie i historia
 - [FR-15: Oznaczanie dania jako ugotowane, z historią i ocenami](#fr-15-oznaczanie-dania-jako-ugotowane-z-historią-i-ocenami)
@@ -337,10 +338,15 @@ Piąty, zawsze dostępny slot posiłkowy (dodatkowy, nie zastępujący pozostał
 
 ## Kryteria akceptacji
 - 16 dedykowanych przepisów w kategorii `deser`, każdy bezglutenowy i bez laktozy.
-- Udział tej kategorii w dziennym celu (100/1500) jest wydzielony z pozostałych czterech, a nie dodany na wierzch — dzienny cel kaloryczny się nie zmienia.
+- Udział tej kategorii w dziennym celu (200/1500) jest wydzielony z pozostałych czterech, a nie dodany na wierzch — dzienny cel kaloryczny się nie zmienia.
+- Docelowe makroskładniki slotu deseru muszą być kalibrowane względem RZECZYWISTEJ kaloryczności przepisów w tej kategorii, tak by wynik dopasowania (🎯, FR-7) miał realną szansę wypaść wysoko dla co najmniej części przepisów, dla każdej kombinacji celu diety — nie może systemowo lądować na 0% dla całej kategorii.
+
+## Uwagi
+Zrewidowane 2026-08-07: wykryto (przy okazji niepowiązanej weryfikacji), że udział 100/1500 (~6,7% dnia, czyli 100-140 kcal zależnie od celu) był około dwukrotnie mniejszy niż rzeczywista kaloryczność 16 przepisów tej kategorii (średnio 218 kcal, zakres 169-314 kcal) — różnica była tak duża, że wzór dopasowania z FR-7 zawsze lądował na 0% dla KAŻDEGO deseru, przy KAŻDYM celu diety z rygorem niskiego IG i bez niego przy celu "Redukcja", a średnio ~10% przy "Utrzymanie". Skorygowano udział do 200/1500 (~13,3% dnia), zabierając różnicę proporcjonalnie z pozostałych czterech posiłków (dzienny cel kaloryczny bez zmian) — po korekcie desery dopasowują się sensownie (średnio 36-54%, maksymalnie 65-77% w zależności od celu) bez pogorszenia dopasowania pozostałych kategorii.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-07): Skorygowano udział kaloryczny slotu deseru (100/1500 → 200/1500) po wykryciu, że powodował systemowe 0% dopasowania dla całej kategorii — patrz sekcja "Uwagi" i dodane kryterium akceptacji.
 
 ---
 
@@ -416,13 +422,18 @@ Zrewidowane ponownie 2026-08-03: sam przycisk-wyzwalacz na karcie przepisu był 
 **Status:** Zaimplementowane
 
 ## Opis
-W historii gotowania (FR-15) każdy wpis można ocenić w skali gwiazdkowej, niezależnie od globalnej oceny lubię/nie lubię (FR-55).
+W historii gotowania (FR-15) każdy wpis można ocenić w skali gwiazdkowej, niezależnie od globalnej oceny lubię/nie lubię (FR-55). Pięć gwiazdek jest rozłożonych równo na całą dostępną szerokość wiersza wpisu (nie stłoczonych po jednej stronie), każda z wystarczająco dużym obszarem dotykowym.
 
 ## Kryteria akceptacji
 - Ocena gwiazdkowa jest przypisana do konkretnego wpisu historii (daty ugotowania), nie do przepisu jako całości.
+- 5 gwiazdek rozciąga się na pełną szerokość wiersza (odstępy równe, nie zbite razem po lewej), każda z minimalną wysokością dotykową ok. 34px.
+
+## Uwagi
+Zrewidowane 2026-08-07: gwiazdki były wcześniej stłoczone po lewej stronie wiersza (mały, ciasny obszar klikania) — data i przycisk usuwania wpisu przeniesiono do osobnej górnej linijki, a gwiazdki dostały całą szerokość wiersza dla siebie.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-07): Gwiazdki rozciągnięte na pełną szerokość wiersza dla łatwiejszego trafienia — patrz sekcja "Uwagi".
 
 ---
 
@@ -1116,16 +1127,23 @@ Oceniona karta zachowuje kolorowe obramowanie z boku i małą plakietkę (👍/�
 **Status:** Zaimplementowane
 
 ## Opis
-Zakładka Zakupy pokazuje, obok istniejącego przycisku dodania składników z całego tygodnia (FR-25/FR-27), rząd przycisków dla każdego dnia tygodnia. Dwa pierwsze dostępne dni są etykietowane względem dzisiejszej daty jako „Dziś” i „Jutro”/„Pojutrze” (obliczane na bieżąco z rzeczywistej daty systemowej), pozostałe pokazują zwykłe nazwy dni tygodnia. Kliknięcie dodaje do listy zakupów składniki wszystkich dań zaplanowanych w Planerze na ten jeden dzień, z uwzględnieniem ustawionej skali porcji (FR-20).
+Zakładka Zakupy pokazuje, obok istniejącego przycisku dodania składników z całego tygodnia (FR-25/FR-27), pasek 7 kart — po jednej na dzień tygodnia. Dwa pierwsze dostępne dni są etykietowane względem dzisiejszej daty jako „Dziś” i „Jutro”/„Pojutrze” (obliczane na bieżąco z rzeczywistej daty systemowej), pozostałe pokazują skrócone nazwy dni tygodnia. Każda karta jednocześnie (a) opisuje wprost po polsku swój aktualny stan względem Planera na ten dzień, i (b) jest przyciskiem: stuknięcie dodaje do listy zakupów składniki wszystkich dań zaplanowanych w Planerze na ten jeden dzień, z uwzględnieniem ustawionej skali porcji (FR-20). Stany karty: „—” (wyszarzona, brak zaplanowanych dań tego dnia), „Dodaj” (są zaplanowane dania, żadne jeszcze nie na liście), „X/Y” z cienkim paskiem postępu (część dań na liście), „Gotowe” z pełnym paskiem (wszystkie zaplanowane dania tego dnia już na liście). Dzisiejszy dzień ma dodatkowo wyróżnioną obwódkę.
+
+To jeden, samowystarczalny widżet zastępujący dwa wcześniejsze, osobno renderowane obok siebie elementy: sam rząd przycisków dodawania (opisany pierwotnie w tym FR) oraz osobny, czysto informacyjny "mini kalendarzyk" z pierścieniami wypełnienia (FR-62) — użytkownik zgłosił, że oba obok siebie były niejasne (dwa podobne wizualnie rzędy dla tych samych 7 dni, jeden klikalny i jeden nie, bez jasnego wytłumaczenia co przedstawiają same pierścienie).
 
 ## Kryteria akceptacji
 - Etykiety „Dziś”/„Jutro”/„Pojutrze” zawsze odpowiadają rzeczywistemu dzisiejszemu dniowi tygodnia, nie stałemu indeksowi.
-- Kliknięcie przycisku dodaje składniki TYLKO z wybranego dnia, nie z całego tygodnia.
-- Dania już wcześniej dodane do listy nie są duplikowane (ta sama logika co FR-25).
-- Pusty dzień (bez zaplanowanych dań) pokazuje odpowiedni komunikat zamiast cichego braku reakcji.
+- Kliknięcie karty dodaje składniki TYLKO z wybranego dnia, nie z całego tygodnia.
+- Dania już wcześniej dodane do listy nie są duplikowane (ta sama logika co FR-25) — kliknięcie karty w stanie „Gotowe” jest bezpieczne (idempotentne) i pokazuje komunikat, że wszystko już jest na liście, zamiast dodawać cokolwiek ponownie.
+- Stan karty („—” / „Dodaj” / „X/Y” z paskiem / „Gotowe”) jest czytelny sam z siebie, bez potrzeby najeżdżania/przytrzymywania — dokładny opis liczbowy (X/Y dań) dostępny dodatkowo w atrybucie tytułu przy najechaniu/przytrzymaniu.
+- Pusty dzień (bez zaplanowanych dań) pokazuje odpowiedni komunikat po kliknięciu, zamiast cichego braku reakcji.
+
+## Uwagi
+Zrewidowane 2026-08-07: połączono z FR-62 w jeden widżet po zgłoszeniu użytkownika, że dwa osobne, wizualnie podobne rzędy nad listą zakupów (ten rząd przycisków + informacyjne pierścienie z FR-62) były nieczytelne. Zamiast abstrakcyjnego częściowo wypełnionego pierścienia (wymagającego tooltipa, by zrozumieć co przedstawia) każda karta opisuje swój stan wprost tekstem po polsku plus prostym liniowym paskiem postępu, i sama pełni funkcję przycisku dodawania — jeden widżet zamiast dwóch.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie polecenia użytkownika.
+- **v2** (2026-08-07): Połączono z osobnym widżetem "mini kalendarzyka" (FR-62) w jeden pasek kart dni, jednocześnie informacyjny i klikalny — patrz sekcja "Uwagi".
 
 ---
 
@@ -1195,21 +1213,17 @@ Ustawienia (karta „🎨 Wygląd aplikacji”) zawierają przełącznik dwuopcy
 # FR-62: Mini kalendarzyk bieżącego tygodnia na liście zakupów
 
 **Obszar:** Lista zakupów  
-**Status:** Zaimplementowane
+**Status:** Połączone z FR-58 (patrz Uwagi) — funkcjonalność nadal istnieje, w innej formie
 
-## Opis
-Na górze zakładki Zakupy, pod podsumowaniem listy, wyświetla się mini kalendarzyk obejmujący wyłącznie bieżący tydzień (poniedziałek–niedziela, zgodnie z układem dni w Planerze). Każdy dzień pokazuje pierścień (SVG), który wypełnia się proporcjonalnie do tego, ile z zaplanowanych na ten dzień dań (Planer) ma już swoje składniki dodane do listy zakupów — np. jeśli z 4 zaplanowanych na dany dzień posiłków 2 mają składniki na liście, pierścień jest wypełniony w połowie; przy 3 z 4 — w trzech czwartych; przy wszystkich — w całości. Dzień bez zaplanowanych posiłków ma pusty pierścień. Bieżący dzień tygodnia jest dodatkowo wizualnie wyróżniony (obwódka wokół pierścienia, pogrubiona etykieta).
+## Opis (historyczne, jak pierwotnie zaimplementowane)
+Na górze zakładki Zakupy, pod podsumowaniem listy, wyświetlał się mini kalendarzyk obejmujący wyłącznie bieżący tydzień (poniedziałek–niedziela, zgodnie z układem dni w Planerze). Każdy dzień pokazywał pierścień (SVG), który wypełniał się proporcjonalnie do tego, ile z zaplanowanych na ten dzień dań (Planer) miało już swoje składniki dodane do listy zakupów — np. jeśli z 4 zaplanowanych na dany dzień posiłków 2 miały składniki na liście, pierścień był wypełniony w połowie. Renderowany jako osobny rząd, TUŻ NAD osobnym rzędem przycisków dodawania per dzień (FR-58).
 
-## Kryteria akceptacji
-- Kalendarzyk pokazuje dokładnie 7 dni bieżącego tygodnia, z krótkimi etykietami dni.
-- Wypełnienie pierścienia danego dnia = (liczba dań tego dnia obecnych na liście zakupów) / (liczba wszystkich dań zaplanowanych na ten dzień w Planerze), zaokrąglone wizualnie do rzeczywistego ułamka (nie tylko pełne/puste stany).
-- Dzień bez zaplanowanych dań pokazuje pusty pierścień, nie błąd ani dzielenie przez zero.
-- Najechanie/przytrzymanie dnia pokazuje czytelny opis w postaci „X/Y dań na liście zakupów” (lub informację o braku planu).
-- Bieżący dzień tygodnia jest wizualnie odróżniony od pozostałych.
-- Kalendarzyk aktualizuje się automatycznie po każdej zmianie listy zakupów lub planu (dodanie/usunięcie dania z listy, zmiana w Planerze).
+## Uwagi
+Zrewidowane 2026-08-07: użytkownik zgłosił, że ten pierścień był nieczytelny ("nie wiadomo o co chodzi") — wymagał najechania/przytrzymania, by zrozumieć co przedstawia, a wizualnie prawie nakładał się na osobny rząd przycisków dodawania (FR-58) tuż pod spodem, sprawiając wrażenie dwóch niepowiązanych widżetów dla tych samych 7 dni. Połączono oba w jeden widżet w ramach FR-58: ten sam odczyt stanu (ile dań danego dnia jest już na liście względem Planera) jest teraz częścią jednej klikalnej karty dnia, opisanego wprost tekstem po polsku ("Dodaj" / "X/Y" z liniowym paskiem postępu / "Gotowe") zamiast abstrakcyjnym częściowo wypełnionym pierścieniem. Ten plik zostaje jako historyczny zapis pierwotnej wersji — właściwa, aktualna specyfikacja tej funkcjonalności znajduje się teraz w FR-58.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania na podstawie polecenia użytkownika.
+- **v2** (2026-08-07): Połączone z FR-58 w jeden widżet po zgłoszeniu nieczytelności — patrz sekcja "Uwagi". Właściwa specyfikacja przeniesiona do FR-58.
 
 ---
 
@@ -1232,5 +1246,26 @@ Dwa dodatkowe motywy wizualne (patrz FR-48), inspirowane dwiema odrębnymi erami
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania na podstawie polecenia użytkownika ("zainspiruj się motywem z windows11 oraz windows taki z kafelkami").
+
+---
+
+# FR-64: Orientacyjne wartości mikroskładników (wapń, wit. D, B12) w okienku wyliczeń
+
+**Obszar:** Personalizacja i cele dietetyczne  
+**Status:** Zaimplementowane
+
+## Opis
+W okienku „Jak policzono” (FR-12), pod rozkładem kaloryczności składników, dla przepisów zawierających choć jeden składnik z rozpoznanej listy (nabiał bez laktozy, ryby, jajka, rośliny strączkowe, zielone warzywa, nasiona) pokazują się trzy plakietki z orientacyjną zawartością wapnia, witaminy D i B12 na porcję. Te trzy mikroskładniki wybrano celowo — są one najłatwiejsze do niedoboru przy diecie bez laktozy, którą stosuje każdy profil w tej aplikacji (jeden lub oba filtry FR-8 mogą być wyłączone, ale sama app jest budowana z myślą o bezpiecznym zastąpieniu nabiału). To nie jest wyliczenie wyczerpujące — tylko składniki z rozpoznanej listy są uwzględniane, reszta przepisu jest pomijana w tym pomiarze.
+
+## Kryteria akceptacji
+- Plakietki (🦴 Wapń, ☀️ Wit. D, 🥩 B12) pojawiają się tylko gdy przepis zawiera co najmniej jeden rozpoznany składnik — w przeciwnym razie sekcja mikroskładników nie jest pokazywana wcale (nie pokazuje zer).
+- Wartości skalują się z ilością składnika dokładnie tak samo jak `baseKcal` w rozkładzie kaloryczności (ta sama jednostka co `calc[]`).
+- Zastrzeżenie o orientacyjności (fortyfikacja napojów roślinnych zależy od marki, nie każdy składnik przepisu jest uwzględniony) jest widoczne raz, w ogólnej (domyślnie zwiniętej) legendzie z FR-12, a nie powtarzane przy każdym przepisie.
+
+## Uwagi
+Spisane retrospektywnie 2026-08-07: funkcjonalność istniała już w kodzie z wcześniejszej rundy prac, ale nie miała własnego wpisu FR — użytkownik zapytał, czy mikroskładniki są pokazywane "przy szczegółach", co przy weryfikacji potwierdziło się jako TAK (już zaimplementowane), stąd ten wpis dokumentuje istniejące zachowanie zamiast opisywać nową zmianę.
+
+## Historia rewizji
+- **v1** (2026-08-07): Pierwsza wersja wymagania, spisana retrospektywnie — funkcjonalność już istniała w aplikacji, brakowało tylko jej opisu w tym folderze.
 
 ---
