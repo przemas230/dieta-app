@@ -10,6 +10,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-3: Karta przepisu — widok skrócony i rozwinięty](#fr-3-karta-przepisu--widok-skrócony-i-rozwinięty)
 - [FR-4: Miniatura przepisu jako emoji głównego składnika](#fr-4-miniatura-przepisu-jako-emoji-głównego-składnika)
 - [FR-5: Przycisk powrotu do góry listy przepisów](#fr-5-przycisk-powrotu-do-góry-listy-przepisów)
+- [FR-66: Dodawanie własnych przepisów przez użytkownika](#fr-66-dodawanie-własnych-przepisów-przez-użytkownika)
 
 ### Personalizacja i cele dietetyczne
 - [FR-6: Profil użytkownika i wyliczanie zapotrzebowania kalorycznego](#fr-6-profil-użytkownika-i-wyliczanie-zapotrzebowania-kalorycznego)
@@ -91,9 +92,11 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-55: Ocenianie przepisów przesunięciem karty (lubię / nie lubię)](#fr-55-ocenianie-przepisów-przesunięciem-karty-lubię--nie-lubię)
 - [FR-56: Duży, balonowy napis podczas oceniania przesunięciem](#fr-56-duży-balonowy-napis-podczas-oceniania-przesunięciem)
 - [FR-57: Trwałe oznaczenie oceny i ranking sort](#fr-57-trwałe-oznaczenie-oceny-i-ranking-sort)
+- [FR-67: Ocena gwiazdkowa i komentarz przy przepisie](#fr-67-ocena-gwiazdkowa-i-komentarz-przy-przepisie)
 
 ### Konto i współdzielenie
 - [FR-65: Własna, opcjonalna nazwa użytkownika w aplikacji](#fr-65-własna-opcjonalna-nazwa-użytkownika-w-aplikacji)
+- [FR-68: Ustawienia gospodarstwa domowego i przepisów społeczności (stan przejściowy)](#fr-68-ustawienia-gospodarstwa-domowego-i-przepisów-społeczności-stan-przejściowy)
 
 ---
 
@@ -1289,6 +1292,83 @@ Ustawienia → karta „👤 Konto” pozwala wpisać dowolną, opcjonalną nazw
 
 ## Uwagi
 Spisane 2026-08-07: pierwszy, samodzielnie już działający element szerszej prośby o konta użytkowników, logowanie Google (opcjonalne) i współdzielone gospodarstwo domowe — reszta tamtej prośby wymaga założenia projektu Firebase i jest opisana jako plan techniczny w `docs/FIREBASE_MIGRATION_PLAN.md` (poza zakresem tego folderu, który opisuje wyłącznie już wdrożone zachowanie). Nazwa dodana w tej rundzie jest zaprojektowana tak, by dokładnie odpowiadać przyszłemu polu `displayName` w tamtym planie — nic nie trzeba tu będzie przerabiać przy właściwej integracji.
+
+## Historia rewizji
+- **v1** (2026-08-07): Pierwsza wersja wymagania na podstawie polecenia użytkownika.
+
+---
+
+# FR-66: Dodawanie własnych przepisów przez użytkownika
+
+**Obszar:** Przepisy i przeglądanie  
+**Status:** Zaimplementowane
+
+## Opis
+Przycisk „➕ Dodaj swój przepis” w zakładce Przepisy otwiera formularz (nazwa, kategoria, czas przygotowania, składniki — jeden na linię, sposób przygotowania, kalorie, opcjonalnie białko/węglowodany/tłuszcz). Zapisany przepis trafia do `state.myRecipes` i od razu jest pełnoprawnym przepisem: pojawia się na liście przepisów swojej kategorii oznaczony plakietką „✍️ Twój przepis”, można go zaplanować (Planer), dodać do listy zakupów, sprawdzić jego składniki względem spiżarni, oznaczyć jako zrobiony (z historią i oceną) oraz ocenić gwiazdkowo (FR-67) — dokładnie tak samo jak którykolwiek z 229 wbudowanych przepisów.
+
+Pola makroskładników są opcjonalne: bez nich przepis po prostu nie pokazuje wyniku dopasowania 🎯 (ta sama reguła co dla istniejących przepisów bez pełnych danych), zamiast wymuszać podanie wartości, których użytkownik może nie znać.
+
+## Kryteria akceptacji
+- Formularz wymaga: nazwy, przynajmniej jednego składnika, dodatniej liczby kalorii. Kategoria, czas i sposób przygotowania mają rozsądne wartości domyślne, jeśli pozostawione puste.
+- Zapisany przepis jest natychmiast widoczny na liście przepisów, w wybranej kategorii, z plakietką odróżniającą go od wbudowanych.
+- Własny przepis działa identycznie jak wbudowany we WSZYSTKICH miejscach odwołujących się do przepisów po ID: Planer, lista zakupów, sprawdzenie spiżarni, historia gotowania, wyszukiwanie, filtrowanie, sortowanie.
+- Własny przepis można usunąć bezpośrednio z karty (przycisk „🗑️ Usuń”, z potwierdzeniem) — usunięcie nie wpływa na wcześniej dodane wpisy historii gotowania czy pozycje na liście zakupów pochodzące z tego przepisu.
+
+## Uwagi
+Spisane 2026-08-07: pierwszy, w pełni lokalny element szerszej prośby o możliwość dodawania przepisów przez użytkowników z myślą o przyszłej społeczności — reszta (przepisy widoczne dla INNYCH użytkowników, moderacja) wymaga chmury i jest opisana w `docs/FIREBASE_MIGRATION_PLAN.md` jako `source: "community"` z polem `status`. Ten sam przepis, dodany dziś lokalnie jako `source: "custom"`, jest strukturalnie gotowy stać się przepisem społecznościowym po podłączeniu Firebase, bez zmiany kształtu danych.
+
+Technicznie: wprowadzono `allRecipes()` (łączy 229 wbudowanych przepisów z `state.myRecipes`) i `findRecipeById(id)`, zastępując bezpośrednie odwołania do stałej tablicy `RECIPES` we wszystkich miejscach, gdzie przepis jest wyszukiwany po ID lub filtrowany po kategorii.
+
+## Historia rewizji
+- **v1** (2026-08-07): Pierwsza wersja wymagania na podstawie polecenia użytkownika.
+
+---
+
+# FR-67: Ocena gwiazdkowa i komentarz przy przepisie
+
+**Obszar:** Ocenianie i ranking przepisów  
+**Status:** Zaimplementowane
+
+## Opis
+Każda karta przepisu (wbudowanego lub własnego, FR-66) ma przycisk „⭐ Oceń i skomentuj”, otwierający okienko z 5 dużymi gwiazdkami (ta sama, pełnoszerokia stylistyka co ocena w historii gotowania, FR-17) i opcjonalnym polem komentarza tekstowego (do 300 znaków). Zapisana ocena i komentarz pokazują się bezpośrednio na karcie przepisu: liczba gwiazdek w etykiecie przycisku oraz treść komentarza pod opisem przygotowania. Osobny przycisk sortowania (🏆) w pasku narzędzi zakładki Przepisy sortuje listę wg tej oceny, malejąco.
+
+To mechanizm inny niż istniejący ranking podoba/nie podoba mi się (FR-55/57, gest przesunięcia karty) — tamten jest szybkim, binarnym gestem bez komentarza; ten jest świadomą oceną 1-5 gwiazdek z możliwością opisania, co konkretnie się podobało lub co poprawić, myślaną pod przyszłe współdzielenie ocen z innymi użytkownikami.
+
+## Kryteria akceptacji
+- Ocena wymaga wybrania od 1 do 5 gwiazdek; próba zapisu bez wybrania gwiazdek pokazuje komunikat i nie zapisuje niczego.
+- Komentarz jest w pełni opcjonalny.
+- Ponowne otwarcie okienka dla już ocenionego przepisu pokazuje wcześniej wybraną liczbę gwiazdek i treść komentarza, gotowe do edycji.
+- Przycisk „Usuń ocenę” czyści zarówno gwiazdki, jak i komentarz dla danego przepisu.
+- Sortowanie 🏆 działa niezależnie od sortowania wg dopasowania (🎯, FR-7) i rankingu polubień (❤️, FR-57) — użytkownik może mieć włączone dowolne z nich, ostatnio kliknięte ma pierwszeństwo (ta sama zasada co między pozostałymi przełącznikami sortowania).
+
+## Uwagi
+Spisane 2026-08-07: dane zapisywane lokalnie w `state.recipeReviews[recipeId] = {stars, comment, at}`, w kształcie odpowiadającym dokumentowi `recipes/{id}/ratings/{uid}` z planu Firebase (`docs/FIREBASE_MIGRATION_PLAN.md`) — jeden dokument na oceniającego na przepis. Przy jednym lokalnym użytkowniku „Twoja ocena” i „średnia ocena” to dziś ten sam numer; po podłączeniu chmury stanie się to prawdziwą, wieloosobową średnią bez zmiany kształtu danych.
+
+Podczas implementacji wykryto i naprawiono błąd w logice przełącznika gwiazdek w okienku oceny: podwójny, nadmiarowy zapis stanu zaznaczenia (raz wewnątrz funkcji renderującej, raz zaraz po jej wywołaniu) powodował, że kliknięcie gwiazdki cofało własną zmianę, blokując zapisanie jakiejkolwiek oceny.
+
+## Historia rewizji
+- **v1** (2026-08-07): Pierwsza wersja wymagania na podstawie polecenia użytkownika.
+
+---
+
+# FR-68: Ustawienia gospodarstwa domowego i przepisów społeczności (stan przejściowy)
+
+**Obszar:** Konto i współdzielenie  
+**Status:** Częściowo zaimplementowane (świadomie)
+
+## Opis
+Ustawienia zawierają dwie karty przygotowujące grunt pod pełną funkcjonalność opisaną w `docs/FIREBASE_MIGRATION_PLAN.md`, każda z jasno innym poziomem gotowości:
+
+1. **„🌍 Przepisy społeczności”** — działający, zapisujący się przełącznik `state.communityRecipesEnabled`. Dziś nie ma żadnego efektu widocznego dla użytkownika (nie ma jeszcze przepisów od innych osób do pokazania), ale jest w pełni funkcjonalny technicznie i nie będzie wymagał żadnej zmiany, gdy tylko podłączona zostanie chmura i pojawią się pierwsze zatwierdzone przepisy społecznościowe.
+2. **„🏠 Gospodarstwo domowe i logowanie Google”** — WYŁĄCZNIE informacyjna karta, bez żadnego formularza ani przycisku udającego działanie. Wprost tłumaczy, że współdzielona spiżarnia/lista zakupów z domownikami oraz logowanie Google wymagają projektu Firebase, którego nie da się założyć automatycznie (wymaga zalogowania do konsoli Google własnym kontem użytkownika), i wskazuje gotowy plan techniczny w `docs/FIREBASE_MIGRATION_PLAN.md`.
+
+## Kryteria akceptacji
+- Przełącznik przepisów społeczności zapisuje się i persystuje między sesjami, niezależnie od tego, że nie ma jeszcze żadnego efektu widocznego (brak przepisów społecznościowych do pokazania).
+- Karta gospodarstwa domowego NIE zawiera żadnego interaktywnego elementu (formularza, przycisku "dołącz"/"utwórz") sugerującego działającą funkcję współdzielenia — wyłącznie tekst wyjaśniający obecny stan i odsyłający do planu technicznego. Świadoma decyzja: fałszywie działający formularz wprowadzałby w błąd (sugerowałby, że coś się dzieje, mimo że żadne dane nie mogą się realnie zsynchronizować bez backendu).
+- Własne przepisy użytkownika (FR-66) działają już dziś, NIEZALEŻNIE od przełącznika przepisów społeczności — ten przełącznik dotyczy wyłącznie przepisów od INNYCH osób.
+
+## Uwagi
+Spisane 2026-08-07 na podstawie prośby o logowanie Google (opcjonalne), wspólne gospodarstwo domowe ze współdzieloną spiżarnią i listą zakupów oraz przepisy społecznościowe z ocenami/komentarzami. Świadomy zakres tej rundy: zbudować i realnie przetestować wszystko, co da się zrobić bez zewnętrznego backendu (FR-65 nazwa użytkownika, FR-66 własne przepisy, FR-67 oceny/komentarze, przełącznik tutaj), a resztę opisać jako konkretny, wykonalny plan zamiast budować nieprawdziwie działający interfejs.
 
 ## Historia rewizji
 - **v1** (2026-08-07): Pierwsza wersja wymagania na podstawie polecenia użytkownika.

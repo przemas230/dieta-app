@@ -1,0 +1,39 @@
+Wersja 51
+=========
+
+Realna implementacja tych elementów prośby o konta/współdzielenie/przepisy
+społecznościowe, które da się zrobić w pełni lokalnie, bez czekania na
+założenie projektu Firebase — reszta (logowanie Google, wspólna spiżarnia z
+domownikami, przepisy OD INNYCH użytkowników) nadal wymaga chmury i czeka
+na plan z docs/FIREBASE_MIGRATION_PLAN.md.
+
+Nowości:
+- „➕ Dodaj swój przepis” w zakładce Przepisy — formularz z nazwą, kategorią,
+  czasem, składnikami, sposobem przygotowania, kaloriami i opcjonalnymi
+  makroskładnikami. Twój przepis od razu działa dokładnie tak jak wbudowane
+  229 przepisów: można go zaplanować, dodać do listy zakupów, sprawdzić
+  składniki w spiżarni, oznaczyć jako zrobiony i ocenić — oznaczony
+  plakietką „Twój przepis”, z możliwością usunięcia.
+- „⭐ Oceń i skomentuj” na każdej karcie przepisu (wbudowanego i własnego) —
+  ocena 1-5 gwiazdek (te same duże, pełnoszerokie gwiazdki co w historii
+  gotowania) plus opcjonalny komentarz tekstowy. Własna ocena i komentarz
+  widoczne bezpośrednio na karcie.
+- Nowy przycisk sortowania 🏆 w zakładce Przepisy — sortuje wg oceny
+  gwiazdkowej, niezależnie od istniejącego rankingu podoba/nie podoba (❤️)
+  i dopasowania do profilu (🎯).
+- Ustawienia → nowa karta „🌍 Przepisy społeczności” z przełącznikiem
+  pokazywania przepisów od innych użytkowników — dziś nieaktywny (wymaga
+  chmury), ale gotowy i zapisujący się, żeby nic nie trzeba było przerabiać
+  po podłączeniu Firebase.
+- Ustawienia → nowa karta „🏠 Gospodarstwo domowe i logowanie Google” — na
+  razie czysto informacyjna, uczciwie tłumaczy dlaczego współdzielona
+  spiżarnia/lista zakupów i logowanie Google nie są jeszcze możliwe (brak
+  projektu Firebase) i odsyła do gotowego planu technicznego. Świadomie NIE
+  ma tu fałszywego formularza "dołącz do gospodarstwa" — taki formularz nic
+  by realnie nie robił bez chmury, a wyglądałby jakby działał.
+
+Pod maską: przepisy własne działają wszędzie w aplikacji dzięki nowej
+funkcji `allRecipes()`/`findRecipeById()`, która łączy 229 wbudowanych
+przepisów z przepisami użytkownika — wszystkie miejsca odwołujące się do
+listy przepisów (planer, lista zakupów, sprawdzanie spiżarni, historia
+gotowania, wyszukiwanie) używają teraz tej samej, wspólnej puli.

@@ -794,9 +794,9 @@
   /* Settings */
   .settings-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;}
   .settings-grid label{display:flex; flex-direction:column; font-size:11.5px; color:var(--muted); font-weight:700; gap:4px;}
-  .settings-grid label select, .settings-grid label input, .settings-grid label textarea{
+  .settings-grid label select, .settings-grid label input{
     border:1px solid var(--line); border-radius:9px; padding:8px 8px; font-size:13.5px; color:var(--text); background:var(--card);
-    width:100%; font-family:inherit; resize:vertical;
+    width:100%;
   }
   .settings-grid label.span2{grid-column:1 / -1;}
   .toggle-row{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text); margin-bottom:12px;}
@@ -982,12 +982,10 @@
         <button class="fav-toggle" id="pantryFilterToggle" title="Dania z tego, co mam w spiżarni">🏺</button>
         <button class="fav-toggle" id="matchSortToggle" title="Sortuj wg dopasowania do Twojego profilu (białko/węgle/tłuszcz + indeks glikemiczny)">🎯</button>
         <button class="fav-toggle" id="rankSortToggle" title="Ranking: polubione najpierw, potem nieocenione, potem nielubiane (przesuń kartę w lewo/prawo, aby ocenić)">❤️</button>
-        <button class="fav-toggle" id="reviewSortToggle" title="Sortuj wg oceny gwiazdkowej (⭐ Oceń i skomentuj)">🏆</button>
       </div>
     </div>
     <div class="shop-actions" style="margin:0 0 10px;">
       <button class="btn ghost" id="ideaBtn" style="width:100%;">💡 Pomysł na danie z ulubionych składników</button>
-      <button class="btn ghost" id="openAddRecipeBtn" style="width:100%;">➕ Dodaj swój przepis</button>
     </div>
     <div class="hint-text" style="margin:-4px 0 10px;">💡 Rozwiń danie i użyj przycisku „🏺 Sprawdź stan spiżarni", aby oznaczyć, które składniki już masz.</div>
     <div id="recipeList"></div>
@@ -1045,17 +1043,6 @@
         </label>
       </div>
       <div class="hint-text" style="margin:6px 0 0;">Widoczna tylko w tej aplikacji — niezależna od konta Google, nie musisz jej podawać, by zachować anonimowość.</div>
-    </div>
-
-    <div class="card">
-      <h3 style="margin:0 0 10px; font-size:15px;">🏠 Gospodarstwo domowe i logowanie Google</h3>
-      <div class="hint-text" style="margin:0;">Współdzielona spiżarnia i lista zakupów z domownikami (np. „jak żona coś zje, to mi też odejmuje się ze spiżarni”) oraz opcjonalne logowanie Google wymagają połączenia z chmurą — nie da się tego uruchomić bez założenia projektu Firebase (wymaga zalogowania do konsoli Google własnym kontem). Konkretny, gotowy plan techniczny czeka w <code>docs/FIREBASE_MIGRATION_PLAN.md</code>. Do tego czasu każde urządzenie ma własne, wyłącznie lokalne dane.</div>
-    </div>
-
-    <div class="card">
-      <h3 style="margin:0 0 10px; font-size:15px;">🌍 Przepisy społeczności</h3>
-      <label class="toggle-row"><input type="checkbox" id="setCommunityRecipes"> Pokazuj przepisy dodane przez innych użytkowników</label>
-      <div class="hint-text" style="margin:0;">Na razie nieaktywne — wymaga tego samego połączenia z chmurą co gospodarstwo domowe wyżej. Twoje własne przepisy (przycisk „➕ Dodaj swój przepis” w zakładce Przepisy) działają już dziś, niezależnie od tego przełącznika.</div>
     </div>
 
     <div class="card">
@@ -1346,57 +1333,6 @@
   </div>
 </div>
 
-<div class="modal-overlay center" id="addRecipeOverlay">
-  <div class="modal-sheet center-sheet">
-    <div class="modal-head">
-      <h3>➕ Dodaj swój przepis</h3>
-      <button id="addRecipeClose">✕</button>
-    </div>
-    <div class="hint-text" style="margin:0 0 10px;">Twój przepis widoczny jest od razu tylko u Ciebie, oznaczony plakietką „Twój przepis”. Pola makroskładników są opcjonalne — bez nich przepis po prostu nie pokaże wyniku dopasowania 🎯 (tak jak inne niekompletne przepisy).</div>
-    <div class="settings-grid">
-      <label class="span2">Nazwa dania
-        <input type="text" id="arName" placeholder="np. Sałatka z komosą i fetą">
-      </label>
-      <label>Kategoria
-        <select id="arCat"></select>
-      </label>
-      <label>Czas przygotowania<input type="text" id="arTime" placeholder="np. 15 min"></label>
-      <label class="span2">Składniki (jeden na linię)
-        <textarea id="arIngredients" rows="4" placeholder="2 jajka&#10;1/2 awokado&#10;garść szpinaku"></textarea>
-      </label>
-      <label class="span2">Sposób przygotowania
-        <textarea id="arMethod" rows="3" placeholder="Krótki opis przygotowania"></textarea>
-      </label>
-      <label>Kalorie (kcal)<input type="number" id="arKcal" placeholder="np. 350"></label>
-      <label>Białko (g, opcjonalnie)<input type="number" id="arProtein" placeholder="np. 20"></label>
-      <label>Węglowodany (g, opcjonalnie)<input type="number" id="arCarbs" placeholder="np. 30"></label>
-      <label>Tłuszcz (g, opcjonalnie)<input type="number" id="arFat" placeholder="np. 15"></label>
-    </div>
-    <div class="shop-actions">
-      <button class="btn primary" id="arSaveBtn">Zapisz przepis</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay center" id="recipeReviewOverlay">
-  <div class="modal-sheet center-sheet">
-    <div class="modal-head">
-      <h3 id="recipeReviewTitle">⭐ Oceń i skomentuj</h3>
-      <button id="recipeReviewClose">✕</button>
-    </div>
-    <div class="ch-stars" id="recipeReviewStars" style="margin-bottom:12px;"></div>
-    <div class="settings-grid" style="margin-bottom:0;">
-      <label class="span2">Komentarz (opcjonalnie)
-        <textarea id="recipeReviewComment" rows="3" placeholder="Co sądzisz o tym daniu? Co można poprawić?" maxlength="300"></textarea>
-      </label>
-    </div>
-    <div class="shop-actions">
-      <button class="btn primary" id="recipeReviewSaveBtn">Zapisz ocenę</button>
-      <button class="btn ghost" id="recipeReviewDeleteBtn">Usuń ocenę</button>
-    </div>
-  </div>
-</div>
-
 
 <div class="modal-overlay center" id="planPickerOverlay">
   <div class="modal-sheet center-sheet">
@@ -1604,7 +1540,7 @@ function tileStep(unitCat){
 }
 function computeTileUnitCats(){
   const counts = {};
-  allRecipes().forEach(r=> r.ingredients.forEach(i=>{
+  RECIPES.forEach(r=> r.ingredients.forEach(i=>{
     const p = parseIngredient(i);
     const canon = pantryCanon(p.name);
     counts[canon] = counts[canon] || {};
@@ -1620,7 +1556,7 @@ function computeTileUnitCats(){
 let TILE_UNIT_CAT = {};
 function buildPantryTileList(){
   const set = new Set();
-  allRecipes().forEach(r=> r.ingredients.forEach(i=>{
+  RECIPES.forEach(r=> r.ingredients.forEach(i=>{
     const raw = coreName(i);
     if(raw) set.add(pantryCanon(raw));
   }));
@@ -2199,10 +2135,6 @@ function loadState(){
       if(!s.recipeRating) s.recipeRating = {};
       if(!s.swipeRatingStyle) s.swipeRatingStyle = "balloon";
       if(s.displayName===undefined) s.displayName = "";
-      if(!s.myRecipes) s.myRecipes = [];
-      if(!s.recipeReviews) s.recipeReviews = {};
-      if(s.communityRecipesEnabled===undefined) s.communityRecipesEnabled = false;
-      if(!s.household) s.household = {id:null, name:"", inviteCode:null, members:[]};
       const shoppingVals = Object.values(s.shopping||{});
       if(shoppingVals.some(v=>v && v.unitCat===undefined)){
         s.shopping = {}; s.recipeAdded = {};
@@ -2210,7 +2142,7 @@ function loadState(){
       return s;
     }
   }catch(e){}
-  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, plannerLeftover:{}, water:{date:"",count:0}, waterHistory:{}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, pantryCategoryOverride:{}, waterNotifEnabled:false, theme:"teal", waterReminder:{...DEFAULT_WATER_REMINDER}, uiScale:detectDefaultUiScale(), recipeRating:{}, swipeRatingStyle:"balloon", displayName:"", myRecipes:[], recipeReviews:{}, communityRecipesEnabled:false, household:{id:null, name:"", inviteCode:null, members:[]}};
+  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, plannerLeftover:{}, water:{date:"",count:0}, waterHistory:{}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, pantryCategoryOverride:{}, waterNotifEnabled:false, theme:"teal", waterReminder:{...DEFAULT_WATER_REMINDER}, uiScale:detectDefaultUiScale(), recipeRating:{}, swipeRatingStyle:"balloon", displayName:""};
 }
 let state = loadState();
 document.documentElement.setAttribute("data-theme", state.theme || "teal");
@@ -2491,7 +2423,7 @@ function todaysPlannerMeals(){
   const result = {};
   CATS.forEach(c=>{
     const rid = dayMeals[c.id];
-    const base = rid ? findRecipeById(rid) : null;
+    const base = rid ? RECIPES.find(x=>x.id===rid) : null;
     result[c.id] = base ? scaleRecipe(base, getPlannerScale(polIndex, c.id)) : null;
   });
   return result;
@@ -2614,7 +2546,6 @@ function isLactoseFree(r){
 function loadSettingsForm(){
   const p = state.profile;
   document.getElementById("setDisplayName").value = state.displayName || "";
-  document.getElementById("setCommunityRecipes").checked = !!state.communityRecipesEnabled;
   document.getElementById("setSex").value = p.sex;
   document.getElementById("setAge").value = p.age;
   document.getElementById("setHeight").value = p.height;
@@ -2681,10 +2612,6 @@ document.getElementById("setDisplayName").addEventListener("input", (e)=>{
   saveState();
   renderHeader();
 });
-document.getElementById("setCommunityRecipes").addEventListener("change", (e)=>{
-  state.communityRecipesEnabled = e.target.checked;
-  saveState();
-});
 document.getElementById("saveSettingsBtn").addEventListener("click", ()=>{
   const p = {
     sex: document.getElementById("setSex").value,
@@ -2724,7 +2651,6 @@ let onlyIngFav = false;
 let onlyPantryReady = false;
 let sortByMatch = false;
 let sortByRating = false;
-let sortByReview = false;
 let searchTerm = "";
 let expandedCardEl = null;
 function setCardExpanded(card, expand){
@@ -2967,11 +2893,6 @@ function recipeCard(r, onChange, opts={}){
   const giBadge = (r.gi!==undefined && r.gi>=55)
     ? `<span class="gi-badge" title="Ten przepis ma podwyższony indeks glikemiczny — dobry wybór, jeśli nie trzymasz się niskiego IG (patrz Ustawienia)">🍚 Podwyższony IG</span>`
     : "";
-  const customBadge = r.source==="custom"
-    ? `<span class="goal-badge" style="background:var(--honey-pale); color:var(--honey-dark);" title="Przepis dodany przez Ciebie">✍️ Twój przepis</span>`
-    : "";
-  const review = state.recipeReviews[r.id];
-  const reviewLabel = review ? `⭐ Oceń i skomentuj (Twoja ocena: ${review.stars}/5)` : "⭐ Oceń i skomentuj";
   card.innerHTML = `
     <div class="card-head">
       <h3 class="recipe-title" data-search="${r.name}">${r.name}</h3>
@@ -2981,12 +2902,11 @@ function recipeCard(r, onChange, opts={}){
         <div class="thumb"><span class="thumb-ph">🍽️</span></div>
       </div>
     </div>
-    <div class="meta"><span>⏱ ${r.time}</span><span>🔥 ${r.kcal} kcal</span>${lastCooked?`<span>✅ ${lastCooked}</span>`:""}${goalBadge}${giBadge}${customBadge}</div>
+    <div class="meta"><span>⏱ ${r.time}</span><span>🔥 ${r.kcal} kcal</span>${lastCooked?`<span>✅ ${lastCooked}</span>`:""}${goalBadge}${giBadge}</div>
     ${expandable ? `<button type="button" class="expand-toggle" data-expand-toggle><span>Składniki i przygotowanie</span><span class="expand-chevron">⌄</span></button>` : ""}
     <div class="card-collapsible-body"><div class="card-collapsible-inner">
       ${macroLine}
       <button type="button" class="pantry-check-btn" data-pantry-check>🏺 Sprawdź stan spiżarni dla tego dania</button>
-      <button type="button" class="pantry-check-btn" data-review-recipe>${reviewLabel}</button>
       <ul class="ingredients">${r.ingredients.map(i=>{
         const canon = pantryCanon(coreName(i));
         const f = !!state.favIngredients[canon];
@@ -2994,13 +2914,11 @@ function recipeCard(r, onChange, opts={}){
         return `<li><button class="ing-fav ${f?'active':''}" data-ing="${canon}">${f?'★':'☆'}</button><span${(have||f)?' class="have-it"':''}>${withEmoji(i, canon)}</span></li>`;
       }).join("")}</ul>
       <p class="method">${r.method}</p>
-      ${review && review.comment ? `<p class="hint-text" style="margin-top:8px;">💬 Twój komentarz: „${review.comment}”</p>` : ""}
     </div></div>
     <div class="card-actions">
       <button class="add-btn ${added?'on':''}" data-add="${r.id}">${added?'✓ Na liście zakupów':'🛒 Dodaj do listy zakupów'}</button>
       <button class="plan-btn" data-cook="${r.id}" title="Kliknij: oznacz jako zrobione. Przytrzymaj: historia i oceny" style="-webkit-user-select:none; user-select:none; touch-action:manipulation;">✅ Zrobione${cookEntries.length?` (${cookEntries.length}×)`:""}</button>
       <button class="plan-btn" data-schedule="${r.id}">📅 Zaplanuj</button>
-      ${r.source==="custom" ? `<button class="plan-btn" data-delete-recipe="${r.id}" title="Usuń swój przepis">🗑️ Usuń</button>` : ""}
     </div>
   `;
   if(expandable){
@@ -3029,22 +2947,6 @@ function recipeCard(r, onChange, opts={}){
     e.stopPropagation();
     openPantryModal(r);
   });
-  card.querySelector("[data-review-recipe]").addEventListener("click", (e)=>{
-    e.stopPropagation();
-    openRecipeReviewModal(r, refreshAll);
-  });
-  const deleteRecipeBtn = card.querySelector("[data-delete-recipe]");
-  if(deleteRecipeBtn){
-    deleteRecipeBtn.addEventListener("click", (e)=>{
-      e.stopPropagation();
-      if(!confirm(`Usunąć Twój przepis „${r.name}”? Tej operacji nie można cofnąć.`)) return;
-      state.myRecipes = state.myRecipes.filter(x=>x.id!==r.id);
-      saveState();
-      TILE_UNIT_CAT = computeTileUnitCats();
-      toast("Usunięto przepis");
-      refreshAll();
-    });
-  }
   attachThumb(card, r);
   card.querySelector(".recipe-title").addEventListener("click", (e)=>{
     e.stopPropagation();
@@ -3288,7 +3190,7 @@ function renderRecipes(){
   const list = document.getElementById("recipeList");
   list.innerHTML = "";
   expandedCardEl = null;
-  let items = allRecipes().filter(r=>r.cat===currentCat);
+  let items = RECIPES.filter(r=>r.cat===currentCat);
   if(state.profile.glutenFree) items = items.filter(isGlutenFree);
   if(state.profile.lactoseFree) items = items.filter(isLactoseFree);
   if(onlyFav) items = items.filter(r=>state.favorites[r.id]);
@@ -3315,10 +3217,6 @@ function renderRecipes(){
   if(sortByRating){
     const rank = rating => rating==="like" ? 2 : rating==="dislike" ? 0 : 1;
     items = [...items].sort((a,b)=> rank(getRecipeRating(b.id)) - rank(getRecipeRating(a.id)));
-  }
-  if(sortByReview){
-    const stars = id => (state.recipeReviews[id] && state.recipeReviews[id].stars) || 0;
-    items = [...items].sort((a,b)=> stars(b.id) - stars(a.id));
   }
   items.forEach(r=> list.appendChild(recipeCard(r, null, {swipeable:true})) );
 }
@@ -3353,122 +3251,6 @@ document.getElementById("rankSortToggle").addEventListener("click", e=>{
   toast(sortByRating ? "Ranking: polubione na górze" : "Ranking wyłączony");
   renderRecipes();
 });
-document.getElementById("reviewSortToggle").addEventListener("click", e=>{
-  sortByReview = !sortByReview;
-  e.target.classList.toggle("active", sortByReview);
-  toast(sortByReview ? "Sortowanie wg oceny gwiazdkowej" : "Sortowanie wg oceny wyłączone");
-  renderRecipes();
-});
-
-// ---------- RECIPE REVIEWS (stars + comment) ----------
-// Locally-stored today (state.recipeReviews[recipeId] = {stars, comment,
-// at}), shaped to match recipes/{id}/ratings/{uid} in the Firebase plan
-// (docs/FIREBASE_MIGRATION_PLAN.md) — one document per reviewer per recipe.
-// With only one local user, "average rating" and "your rating" are the same
-// number today; once synced, this becomes a real multi-user average without
-// changing this shape.
-let reviewModalRecipe = null;
-function renderRecipeReviewStars(current){
-  const box = document.getElementById("recipeReviewStars");
-  box.innerHTML = [1,2,3,4,5].map(n=>
-    `<span class="star-pick" data-n="${n}">${current>=n?'★':'☆'}</span>`
-  ).join("");
-  box.querySelectorAll(".star-pick").forEach(starEl=>{
-    starEl.addEventListener("click", ()=>{
-      const n = parseInt(starEl.dataset.n, 10);
-      const next = (parseInt(box.dataset.selected, 10) === n) ? 0 : n;
-      renderRecipeReviewStars(next);
-    });
-  });
-  box.dataset.selected = current;
-}
-function openRecipeReviewModal(r, onChange){
-  reviewModalRecipe = r;
-  reviewModalOnChange = onChange;
-  document.getElementById("recipeReviewTitle").textContent = `⭐ Oceń: ${r.name}`;
-  const existing = state.recipeReviews[r.id];
-  renderRecipeReviewStars(existing ? existing.stars : 0);
-  document.getElementById("recipeReviewComment").value = existing ? (existing.comment||"") : "";
-  document.getElementById("recipeReviewOverlay").classList.add("show");
-}
-let reviewModalOnChange = null;
-document.getElementById("recipeReviewClose").addEventListener("click", ()=> document.getElementById("recipeReviewOverlay").classList.remove("show"));
-document.getElementById("recipeReviewOverlay").addEventListener("click", (e)=>{
-  if(e.target===document.getElementById("recipeReviewOverlay")) e.target.classList.remove("show");
-});
-document.getElementById("recipeReviewSaveBtn").addEventListener("click", ()=>{
-  const stars = parseInt(document.getElementById("recipeReviewStars").dataset.selected, 10) || 0;
-  if(stars===0){ toast("Wybierz od 1 do 5 gwiazdek"); return; }
-  const comment = document.getElementById("recipeReviewComment").value.trim();
-  state.recipeReviews[reviewModalRecipe.id] = {stars, comment, at:new Date().toISOString()};
-  saveState();
-  toast("Zapisano ocenę");
-  document.getElementById("recipeReviewOverlay").classList.remove("show");
-  if(reviewModalOnChange) reviewModalOnChange();
-});
-document.getElementById("recipeReviewDeleteBtn").addEventListener("click", ()=>{
-  delete state.recipeReviews[reviewModalRecipe.id];
-  saveState();
-  toast("Usunięto ocenę");
-  document.getElementById("recipeReviewOverlay").classList.remove("show");
-  if(reviewModalOnChange) reviewModalOnChange();
-});
-
-// ---------- ADD YOUR OWN RECIPE ----------
-function openAddRecipeModal(){
-  document.getElementById("arName").value = "";
-  document.getElementById("arTime").value = "";
-  document.getElementById("arIngredients").value = "";
-  document.getElementById("arMethod").value = "";
-  document.getElementById("arKcal").value = "";
-  document.getElementById("arProtein").value = "";
-  document.getElementById("arCarbs").value = "";
-  document.getElementById("arFat").value = "";
-  const catSel = document.getElementById("arCat");
-  catSel.innerHTML = CATS.map(c=>`<option value="${c.id}">${c.icon} ${c.label}</option>`).join("");
-  catSel.value = currentCat;
-  document.getElementById("addRecipeOverlay").classList.add("show");
-}
-document.getElementById("openAddRecipeBtn").addEventListener("click", openAddRecipeModal);
-document.getElementById("addRecipeClose").addEventListener("click", ()=> document.getElementById("addRecipeOverlay").classList.remove("show"));
-document.getElementById("addRecipeOverlay").addEventListener("click", (e)=>{
-  if(e.target===document.getElementById("addRecipeOverlay")) e.target.classList.remove("show");
-});
-document.getElementById("arSaveBtn").addEventListener("click", ()=>{
-  const name = document.getElementById("arName").value.trim();
-  const kcal = parseFloat(document.getElementById("arKcal").value);
-  const ingredients = document.getElementById("arIngredients").value.split("\n").map(s=>s.trim()).filter(Boolean);
-  if(!name){ toast("Podaj nazwę dania"); return; }
-  if(!Number.isFinite(kcal) || kcal<=0){ toast("Podaj kalorie dania"); return; }
-  if(ingredients.length===0){ toast("Dodaj przynajmniej jeden składnik"); return; }
-  const protein = parseFloat(document.getElementById("arProtein").value);
-  const carbs = parseFloat(document.getElementById("arCarbs").value);
-  const fat = parseFloat(document.getElementById("arFat").value);
-  const hasFullMacros = [protein, carbs, fat].every(Number.isFinite);
-  const recipe = {
-    id: "custom-" + Date.now(),
-    cat: document.getElementById("arCat").value,
-    name,
-    time: document.getElementById("arTime").value.trim() || "—",
-    kcal,
-    ingredients,
-    method: document.getElementById("arMethod").value.trim() || "—",
-    source: "custom",
-  };
-  if(hasFullMacros){
-    recipe.protein = protein; recipe.carbs = carbs; recipe.fat = fat;
-    recipe.fiber = 0; recipe.gi = 50; recipe.gl = Math.round(carbs*50/100*10)/10;
-  }
-  state.myRecipes.push(recipe);
-  saveState();
-  TILE_UNIT_CAT = computeTileUnitCats();
-  toast("Dodano Twój przepis");
-  document.getElementById("addRecipeOverlay").classList.remove("show");
-  currentCat = recipe.cat;
-  renderPills();
-  renderRecipes();
-});
-
 function pantryCoverageRatio(r){
   if(r.ingredients.length===0) return 0;
   const have = r.ingredients.filter(i=>pantryMatch(i)).length;
@@ -3656,7 +3438,7 @@ function addDayToShoppingList(di, dayLabel){
   CATS.forEach(c=>{
     const rid = dayMeals[c.id];
     if(!rid){ empty++; return; }
-    const base = findRecipeById(rid);
+    const base = RECIPES.find(x=>x.id===rid);
     if(!base) return;
     const r = scaleRecipe(base, getPlannerScale(di, c.id));
     if(state.recipeAdded[r.id]){ already++; return; }
@@ -3674,7 +3456,7 @@ document.getElementById("addWeekBtn").addEventListener("click", ()=>{
     CATS.forEach(c=>{
       const rid = dayMeals[c.id];
       if(!rid){ empty++; return; }
-      const r = findRecipeById(rid);
+      const r = RECIPES.find(x=>x.id===rid);
       if(!r) return;
       if(state.recipeAdded[r.id]){ already++; return; }
       addRecipeToShoppingList(r);
@@ -4259,15 +4041,7 @@ document.getElementById("modalCloseBtn").addEventListener("click", ()=> modalOve
 modalOverlay.addEventListener("click", (e)=>{ if(e.target===modalOverlay) modalOverlay.classList.remove("show"); });
 
 // ---------- PLANNER ----------
-// Combines the 229 built-in recipes with any the user has submitted
-// (state.myRecipes) so custom recipes are full citizens everywhere a recipe
-// can be looked up — planner, shopping list, pantry check, cook history,
-// swipe rating — not just in the browsing list.
-function allRecipes(){
-  return (state.myRecipes && state.myRecipes.length) ? RECIPES.concat(state.myRecipes) : RECIPES;
-}
-function findRecipeById(id){ return allRecipes().find(x=>x.id===id); }
-function recipesByCat(cat){ return allRecipes().filter(r=>r.cat===cat); }
+function recipesByCat(cat){ return RECIPES.filter(r=>r.cat===cat); }
 
 // Rough reheats-well heuristic, used to proactively suggest carrying a dish
 // over to the next day instead of hand-tagging all 229 recipes: one-pot /
@@ -4292,7 +4066,7 @@ function renderPlanner(){
     const prevDi = (di + 6) % 7;
     const rowsHtml = CATS.map(c=>{
       const chosenId = state.planner[di][c.id] || "";
-      const baseRecipe = chosenId ? findRecipeById(chosenId) : null;
+      const baseRecipe = chosenId ? RECIPES.find(x=>x.id===chosenId) : null;
       const scale = baseRecipe ? getPlannerScale(di, c.id) : 1;
       const chosenRecipe = baseRecipe ? scaleRecipe(baseRecipe, scale) : null;
       if(chosenRecipe) total += chosenRecipe.kcal;
@@ -4305,7 +4079,7 @@ function renderPlanner(){
       let prepSuggestHtml = "";
       if(!chosenRecipe){
         const prevId = (state.planner[prevDi]||{})[c.id];
-        const prevRecipe = prevId ? findRecipeById(prevId) : null;
+        const prevRecipe = prevId ? RECIPES.find(x=>x.id===prevId) : null;
         const prevIsLeftover = !!(state.plannerLeftover[prevDi] && state.plannerLeftover[prevDi][c.id]);
         if(prevRecipe && !prevIsLeftover && isPrepAheadFriendly(prevRecipe)){
           prepSuggestHtml = `<div class="prep-suggest" data-prep-day="${di}" data-prep-cat="${c.id}" data-prep-recipe="${prevRecipe.id}">
@@ -4380,7 +4154,7 @@ function renderPlanner(){
       CATS.forEach(c=>{
         const rid = dayMeals[c.id];
         if(!rid){ empty++; return; }
-        const base = findRecipeById(rid);
+        const base = RECIPES.find(x=>x.id===rid);
         if(!base) return;
         const r = scaleRecipe(base, getPlannerScale(di, c.id));
         if(state.recipeAdded[r.id]){ already++; return; }
@@ -4438,14 +4212,14 @@ document.getElementById("autoPlanBtn").addEventListener("click", ()=>{
 const plannerModalOverlay = document.getElementById("plannerModalOverlay");
 function openPlannerModal(day, cat){
   const chosenId = (state.planner[day]||{})[cat];
-  if(chosenId && findRecipeById(chosenId)){
+  if(chosenId && RECIPES.find(x=>x.id===chosenId)){
     openPlannerDetailModal(day, cat, chosenId);
   }else{
     openPlannerPickerModal(day, cat);
   }
 }
 function openPlannerDetailModal(day, cat, recipeId){
-  const r = findRecipeById(recipeId);
+  const r = RECIPES.find(x=>x.id===recipeId);
   const c = CATS.find(x=>x.id===cat);
   document.getElementById("plannerModalTitle").textContent = c.icon + " " + c.label;
   const list = document.getElementById("plannerModalList");
@@ -4542,7 +4316,7 @@ function openPlannerPickerModal(day, cat){
   plannerModalOverlay.classList.add("show");
 }
 function openPlannerPreview(day, cat, recipeId){
-  const r = findRecipeById(recipeId);
+  const r = RECIPES.find(x=>x.id===recipeId);
   const c = CATS.find(x=>x.id===cat);
   document.getElementById("plannerModalTitle").textContent = c.icon + " " + c.label;
   const list = document.getElementById("plannerModalList");
@@ -4838,7 +4612,7 @@ function isEaten(date, cat){
 function plannedRecipeFor(date, cat){
   const polIndex = polIndexForDate(date);
   const rid = (state.planner[polIndex]||{})[cat];
-  const base = rid ? findRecipeById(rid) : null;
+  const base = rid ? RECIPES.find(x=>x.id===rid) : null;
   if(!base) return null;
   return scaleRecipe(base, getPlannerScale(polIndex, cat));
 }
