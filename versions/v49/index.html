@@ -1036,16 +1036,6 @@
   <!-- VIEW: USTAWIENIA -->
   <section id="view-settings" class="view">
     <div class="card">
-      <h3 style="margin:0 0 10px; font-size:15px;">👤 Konto</h3>
-      <div class="settings-grid" style="margin-bottom:0;">
-        <label class="span2">Twoja nazwa w aplikacji
-          <input type="text" id="setDisplayName" placeholder="np. Przemek (opcjonalnie)" maxlength="30">
-        </label>
-      </div>
-      <div class="hint-text" style="margin:6px 0 0;">Widoczna tylko w tej aplikacji — niezależna od konta Google, nie musisz jej podawać, by zachować anonimowość.</div>
-    </div>
-
-    <div class="card">
       <h3 style="margin:0 0 10px; font-size:15px;">⚙️ Twój profil</h3>
       <div class="settings-grid">
         <label class="span2">Płeć
@@ -2134,7 +2124,6 @@ function loadState(){
       if(s.uiScale===undefined) s.uiScale = detectDefaultUiScale();
       if(!s.recipeRating) s.recipeRating = {};
       if(!s.swipeRatingStyle) s.swipeRatingStyle = "balloon";
-      if(s.displayName===undefined) s.displayName = "";
       const shoppingVals = Object.values(s.shopping||{});
       if(shoppingVals.some(v=>v && v.unitCat===undefined)){
         s.shopping = {}; s.recipeAdded = {};
@@ -2142,7 +2131,7 @@ function loadState(){
       return s;
     }
   }catch(e){}
-  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, plannerLeftover:{}, water:{date:"",count:0}, waterHistory:{}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, pantryCategoryOverride:{}, waterNotifEnabled:false, theme:"teal", waterReminder:{...DEFAULT_WATER_REMINDER}, uiScale:detectDefaultUiScale(), recipeRating:{}, swipeRatingStyle:"balloon", displayName:""};
+  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, plannerLeftover:{}, water:{date:"",count:0}, waterHistory:{}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, pantryCategoryOverride:{}, waterNotifEnabled:false, theme:"teal", waterReminder:{...DEFAULT_WATER_REMINDER}, uiScale:detectDefaultUiScale(), recipeRating:{}, swipeRatingStyle:"balloon"};
 }
 let state = loadState();
 document.documentElement.setAttribute("data-theme", state.theme || "teal");
@@ -2437,9 +2426,8 @@ function renderHeader(){
   const t = calcTargets(p);
   const sexLabel = p.sex==="m" ? "Mężczyzna" : "Kobieta";
   const goalLabel = {loss:"redukcja",maintain:"utrzymanie",gain:"budowanie masy"}[p.goal];
-  const namePrefix = state.displayName ? `${state.displayName} · ` : "";
   document.getElementById("headerSub").textContent =
-    `${namePrefix}${sexLabel}, ${p.age} lat · ${p.height} cm · ${p.weight}\u00A0kg → cel ${p.targetWeight}\u00A0kg · ${goalLabel} · ~${t.daily}\u00A0kcal/dzień`;
+    `${sexLabel}, ${p.age} lat · ${p.height} cm · ${p.weight}\u00A0kg → cel ${p.targetWeight}\u00A0kg · ${goalLabel} · ~${t.daily}\u00A0kcal/dzień`;
   const meals = todaysPlannerMeals();
   const planned = todaysPlannedKcal();
   const pct = t.daily ? Math.max(0, Math.min(1, planned / t.daily)) : 0;
@@ -2545,7 +2533,6 @@ function isLactoseFree(r){
 
 function loadSettingsForm(){
   const p = state.profile;
-  document.getElementById("setDisplayName").value = state.displayName || "";
   document.getElementById("setSex").value = p.sex;
   document.getElementById("setAge").value = p.age;
   document.getElementById("setHeight").value = p.height;
@@ -2607,11 +2594,6 @@ function renderFavIngChips(filterText){
   box.appendChild(grid);
 }
 document.getElementById("favIngSearch").addEventListener("input", e=> renderFavIngChips(e.target.value));
-document.getElementById("setDisplayName").addEventListener("input", (e)=>{
-  state.displayName = e.target.value.slice(0, 30);
-  saveState();
-  renderHeader();
-});
 document.getElementById("saveSettingsBtn").addEventListener("click", ()=>{
   const p = {
     sex: document.getElementById("setSex").value,
