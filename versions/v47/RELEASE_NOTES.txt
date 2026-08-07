@@ -1,0 +1,36 @@
+Wersja 47
+=========
+
+Naprawa błędu wykrytego przy weryfikacji dopasowania przepisów oraz poprawki
+czytelności zgłoszone przez użytkownika.
+
+Naprawiony błąd (wykryty proaktywnie, nie zgłoszony wprost):
+- Kategoria Deser/Przekąska miała zepsute wyliczanie dopasowania (🎯) —
+  przy celu "Redukcja masy ciała" WSZYSTKIE 16 deserów pokazywało 0%
+  dopasowania, a nawet przy "Utrzymanie wagi" średnio tylko ~10%. Przyczyna:
+  slot "deser" miał budżet kaloryczny (100-140 kcal) o połowę mniejszy niż
+  realna kaloryczność przepisów w tej kategorii (średnio 218 kcal,
+  zakres 169-314 kcal) — różnica była tak duża, że wzór dopasowania zawsze
+  lądował na zerze. Skorygowano podział kalorii między posiłkami
+  (MEAL_RATIOS), zwiększając udział deseru z 6,7% do 13,3% dnia kosztem
+  pozostałych czterech posiłków (bez zmiany całkowitego celu kalorycznego
+  dnia) — desery dopasowują się teraz sensownie (średnio 36-54%, maksymalnie
+  65-77%, w zależności od celu diety) bez pogorszenia dopasowania pozostałych
+  kategorii.
+
+Poprawki czytelności:
+- Ocena dania w gwiazdkach (w historii "Zrobione") rozciągnięta na całą
+  szerokość okienka — 5 gwiazdek równo rozłożonych, każda z większym
+  obszarem dotykowym, zamiast stłoczonych po lewej stronie.
+- Lista zakupów: usunięto dwa osobne, nakładające się na siebie widżety
+  (rząd niejasnych pierścieni postępu nad rzędem przycisków dodawania per
+  dzień) i zastąpiono jednym, czytelnym paskiem 7 kart dni tygodnia. Każda
+  karta opisuje swój stan wprost po polsku ("Dodaj" — nic jeszcze nie
+  dodano, "2/3" — częściowo z paskiem postępu, "Gotowe" — wszystko na
+  liście, "—" — brak planu na ten dzień) i jednocześnie SAMA jest
+  przyciskiem dodającym składniki tego dnia.
+
+Potwierdzone jako już istniejące (bez zmian):
+- Wartości witamin/minerałów (wapń, wit. D, B12) są już pokazywane w
+  okienku „Jak policzono" przy każdym przepisie, dla którego da się je
+  oszacować — użytkownik pytał, czy to istnieje; istnieje.
