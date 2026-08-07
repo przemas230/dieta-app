@@ -92,6 +92,9 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-56: Duży, balonowy napis podczas oceniania przesunięciem](#fr-56-duży-balonowy-napis-podczas-oceniania-przesunięciem)
 - [FR-57: Trwałe oznaczenie oceny i ranking sort](#fr-57-trwałe-oznaczenie-oceny-i-ranking-sort)
 
+### Konto i współdzielenie
+- [FR-65: Własna, opcjonalna nazwa użytkownika w aplikacji](#fr-65-własna-opcjonalna-nazwa-użytkownika-w-aplikacji)
+
 ---
 
 ## Analiza spójności i wykluczeń
@@ -1267,5 +1270,27 @@ Spisane retrospektywnie 2026-08-07: funkcjonalność istniała już w kodzie z w
 
 ## Historia rewizji
 - **v1** (2026-08-07): Pierwsza wersja wymagania, spisana retrospektywnie — funkcjonalność już istniała w aplikacji, brakowało tylko jej opisu w tym folderze.
+
+---
+
+# FR-65: Własna, opcjonalna nazwa użytkownika w aplikacji
+
+**Obszar:** Konto i współdzielenie  
+**Status:** Zaimplementowane
+
+## Opis
+Ustawienia → karta „👤 Konto” pozwala wpisać dowolną, opcjonalną nazwę (pseudonim) wyświetlaną w aplikacji — np. w nagłówku, przed dotychczasowym podsumowaniem profilu diety. Nazwa jest całkowicie niezależna od jakiegokolwiek konta zewnętrznego (Google): nie jest pobierana automatycznie z niczego, nie jest wymagana, i można ją zmienić lub zostawić puste w każdej chwili — celem jest umożliwienie personalizacji bez wymuszania utraty anonimowości.
+
+## Kryteria akceptacji
+- Pole nazwy zapisuje się natychmiast przy wpisywaniu (bez osobnego przycisku „Zapisz”), niezależnie od formularza profilu diety.
+- Puste pole nie pokazuje niczego dodatkowego w nagłówku (brak wymuszonego placeholdera typu „Gość”).
+- Wpisana nazwa przetrwa odświeżenie strony (persystencja w tym samym magazynie co reszta stanu aplikacji).
+- Reset profilu diety (przycisk „Domyślne” w karcie „Twój profil”) NIE kasuje nazwy użytkownika — to osobne dane, niezwiązane z parametrami diety.
+
+## Uwagi
+Spisane 2026-08-07: pierwszy, samodzielnie już działający element szerszej prośby o konta użytkowników, logowanie Google (opcjonalne) i współdzielone gospodarstwo domowe — reszta tamtej prośby wymaga założenia projektu Firebase i jest opisana jako plan techniczny w `docs/FIREBASE_MIGRATION_PLAN.md` (poza zakresem tego folderu, który opisuje wyłącznie już wdrożone zachowanie). Nazwa dodana w tej rundzie jest zaprojektowana tak, by dokładnie odpowiadać przyszłemu polu `displayName` w tamtym planie — nic nie trzeba tu będzie przerabiać przy właściwej integracji.
+
+## Historia rewizji
+- **v1** (2026-08-07): Pierwsza wersja wymagania na podstawie polecenia użytkownika.
 
 ---

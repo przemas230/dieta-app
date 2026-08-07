@@ -1,0 +1,7 @@
+Wersja 50
+=========
+
+Samo podbicie wersji cache Service Workera (dieta-app-v31), bez zmian w
+kodzie aplikacji — żeby zmiany z wersji 49 (nazwa użytkownika w Ustawieniach)
+dotarły przy najbliższym otwarciu aplikacji. Ten sam powód co przy
+wersjach 28, 30, 32, 34, 36, 38, 40, 42, 44, 46 i 48.

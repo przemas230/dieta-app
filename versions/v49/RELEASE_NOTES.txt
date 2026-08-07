@@ -1,0 +1,28 @@
+Wersja 49
+=========
+
+Pierwszy krok w stronę kont, wspólnego gospodarstwa domowego i logowania
+Google, których pełne wdrożenie wymaga założenia projektu Firebase (opisane
+w nowym pliku docs/FIREBASE_MIGRATION_PLAN.md).
+
+Nowości:
+- Ustawienia → nowa karta „👤 Konto” z polem na własną, opcjonalną nazwę
+  wyświetlaną w aplikacji (np. „Przemek”) — niezależną od jakiegokolwiek
+  konta Google, żeby zachować pełną anonimowość dla tych, którzy tego chcą.
+  Nazwa pojawia się od razu w nagłówku, przed dotychczasowym podsumowaniem
+  profilu.
+- Dodano docs/FIREBASE_MIGRATION_PLAN.md — konkretny, gotowy do wykonania
+  plan techniczny: model danych Firestore (gospodarstwa domowe, wspólna
+  spiżarnia/lista zakupów/planer, przepisy społecznościowe z ocenami i
+  komentarzami), strategia logowania (opcjonalne, konto anonimowe z
+  możliwością połączenia z Google bez utraty danych), szkic reguł
+  bezpieczeństwa oraz checklist krok po kroku na moment założenia
+  prawdziwego projektu Firebase. Nie da się podłączyć prawdziwego logowania
+  ani synchronizacji bez własnoręcznego założenia projektu Firebase
+  (wymaga zalogowania do konsoli Google) — ten plik jest punktem startowym
+  na tamten moment, żeby nie zaczynać od zera.
+
+Uwaga: reszta próśb z tej rundy (logowanie Google, wspólna spiżarnia z
+żoną, dodawanie własnych przepisów, oceny i komentarze społeczności,
+synchronizacja offline/online) czeka na założenie projektu Firebase —
+patrz plan wyżej.
