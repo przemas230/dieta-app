@@ -429,10 +429,6 @@
     padding:0 14px; font-size:16px; cursor:pointer;
   }
   .fav-toggle.active{background:var(--honey-pale); border-color:var(--honey);}
-  .rating-filter-select{
-    border:1px solid var(--line); background:var(--card); border-radius:12px;
-    padding:0 8px; height:38px; font-size:12.5px; color:inherit; cursor:pointer;
-  }
   .empty{
     text-align:center; color:var(--muted); font-size:13.5px; padding:30px 10px;
   }
@@ -1010,13 +1006,6 @@
         <button class="fav-toggle" id="matchSortToggle" title="Sortuj wg dopasowania do Twojego profilu (białko/węgle/tłuszcz + indeks glikemiczny)">🎯</button>
         <button class="fav-toggle" id="rankSortToggle" title="Ranking: polubione najpierw, potem nieocenione, potem nielubiane (przesuń kartę w lewo/prawo, aby ocenić)">❤️</button>
         <button class="fav-toggle" id="reviewSortToggle" title="Sortuj wg oceny gwiazdkowej (⭐ Oceń i skomentuj)">🏆</button>
-        <button class="fav-toggle" id="userRecipesToggle" title="Tylko przepisy dodane przez użytkowników">🧑‍🍳</button>
-        <select class="rating-filter-select" id="ratingFilterSelect" title="Pokaż tylko przepisy z oceną (⭐ Oceń i skomentuj) co najmniej tyle gwiazdek — dziś to Twoja własna ocena, po dokończeniu synchronizacji będzie to średnia od wszystkich użytkowników">
-          <option value="0">Dowolna ocena</option>
-          <option value="3">★ 3+</option>
-          <option value="4">★ 4+</option>
-          <option value="5">★ 5</option>
-        </select>
       </div>
     </div>
     <div class="shop-actions" style="margin:0 0 10px;">
@@ -3172,8 +3161,6 @@ let onlyPantryReady = false;
 let sortByMatch = false;
 let sortByRating = false;
 let sortByReview = false;
-let onlyUserRecipes = false;
-let minRatingFilter = 0;
 let searchTerm = "";
 let expandedCardEl = null;
 function setCardExpanded(card, expand){
@@ -3744,11 +3731,6 @@ function renderRecipes(){
   if(onlyFav) items = items.filter(r=>state.favorites[r.id]);
   if(onlyIngFav) items = items.filter(r=>r.ingredients.some(i=>state.favIngredients[pantryCanon(coreName(i))]));
   if(onlyPantryReady) items = items.filter(r=>pantryCoverageRatio(r) >= 0.6);
-  if(onlyUserRecipes) items = items.filter(r=>r.source==="custom");
-  if(minRatingFilter>0) items = items.filter(r=>{
-    const review = state.recipeReviews[r.id];
-    return review && review.stars >= minRatingFilter;
-  });
   if(searchTerm){
     const t = searchTerm.toLowerCase();
     items = items.filter(r=> r.name.toLowerCase().includes(t) || r.ingredients.some(i=>i.toLowerCase().includes(t)) );
@@ -3806,16 +3788,6 @@ document.getElementById("rankSortToggle").addEventListener("click", e=>{
   sortByRating = !sortByRating;
   e.target.classList.toggle("active", sortByRating);
   toast(sortByRating ? "Ranking: polubione na górze" : "Ranking wyłączony");
-  renderRecipes();
-});
-document.getElementById("userRecipesToggle").addEventListener("click", e=>{
-  onlyUserRecipes = !onlyUserRecipes;
-  e.target.classList.toggle("active", onlyUserRecipes);
-  toast(onlyUserRecipes ? "Tylko przepisy dodane przez użytkowników" : "Pokazuję wszystkie przepisy");
-  renderRecipes();
-});
-document.getElementById("ratingFilterSelect").addEventListener("change", e=>{
-  minRatingFilter = Number(e.target.value);
   renderRecipes();
 });
 document.getElementById("reviewSortToggle").addEventListener("click", e=>{

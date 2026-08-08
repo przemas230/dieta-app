@@ -1,0 +1,18 @@
+Wersja 62
+=========
+
+Rozbudowa filtrowania na stronie z przepisami.
+
+Zmiany:
+- Nowy przełącznik „🧑‍🍳” w pasku filtrów zakładki Przepisy pokazuje
+  wyłącznie przepisy dodane przez użytkowników (własne przepisy z przycisku
+  „➕ Dodaj swój przepis”), z pominięciem 229 wbudowanych przepisów.
+- Nowa rozwijana lista progu oceny gwiazdkowej: „Dowolna ocena” / „★ 3+” /
+  „★ 4+” / „★ 5” — pozwala pokazać tylko przepisy ocenione na co najmniej
+  wybraną liczbę gwiazdek (⭐ „Oceń i skomentuj”). Dopóki synchronizacja
+  danych między urządzeniami nie jest ukończona, ocena brana pod uwagę to
+  ocena własna z tego urządzenia; po dokończeniu synchronizacji stanie się
+  to bez dodatkowych zmian średnią oceną od wszystkich użytkowników.
+- Oba nowe filtry można dowolnie łączyć z pozostałymi (ulubione, spiżarnia,
+  dopasowanie do profilu itd.).
+- Cache Service Workera podbity do dieta-app-v38.
