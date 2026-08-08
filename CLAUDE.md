@@ -47,3 +47,34 @@ Ten folder dokumentuje zachowanie aplikacji na poziomie wymagań, równolegle
 do `versions/`, który dokumentuje stan plików źródłowych — `RELEASE_NOTES.txt`
 danej wersji jest naturalnym źródłem do wypełnienia historii rewizji
 odpowiadającego FR.
+
+## Równoległy rozwój wersji webowej (PWA) i natywnej (Android/Kotlin)
+
+Od 2026-08-08 repozytorium zawiera też szkielet natywnej aplikacji Android
+w folderze `android/` (Kotlin/Jetpack Compose, podłączona do TEGO SAMEGO
+projektu Firebase co wersja webowa). Użytkownik chce rozwijać obie wersje
+równolegle, bez różnic funkcjonalnych między nimi. W praktyce:
+
+1. Każda nowa funkcja albo zmiana zachowania dodawana do `index.html`
+   powinna w tej samej turze pracy dostać odpowiadający port do `android/`
+   (albo świadomą notatkę w `android/PARITY.md`, dlaczego jeszcze nie —
+   np. bo poprzedni krok w Kotlinie nie został jeszcze potwierdzony przez
+   użytkownika w Android Studio).
+2. `android/PARITY.md` to źródło prawdy o tym, co jest, a co nie jest
+   jeszcze przeniesione — aktualizować przy każdej zmianie po którejkolwiek
+   stronie, żeby nigdy nie trzeba było zgadywać.
+3. Kod Kotlin/Gradle NIE MOŻE być tu skompilowany ani uruchomiony —
+   `dl.google.com` (repozytorium Maven Google, źródło Android Gradle
+   Plugin/AndroidX/Compose/Firebase Android SDK) jest zablokowane przez
+   politykę sieciową tego środowiska (potwierdzone: `gradle help` kończy się
+   błędem 403 przy próbie rozwiązania pluginu `com.android.application`).
+   Każda zmiana w `android/` jest więc z konieczności niezweryfikowana aż do
+   sprawdzenia przez użytkownika w prawdziwym Android Studio — pisać
+   ostrożnie, standardowymi/dobrze udokumentowanymi wzorcami, i jasno
+   oznaczać w PARITY.md co czeka na potwierdzenie (⏳) vs co jest już
+   potwierdzone (✅).
+4. Nie piętrzyć wielu niezweryfikowanych kroków w Kotlinie na raz bez
+   szansy na sprawdzenie między nimi — jeden błąd na wczesnym etapie cicho
+   psuje wszystko zbudowane na nim później, a nie ma tu jak tego złapać
+   samodzielnie. Po każdym większym kroku (nowy ekran, nowa integracja)
+   warto zapytać/poczekać na potwierdzenie, zanim doda się kolejny.

@@ -14,13 +14,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,7 +31,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.przemas230.dietaapp.data.Recipe
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Pure screen content — no own Scaffold/TopAppBar, since the app-level
+ * Scaffold in MainActivity now owns the top bar and bottom navigation
+ * shared across all tabs.
+ */
 @Composable
 fun RecipeListScreen(viewModel: RecipeViewModel = viewModel()) {
     val recipes by viewModel.visibleRecipes.collectAsState()
@@ -42,52 +43,44 @@ fun RecipeListScreen(viewModel: RecipeViewModel = viewModel()) {
     val searchTerm by viewModel.searchTerm.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
-    Scaffold(
-        topBar = { TopAppBar(title = { Text("Dieta App") }) }
-    ) { padding ->
-        Column(
+    Column(modifier = Modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = searchTerm,
+            onValueChange = { viewModel.setSearchTerm(it) },
+            label = { Text("Szukaj przepisu lub składnika…") },
+            singleLine = true,
             modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        )
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp),
         ) {
-            OutlinedTextField(
-                value = searchTerm,
-                onValueChange = { viewModel.setSearchTerm(it) },
-                label = { Text("Szukaj przepisu lub składnika…") },
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-            )
-
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp),
-            ) {
-                items(CATEGORIES) { category ->
-                    FilterChip(
-                        selected = category.id == selectedCategory,
-                        onClick = { viewModel.selectCategory(category.id) },
-                        label = { Text("${category.emoji} ${category.label}") },
-                    )
-                }
+            items(CATEGORIES) { category ->
+                FilterChip(
+                    selected = category.id == selectedCategory,
+                    onClick = { viewModel.selectCategory(category.id) },
+                    label = { Text("${category.emoji} ${category.label}") },
+                )
             }
+        }
 
-            Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
-            when {
-                isLoading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Wczytywanie przepisów…")
-                }
-                recipes.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Brak przepisów spełniających kryteria.")
-                }
-                else -> LazyColumn(
-                    contentPadding = PaddingValues(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    items(recipes, key = { it.id }) { recipe -> RecipeCard(recipe) }
-                }
+        when {
+            isLoading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Wczytywanie przepisów…")
+            }
+            recipes.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Brak przepisów spełniających kryteria.")
+            }
+            else -> LazyColumn(
+                contentPadding = PaddingValues(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                items(recipes, key = { it.id }) { recipe -> RecipeCard(recipe) }
             }
         }
     }
