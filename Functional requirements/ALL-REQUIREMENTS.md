@@ -1382,32 +1382,36 @@ Zrewidowane 2026-08-08: następnego dnia użytkownik faktycznie założył proje
 # FR-69: Logowanie w chmurze (anonimowe, Google, e-mail i hasło)
 
 **Obszar:** Konto i współdzielenie  
-**Status:** Zaimplementowane (logowanie); synchronizacja danych — jeszcze nie
+**Status:** Zaimplementowane i potwierdzone działające na produkcji (logowanie); synchronizacja danych — jeszcze nie
 
 ## Opis
 Aplikacja korzysta z prawdziwego projektu Firebase (Authentication + Firestore). Każde urządzenie loguje się automatycznie i bez pytania jako użytkownik anonimowy (Firebase Anonymous Auth) przy pierwszym uruchomieniu — to nie zmienia dotychczasowego, w pełni lokalnego działania aplikacji, tylko nadaje jej stabilny, gotowy na przyszłość identyfikator.
 
-W Ustawieniach → „☁️ Konto w chmurze” można opcjonalnie:
-- połączyć się z kontem Google (przycisk „Połącz z kontem Google”),
-- połączyć się e-mailem i hasłem (formularz).
+W Ustawieniach → „☁️ Konto w chmurze” są dwie jasno rozdzielone ścieżki:
+- **„Pierwsze urządzenie / nowe konto”** — „Połącz z kontem Google” / „Połącz (nowe konto)” (e-mail). Obie **łączą** (linkują) istniejące anonimowe konto zamiast zakładać nowe od zera — dane, które w przyszłości będą już zsynchronizowane z tym kontem, nie giną w momencie pierwszego logowania.
+- **„Masz już konto?”** — „Zaloguj się na konto Google” / „Zaloguj się (istniejące konto)” (e-mail). Prawdziwe logowanie (`signInWithPopup`/`signInWithEmailAndPassword`), nie łączenie — to jest ścieżka dla KAŻDEGO kolejnego urządzenia (np. telefonu po tym, jak konto zostało już założone na komputerze), bo linkowanie działa tylko raz na konto: próba "połączenia" z kontem, które już istnieje gdzie indziej, kończy się błędem `auth/credential-already-in-use`.
 
-Obie metody **łączą** (linkują) istniejące anonimowe konto zamiast zakładać nowe od zera — więc dane, które w przyszłości będą już zsynchronizowane z tym kontem, nie giną w momencie pierwszego logowania. Jeden adres e-mail nie może być użyty do założenia dwóch osobnych kont (raz przez Google, raz hasłem) — wymusza to ustawienie projektu Firebase „jedno konto na adres e-mail”; aplikacja wykrywa tę kolizję i proponuje zalogowanie się do istniejącego konta zamiast pokazania suchego błędu.
+Jeden adres e-mail nie może być użyty do założenia dwóch osobnych kont (raz przez Google, raz hasłem) — wymusza to ustawienie projektu Firebase „jedno konto na adres e-mail”. Jeśli użytkownik i tak spróbuje "połączyć" konto, które już istnieje (typowy błąd na drugim urządzeniu, zanim zauważy osobny przycisk logowania), aplikacja wykrywa tę kolizję i proponuje zalogowanie się do istniejącego konta zamiast pokazania suchego błędu — w obu miejscach, dla Google i dla e-maila.
 
 Jeśli Firebase jest niedostępny (brak internetu, zablokowany dostęp do serwerów Google, błąd wczytania SDK) — cała sekcja logowania grzecznie się chowa, pokazuje jasny komunikat, a reszta aplikacji działa dokładnie tak jak przed podłączeniem Firebase, bez żadnego wyjątku/awarii.
 
 ## Kryteria akceptacji
 - Brak ekranu logowania blokującego korzystanie z aplikacji — logowanie anonimowe dzieje się w tle, automatycznie.
-- Połączenie z Google lub e-mailem/hasłem używa `linkWithPopup`/`linkWithCredential` na istniejącym użytkowniku, nie `signInWith...` od zera.
-- Próba połączenia e-mailem już zajętym przez inne konto pokazuje czytelny komunikat po polsku i pyta, czy zalogować się do tego istniejącego konta.
+- Cztery osobne, jasno opisane przyciski: połącz z Google, zaloguj się przez Google, połącz e-mailem, zaloguj się e-mailem — nie tylko "połącz", żeby logowanie na drugim/kolejnym urządzeniu (na już istniejące konto) było możliwe bez natrafiania na błąd jako jedyną drogę do informacji, że trzeba się zalogować, a nie połączyć.
+- Próba połączenia (linkowania) kontem/e-mailem już zajętym przez inne konto pokazuje czytelny komunikat po polsku i pyta, czy zalogować się do tego istniejącego konta — dla obu metod (Google i e-mail).
 - Karta „Konto w chmurze” pokazuje aktualny stan: niedostępność Firebase, brak logowania, lub zalogowanie (i którą metodą).
+- Jasna informacja przy przyciskach logowania, że zalogowanie się na już istniejące konto na nowym urządzeniu na razie tylko potwierdza tożsamość — dane (spiżarnia/lista zakupów) się jeszcze nie synchronizują.
 - Całkowity brak dostępu do Firebase (np. zablokowana sieć) nie powoduje błędu JS ani nie psuje żadnej innej funkcji aplikacji — zweryfikowane w środowisku z faktycznie zablokowanym dostępem do serwerów Firebase.
 
 ## Uwagi
 Spisane 2026-08-08, w dniu założenia prawdziwego projektu Firebase (`dieta-app-323b4`) przez użytkownika, zgodnie z checklistą z `docs/FIREBASE_MIGRATION_PLAN.md`. To wdraża wyłącznie warstwę logowania z tamtego planu — synchronizacja właściwych danych (spiżarnia, lista zakupów, planer) między urządzeniami i osobami w gospodarstwie domowym to kolejny, jeszcze nie zaimplementowany krok z tego samego planu.
 
-Testowanie: środowisko deweloperskie miało zablokowany sieciowo dostęp do `gstatic.com`/serwerów Firebase (polityka sieciowa piaskownicy), więc rzeczywiste logowanie (kliknięcie „Połącz z kontem Google”, wpisanie hasła) nie mogło zostać zweryfikowane automatycznie. Zweryfikowano za to dokładnie ten scenariusz w kryteriach akceptacji dotyczący niedostępności Firebase — który akurat wystąpił naturalnie w tym środowisku — oraz że reszta aplikacji (przepisy, spiżarnia, lista zakupów, motywy) nie uległa regresji. Rzeczywiste logowanie wymaga ręcznej weryfikacji przez użytkownika na urządzeniu z dostępem do internetu.
+Zrewidowane tego samego dnia po pierwszym prawdziwym teście: użytkownik połączył konto Google na komputerze, po czym nie mógł zalogować się tym samym kontem na telefonie — pierwsza wersja miała tylko przyciski "Połącz" (linkowanie), które z definicji działa tylko raz na konto. Dodano osobne, zawsze widoczne przyciski logowania (`signInWithPopup`/`signInWithEmailAndPassword`) dla kolejnych urządzeń, plus tę samą kolizję-z-propozycją-logowania dla przycisku "Połącz z kontem Google" (wcześniej miała to tylko wersja e-mailowa).
+
+Testowanie: środowisko deweloperskie miało zablokowany sieciowo dostęp do `gstatic.com`/serwerów Firebase (polityka sieciowa piaskownicy), więc rzeczywiste logowanie nie mogło zostać zweryfikowane automatycznie od strony dewelopera. Prawdziwe logowanie Google zostało już potwierdzone jako działające przez użytkownika na produkcyjnej domenie (`przemas230.github.io`, dodanej do autoryzowanych domen Firebase po napotkaniu błędu `auth/unauthorized-domain`); nowe przyciski logowania na drugim urządzeniu wymagają analogicznej ręcznej weryfikacji przez użytkownika.
 
 ## Historia rewizji
 - **v1** (2026-08-08): Pierwsza wersja wymagania na podstawie polecenia użytkownika.
+- **v2** (2026-08-08): Dodano osobne przyciski logowania (nie tylko łączenia) po zgłoszeniu, że drugie urządzenie nie mogło zalogować się na już istniejące konto — patrz "Uwagi".
 
 ---
