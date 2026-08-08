@@ -10,7 +10,7 @@ funkcjonalnych między nimi. **`PARITY.md`** w tym folderze śledzi dokładnie,
 które funkcje z wersji webowej mają już odpowiednik tutaj, a które jeszcze
 czekają — sprawdź tam, zanim zapytasz "czy X już jest w Androidzie".
 
-## Status: nawigacja + lista przepisów + test Firebase
+## Status: nawigacja + przepisy + test Firebase + Spiżarnia/Zakupy (lokalnie)
 
 Co już działa:
 - Pełny szkielet projektu Gradle/Kotlin/Compose.
@@ -33,12 +33,24 @@ Co już działa:
   `android/app/google-services.json`** (patrz sekcja "Podłączenie Firebase"
   niżej) — bez tego pliku przycisk "Testuj Firebase" pokaże czytelny błąd
   po polsku zamiast crashować aplikację.
+- Zakładki Spiżarnia i Lista zakupów: dodawanie/usuwanie produktów, zmiana
+  ilości (Spiżarnia rozróżnia "produkt" z ilością+jednostką i "przyprawę"
+  z poziomem Brak/Mało/Wystarczy — jak w wersji webowej), odhaczanie
+  kupionych na liście zakupów. **Dane są na razie WYŁĄCZNIE lokalne, w
+  pamięci** (znikają po zamknięciu apki) — trwały zapis i synchronizacja
+  między urządzeniami to dopiero krok 6 (patrz "Co dalej"). Lista kategorii
+  produktów to na razie uproszczony, ręczny zestaw (7 kategorii) — pełna
+  baza kategoryzacji składników z wersji webowej jest dużo większa i
+  zostanie dociągnięta razem z synchronizacją.
 
 Czego jeszcze NIE ma (kolejne kroki, patrz "Co dalej"):
-- Reszty synchronizacji (profil, spiżarnia, planer, lista zakupów itd.) —
-  na razie tylko jedno testowe pole.
-- Rzeczywistej zawartości pozostałych zakładek (Planer, Zakupy, Spiżarnia,
-  Postęp) — na razie same placeholdery.
+- Trwałego zapisu i reszty synchronizacji (profil, spiżarnia, zakupy,
+  planer itd.) — na razie tylko jedno testowe pole `debugPing` zapisuje się
+  do chmury, Spiżarnia/Zakupy trzymane są tylko w pamięci procesu.
+- Automatycznego uzupełniania listy zakupów z planera (jak w wersji
+  webowej) — na razie dodawanie tylko ręczne.
+- Rzeczywistej zawartości pozostałych zakładek (Planer, Postęp) — na razie
+  same placeholdery.
 
 **Nie mogłem tego skompilować ani uruchomić** — środowisko, w którym to
 piszę, nie ma zainstalowanego Android SDK/Gradle/emulatora. Kod jest napisany
@@ -90,8 +102,9 @@ realnie sprawdzić w Android Studio, zanim przejdziemy do następnego):
    w `users/{uid}` — kod gotowy w zakładce Ustawienia, ale wymaga dodania
    `android/app/google-services.json`, żeby dało się to sprawdzić w Android
    Studio.
-3. Ekran Spiżarni i Listy zakupów — najbliższe strukturze mapy
-   `{nazwa: ilość}`, którą już zna kod webowy.
+3. ⏳ Ekran Spiżarni i Listy zakupów — struktura najbliższa mapie
+   `{nazwa: ilość}`, którą już zna kod webowy, ale na razie WYŁĄCZNIE
+   lokalnie (bez trwałego zapisu i bez synchronizacji — to dopiero krok 6).
 4. Planer tygodniowy.
 5. Logowanie Google/e-mail, profil diety, dopasowanie makro.
 6. Synchronizacja (odpowiednik `pushStateToCloud`/`applyRemoteSyncedState`

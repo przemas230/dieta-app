@@ -35,11 +35,11 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-23 | „Ugotuj na 2 dni” — planowanie resztek po zwiększeniu porcji | ⬜ nie rozpoczęte |
 | FR-24 | Proaktywna podpowiedź gotowania na kolejny dzień | ⬜ nie rozpoczęte |
 | FR-25 | Budowanie listy zakupów ze składników przepisów | ⬜ nie rozpoczęte |
-| FR-26 | Odhaczanie, udostępnianie i czyszczenie listy zakupów | ⬜ nie rozpoczęte |
+| FR-26 | Odhaczanie, udostępnianie i czyszczenie listy zakupów | ⏳ częściowo (patrz uwagi niżej) |
 | FR-27 | Dodanie składników z całego tygodnia z Planera | ⬜ nie rozpoczęte |
-| FR-28 | Śledzenie stanu spiżarni w kafelkach pogrupowanych kategoriami | ⬜ nie rozpoczęte |
+| FR-28 | Śledzenie stanu spiżarni w kafelkach pogrupowanych kategoriami | ⏳ częściowo (patrz uwagi niżej) |
 | FR-29 | Odmiana gramatyczna nazw produktów w spiżarni | ⬜ nie rozpoczęte |
-| FR-30 | Zmiana kategorii i usuwanie śledzenia kafelka spiżarni | ⬜ nie rozpoczęte |
+| FR-30 | Zmiana kategorii i usuwanie śledzenia kafelka spiżarni | ⏳ częściowo (patrz uwagi niżej) |
 | FR-31 | Skanowanie kodu kreskowego produktu | ⬜ nie rozpoczęte |
 | FR-32 | Podpowiedź „🏺 masz w spiżarni” i „Pomysł na danie z ulubionych składników” | ⬜ nie rozpoczęte |
 | FR-33 | Globalny przycisk szybkiego dodania przekąski/dania z każdego miejsca | ⬜ nie rozpoczęte |
@@ -92,9 +92,12 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 
 ## Uwagi do częściowych wpisów
 
-- **FR-1** (5 kategorii): dane i kafelki kategorii są w Kotlinie, ale UI Androida na razie pokazuje tylko listę przepisów — reszta zakładek (Planer, Zakupy, Spiżarnia, Postęp, Ustawienia) jeszcze nie istnieje.
+- **FR-1** (5 kategorii): dane i kafelki kategorii są w Kotlinie, przepisy działają; zakładki Planer i Postęp to nadal placeholdery.
 - **FR-2** (wyszukiwanie i filtrowanie): samo pole wyszukiwania działa; przełączniki ulubione/spiżarnia/dopasowanie/ocena jeszcze nie.
 - **FR-13** (5. kategoria Deser/Przekąska): kategoria istnieje i jest wybieralna, ale przepisy w niej nie mają jeszcze nic ekstra ponad pozostałe (to samo dotyczy wszystkich kategorii — brak jest jeszcze osobnych funkcji per-kategoria).
+- **FR-26** (odhaczanie/udostępnianie/czyszczenie zakupów): odhaczanie i "usuń kupione" działają; udostępnianie listy (np. przez Intent) jeszcze nie ma. Dane są tylko lokalne w pamięci — bez trwałego zapisu, bez synchronizacji.
+- **FR-28** (spiżarnia w kafelkach z kategoriami): jest lista z etykietą kategorii i rozróżnieniem produkt/przyprawa, ale nie w formie kafelków jak w wersji webowej, i kategorie to uproszczony ręczny zestaw 7 opcji zamiast pełnej bazy klasyfikacji składników. Dane tylko lokalne, bez synchronizacji.
+- **FR-30** (zmiana kategorii i usuwanie kafelka): usuwanie działa; zmiana kategorii istniejącego produktu po dodaniu jeszcze nie (na razie kategorię wybiera się tylko przy dodawaniu).
 
 ## Jak to utrzymywać
 
