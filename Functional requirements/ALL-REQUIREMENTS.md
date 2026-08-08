@@ -11,6 +11,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-4: Miniatura przepisu jako emoji głównego składnika](#fr-4-miniatura-przepisu-jako-emoji-głównego-składnika)
 - [FR-5: Przycisk powrotu do góry listy przepisów](#fr-5-przycisk-powrotu-do-góry-listy-przepisów)
 - [FR-66: Dodawanie własnych przepisów przez użytkownika](#fr-66-dodawanie-własnych-przepisów-przez-użytkownika)
+- [FR-74: Wspólna zakładka „Śniadania” na liście przepisów, osobne sloty w Planerze](#fr-74-wspólna-zakładka-śniadania-na-liście-przepisów-osobne-sloty-w-planerze)
 
 ### Personalizacja i cele dietetyczne
 - [FR-6: Profil użytkownika i wyliczanie zapotrzebowania kalorycznego](#fr-6-profil-użytkownika-i-wyliczanie-zapotrzebowania-kalorycznego)
@@ -183,6 +184,7 @@ Każdy przepis wyświetlany jest jako karta z nazwą, czasem przygotowania, kalo
 - Karta w stanie zwiniętym pokazuje tylko nagłówek i podstawowe metadane.
 - Rozwinięcie karty odbywa się WYŁĄCZNIE przez wyraźne, stacjonarne stuknięcie — nie przez przypadkowe zatrzymanie przewijania listy (patrz historia rewizji poniżej i FR-44).
 - Tylko jedna karta na liście może być rozwinięta jednocześnie.
+- Po rozwinięciu karty ekran automatycznie przewija się tak, żeby cała rozwinięta karta wylądowała na środku widocznego obszaru — użytkownik nie musi ręcznie doprzewijać, żeby zobaczyć składniki i sposób przygotowania. Przewinięcie następuje PO zakończeniu animacji rozwijania karty (nie w trakcie), żeby wyśrodkowanie trafiało na docelową, już powiększoną wysokość karty, a nie na jej wysokość sprzed rozwinięcia.
 
 ## Uwagi
 Zrewidowane w rundzie z 2026-08-03: pierwotna wersja pozwalała, by dotknięcie kończące przewijanie listy (bardzo mały ruch palca przy jednoczesnym przewinięciu strony przez inercję) było błędnie odczytane jako stuknięcie i rozwijało kartę, co powodowało 'skakanie' ekranu. Naprawiono porównując pozycję przewijania strony w momencie dotknięcia i puszczenia — jeśli strona przewinęła się w tym czasie, gest NIE liczy się jako stuknięcie, nawet jeśli sam palec poruszył się nieznacznie. Patrz też FR-44.
@@ -190,6 +192,7 @@ Zrewidowane w rundzie z 2026-08-03: pierwotna wersja pozwalała, by dotknięcie 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-03): Doprecyzowano zachowanie na podstawie zgłoszonej poprawki — patrz sekcja "Uwagi" powyżej.
+- **v3** (2026-08-08): Dodano automatyczne wyśrodkowywanie rozwiniętej karty na ekranie, na życzenie użytkownika ("karta z przepisem na którą klikniemy [powinna] wyśrodkowywać się na ekranie... użytkownik nie musi sam jej przesuwać").
 
 ---
 
@@ -1655,5 +1658,52 @@ użytkownika.
   użytkownika ani spiżarni, ani żadnych ustawień jak chociażby to żeby
   pokazywało przepisy innych użytkowników"), realizując punkt 6 checklisty
   z `docs/FIREBASE_MIGRATION_PLAN.md`.
+
+---
+
+# FR-74: Wspólna zakładka „Śniadania” na liście przepisów, osobne sloty w Planerze
+
+**Obszar:** Przepisy i przeglądanie
+**Status:** Zaimplementowane
+
+## Opis
+Na liście przepisów (kategorie/pigułki nad listą) „Śniadania” i „II Śniadanie”
+pokazują się jako JEDNA wspólna zakładka „🍳 Śniadania”, zawierająca przepisy
+z obu wewnętrznych kategorii (`cat: "sniadania"` i `cat: "drugie"`)
+wymieszane w jednej liście. Przepisy przypisane do `cat: "drugie"` mają na
+karcie dodatkowy znaczek „🥪 II Śniadanie”, żeby dało się je odróżnić od
+zwykłych śniadań mimo wspólnej listy.
+
+Planer tygodniowy NIE jest tym objęty — nadal ma pięć osobnych,
+niezmienionych slotów dziennych (Śniadanie, II Śniadanie, Obiad, Kolacja,
+Deser/Przekąska), bo to tam rozróżnienie ma realne znaczenie (dwa różne
+posiłki tego samego dnia). Formularz „➕ Dodaj swój przepis” też zachowuje
+pełny wybór z pięciu kategorii — kategoria przepisu w danych źródłowych się
+nie zmienia, zmienia się tylko sposób GRUPOWANIA ich do przeglądania.
+
+## Kryteria akceptacji
+- Pasek kategorii nad listą przepisów pokazuje 4 pigułki (Śniadania, Obiady,
+  Kolacje, Deser/Przekąska), nie 5.
+- Wybranie pigułki „Śniadania” pokazuje przepisy z OBU kategorii źródłowych
+  (`sniadania` i `drugie`) razem, posortowane/filtrowane tak samo jak
+  pozostałe zakładki (wyszukiwanie, ulubione, dopasowanie do profilu itd. z
+  FR-2 działają identycznie na połączonej liście).
+- Sortowanie „🎯 dopasowanie do profilu” liczy dopasowanie KAŻDEGO przepisu
+  względem WŁASNEGO celu makro dla jego rzeczywistej kategorii (śniadanie
+  albo II śniadanie osobno) — połączenie zakładek do przeglądania nie
+  spłaszcza precyzji tego wyliczenia.
+- Planer tygodniowy (`CATS`, 5 kategorii) oraz formularz dodawania własnego
+  przepisu pozostają całkowicie niezmienione.
+- Przepis z `cat: "drugie"` ma widoczny znaczek „🥪 II Śniadanie” na karcie,
+  niezależnie od tego, gdzie jest wyświetlany.
+- Zapisanie nowego własnego przepisu w kategorii „II Śniadanie” przełącza
+  widok z powrotem na wspólną zakładkę „Śniadania” (a nie na nieistniejącą
+  już osobną zakładkę), gdzie nowy przepis od razu widać.
+
+## Historia rewizji
+- **v1** (2026-08-08): Pierwsza wersja wymagania, na życzenie użytkownika
+  ("połącz w przepisach pierwsze i drugie śniadanie, po co to rozdzielać,
+  tylko w planerze potrzebujemy tego jako dwóch slotów ale lista z
+  przepisami może być jedna").
 
 ---

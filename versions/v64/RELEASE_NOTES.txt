@@ -1,0 +1,19 @@
+Wersja 64
+=========
+
+Połączenie zakładek Śniadania/II Śniadanie na liście przepisów oraz
+automatyczne wyśrodkowywanie rozwiniętej karty przepisu.
+
+Zmiany:
+- Na stronie z przepisami zakładki „Śniadania” i „II Śniadanie” połączono
+  w jedną wspólną zakładkę „🍳 Śniadania” — nie było powodu rozdzielać
+  jednej listy na dwie prawie identyczne. Planer tygodniowy nadal ma dwa
+  osobne sloty (Śniadanie i II Śniadanie) tak jak dotychczas — to
+  rozdzielenie dotyczyło tylko przeglądania listy, nie planowania.
+- Przepisy przypisane do slotu „II Śniadanie” mają teraz na karcie mały
+  znaczek „🥪 II Śniadanie”, żeby dało się je odróżnić na wspólnej liście.
+- Kliknięcie karty przepisu, żeby ją rozwinąć, teraz automatycznie
+  przewija ekran tak, żeby cała rozwinięta karta wylądowała na środku
+  ekranu — nie trzeba już ręcznie doprzewijać, żeby zobaczyć składniki
+  i sposób przygotowania.
+- Cache Service Workera podbity do dieta-app-v40.

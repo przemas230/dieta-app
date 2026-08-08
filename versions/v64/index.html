@@ -2401,19 +2401,6 @@ const CATS = [
   {id:"kolacje", label:"Kolacje", icon:"🌙"},
   {id:"deser", label:"Deser / Przekąska", icon:"🍰"}
 ];
-// Grouping used ONLY for browsing/filtering the Przepisy list — the Planer
-// still needs śniadanie/II śniadanie as two separate daily slots (CATS
-// above, unchanged), but there's no reason to split one flat recipe list
-// into two near-identical breakfast tabs.
-const BROWSE_CATS = [
-  {id:"sniadania", label:"Śniadania", icon:"🍳", includes:["sniadania","drugie"]},
-  {id:"obiady", label:"Obiady", icon:"🍲", includes:["obiady"]},
-  {id:"kolacje", label:"Kolacje", icon:"🌙", includes:["kolacje"]},
-  {id:"deser", label:"Deser / Przekąska", icon:"🍰", includes:["deser"]}
-];
-function browseCatGroupFor(catId){
-  return BROWSE_CATS.find(b=>b.includes.includes(catId)) || BROWSE_CATS[0];
-}
 const DAYS = ["Poniedziałek","Wtorek","Środa","Czwartek","Piątek","Sobota","Niedziela"];
 
 // ---------- STATE ----------
@@ -3263,24 +3250,6 @@ function setCardExpanded(card, expand){
     if(expandedCardEl && expandedCardEl!==card) expandedCardEl.classList.remove("expanded");
     card.classList.add("expanded");
     expandedCardEl = card;
-    // Center the card once it has actually finished growing, instead of
-    // scrolling to wherever it happened to land mid-animation — the user
-    // shouldn't have to scroll manually afterwards to see what expanded.
-    const body = card.querySelector(".card-collapsible-body");
-    const centerNow = ()=> card.scrollIntoView({behavior:"smooth", block:"center"});
-    if(body){
-      let done = false;
-      const onEnd = (e)=>{
-        if(e.propertyName!=="grid-template-rows" || done) return;
-        done = true;
-        centerNow();
-      };
-      body.addEventListener("transitionend", onEnd, {once:true});
-      // Fallback in case the transition doesn't fire (e.g. reduced-motion).
-      setTimeout(()=>{ if(!done){ done = true; centerNow(); } }, 400);
-    }else{
-      centerNow();
-    }
   }else{
     card.classList.remove("expanded");
     if(expandedCardEl===card) expandedCardEl = null;
@@ -3291,7 +3260,7 @@ function setCardExpanded(card, expand){
 function renderPills(){
   const box = document.getElementById("catPills");
   box.innerHTML = "";
-  BROWSE_CATS.forEach(c=>{
+  CATS.forEach(c=>{
     const p = document.createElement("button");
     p.className = "pill" + (c.id===currentCat ? " active":"");
     p.textContent = c.icon + " " + c.label;
@@ -3519,12 +3488,6 @@ function recipeCard(r, onChange, opts={}){
   const customBadge = r.source==="custom"
     ? `<span class="goal-badge" style="background:var(--honey-pale); color:var(--honey-dark);" title="Przepis dodany przez Ciebie">✍️ Twój przepis</span>`
     : "";
-  // "Śniadania" and "II Śniadanie" share one browse tab (BROWSE_CATS) even
-  // though they're still two separate Planer slots — this badge is the only
-  // remaining way to tell which slot a given breakfast recipe belongs to.
-  const subcatBadge = r.cat==="drugie"
-    ? `<span class="goal-badge" style="background:var(--teal-pale); color:var(--teal);" title="Ten przepis jest przypisany do slotu II Śniadanie w Planerze">🥪 II Śniadanie</span>`
-    : "";
   const review = state.recipeReviews[r.id];
   const reviewLabel = review ? `⭐ Oceń i skomentuj (Twoja ocena: ${review.stars}/5)` : "⭐ Oceń i skomentuj";
   card.innerHTML = `
@@ -3536,7 +3499,7 @@ function recipeCard(r, onChange, opts={}){
         <div class="thumb"><span class="thumb-ph">🍽️</span></div>
       </div>
     </div>
-    <div class="meta"><span>⏱ ${r.time}</span><span>🔥 ${r.kcal} kcal</span>${lastCooked?`<span>✅ ${lastCooked}</span>`:""}${goalBadge}${giBadge}${customBadge}${subcatBadge}</div>
+    <div class="meta"><span>⏱ ${r.time}</span><span>🔥 ${r.kcal} kcal</span>${lastCooked?`<span>✅ ${lastCooked}</span>`:""}${goalBadge}${giBadge}${customBadge}</div>
     ${expandable ? `<button type="button" class="expand-toggle" data-expand-toggle><span>Składniki i przygotowanie</span><span class="expand-chevron">⌄</span></button>` : ""}
     <div class="card-collapsible-body"><div class="card-collapsible-inner">
       ${macroLine}
@@ -3844,8 +3807,7 @@ function renderRecipes(){
   const list = document.getElementById("recipeList");
   list.innerHTML = "";
   expandedCardEl = null;
-  const activeBrowseGroup = browseCatGroupFor(currentCat);
-  let items = allRecipes().filter(r=>activeBrowseGroup.includes.includes(r.cat));
+  let items = allRecipes().filter(r=>r.cat===currentCat);
   if(state.profile.glutenFree) items = items.filter(isGlutenFree);
   if(state.profile.lactoseFree) items = items.filter(isLactoseFree);
   if(onlyFav) items = items.filter(r=>state.favorites[r.id]);
@@ -3865,9 +3827,9 @@ function renderRecipes(){
     return;
   }
   if(sortByMatch){
-    const targets = calcMacroTargets(state.profile);
+    const target = calcMacroTargets(state.profile)[currentCat];
     items = [...items].sort((a,b)=>{
-      const sa = recipeMatchScore(a, targets[a.cat], state.profile), sb = recipeMatchScore(b, targets[b.cat], state.profile);
+      const sa = recipeMatchScore(a, target, state.profile), sb = recipeMatchScore(b, target, state.profile);
       if(sa===null && sb===null) return 0;
       if(sa===null) return 1;
       if(sb===null) return -1;
@@ -4064,7 +4026,7 @@ document.getElementById("arSaveBtn").addEventListener("click", ()=>{
   TILE_UNIT_CAT = computeTileUnitCats();
   toast("Dodano Twój przepis");
   document.getElementById("addRecipeOverlay").classList.remove("show");
-  currentCat = browseCatGroupFor(recipe.cat).id;
+  currentCat = recipe.cat;
   renderPills();
   renderRecipes();
 });
