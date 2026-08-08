@@ -1,0 +1,41 @@
+Wersja 53
+=========
+
+Pierwsze prawdziwe podłączenie Firebase — projekt już istnieje
+(dieta-app-323b4), więc to nie jest już tylko plan, tylko działający kod.
+
+Nowości:
+- Dodano SDK Firebase (Auth + Firestore, wariant "compat") oraz prawdziwy
+  config projektu w index.html. Config jest bezpieczny do trzymania w
+  kodzie klienckim — to nie jest sekret, tylko identyfikator projektu
+  (bezpieczeństwo zapewniają reguły Firestore, nie ukrywanie tego klucza).
+- Każde urządzenie loguje się automatycznie i bez pytania jako użytkownik
+  anonimowy (Firebase Anonymous Auth) — to nadal jest to samo w pełni
+  lokalne, offline działanie co dotychczas, tylko z gotowym, stabilnym
+  identyfikatorem na przyszłość.
+- Ustawienia → nowa karta „☁️ Konto w chmurze”: przycisk „Połącz z kontem
+  Google” oraz formularz e-mail + hasło do połączenia konta. Obie metody
+  ŁĄCZĄ (nie zakładają od nowa) obecne anonimowe konto, więc żadne dane nie
+  giną przy pierwszym logowaniu. Ten sam e-mail nie może założyć dwóch
+  osobnych kont (raz przez Google, raz hasłem) — Firebase to wymusza, a
+  aplikacja pokazuje czytelny komunikat i opcję zalogowania się do
+  istniejącego konta zamiast błędu.
+- Aplikacja NADAL działa w pełni offline/lokalnie, jeśli Firebase jest
+  niedostępny (brak internetu, zablokowany dostęp do serwerów Google) —
+  cały ekran logowania grzecznie chowa się i pokazuje komunikat zamiast
+  się wywalać.
+
+Ważne — czego jeszcze nie ma: samo logowanie już działa, ale synchronizacja
+danych (spiżarnia/lista zakupów/planer) między urządzeniami i osobami w
+gospodarstwie domowym to osobny, kolejny krok (patrz
+docs/FIREBASE_MIGRATION_PLAN.md) — dziś zalogowanie zabezpiecza tożsamość
+konta, ale dane nadal żyją tylko lokalnie na tym urządzeniu.
+
+Uwaga testowa: środowisko, w którym pracuje Claude, ma zablokowany dostęp
+sieciowy do serwerów Firebase/Google, więc rzeczywiste logowanie (kliknięcie
+"Połącz z kontem Google", wpisanie hasła) nie mogło zostać przetestowane
+automatycznie — przetestowano za to dokładnie to, co dało się sprawdzić bez
+sieci: że aplikacja NIE psuje się, gdy Firebase jest niedostępny, oraz że
+cała reszta funkcji (przepisy, spiżarnia, lista zakupów, motywy) działa bez
+zmian. Prawdziwe logowanie wymaga ręcznego przetestowania przez użytkownika
+na urządzeniu z dostępem do internetu.
