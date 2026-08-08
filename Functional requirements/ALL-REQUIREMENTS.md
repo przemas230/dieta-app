@@ -74,6 +74,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-46: Zabezpieczenie przed przypadkowym zamknięciem aplikacji (Android „Wstecz”)](#fr-46-zabezpieczenie-przed-przypadkowym-zamknięciem-aplikacji-android-wstecz)
 - [FR-47: Brak migotania (FOUC) domyślnych danych profilu przy odświeżeniu](#fr-47-brak-migotania-fouc-domyślnych-danych-profilu-przy-odświeżeniu)
 - [FR-59: Wyśrodkowane okienka modalne, na pełną dostępną szerokość](#fr-59-wyśrodkowane-okienka-modalne-na-pełną-dostępną-szerokość)
+- [FR-70: Licznik nawodnienia w nagłówku — pojedyncze klikalne kropelki](#fr-70-licznik-nawodnienia-w-nagłówku--pojedyncze-klikalne-kropelki)
 
 ### Wygląd i motywy
 - [FR-48: Wybór motywu kolorystycznego aplikacji](#fr-48-wybór-motywu-kolorystycznego-aplikacji)
@@ -1307,21 +1308,26 @@ Spisane 2026-08-07: pierwszy, samodzielnie już działający element szerszej pr
 ## Opis
 Przycisk „➕ Dodaj swój przepis” w zakładce Przepisy otwiera formularz (nazwa, kategoria, czas przygotowania, składniki — jeden na linię, sposób przygotowania, kalorie, opcjonalnie białko/węglowodany/tłuszcz). Zapisany przepis trafia do `state.myRecipes` i od razu jest pełnoprawnym przepisem: pojawia się na liście przepisów swojej kategorii oznaczony plakietką „✍️ Twój przepis”, można go zaplanować (Planer), dodać do listy zakupów, sprawdzić jego składniki względem spiżarni, oznaczyć jako zrobiony (z historią i oceną) oraz ocenić gwiazdkowo (FR-67) — dokładnie tak samo jak którykolwiek z 229 wbudowanych przepisów.
 
-Pola makroskładników są opcjonalne: bez nich przepis po prostu nie pokazuje wyniku dopasowania 🎯 (ta sama reguła co dla istniejących przepisów bez pełnych danych), zamiast wymuszać podanie wartości, których użytkownik może nie znać.
+Pola makroskładników są opcjonalne i wypełniają się automatycznie w miarę wpisywania składników: formularz na bieżąco parsuje każdą linię składnika (rozpoznając ilość i gramaturę tak samo jak reszta aplikacji przy dodawaniu do spiżarni/listy zakupów) i sumuje wartości z osobnej bazy odżywczej (~90 najpopularniejszych składników). Pod polem widać, ile składników zostało rozpoznane. Ręczne wpisanie wartości w pole kalorii/białka/węgli/tłuszczu ma pierwszeństwo — od tego momentu auto-obliczanie przestaje nadpisywać akurat to pole, więc użytkownik zawsze może poprawić wynik, a nie tylko go zaakceptować.
 
 ## Kryteria akceptacji
-- Formularz wymaga: nazwy, przynajmniej jednego składnika, dodatniej liczby kalorii. Kategoria, czas i sposób przygotowania mają rozsądne wartości domyślne, jeśli pozostawione puste.
+- Formularz wymaga: nazwy, przynajmniej jednego składnika, dodatniej liczby kalorii (przy braku ręcznej wartości i nierozpoznanych składnikach walidacja ustawia fokus na polu kalorii z jasnym komunikatem, zamiast tylko ciche powiadomienie na dole ekranu). Kategoria, czas i sposób przygotowania mają rozsądne wartości domyślne, jeśli pozostawione puste.
 - Zapisany przepis jest natychmiast widoczny na liście przepisów, w wybranej kategorii, z plakietką odróżniającą go od wbudowanych.
 - Własny przepis działa identycznie jak wbudowany we WSZYSTKICH miejscach odwołujących się do przepisów po ID: Planer, lista zakupów, sprawdzenie spiżarni, historia gotowania, wyszukiwanie, filtrowanie, sortowanie.
 - Własny przepis można usunąć bezpośrednio z karty (przycisk „🗑️ Usuń”, z potwierdzeniem) — usunięcie nie wpływa na wcześniej dodane wpisy historii gotowania czy pozycje na liście zakupów pochodzące z tego przepisu.
+- Wpisanie składnika z rozpoznawalną ilością/gramaturą (np. „150 g piersi z kurczaka”) automatycznie dolicza jego kalorie i makroskładniki do sumy przepisu; nierozpoznane składniki (rzadkie/nietypowe nazwy) są pomijane w sumie, a formularz jasno informuje ile z wpisanych linii zostało rozpoznanych.
+- Ręczna edycja pola kalorii/białka/węglowodanów/tłuszczu zatrzymuje automatyczne nadpisywanie TEGO konkretnego pola do końca sesji formularza (nowe otwarcie formularza resetuje ten stan).
 
 ## Uwagi
 Spisane 2026-08-07: pierwszy, w pełni lokalny element szerszej prośby o możliwość dodawania przepisów przez użytkowników z myślą o przyszłej społeczności — reszta (przepisy widoczne dla INNYCH użytkowników, moderacja) wymaga chmury i jest opisana w `docs/FIREBASE_MIGRATION_PLAN.md` jako `source: "community"` z polem `status`. Ten sam przepis, dodany dziś lokalnie jako `source: "custom"`, jest strukturalnie gotowy stać się przepisem społecznościowym po podłączeniu Firebase, bez zmiany kształtu danych.
 
 Technicznie: wprowadzono `allRecipes()` (łączy 229 wbudowanych przepisów z `state.myRecipes`) i `findRecipeById(id)`, zastępując bezpośrednie odwołania do stałej tablicy `RECIPES` we wszystkich miejscach, gdzie przepis jest wyszukiwany po ID lub filtrowany po kategorii.
 
+Zrewidowane 2026-08-08: dodano automatyczne obliczanie kalorii/makroskładników z wpisanych składników (`INGREDIENT_MACRO_DB`, `estimateRecipeMacrosFromText`) po zgłoszeniu, że ręczne wpisywanie wszystkich wartości było zarówno uciążliwe, jak i ryzykowne dla rzetelności danych — użytkownik bez wiedzy żywieniowej mógł łatwo wpisać nieprawdziwe liczby. Przy okazji poprawiono czytelność walidacji formularza (fokus na brakującym polu zamiast tylko cichego komunikatu).
+
 ## Historia rewizji
 - **v1** (2026-08-07): Pierwsza wersja wymagania na podstawie polecenia użytkownika.
+- **v2** (2026-08-08): Dodano automatyczne obliczanie makroskładników z listy składników oraz poprawiono czytelność walidacji — patrz "Uwagi" i zaktualizowane kryteria akceptacji.
 
 ---
 
@@ -1410,8 +1416,33 @@ Zrewidowane tego samego dnia po pierwszym prawdziwym teście: użytkownik połą
 
 Testowanie: środowisko deweloperskie miało zablokowany sieciowo dostęp do `gstatic.com`/serwerów Firebase (polityka sieciowa piaskownicy), więc rzeczywiste logowanie nie mogło zostać zweryfikowane automatycznie od strony dewelopera. Prawdziwe logowanie Google zostało już potwierdzone jako działające przez użytkownika na produkcyjnej domenie (`przemas230.github.io`, dodanej do autoryzowanych domen Firebase po napotkaniu błędu `auth/unauthorized-domain`); nowe przyciski logowania na drugim urządzeniu wymagają analogicznej ręcznej weryfikacji przez użytkownika.
 
+Zrewidowane ponownie 2026-08-08: użytkownik zgłosił błąd logowania e-mailem/hasłem na konto, które w rzeczywistości zostało założone wyłącznie przez Google (nigdy nie miało ustawionego hasła) — Firebase zwraca w takim przypadku niejasny `auth/invalid-credential`. Dodano czytelny komunikat sugerujący użycie logowania Google zamiast e-maila/hasła, gdy taki błąd wystąpi.
+
 ## Historia rewizji
 - **v1** (2026-08-08): Pierwsza wersja wymagania na podstawie polecenia użytkownika.
 - **v2** (2026-08-08): Dodano osobne przyciski logowania (nie tylko łączenia) po zgłoszeniu, że drugie urządzenie nie mogło zalogować się na już istniejące konto — patrz "Uwagi".
+- **v3** (2026-08-08): Doprecyzowano komunikat błędu `auth/invalid-credential` dla kont bez ustawionego hasła — patrz "Uwagi".
+
+---
+
+# FR-70: Licznik nawodnienia w nagłówku — pojedyncze klikalne kropelki
+
+**Obszar:** Nagłówek i nawigacja  
+**Status:** Zaimplementowane
+
+## Opis
+Pasek kropelek w nagłówku (widoczny na każdej zakładce, niezależnie od tego, czy nagłówek jest zwinięty) pokazuje dzisiejsze nawodnienie i pozwala je zmieniać bezpośrednio stamtąd, bez przechodzenia do zakładki Postęp. Każda z 8 kropelek jest osobnym punktem klikalnym: kliknięcie kropelki nr `i` ustawia licznik na `i`, a ponowne kliknięcie tej samej (już ustawionej) kropelki cofa licznik o jedną szklankę — dokładnie ten sam mechanizm „ustaw poziom kliknięciem” co kwadraciki wody na zakładce Postęp (`renderWater`).
+
+## Kryteria akceptacji
+- Kliknięcie dowolnej kropelki zmienia licznik na wartość odpowiadającą jej pozycji (1-8).
+- Kliknięcie kropelki dokładnie na aktualnym poziomie cofa licznik o jedną szklankę (nie zeruje go całkowicie).
+- Zmiana w nagłówku natychmiast odzwierciedla się w widoku kwadracików na Postępie i odwrotnie.
+- Nie ma stanu, z którego nie da się cofnąć przypadkowego dodatkowego kliknięcia — każda wartość 0-8 jest osiągalna wprost, bez zawijania.
+
+## Uwagi
+Zrewidowane 2026-08-08: pierwotna wersja traktowała cały pasek kropelek jako jeden przycisk wyłącznie zwiększający licznik (z zawinięciem do zera dopiero po przekroczeniu 8) — przypadkowe podwójne kliknięcie nie dało się cofnąć inaczej niż dochodząc aż do pełnych 8 szklanek. Naprawiono, rozbijając pasek na 8 niezależnie klikalnych kropelek z tą samą logiką co już dobrze działające kwadraciki na Postępie.
+
+## Historia rewizji
+- **v1** (2026-08-08): Pierwsza wersja wymagania, spisana po naprawie zgłoszonego błędu.
 
 ---
