@@ -100,6 +100,12 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-68: Ustawienia gospodarstwa domowego i przepisów społeczności (stan przejściowy)](#fr-68-ustawienia-gospodarstwa-domowego-i-przepisów-społeczności-stan-przejściowy)
 - [FR-69: Logowanie w chmurze (anonimowe, Google, e-mail i hasło)](#fr-69-logowanie-w-chmurze-anonimowe-google-e-mail-i-hasło)
 
+### Ustawienia
+- [FR-71: Zakładki w Ustawieniach — Konto, Wygląd, Przypomnienia, Ulubione](#fr-71-zakładki-w-ustawieniach--konto-wygląd-przypomnienia-ulubione)
+
+### Ustawienia / Profil
+- [FR-72: Wymuszenie ustawienia profilu przy pierwszym uruchomieniu](#fr-72-wymuszenie-ustawienia-profilu-przy-pierwszym-uruchomieniu)
+
 ---
 
 ## Analiza spójności i wykluczeń
@@ -1444,5 +1450,100 @@ Zrewidowane 2026-08-08: pierwotna wersja traktowała cały pasek kropelek jako j
 
 ## Historia rewizji
 - **v1** (2026-08-08): Pierwsza wersja wymagania, spisana po naprawie zgłoszonego błędu.
+
+---
+
+# FR-71: Zakładki w Ustawieniach — Konto, Wygląd, Przypomnienia, Ulubione
+
+**Obszar:** Ustawienia
+**Status:** Zaimplementowane
+
+## Opis
+Widok Ustawień ma na samej górze poziomy przełącznik zakładek (styl taki sam
+jak pigułki kategorii przepisów): „👤 Konto”, „🎨 Wygląd”, „💧 Przypomnienia”,
+„⭐ Ulubione”. Każda zakładka pokazuje tylko powiązane z nią karty ustawień
+zamiast jednej długiej listy do przewijania.
+
+Zakładka „👤 Konto” (domyślnie otwarta przy każdym wejściu w Ustawienia)
+zawiera, w tej kolejności: kartę „⚙️ Twój profil” (zaczynającą się od pola
+„Twoja nazwa w aplikacji”, a dalej płeć/wiek/wzrost/waga/cel/aktywność/filtry
+dietetyczne), kartę „☁️ Konto w chmurze” i kartę „🌍 Przepisy społeczności”.
+
+Zakładka „🎨 Wygląd” zawiera kartę „🎨 Wygląd aplikacji” (motyw, skala UI).
+
+Zakładka „💧 Przypomnienia” zawiera kartę przypomnienia o piciu wody oraz
+kartę diagnostyki powiadomień o wodzie.
+
+Zakładka „⭐ Ulubione” zawiera kartę „⭐ Ulubione składniki”.
+
+## Kryteria akceptacji
+- Kliknięcie pigułki zakładki pokazuje wyłącznie panel tej zakładki, ukrywając
+  pozostałe trzy.
+- Przy każdym otwarciu widoku Ustawień (z dolnej nawigacji) domyślnie aktywna
+  jest zakładka „Konto” — stan poprzednio wybranej zakładki nie jest
+  pamiętany między otwarciami.
+- Pole „Twoja nazwa w aplikacji” znajduje się fizycznie na początku karty
+  „Twój profil”, a nie w osobnej karcie nad nią.
+- Zmiana zakładek nie resetuje niezapisanych zmian w formularzu profilu.
+
+## Historia rewizji
+- **v1** (2026-08-08): Pierwsza wersja wymagania — przebudowa Ustawień z
+  jednej długiej listy kart na cztery tematyczne zakładki, na życzenie
+  użytkownika ("zrób z tego jakiś kompaktowy wygląd... żeby łatwo się można
+  było przełączać pomiędzy ustawieniami wyglądu aplikacji, konta,
+  przypomnień i ulubionych rzeczy").
+
+---
+
+# FR-72: Wymuszenie ustawienia profilu przy pierwszym uruchomieniu
+
+**Obszar:** Ustawienia / Profil
+**Status:** Zaimplementowane
+
+## Opis
+Przy zupełnie pierwszym, świeżym uruchomieniu aplikacji (brak wcześniej
+zapisanego stanu) profil użytkownika NIE jest już cicho wypełniany
+przykładowymi domyślnymi danymi (płeć, wiek, wzrost, waga, cel). Zamiast
+tego profil dostaje flagę `configured = false`, dopóki użytkownik
+samodzielnie nie uzupełni i nie zapisze tych danych w Ustawieniach.
+
+Dopóki profil nie jest skonfigurowany:
+- Pola wieku/wzrostu/wagi/wagi docelowej w formularzu Ustawień są puste
+  (zamiast pokazywać przykładowe liczby), z podpowiedziami w placeholderach.
+- Pod formularzem widnieje komunikat zachęcający: „👋 Uzupełnij swoje dane
+  powyżej i zapisz, żeby dopasować dietę do siebie.”
+- Nagłówek aplikacji zamiast pełnych statystyk (płeć, wiek, cel kaloryczny…)
+  pokazuje zaproszenie „👋 Ustaw swój profil w Ustawieniach, aby dopasować
+  dietę do siebie”.
+- Znaczek dopasowania do profilu (🎯) na kartach przepisów nie jest w ogóle
+  pokazywany (dopasowanie nie ma sensu bez realnych danych użytkownika).
+
+Po pierwszym zapisaniu formularza profilu flaga `configured` ustawia się na
+`true` na stałe i aplikacja od tego momentu zachowuje się jak dotychczas
+(pełne statystyki w nagłówku, znaczek 🎯 na przepisach).
+
+Użytkownicy, którzy korzystali z aplikacji przed wprowadzeniem tej zmiany,
+mają swój zapisany profil automatycznie oznaczony jako już skonfigurowany —
+ta zmiana dotyczy wyłącznie zupełnie nowych instalacji i w żaden sposób nie
+wpływa na istniejących użytkowników ani ich zapisane dane.
+
+## Kryteria akceptacji
+- Świeża instalacja (czysty `localStorage`) startuje z `profile.configured
+  === false` i wewnętrznymi wartościami domyślnymi zachowanymi tylko do
+  celów obliczeniowych (nigdy nie pokazywanymi użytkownikowi jako realne
+  dane).
+- Zapisanie formularza Ustawień (przycisk „Zapisz”) ustawia
+  `configured = true` niezależnie od tego, czy użytkownik zmienił wszystkie
+  pola, czy tylko część.
+- Przycisk „Resetuj” w Ustawieniach przywraca wartości domyślne, ale od razu
+  oznacza profil jako skonfigurowany (`configured: true`) — reset nie ma
+  cofać użytkownika do stanu „pierwsze uruchomienie”.
+- Wcześniej zapisane profile (bez pola `configured` w danych) są przy
+  wczytaniu stanu automatycznie traktowane jako `configured: true`.
+
+## Historia rewizji
+- **v1** (2026-08-08): Pierwsza wersja wymagania, na życzenie użytkownika
+  ("przy pierwszym otwarciu konta wyczyść domyślne ustawienia płci wieku
+  wagi itp żeby ktoś musiał sam sobie ustawić zanim dopasuje dietę").
 
 ---

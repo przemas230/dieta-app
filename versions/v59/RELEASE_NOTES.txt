@@ -1,0 +1,22 @@
+Wersja 59
+=========
+
+Przebudowa wyglądu Ustawień oraz wymuszenie ustawienia własnego profilu
+przy pierwszym uruchomieniu aplikacji.
+
+Zmiany:
+- Ustawienia mają teraz kompaktowy przełącznik zakładek na górze: „👤 Konto”,
+  „🎨 Wygląd”, „💧 Przypomnienia”, „⭐ Ulubione” — zamiast jednej długiej listy
+  ośmiu kart do przewijania. Zakładka „Konto” (domyślnie otwarta) łączy
+  Twój profil, nazwę w aplikacji i Konto w chmurze w jednym miejscu.
+- „Twój profil” jest teraz pierwszą, najważniejszą kartą, a pole „Twoja
+  nazwa w aplikacji” przeniesiono na sam początek tej sekcji (zamiast osobnej
+  karty nad nią) — zgodnie z życzeniem, żeby te dwie rzeczy były razem.
+- Przy pierwszym, zupełnie świeżym uruchomieniu aplikacji pola płeć/wiek/
+  wzrost/waga/cel nie są już cicho wypełnione przykładowymi danymi (37 lat,
+  164 cm, 67 kg) — trzeba je samodzielnie uzupełnić i zapisać, zanim
+  aplikacja zacznie pokazywać dopasowanie przepisów (🎯) do Twojego profilu.
+  Nagłówek pokazuje w tym czasie wyraźne zaproszenie „Ustaw swój profil w
+  Ustawieniach”. Osoby, które już wcześniej korzystały z aplikacji i mają
+  zapisany profil, nie są tym w żaden sposób dotknięte — to dotyczy
+  wyłącznie zupełnie nowej instalacji.
