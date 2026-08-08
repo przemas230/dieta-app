@@ -1,0 +1,20 @@
+<!-- Placeholder launcher icon — a plain plate shape in the app's cream color
+     on the teal background (see colors.xml), matching the web app's theme
+     colors. Replace via Android Studio's Image Asset tool (right-click res/
+     → New → Image Asset) once you have real artwork; this just keeps the
+     manifest's icon references valid so the project builds today. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FAF7F0"
+        android:pathData="M54,22 C68.9,22 81,34.1 81,49 C81,63.9 68.9,76 54,76 C39.1,76 27,63.9 27,49 C27,34.1 39.1,22 54,22 Z" />
+    <path
+        android:fillColor="#1F6B5C"
+        android:pathData="M54,34 C61.7,34 68,40.3 68,48 C68,55.7 61.7,62 54,62 C46.3,62 40,55.7 40,48 C40,40.3 46.3,34 54,34 Z" />
+    <path
+        android:fillColor="#FAF7F0"
+        android:pathData="M42,80 h24 v6 h-24 z" />
+</vector>
