@@ -1,0 +1,32 @@
+Wersja 57
+=========
+
+Trzy naprawione błędy plus nowa funkcja automatycznego wyliczania kalorii i
+makroskładników przy dodawaniu własnych przepisów.
+
+Naprawione błędy:
+- Licznik wody w nagłówku (kropelki) dało się tylko zwiększać — po
+  przypadkowym podwójnym kliknięciu nie było jak się cofnąć (jedynym
+  "cofnięciem" był powrót do zera dopiero po dojściu do 8/8). Naprawiono na
+  ten sam, sprawdzony mechanizm co kwadraciki na zakładce Postęp: każda
+  kropelka to osobny, klikalny punkt — kliknięcie ustawia poziom na "tyle
+  szklanek", a kliknięcie już ustawionego poziomu cofa o jedną szklankę.
+- Logowanie e-mailem i hasłem na konto, które w rzeczywistości nigdy nie
+  miało ustawionego hasła (założone tylko przez Google) — zwracało niejasny
+  błąd "invalid credentials". Dodano czytelny komunikat sugerujący użycie
+  przycisku logowania Google zamiast e-maila/hasła w takim przypadku.
+- Dodawanie własnego przepisu: brak kalorii/nazwy/składników kończył się
+  tylko cichym komunikatem na dole ekranu (łatwym do przeoczenia), a
+  formularz zostawał bez wskazania, co dokładnie trzeba poprawić. Teraz
+  brakujące pole jest też ustawiane w fokusie, a treść komunikatu jest
+  bardziej konkretna.
+
+Nowa funkcja:
+- Formularz "Dodaj swój przepis" oblicza teraz kalorie, białko, węglowodany
+  i tłuszcz automatycznie na bieżąco, na podstawie wpisanych składników i
+  ich gramatury (np. "150 g piersi z kurczaka", "100 g ryżu") — nowa baza
+  danych odżywczych dla ~90 najpopularniejszych składników z przepisów w
+  aplikacji. Pod polami widać, ile składników zostało rozpoznanych. Jeśli
+  ręcznie wpiszesz własną wartość w pole kalorii/białka/węgli/tłuszczu, ta
+  wartość ma pierwszeństwo i przestaje być nadpisywana automatycznie —
+  auto-obliczanie to pomoc, nie przymus.
