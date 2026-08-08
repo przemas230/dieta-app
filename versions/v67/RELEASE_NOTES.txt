@@ -1,0 +1,45 @@
+Wersja 67
+=========
+
+Pełna synchronizacja WSZYSTKICH danych w chmurze (lista zakupów, planer,
+historia gotowania, dziennik posiłków, waga, spiżarnia i reszta) z prawdziwym
+scalaniem zmian offline oraz przycisk wylogowania.
+
+Zmiany:
+- Naprawiono zgłoszony problem: lista zakupów (i cała reszta danych, która
+  wcześniej celowo nie synchronizowała się, patrz poprzednie wersje) teraz
+  też zapisuje się do chmury i odczytuje z niej na wszystkich zalogowanych
+  urządzeniach: lista zakupów, planer tygodniowy, historia gotowania,
+  dziennik posiłków, historia wagi i nawodnienia, log aktywności oraz
+  ustawienia przypomnień o wodzie.
+- Prawdziwe scalanie zmian zamiast „ostatni zapis wygrywa": jeśli urządzenie
+  było offline i w międzyczasie coś zmieniło się też na innym urządzeniu,
+  po powrocie do sieci aplikacja porównuje trzy wersje (stan sprzed
+  rozdzielenia, Twoją lokalną zmianę i zmianę z chmury) i automatycznie
+  łączy je, jeśli dotyczyły różnych rzeczy (np. Ty dodałaś/eś mleko do
+  listy zakupów offline, ktoś inny dodał chleb online — obie pozycje
+  zostają na liście).
+- Jeśli DOKŁADNIE ta sama rzecz zmieniła się inaczej na obu urządzeniach
+  (prawdziwa sprzeczność, np. Ty odhaczyłaś/eś produkt jako kupiony, a na
+  innym urządzeniu ktoś zmienił jego ilość), aplikacja pokazuje okienko
+  „🔄 Synchronizacja z chmury” z listą: co dodano, co usunięto, co
+  zmieniono na innym urządzeniu, oraz osobno — prawdziwe sprzeczności,
+  z możliwością przywrócenia Twojej wersji dla każdej z osobna zamiast
+  cichego nadpisania.
+- Pierwsze zalogowanie na już istniejące konto na nowym urządzeniu (bez
+  wspólnej historii do porównania) nadal po prostu pobiera dane z konta,
+  tak jak dotychczas — bez zbędnych okienek „sprzeczności” dla danych,
+  które i tak nigdy się nie synchronizowały.
+- Nowy przycisk „🚪 Wyloguj się z tego urządzenia” w Ustawieniach → „Konto
+  w chmurze”. Pyta, czy oprócz wylogowania wyczyścić też dane zapisane
+  lokalnie na tym urządzeniu (przydatne na współdzielonym urządzeniu) —
+  domyślnie dane zostają, tylko przestają się synchronizować, dopóki nie
+  zalogujesz się ponownie.
+- Cache Service Workera podbity do dieta-app-v43.
+
+Uwaga: rzeczywiste działanie scalania między dwoma prawdziwymi urządzeniami
+wymaga weryfikacji przez Ciebie — to środowisko deweloperskie nie ma
+dostępu do serwerów Firebase. Logika scalania (dodawanie/usuwanie/zmiana,
+wykrywanie prawdziwych sprzeczności, pierwsza synchronizacja nowego
+urządzenia, wylogowanie) została w pełni przetestowana automatycznie z
+podstawionym Firestore.

@@ -1157,8 +1157,7 @@
         <h3 style="margin:0 0 10px; font-size:15px;">☁️ Konto w chmurze</h3>
         <div class="hint-text" id="authStatusLine" style="margin:0 0 10px;">Sprawdzanie stanu połączenia…</div>
         <div id="authLinkedSection" style="display:none;">
-          <div class="hint-text" style="margin:0 0 10px;">✅ Twoje konto jest zabezpieczone i WSZYSTKIE dane — profil, spiżarnia, lista zakupów, planer, ulubione, własne przepisy, oceny, historia gotowania i ustawienia — synchronizują się automatycznie między wszystkimi urządzeniami zalogowanymi tym samym kontem. Jeśli jakieś urządzenie było offline i w międzyczasie coś zmieniło się też na innym, po powrocie do sieci aplikacja sama scala obie zmiany; jeśli dokładnie ta sama rzecz zmieniła się inaczej na obu urządzeniach naraz, pokaże Ci to do ręcznej decyzji zamiast czegokolwiek cicho nadpisywać. Wspólne gospodarstwo domowe (kilka OSÓB edytujących wspólnie tę samą listę zakupów w tym samym czasie) to osobna, jeszcze niegotowa funkcja (patrz <code>docs/FIREBASE_MIGRATION_PLAN.md</code>).</div>
-          <button class="btn ghost" id="signOutBtn" style="width:100%;">🚪 Wyloguj się z tego urządzenia</button>
+          <div class="hint-text" style="margin:0;">✅ Twoje konto jest zabezpieczone, a Twoje dane osobiste — nazwa w aplikacji, profil diety, spiżarnia, ulubione, własne przepisy, oceny i ten przełącznik ustawień — synchronizują się automatycznie między wszystkimi urządzeniami, na których jesteś zalogowana/y tym samym kontem. Wspólny planer i lista zakupów dla całego gospodarstwa domowego wciąż czekają na dokończenie (kolejny krok w <code>docs/FIREBASE_MIGRATION_PLAN.md</code>) — to osobna funkcja od synchronizacji danych osobistych.</div>
         </div>
         <div id="authUnlinkedSection">
           <div class="hint-text" style="margin:0 0 6px; font-weight:700;">Pierwsze urządzenie / nowe konto:</div>
@@ -1514,20 +1513,6 @@
       <button id="userProfileClose">✕</button>
     </div>
     <div id="userProfileBody"></div>
-  </div>
-</div>
-
-<div class="modal-overlay center" id="syncConflictOverlay">
-  <div class="modal-sheet center-sheet">
-    <div class="modal-head">
-      <h3>🔄 Synchronizacja z chmury</h3>
-      <button id="syncConflictClose">✕</button>
-    </div>
-    <div class="hint-text" style="margin:0 0 10px;">To urządzenie i inne urządzenie zmieniły te same rzeczy inaczej (np. jedno było offline). Zastosowano domyślnie wersję z chmury — możesz przywrócić swoją wersję dla każdej pozycji osobno.</div>
-    <div id="syncConflictBody"></div>
-    <div class="shop-actions">
-      <button class="btn primary" id="syncConflictDoneBtn">Gotowe</button>
-    </div>
   </div>
 </div>
 
@@ -2546,7 +2531,6 @@ function loadState(){
       if(!s.recipeReviews) s.recipeReviews = {};
       if(s.communityRecipesEnabled===undefined) s.communityRecipesEnabled = false;
       if(!s.household) s.household = {id:null, name:"", inviteCode:null, members:[]};
-      if(s._lastSyncedSnapshot===undefined) s._lastSyncedSnapshot = null;
       const shoppingVals = Object.values(s.shopping||{});
       if(shoppingVals.some(v=>v && v.unitCat===undefined)){
         s.shopping = {}; s.recipeAdded = {};
@@ -2554,7 +2538,7 @@ function loadState(){
       return s;
     }
   }catch(e){}
-  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, plannerLeftover:{}, water:{date:"",count:0}, waterHistory:{}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, pantryCategoryOverride:{}, waterNotifEnabled:false, theme:"teal", waterReminder:{...DEFAULT_WATER_REMINDER}, uiScale:detectDefaultUiScale(), recipeRating:{}, swipeRatingStyle:"balloon", displayName:"", myRecipes:[], recipeReviews:{}, communityRecipesEnabled:false, household:{id:null, name:"", inviteCode:null, members:[]}, _lastSyncedSnapshot:null};
+  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, plannerLeftover:{}, water:{date:"",count:0}, waterHistory:{}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, pantryCategoryOverride:{}, waterNotifEnabled:false, theme:"teal", waterReminder:{...DEFAULT_WATER_REMINDER}, uiScale:detectDefaultUiScale(), recipeRating:{}, swipeRatingStyle:"balloon", displayName:"", myRecipes:[], recipeReviews:{}, communityRecipesEnabled:false, household:{id:null, name:"", inviteCode:null, members:[]}};
 }
 let state = loadState();
 document.documentElement.setAttribute("data-theme", state.theme || "teal");
@@ -2568,92 +2552,16 @@ function saveState(){
 }
 // ---------- CLOUD SYNC (Firestore) ----------
 // Personal data only (users/{uid}), per docs/FIREBASE_MIGRATION_PLAN.md
-// checklist item 6. `households/*` (shared shopping list edited literally
-// simultaneously by two people) is still a future step, but the user
-// explicitly asked for EVERY field to round-trip through the cloud today —
-// so instead of excluding collision-prone keys (shopping/planner/history),
-// they're included here and protected by a real 3-way merge below instead.
-const SYNCED_STATE_KEYS = ["displayName","profile","theme","uiScale","communityRecipesEnabled","pantry","pantryUnitOverride","pantryCategoryOverride","favorites","favIngredients","myRecipes","recipeReviews","recipeRating","customTiles","swipeRatingStyle","shopping","recipeAdded","planner","plannerScale","plannerLeftover","cooked","eaten","waterHistory","water","weights","history","waterNotifEnabled","waterReminder","household"];
-// Keys shaped as {id: value} maps, where a real 3-way merge can be done
-// PER ENTRY (so two devices adding different shopping items both survive,
-// instead of one whole-field overwrite winning outright).
-const MAP_MERGE_KEYS = ["shopping","recipeAdded","planner","plannerScale","plannerLeftover","cooked","eaten","waterHistory","favorites","favIngredients","pantry","pantryUnitOverride","pantryCategoryOverride","customTiles","recipeReviews","recipeRating"];
-// Arrays of objects with a stable .id, diffed the same way as MAP_MERGE_KEYS
-// after converting array<->map by id.
-const ARRAY_BY_ID_MERGE_KEYS = ["myRecipes"];
-// Everything else in SYNCED_STATE_KEYS (displayName, theme, uiScale,
-// communityRecipesEnabled, swipeRatingStyle, profile, water, weights,
-// history, waterNotifEnabled, waterReminder, household) is a single scalar
-// value — compared and resolved as one whole unit, no per-item merge.
+// checklist item 6. Shared household data (planer/lista zakupów/historia
+// gotowania) deliberately stays out of this list — that needs the
+// households/* model from the same doc (checklist item 8, still pending),
+// and mixing it in here now would silently overwrite one device's plan
+// with another's instead of actually merging them.
+const SYNCED_STATE_KEYS = ["displayName","profile","theme","uiScale","communityRecipesEnabled","pantry","pantryUnitOverride","pantryCategoryOverride","favorites","favIngredients","myRecipes","recipeReviews","recipeRating","customTiles","swipeRatingStyle"];
 function syncableStateSubset(){
   const out = {};
   SYNCED_STATE_KEYS.forEach(k=>{ if(state[k]!==undefined) out[k] = state[k]; });
   return out;
-}
-function pickSyncedKeys(obj){
-  const out = {};
-  SYNCED_STATE_KEYS.forEach(k=>{ if(obj && obj[k]!==undefined) out[k] = obj[k]; });
-  return out;
-}
-function deepEqualJson(a,b){ return JSON.stringify(a===undefined?null:a) === JSON.stringify(b===undefined?null:b); }
-// Per-entry 3-way diff for one map-shaped key. base = last state we know
-// both sides agreed on; local/remote = current values on each side.
-// Returns the merged map plus any genuine conflicts (same entry changed
-// differently on both sides) and a log of non-conflicting remote-driven
-// changes, for the "co się zmieni po synchro" summary the user asked for.
-function diffMergeMapKey(key, base, local, remote){
-  base = base||{}; local = local||{}; remote = remote||{};
-  const ids = new Set([...Object.keys(base), ...Object.keys(local), ...Object.keys(remote)]);
-  const merged = {};
-  const conflicts = [];
-  const remoteChanges = [];
-  ids.forEach(id=>{
-    const b = base[id], l = local[id], r = remote[id];
-    const localChanged = !deepEqualJson(l,b);
-    const remoteChanged = !deepEqualJson(r,b);
-    if(!localChanged && !remoteChanged){ if(b!==undefined) merged[id] = b; return; }
-    if(localChanged && !remoteChanged){ if(l!==undefined) merged[id] = l; return; }
-    if(!localChanged && remoteChanged){
-      if(r!==undefined) merged[id] = r;
-      remoteChanges.push({key, id, kind: r===undefined ? "removed" : (b===undefined ? "added" : "changed"), value:r});
-      return;
-    }
-    if(deepEqualJson(l,r)){ if(l!==undefined) merged[id] = l; return; }
-    conflicts.push({key, id, localValue:l, remoteValue:r, baseValue:b});
-    if(r!==undefined) merged[id] = r; // default resolution until the user says otherwise
-  });
-  return {merged, conflicts, remoteChanges};
-}
-function arrayById(arr){ return Object.fromEntries((arr||[]).filter(x=>x && x.id!==undefined).map(x=>[x.id,x])); }
-function computeMergedSyncState(remoteData){
-  const base = state._lastSyncedSnapshot || {};
-  const merged = {};
-  const conflicts = [];
-  const remoteChanges = [];
-  SYNCED_STATE_KEYS.forEach(key=>{
-    if(remoteData[key]===undefined) return; // remote doc predates this key — leave local as-is, next push fills it in
-    if(MAP_MERGE_KEYS.includes(key)){
-      const d = diffMergeMapKey(key, base[key], state[key], remoteData[key]);
-      merged[key] = d.merged;
-      conflicts.push(...d.conflicts);
-      remoteChanges.push(...d.remoteChanges);
-    }else if(ARRAY_BY_ID_MERGE_KEYS.includes(key)){
-      const d = diffMergeMapKey(key, arrayById(base[key]), arrayById(state[key]), arrayById(remoteData[key]));
-      merged[key] = Object.values(d.merged);
-      conflicts.push(...d.conflicts);
-      remoteChanges.push(...d.remoteChanges);
-    }else{
-      const b = base[key], l = state[key], r = remoteData[key];
-      const localChanged = !deepEqualJson(l,b);
-      const remoteChanged = !deepEqualJson(r,b);
-      if(!remoteChanged){ merged[key] = l; return; }
-      if(!localChanged){ merged[key] = r; remoteChanges.push({key, id:null, kind:"changed", value:r}); return; }
-      if(deepEqualJson(l,r)){ merged[key] = l; return; }
-      conflicts.push({key, id:null, localValue:l, remoteValue:r, baseValue:b});
-      merged[key] = r;
-    }
-  });
-  return {merged, conflicts, remoteChanges};
 }
 let cloudPushTimer = null;
 function scheduleCloudPush(){
@@ -2663,67 +2571,34 @@ function scheduleCloudPush(){
 }
 function pushStateToCloud(){
   if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous) return;
-  const subset = syncableStateSubset();
   fbDb.collection("users").doc(currentFbUser.uid).set(
-    Object.assign({}, subset, {updatedAt: firebase.firestore.FieldValue.serverTimestamp()}),
+    Object.assign(syncableStateSubset(), {updatedAt: firebase.firestore.FieldValue.serverTimestamp()}),
     {merge:true}
-  ).then(()=>{
-    // Only adopt this as the new merge baseline once the server actually
-    // acknowledged it — while offline this Promise stays pending, so a
-    // stale baseline correctly keeps looking "locally changed" until the
-    // write really lands (see docs/FIREBASE_MIGRATION_PLAN.md, sync notes).
-    state._lastSyncedSnapshot = subset;
-    try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
-  }).catch(e=> console.warn("Nie udało się zsynchronizować danych z chmurą.", e));
+  ).catch(e=> console.warn("Nie udało się zsynchronizować danych z chmurą.", e));
   touchPublicProfile();
 }
 function applyRemoteSyncedState(data){
-  if(state._lastSyncedSnapshot===null){
-    // This device has never synced with this account before (fresh
-    // install, or just linked/signed into an EXISTING account for the
-    // first time) — there's no shared history to merge against, so
-    // whatever this device had locally isn't a "conflicting edit", it's
-    // just stale/irrelevant. Adopt the account's data wholesale, exactly
-    // like before real merging existed, instead of manufacturing a
-    // conflict for every field that happens to differ.
-    let changed = false;
-    SYNCED_STATE_KEYS.forEach(k=>{
-      if(data[k]!==undefined && !deepEqualJson(data[k], state[k])){ state[k] = data[k]; changed = true; }
-    });
-    state._lastSyncedSnapshot = pickSyncedKeys(data);
-    try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
-    if(changed){ refreshCommunityRecipesSubscription(); refreshUiAfterSync(); }
-    return;
-  }
-  const {merged, conflicts, remoteChanges} = computeMergedSyncState(data);
   let changed = false;
-  Object.keys(merged).forEach(k=>{
-    if(!deepEqualJson(merged[k], state[k])){ state[k] = merged[k]; changed = true; }
+  SYNCED_STATE_KEYS.forEach(k=>{
+    if(data[k]!==undefined && JSON.stringify(data[k]) !== JSON.stringify(state[k])){
+      state[k] = data[k];
+      changed = true;
+    }
   });
-  state._lastSyncedSnapshot = pickSyncedKeys(data);
+  if(!changed) return;
   try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
-  if(changed){
-    refreshCommunityRecipesSubscription();
-    refreshUiAfterSync(conflicts.length>0);
-  }
-  // Any local-only changes folded into the merge (or conflicts resolved
-  // in the user's favor below) need to reach the cloud too, so both
-  // sides converge instead of one silently reverting on the next sync.
-  scheduleCloudPush();
-  if(conflicts.length) showSyncConflictModal(conflicts, remoteChanges);
+  refreshCommunityRecipesSubscription();
+  refreshUiAfterSync();
 }
-function refreshUiAfterSync(silent){
+function refreshUiAfterSync(){
   document.documentElement.setAttribute("data-theme", state.theme || "teal");
   applyUiScale(state.uiScale);
   renderHeader();
   renderPills();
   renderRecipes();
   if(document.getElementById("view-pantry").classList.contains("active")) renderPantry();
-  if(document.getElementById("view-shop").classList.contains("active")) renderShop();
-  if(document.getElementById("view-planner").classList.contains("active")) renderPlanner();
-  if(document.getElementById("view-progress").classList.contains("active")){ renderTodayTracker(); renderWater(); renderStreaks(); }
   if(document.getElementById("view-settings").classList.contains("active")) loadSettingsForm();
-  if(!silent) toast("☁️ Zsynchronizowano dane z chmury");
+  toast("☁️ Zsynchronizowano dane z chmury");
 }
 let userDocUnsubscribe = null;
 let userDocListenerUid = null;
@@ -2740,84 +2615,6 @@ function attachUserDocListener(uid){
     applyRemoteSyncedState(snap.data());
   }, err=> console.warn("Błąd nasłuchiwania synchronizacji z chmurą.", err));
 }
-// ---------- SYNC CONFLICT REVIEW (two devices changed the same thing) ----------
-const MERGE_KEY_LABELS = {
-  shopping:"Lista zakupów", recipeAdded:"Lista zakupów (powiązanie z przepisem)",
-  planner:"Planer", plannerScale:"Planer (skala porcji)", plannerLeftover:"Planer (resztki)",
-  cooked:"Historia gotowania", eaten:"Dziennik posiłków", waterHistory:"Historia nawodnienia",
-  favorites:"Ulubione przepisy", favIngredients:"Ulubione składniki", pantry:"Spiżarnia",
-  pantryUnitOverride:"Spiżarnia (jednostka)", pantryCategoryOverride:"Spiżarnia (kategoria)",
-  customTiles:"Własne kafelki spiżarni", recipeReviews:"Oceny i komentarze", recipeRating:"Oceny (podoba/nie podoba się)",
-  myRecipes:"Własne przepisy", displayName:"Nazwa w aplikacji", theme:"Motyw", uiScale:"Skala interfejsu",
-  communityRecipesEnabled:"Przepisy społeczności (przełącznik)", swipeRatingStyle:"Styl oceniania przesunięciem",
-  profile:"Profil diety", water:"Dzisiejsze nawodnienie", weights:"Historia wagi", history:"Log aktywności",
-  waterNotifEnabled:"Powiadomienia o wodzie", waterReminder:"Przypomnienie o piciu wody", household:"Gospodarstwo domowe",
-};
-function describeMergeKeyLabel(key){ return MERGE_KEY_LABELS[key] || key; }
-function describeMergeItemValue(key, id, value){
-  if(value===undefined || value===null) return "(usunięte)";
-  try{
-    if(key==="shopping") return `${value.name||id} — ${formatQty(value.unitCat, value.qty)}${value.checked?" (kupione)":""}`;
-    if(key==="pantry") return value.type==="spice" ? `${id}: ${value.level}` : `${id}: ${formatQty(value.unitCat, value.qty)}`;
-    if(key==="favorites" || key==="favIngredients") return id;
-    if(key==="recipeReviews"){ const r = findRecipeById(id); return `${r?r.name:id}: ${value.stars}/5${value.comment?` „${value.comment}”`:""}`; }
-    if(key==="myRecipes") return value.name;
-    if(key==="cooked") return `${(findRecipeById(id)||{}).name || id}: ${(value||[]).length}×`;
-  }catch(e){}
-  return typeof value==="object" ? JSON.stringify(value) : String(value);
-}
-function showSyncConflictModal(conflicts, remoteChanges){
-  const body = document.getElementById("syncConflictBody");
-  const byKind = {added:[], removed:[], changed:[]};
-  remoteChanges.forEach(c=> (byKind[c.kind]||byKind.changed).push(c));
-  const summaryBlock = (title, list) => list.length ? `
-    <h4 style="margin:10px 0 4px; font-size:13px;">${title}</h4>
-    <ul class="user-profile-list">${list.map(c=>`<li>${describeMergeKeyLabel(c.key)}: ${escapeHtml(describeMergeItemValue(c.key, c.id, c.value))}</li>`).join("")}</ul>
-  ` : "";
-  const conflictsHtml = conflicts.map((c,i)=>`
-    <div class="comment-item" data-conflict-row="${i}">
-      <div class="comment-head"><strong>${describeMergeKeyLabel(c.key)}</strong></div>
-      <div class="comment-body">☁️ Z chmury (zastosowano): ${escapeHtml(describeMergeItemValue(c.key, c.id, c.remoteValue))}</div>
-      <div class="comment-body">📱 Twoja wersja: ${escapeHtml(describeMergeItemValue(c.key, c.id, c.localValue))}</div>
-      <button type="button" class="btn ghost" style="margin-top:6px; width:100%; font-size:12px;" data-keep-local="${i}">↩️ Przywróć moją wersję</button>
-    </div>
-  `).join("");
-  body.innerHTML = `
-    ${conflicts.length ? `<h4 style="margin:0 0 4px; font-size:13px;">⚠️ Sprzeczne zmiany — wybierz, co zostawić</h4>` : ""}
-    ${conflictsHtml}
-    ${summaryBlock("➕ Dodane z innego urządzenia", byKind.added)}
-    ${summaryBlock("➖ Usunięte na innym urządzeniu", byKind.removed)}
-    ${summaryBlock("✏️ Zmienione na innym urządzeniu", byKind.changed)}
-  `;
-  body.querySelectorAll("[data-keep-local]").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      const c = conflicts[parseInt(btn.dataset.keepLocal, 10)];
-      if(c.id===null){
-        state[c.key] = c.localValue;
-      }else if(ARRAY_BY_ID_MERGE_KEYS.includes(c.key)){
-        const arr = state[c.key] || [];
-        const idx = arr.findIndex(x=>x.id===c.id);
-        if(c.localValue===undefined){ if(idx>=0) arr.splice(idx,1); }
-        else if(idx>=0) arr[idx] = c.localValue;
-        else arr.push(c.localValue);
-      }else{
-        if(!state[c.key]) state[c.key] = {};
-        if(c.localValue===undefined) delete state[c.key][c.id];
-        else state[c.key][c.id] = c.localValue;
-      }
-      saveState();
-      refreshUiAfterSync(true);
-      btn.closest("[data-conflict-row]").querySelector(".comment-head").innerHTML += " <span style='color:var(--teal);'>— przywrócono Twoją wersję ✓</span>";
-      btn.remove();
-    });
-  });
-  document.getElementById("syncConflictOverlay").classList.add("show");
-}
-document.getElementById("syncConflictClose").addEventListener("click", ()=> document.getElementById("syncConflictOverlay").classList.remove("show"));
-document.getElementById("syncConflictDoneBtn").addEventListener("click", ()=> document.getElementById("syncConflictOverlay").classList.remove("show"));
-document.getElementById("syncConflictOverlay").addEventListener("click", (e)=>{
-  if(e.target===document.getElementById("syncConflictOverlay")) e.target.classList.remove("show");
-});
 // ---------- COMMUNITY: public profiles, shared recipes, multi-user ratings ----------
 // New PUBLIC/shared Firestore collections, on top of the private users/{uid}
 // doc from FR-73 — none of this works until the security rules in
@@ -3644,27 +3441,6 @@ document.getElementById("connectEmailBtn").addEventListener("click", ()=>{
     const msg = describeAuthError(err);
     if(msg) toast(msg);
   });
-});
-document.getElementById("signOutBtn").addEventListener("click", ()=>{
-  if(!firebaseReady || !currentFbUser){ toast("Chmura niedostępna"); return; }
-  if(!confirm("Wylogować się z tego urządzenia? Synchronizacja z chmurą zatrzyma się i zacznie się nowa, lokalna sesja (możesz zalogować się z powrotem w każdej chwili).")) return;
-  const alsoClear = confirm("Czy wyczyścić też dane zapisane lokalnie na tym urządzeniu (spiżarnię, listę zakupów, planer, ulubione itd.)? Wybierz „Anuluj”, jeśli planujesz zalogować się z powrotem na to samo konto na tym urządzeniu — dane zostaną, ale przestaną się synchronizować, dopóki nie zalogujesz się ponownie.");
-  detachUserDocListener();
-  if(communityRecipesUnsubscribe){ communityRecipesUnsubscribe(); communityRecipesUnsubscribe = null; }
-  communityRecipesCache = [];
-  if(alsoClear){
-    localStorage.removeItem(STORE_KEY);
-    state = loadState(); // localStorage is now empty, so this returns fresh defaults
-    document.documentElement.setAttribute("data-theme", state.theme || "teal");
-    applyUiScale(state.uiScale);
-    refreshUiAfterSync(true);
-  }else{
-    state._lastSyncedSnapshot = null;
-    saveState();
-  }
-  fbAuth.signOut().then(()=>{
-    toast("Wylogowano");
-  }).catch(e=> console.warn("Błąd wylogowania", e));
 });
 document.getElementById("saveSettingsBtn").addEventListener("click", ()=>{
   const p = {
