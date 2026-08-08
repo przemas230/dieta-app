@@ -24,6 +24,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.przemas230.dietaapp.ui.PlaceholderScreen
 import com.przemas230.dietaapp.ui.RecipeListScreen
+import com.przemas230.dietaapp.ui.SettingsScreen
 import com.przemas230.dietaapp.ui.navigation.BOTTOM_NAV_SCREENS
 import com.przemas230.dietaapp.ui.navigation.Screen
 import com.przemas230.dietaapp.ui.theme.DietaAppTheme
@@ -101,7 +102,7 @@ private fun DietaAppRoot() {
             composable(Screen.Planner.route) { PlaceholderScreen(Screen.Planner.label) }
             composable(Screen.Progress.route) { PlaceholderScreen(Screen.Progress.label) }
             composable(Screen.Pantry.route) { PlaceholderScreen(Screen.Pantry.label) }
-            composable(Screen.Settings.route) { PlaceholderScreen(Screen.Settings.label) }
+            composable(Screen.Settings.route) { SettingsScreen() }
         }
     }
 }

@@ -61,11 +61,12 @@ dependencies {
     // version always matches the rest of Compose automatically.
     implementation("androidx.compose.material:material-icons-extended")
 
-    // Wired up for the next milestone (auth + Firestore sync) — not called
-    // anywhere yet, so having no google-services.json doesn't break anything.
     implementation(platform("com.google.firebase:firebase-bom:33.4.0"))
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
+    // .await() on Firebase Tasks (anonymous sign-in, Firestore get/set) inside
+    // coroutines — used by SettingsScreen's Firebase connectivity test.
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
