@@ -47,6 +47,13 @@ android {
 }
 
 dependencies {
+    // Pure Kotlin/JVM business logic (recipe filtering, pantry/shopping map
+    // operations) + the data classes they operate on — kept in a separate
+    // module specifically so it can be unit-tested without pulling in
+    // Android/AndroidX (see android/logic/build.gradle.kts and
+    // android/README.md "Testy automatyczne").
+    implementation(project(":logic"))
+
     implementation(platform("androidx.compose:compose-bom:2024.10.00"))
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.compose.ui:ui")

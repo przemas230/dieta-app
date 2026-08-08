@@ -98,6 +98,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 - **FR-26** (odhaczanie/udostępnianie/czyszczenie zakupów): odhaczanie i "usuń kupione" działają; udostępnianie listy (np. przez Intent) jeszcze nie ma. Dane są tylko lokalne w pamięci — bez trwałego zapisu, bez synchronizacji.
 - **FR-28** (spiżarnia w kafelkach z kategoriami): jest lista z etykietą kategorii i rozróżnieniem produkt/przyprawa, ale nie w formie kafelków jak w wersji webowej, i kategorie to uproszczony ręczny zestaw 7 opcji zamiast pełnej bazy klasyfikacji składników. Dane tylko lokalne, bez synchronizacji.
 - **FR-30** (zmiana kategorii i usuwanie kafelka): usuwanie działa; zmiana kategorii istniejącego produktu po dodaniu jeszcze nie (na razie kategorię wybiera się tylko przy dodawaniu).
+- **Testy automatyczne**: reguły biznesowe stojące za FR-2 (wyszukiwanie/filtrowanie), FR-26 (odhaczanie/czyszczenie zakupów) i FR-28/FR-30 (mutacje spiżarni) są od teraz pokryte prawdziwie uruchamianymi testami JUnit w `android/logic/` — jedyna część tego projektu Android, którą faktycznie zweryfikowałem sam, bez czekania na Android Studio. Sam ekran (Compose) nadal jest niesprawdzony, tylko logika pod spodem. Patrz `android/README.md`, sekcja "Testy automatyczne".
 
 ## Jak to utrzymywać
 
@@ -105,4 +106,5 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 2. Jeśli funkcja zostanie od razu przeniesiona też do Kotlina — status ⏳ (do potwierdzenia przez brak możliwości kompilacji w tym środowisku, patrz `android/README.md`).
 3. Jeśli sprawdzisz coś w Android Studio i działa — zmień ⏳ na ✅ (albo daj mi znać, zrobię to sam).
 4. Jeśli sprawdzisz i NIE działa — zostaw jako ⏳ i opisz błąd, poprawię.
+5. Jeśli nowa logika biznesowa da się wydzielić bez Androida (jak `PantryOperations`/`ShoppingOperations`/`RecipeBrowsing` w `android/logic/`) — dostaje testy JUnit w tej samej turze, żeby faktycznie zweryfikowane pozostawało zweryfikowane przy kolejnych zmianach (regresja), zamiast znów zgadywać. Patrz `android/README.md`, sekcja "Testy automatyczne".
 

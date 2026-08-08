@@ -52,11 +52,15 @@ Czego jeszcze NIE ma (kolejne kroki, patrz "Co dalej"):
 - Rzeczywistej zawartości pozostałych zakładek (Planer, Postęp) — na razie
   same placeholdery.
 
-**Nie mogłem tego skompilować ani uruchomić** — środowisko, w którym to
-piszę, nie ma zainstalowanego Android SDK/Gradle/emulatora. Kod jest napisany
-starannie, standardowymi, dobrze udokumentowanymi wzorcami (Compose + Material3
-+ ViewModel + StateFlow), ale **pierwsza rzecz do zrobienia to otworzyć to w
-Android Studio i sprawdzić, czy się buduje i uruchamia**.
+**Nie mogłem skompilować ani uruchomić samej aplikacji** (ekranów, nawigacji,
+Compose) — środowisko, w którym to piszę, nie ma dostępu do repozytorium
+Maven Google (`dl.google.com`), z którego pochodzi Android Gradle Plugin,
+AndroidX i Compose. **Wyjątek: moduł `logic/` (patrz "Testy automatyczne"
+niżej) faktycznie się kompiluje i jego testy faktycznie przechodzą** — bo
+korzysta wyłącznie z Maven Central, który jest dostępny. Reszta (ekrany,
+nawigacja, wiązanie z Compose/Firebase) jest napisana starannie, standardowymi,
+dobrze udokumentowanymi wzorcami, ale **pierwsza rzecz do zrobienia to
+otworzyć to w Android Studio i sprawdzić, czy się buduje i uruchamia**.
 
 ## Jak otworzyć
 
@@ -73,6 +77,43 @@ Jeśli sync się nie powiedzie z powodu niezgodności wersji (Kotlin/AGP/Compose
 BOM) — to najbardziej prawdopodobne miejsce błędu, bo nie miałem jak tego
 sprawdzić. Android Studio zwykle podpowiada dokładnie, którą wersję podbić;
 daj mi znać, jaki błąd pokazuje, a poprawię.
+
+## Testy automatyczne
+
+Moduł `logic/` to zwykły moduł Kotlin/JVM (bez Androida/AndroidX) trzymający
+logikę biznesową wyciągniętą z ekranów: filtrowanie przepisów
+(`RecipeBrowsing`), operacje na spiżarni (`PantryOperations`) i liście
+zakupów (`ShoppingOperations`) — te same reguły, które w `app/` wywołują
+odpowiednie ViewModel-e (`RecipeViewModel`, `PantryViewModel`,
+`ShoppingViewModel` są teraz tylko cienką "sklejką" ze StateFlow, delegującą
+do `logic/`).
+
+Dzięki temu, że `logic/` nie potrzebuje niczego z zablokowanego
+`dl.google.com`, **jego testy JUnit naprawdę się kompilują i naprawdę
+przechodzą w tym środowisku** — to jedyna część całego projektu Android,
+którą osobiście zweryfikowałem, że działa (włącznie z sanity-checkiem: celowo
+zepsułem jeden test, potwierdziłem że faktycznie failuje, potem cofnąłem).
+22 testy w 3 klasach, wszystkie zielone.
+
+**Jak uruchomić w Android Studio:** panel Gradle (z prawej) →
+`DietaApp` → `logic` → `Tasks` → `verification` → `test`, albo z terminala
+w folderze `android/`: `./gradlew :logic:test` (po tym, jak Android Studio
+wygeneruje wrapper przy pierwszym otwarciu — patrz "Jak otworzyć" wyżej).
+U Ciebie to powinno zadziałać bez żadnych sztuczek, bo masz normalny dostęp
+do internetu — w moim środowisku musiałem tymczasowo wyłączyć moduł `app`
+z builda, żeby ominąć blokadę `dl.google.com` (root `build.gradle.kts`
+deklaruje pluginy Androida nawet z `apply false`, a to już wymaga
+rozwiązania ich wersji).
+
+**Czego to NIE testuje:** samych ekranów Compose (`RecipeListScreen`,
+`PantryScreen`, `ShoppingScreen`, `SettingsScreen`) ani nawigacji czy
+Firebase — to wymaga prawdziwego builda Androida (instrumentation tests albo
+zwykłe ręczne sprawdzenie), czyli dokładnie tego, czego ja nie mogę tu zrobić.
+Ale dzięki temu podziałowi reguły biznesowe (co się dzieje po kliknięciu, nie
+jak to wygląda) są pokryte testami regresji już teraz, i będą rosły razem
+z resztą aplikacji — każda nowa reguła w `PantryOperations`/
+`ShoppingOperations`/`RecipeBrowsing` (albo kolejnych takich obiektach)
+powinna dostać test w `logic/src/test/...` w tej samej turze pracy.
 
 ## Podłączenie Firebase (kiedy będziesz gotów/gotowa)
 
