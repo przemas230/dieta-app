@@ -1,0 +1,7 @@
+Wersja 60
+=========
+
+Podbicie cache Service Workera do dieta-app-v36, aby wymusić pobranie
+nowej wersji index.html (przebudowa Ustawień na zakładki + wymuszenie
+ustawienia profilu przy pierwszym uruchomieniu) na urządzeniach
+użytkowników zamiast serwować starą wersję z cache.
