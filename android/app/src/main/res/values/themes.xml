@@ -1,0 +1,6 @@
+<resources>
+    <!-- Compose owns the real theming (see ui/theme/Theme.kt) — this is just
+         the platform-level base theme the manifest needs to reference before
+         Compose takes over the window content. -->
+    <style name="Theme.DietaApp" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
