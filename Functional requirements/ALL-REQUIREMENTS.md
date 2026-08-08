@@ -45,6 +45,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-27: Dodanie składników z całego tygodnia z Planera](#fr-27-dodanie-składników-z-całego-tygodnia-z-planera)
 - [FR-58: Dodawanie składników z konkretnego dnia na liście zakupów](#fr-58-dodawanie-składników-z-konkretnego-dnia-na-liście-zakupów)
 - [FR-62: Mini kalendarzyk bieżącego tygodnia na liście zakupów](#fr-62-mini-kalendarzyk-bieżącego-tygodnia-na-liście-zakupów)
+- [FR-75: Widok kafelkowy listy zakupów z brakującymi ilościami](#fr-75-widok-kafelkowy-listy-zakupów-z-brakującymi-ilościami)
 
 ### Spiżarnia
 - [FR-28: Śledzenie stanu spiżarni w kafelkach pogrupowanych kategoriami](#fr-28-śledzenie-stanu-spiżarni-w-kafelkach-pogrupowanych-kategoriami)
@@ -1705,5 +1706,51 @@ nie zmienia, zmienia się tylko sposób GRUPOWANIA ich do przeglądania.
   ("połącz w przepisach pierwsze i drugie śniadanie, po co to rozdzielać,
   tylko w planerze potrzebujemy tego jako dwóch slotów ale lista z
   przepisami może być jedna").
+
+---
+
+# FR-75: Widok kafelkowy listy zakupów z brakującymi ilościami
+
+**Obszar:** Lista zakupów
+**Status:** Zaimplementowane
+
+## Opis
+Zakładka Zakupy ma przełącznik widoku nad listą: „📃 Lista” (domyślny,
+istniejący widok wierszy z checkboxami) i „🏺 Kafelki (jak w spiżarni)”.
+Oba widoki pokazują te same dane (`state.shopping`), pogrupowane tak samo
+(wg `classify()`/`GROUP_ORDER`) — różni się tylko forma prezentacji.
+
+Widok kafelkowy renderuje każdą pozycję jako kafelek w stylu identycznym z
+kafelkami spiżarni (ikona + nazwa produktu, ten sam komponent wizualny co w
+zakładce Spiżarnia). Znaczek na kafelku pokazuje wartość UJEMNĄ — ile danego
+produktu jeszcze brakuje względem tego, co jest już w spiżarni, żeby
+przygotować wszystkie zaplanowane dania wymagające tego składnika (np.
+„−200 g” oznacza: potrzebujesz jeszcze 200 g więcej niż masz). Jeśli
+spiżarnia w pełni pokrywa potrzebną ilość, kafelek pokazuje zamiast tego
+„✓”. Stuknięcie kafelka oznacza pozycję jako kupioną/niekupioną — dokładnie
+ta sama akcja co zaznaczenie checkboxa w widoku listy, więc oba widoki są
+zawsze w pełni zsynchronizowane (nie ma dwóch niezależnych źródeł prawdy).
+
+## Kryteria akceptacji
+- Przełączenie widoku nie zmienia zawartości listy zakupów, tylko sposób
+  jej wyświetlenia.
+- Ilość „brakuje” liczona jest jako: (ilość potrzebna na liście zakupów) −
+  (ilość w spiżarni w tej samej jednostce), nigdy poniżej „✓” (brak
+  ujemnych wartości „na plusie” — nadwyżka w spiżarni po prostu daje „✓”,
+  a nie np. „+300 g”).
+- Jeśli jednostka pozycji w spiżarni różni się od jednostki na liście
+  zakupów (np. spiżarnia ma „szt.”, a lista zakupów potrzebuje „g”), kafelek
+  traktuje to jak brak pokrycia w spiżarni (pokazuje pełną potrzebną ilość
+  jako brakującą) — ten sam ostrożny fallback co istniejący znacznik „🏺
+  masz” w widoku listy.
+- Oznaczenie kafelka jako kupionego w widoku kafelkowym widać natychmiast
+  jako odhaczony checkbox po przełączeniu z powrotem na widok listy, i
+  odwrotnie.
+
+## Historia rewizji
+- **v1** (2026-08-08): Pierwsza wersja wymagania, na życzenie użytkownika
+  ("na zakładce zakupy daj możliwość przełączania widoku na taki jak w
+  spiżarni żeby było widać ikonki tego co trzeba kupić, niech będą na
+  minus jak czegoś brakuje").
 
 ---

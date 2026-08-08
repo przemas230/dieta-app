@@ -1,0 +1,18 @@
+Wersja 65
+=========
+
+Widok kafelkowy (jak w spiżarni) dla listy zakupów, z wartościami ujemnymi
+pokazującymi ile jeszcze brakuje.
+
+Zmiany:
+- Na zakładce Zakupy pojawił się przełącznik widoku: „📃 Lista” (jak
+  dotychczas) i „🏺 Kafelki (jak w spiżarni)”.
+- W widoku kafelkowym każdy potrzebny produkt pokazuje się jako ikona z
+  nazwą, tak jak w spiżarni. Znaczek na kafelku pokazuje wartość UJEMNĄ —
+  ile danego produktu jeszcze brakuje, żeby ugotować wszystkie zaplanowane
+  dania, biorąc pod uwagę to, co już jest w spiżarni (np. „−200 g”). Jeśli
+  spiżarnia w pełni pokrywa potrzebę, kafelek pokazuje zamiast tego „✓”.
+- Stuknięcie kafelka oznacza produkt jako kupiony/niekupiony — dokładnie to
+  samo co zaznaczenie checkboxa w widoku listy; oba widoki operują na tych
+  samych danych i są zawsze zsynchronizowane.
+- Cache Service Workera podbity do dieta-app-v41.
