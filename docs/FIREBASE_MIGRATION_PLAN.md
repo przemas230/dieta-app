@@ -7,20 +7,34 @@ zakupów dla gospodarstwa domowego, przepisy dodawane przez użytkowników z
 ocenami i komentarzami, oraz działanie offline z synchronizacją po
 odzyskaniu sieci.
 
-Zakres tej rundy prac: **przygotowanie, bez prawdziwego Firebase**. Nie da
-się podłączyć prawdziwego logowania Google ani synchronizacji bez
-utworzenia projektu Firebase i klucza OAuth — to wymaga zalogowania się do
-konsoli Firebase/Google Cloud własnym kontem Google, czego nie da się
-zrobić automatycznie. Ten plik jest gotowym punktem startowym na jutro.
+**AKTUALIZACJA 2026-08-08: projekt Firebase już istnieje** (`dieta-app-323b4`)
+i logowanie (anonimowe/Google/e-mail) jest już podłączone i działa — patrz
+FR-69 w `Functional requirements/`. Sekcje poniżej opisujące "co zrobić po
+założeniu projektu" odnoszą się już tylko do TEGO, co jeszcze zostało:
+głównie właściwa synchronizacja danych (spiżarnia/lista zakupów/planer) i
+gospodarstwo domowe. Reszta tego dokumentu (model danych, reguły
+bezpieczeństwa) jest nadal aktualnym planem na te pozostałe kroki.
 
-## Co już zrobiono w tej rundzie (działa dziś, bez Firebase)
+## Co już zrobiono (działa dziś)
 
 - **Nazwa użytkownika w aplikacji** (`state.displayName`, ustawienia →
   „👤 Konto"): dowolny, opcjonalny pseudonim, niezależny od jakiegokolwiek
   konta Google, pokazywany w nagłówku. To jest dokładnie ten sam pseudonim,
   którego trzeba będzie użyć jako `displayName` w przyszłym dokumencie
   użytkownika w Firestore — nic tu nie trzeba będzie przerabiać, tylko
-  przenieść wartość z localStorage do bazy przy pierwszym logowaniu.
+  przenieść wartość z localStorage do bazy przy pierwszej synchronizacji.
+- **Projekt Firebase założony** (`dieta-app-323b4`), SDK (Auth + Firestore,
+  wariant compat) podłączone w `index.html`, prawdziwy `firebaseConfig`
+  wpisany w kodzie (bezpieczne — to nie jest sekret).
+- **Logowanie anonimowe** — każde urządzenie automatycznie i bez pytania
+  loguje się jako użytkownik anonimowy przy starcie.
+- **Logowanie Google i e-mail+hasło** (Ustawienia → „☁️ Konto w chmurze”) —
+  obie metody `linkWithPopup`/`linkWithCredential` na istniejącym
+  anonimowym koncie, z obsługą kolizji "ten e-mail już istnieje".
+- **Firestore włączone** (`enablePersistence` dla trybu offline), ale
+  jeszcze NIEUŻYWANE przez `loadState()`/`saveState()` — dane nadal żyją
+  wyłącznie w localStorage. To następny krok (patrz "Checklist" niżej,
+  punkty 5-8 są jeszcze do zrobienia).
 
 ## Dlaczego zaskakująco mało trzeba dopisywać "warstwy synchronizacji"
 
@@ -176,28 +190,36 @@ Zgodnie z prośbą o włącznik w ustawieniach:
   (aktualizowanego np. Cloud Function przy każdej nowej ocenie, żeby nie
   trzeba było czytać całej podkolekcji ocen tylko po to, by posortować listę).
 
-## Checklist na jutro (gdy założysz projekt Firebase)
+## Checklist
 
-1. Firebase Console → nowy projekt → włącz Authentication (Anonymous +
-   Google) → włącz Firestore (tryb produkcyjny).
-2. Google Cloud Console → OAuth consent screen + Web client ID (Firebase
-   robi to częściowo automatycznie przy włączaniu logowania Google).
-3. Dodaj Firebase SDK (`firebase-app`, `firebase-auth`, `firebase-firestore`)
-   do `index.html` (CDN `<script type="module">` albo bundler, do wyboru).
-4. Wklej config z konsoli (`apiKey`, `authDomain`, `projectId`, ...) —
-   BEZPIECZNE do trzymania w kliencie, to nie są sekrety serwerowe.
-5. Podmień wewnętrzne działanie `loadState()`/`saveState()`: zamiast
-   `localStorage`, czytaj/pisz z Firestore (`onSnapshot` do
-   nasłuchiwania zmian na żywo — ważne dla współdzielenia z drugą osobą w
-   czasie rzeczywistym), z `enableIndexedDbPersistence()` dla trybu offline.
-6. Jednorazowa migracja: przy pierwszym logowaniu, jeśli
-   `users/{uid}` jeszcze nie istnieje, wgraj obecny lokalny `state` jako
-   punkt startowy zamiast zaczynać od zera.
-7. Dodaj UI: przycisk logowania Google, formularz "Dołącz do gospodarstwa"
-   / "Utwórz gospodarstwo", przełącznik przepisów społecznościowych,
-   formularz dodawania własnego przepisu, gwiazdki + komentarz przy
-   przepisie.
-8. Wdróż reguły bezpieczeństwa (szkic wyżej) — PRZED udostępnieniem komukolwiek.
+1. ✅ Firebase Console → nowy projekt → włącz Authentication (Anonymous +
+   Google + e-mail/hasło) → włącz Firestore (tryb produkcyjny). *(zrobione
+   2026-08-08, projekt `dieta-app-323b4`)*
+2. ✅ Google Cloud Console → OAuth consent screen + Web client ID (Firebase
+   zrobiło to automatycznie przy włączaniu logowania Google).
+3. ✅ Dodano Firebase SDK (`firebase-app-compat`, `firebase-auth-compat`,
+   `firebase-firestore-compat`) do `index.html` przez `<script>` z CDN
+   (wybrano wariant "compat" zamiast modułów ES, żeby pasował do
+   istniejącej architektury jednego wielkiego klasycznego `<script>`, bez
+   przepisywania całej aplikacji na moduły).
+4. ✅ Wklejono prawdziwy config (`apiKey`, `authDomain`, `projectId`, ...).
+5. ✅ Logowanie: anonimowe na starcie + opcjonalne połączenie z Google lub
+   e-mailem/hasłem (`linkWithPopup`/`linkWithCredential`), z obsługą
+   kolizji "ten e-mail już istnieje". Patrz FR-69.
+6. ⬜ **Następny krok:** podmień wewnętrzne działanie `loadState()`/
+   `saveState()`: zamiast wyłącznie `localStorage`, czytaj/pisz też z
+   Firestore (`onSnapshot` do nasłuchiwania zmian na żywo — ważne dla
+   współdzielenia z drugą osobą w czasie rzeczywistym). `enablePersistence()`
+   jest już włączone, więc tryb offline zadziała od razu.
+7. ⬜ Jednorazowa migracja: przy pierwszym prawdziwym zalogowaniu (nie
+   anonimowym), jeśli `users/{uid}` jeszcze nie istnieje, wgraj obecny
+   lokalny `state` jako punkt startowy zamiast zaczynać od zera.
+8. ⬜ Dodaj UI gospodarstwa domowego: formularz "Dołącz do gospodarstwa" /
+   "Utwórz gospodarstwo" (dopiero ma sens, gdy krok 6 faktycznie
+   synchronizuje dane — inaczej byłby to formularz udający działanie,
+   czego świadomie unikamy, patrz FR-68).
+9. ⬜ Wdróż reguły bezpieczeństwa (szkic wyżej) — PRZED udostępnieniem
+   komukolwiek innemu niż Ty.
 
 ## Jeśli jednak przepiszesz na Kotlin / Android Studio
 

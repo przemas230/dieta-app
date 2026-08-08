@@ -97,6 +97,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 ### Konto i współdzielenie
 - [FR-65: Własna, opcjonalna nazwa użytkownika w aplikacji](#fr-65-własna-opcjonalna-nazwa-użytkownika-w-aplikacji)
 - [FR-68: Ustawienia gospodarstwa domowego i przepisów społeczności (stan przejściowy)](#fr-68-ustawienia-gospodarstwa-domowego-i-przepisów-społeczności-stan-przejściowy)
+- [FR-69: Logowanie w chmurze (anonimowe, Google, e-mail i hasło)](#fr-69-logowanie-w-chmurze-anonimowe-google-e-mail-i-hasło)
 
 ---
 
@@ -1354,23 +1355,59 @@ Podczas implementacji wykryto i naprawiono błąd w logice przełącznika gwiazd
 # FR-68: Ustawienia gospodarstwa domowego i przepisów społeczności (stan przejściowy)
 
 **Obszar:** Konto i współdzielenie  
-**Status:** Częściowo zaimplementowane (świadomie)
+**Status:** Częściowo zaimplementowane (świadomie) — patrz też FR-69
 
 ## Opis
 Ustawienia zawierają dwie karty przygotowujące grunt pod pełną funkcjonalność opisaną w `docs/FIREBASE_MIGRATION_PLAN.md`, każda z jasno innym poziomem gotowości:
 
-1. **„🌍 Przepisy społeczności”** — działający, zapisujący się przełącznik `state.communityRecipesEnabled`. Dziś nie ma żadnego efektu widocznego dla użytkownika (nie ma jeszcze przepisów od innych osób do pokazania), ale jest w pełni funkcjonalny technicznie i nie będzie wymagał żadnej zmiany, gdy tylko podłączona zostanie chmura i pojawią się pierwsze zatwierdzone przepisy społecznościowe.
-2. **„🏠 Gospodarstwo domowe i logowanie Google”** — WYŁĄCZNIE informacyjna karta, bez żadnego formularza ani przycisku udającego działanie. Wprost tłumaczy, że współdzielona spiżarnia/lista zakupów z domownikami oraz logowanie Google wymagają projektu Firebase, którego nie da się założyć automatycznie (wymaga zalogowania do konsoli Google własnym kontem użytkownika), i wskazuje gotowy plan techniczny w `docs/FIREBASE_MIGRATION_PLAN.md`.
+1. **„🌍 Przepisy społeczności”** — działający, zapisujący się przełącznik `state.communityRecipesEnabled`. Dziś nie ma żadnego efektu widocznego dla użytkownika (nie ma jeszcze przepisów od innych osób do pokazania), ale jest w pełni funkcjonalny technicznie i nie będzie wymagał żadnej zmiany, gdy tylko pojawią się pierwsze zatwierdzone przepisy społecznościowe.
+2. **„☁️ Konto w chmurze”** — od czasu podłączenia prawdziwego projektu Firebase (FR-69) w pełni działająca karta logowania (anonimowe/Google/e-mail). To, co NADAL nie działa, to współdzielenie danych między kontami/gospodarstwem domowym — logowanie zabezpiecza tożsamość konta, ale spiżarnia/lista zakupów/planer są nadal wyłącznie lokalne na urządzeniu.
 
 ## Kryteria akceptacji
 - Przełącznik przepisów społeczności zapisuje się i persystuje między sesjami, niezależnie od tego, że nie ma jeszcze żadnego efektu widocznego (brak przepisów społecznościowych do pokazania).
-- Karta gospodarstwa domowego NIE zawiera żadnego interaktywnego elementu (formularza, przycisku "dołącz"/"utwórz") sugerującego działającą funkcję współdzielenia — wyłącznie tekst wyjaśniający obecny stan i odsyłający do planu technicznego. Świadoma decyzja: fałszywie działający formularz wprowadzałby w błąd (sugerowałby, że coś się dzieje, mimo że żadne dane nie mogą się realnie zsynchronizować bez backendu).
+- Karta konta w chmurze NIE sugeruje więcej niż faktycznie robi: nie ma żadnego formularza "dołącz do gospodarstwa"/"udostępnij spiżarnię", dopóki synchronizacja danych między kontami nie zostanie faktycznie wdrożona (kolejny krok w `docs/FIREBASE_MIGRATION_PLAN.md`). Świadoma decyzja: fałszywie działający formularz wprowadzałby w błąd.
 - Własne przepisy użytkownika (FR-66) działają już dziś, NIEZALEŻNIE od przełącznika przepisów społeczności — ten przełącznik dotyczy wyłącznie przepisów od INNYCH osób.
 
 ## Uwagi
-Spisane 2026-08-07 na podstawie prośby o logowanie Google (opcjonalne), wspólne gospodarstwo domowe ze współdzieloną spiżarnią i listą zakupów oraz przepisy społecznościowe z ocenami/komentarzami. Świadomy zakres tej rundy: zbudować i realnie przetestować wszystko, co da się zrobić bez zewnętrznego backendu (FR-65 nazwa użytkownika, FR-66 własne przepisy, FR-67 oceny/komentarze, przełącznik tutaj), a resztę opisać jako konkretny, wykonalny plan zamiast budować nieprawdziwie działający interfejs.
+Spisane 2026-08-07 na podstawie prośby o logowanie Google (opcjonalne), wspólne gospodarstwo domowe ze współdzieloną spiżarnią i listą zakupów oraz przepisy społecznościowe z ocenami/komentarzami. Świadomy zakres tamtej rundy: zbudować i realnie przetestować wszystko, co da się zrobić bez zewnętrznego backendu (FR-65 nazwa użytkownika, FR-66 własne przepisy, FR-67 oceny/komentarze, przełącznik tutaj), a resztę opisać jako konkretny, wykonalny plan zamiast budować nieprawdziwie działający interfejs.
+
+Zrewidowane 2026-08-08: następnego dnia użytkownik faktycznie założył projekt Firebase — karta „Konto w chmurze” z tego wpisu przestała być tylko informacyjna i stała się prawdziwym mechanizmem logowania, opisanym szczegółowo w nowym FR-69. Ten wpis pozostaje jako zapis pierwotnego, świadomie ograniczonego zakresu tamtej rundy.
 
 ## Historia rewizji
 - **v1** (2026-08-07): Pierwsza wersja wymagania na podstawie polecenia użytkownika.
+- **v2** (2026-08-08): Uwzględniono podłączenie prawdziwego Firebase (FR-69) — karta logowania przestała być czysto informacyjna, patrz "Uwagi".
+
+---
+
+# FR-69: Logowanie w chmurze (anonimowe, Google, e-mail i hasło)
+
+**Obszar:** Konto i współdzielenie  
+**Status:** Zaimplementowane (logowanie); synchronizacja danych — jeszcze nie
+
+## Opis
+Aplikacja korzysta z prawdziwego projektu Firebase (Authentication + Firestore). Każde urządzenie loguje się automatycznie i bez pytania jako użytkownik anonimowy (Firebase Anonymous Auth) przy pierwszym uruchomieniu — to nie zmienia dotychczasowego, w pełni lokalnego działania aplikacji, tylko nadaje jej stabilny, gotowy na przyszłość identyfikator.
+
+W Ustawieniach → „☁️ Konto w chmurze” można opcjonalnie:
+- połączyć się z kontem Google (przycisk „Połącz z kontem Google”),
+- połączyć się e-mailem i hasłem (formularz).
+
+Obie metody **łączą** (linkują) istniejące anonimowe konto zamiast zakładać nowe od zera — więc dane, które w przyszłości będą już zsynchronizowane z tym kontem, nie giną w momencie pierwszego logowania. Jeden adres e-mail nie może być użyty do założenia dwóch osobnych kont (raz przez Google, raz hasłem) — wymusza to ustawienie projektu Firebase „jedno konto na adres e-mail”; aplikacja wykrywa tę kolizję i proponuje zalogowanie się do istniejącego konta zamiast pokazania suchego błędu.
+
+Jeśli Firebase jest niedostępny (brak internetu, zablokowany dostęp do serwerów Google, błąd wczytania SDK) — cała sekcja logowania grzecznie się chowa, pokazuje jasny komunikat, a reszta aplikacji działa dokładnie tak jak przed podłączeniem Firebase, bez żadnego wyjątku/awarii.
+
+## Kryteria akceptacji
+- Brak ekranu logowania blokującego korzystanie z aplikacji — logowanie anonimowe dzieje się w tle, automatycznie.
+- Połączenie z Google lub e-mailem/hasłem używa `linkWithPopup`/`linkWithCredential` na istniejącym użytkowniku, nie `signInWith...` od zera.
+- Próba połączenia e-mailem już zajętym przez inne konto pokazuje czytelny komunikat po polsku i pyta, czy zalogować się do tego istniejącego konta.
+- Karta „Konto w chmurze” pokazuje aktualny stan: niedostępność Firebase, brak logowania, lub zalogowanie (i którą metodą).
+- Całkowity brak dostępu do Firebase (np. zablokowana sieć) nie powoduje błędu JS ani nie psuje żadnej innej funkcji aplikacji — zweryfikowane w środowisku z faktycznie zablokowanym dostępem do serwerów Firebase.
+
+## Uwagi
+Spisane 2026-08-08, w dniu założenia prawdziwego projektu Firebase (`dieta-app-323b4`) przez użytkownika, zgodnie z checklistą z `docs/FIREBASE_MIGRATION_PLAN.md`. To wdraża wyłącznie warstwę logowania z tamtego planu — synchronizacja właściwych danych (spiżarnia, lista zakupów, planer) między urządzeniami i osobami w gospodarstwie domowym to kolejny, jeszcze nie zaimplementowany krok z tego samego planu.
+
+Testowanie: środowisko deweloperskie miało zablokowany sieciowo dostęp do `gstatic.com`/serwerów Firebase (polityka sieciowa piaskownicy), więc rzeczywiste logowanie (kliknięcie „Połącz z kontem Google”, wpisanie hasła) nie mogło zostać zweryfikowane automatycznie. Zweryfikowano za to dokładnie ten scenariusz w kryteriach akceptacji dotyczący niedostępności Firebase — który akurat wystąpił naturalnie w tym środowisku — oraz że reszta aplikacji (przepisy, spiżarnia, lista zakupów, motywy) nie uległa regresji. Rzeczywiste logowanie wymaga ręcznej weryfikacji przez użytkownika na urządzeniu z dostępem do internetu.
+
+## Historia rewizji
+- **v1** (2026-08-08): Pierwsza wersja wymagania na podstawie polecenia użytkownika.
 
 ---
