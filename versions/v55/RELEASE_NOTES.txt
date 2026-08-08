@@ -1,0 +1,29 @@
+Wersja 55
+=========
+
+Poprawka zgłoszona zaraz po pierwszym prawdziwym teście logowania: dało się
+tylko "połączyć" konto na pierwszym urządzeniu, ale nie dało się zalogować
+tym samym kontem na drugim urządzeniu (telefonie) — brakowało prawdziwego
+przycisku logowania, był tylko "połącz".
+
+Zmiany:
+- Ustawienia → „☁️ Konto w chmurze” ma teraz jasno rozdzielone dwie ścieżki:
+  „Pierwsze urządzenie / nowe konto” (Połącz z kontem Google / Połącz
+  e-mailem) oraz „Masz już konto?” (Zaloguj się na konto Google / Zaloguj
+  się e-mailem i hasłem) — cztery przyciski zamiast dwóch.
+- „Zaloguj się” używa prawdziwego logowania (`signInWithPopup` /
+  `signInWithEmailAndPassword`) zamiast łączenia — działa na dowolnym
+  urządzeniu, nawet jeśli to konto jest już zarejestrowane gdzie indziej.
+- Kliknięcie „Połącz” na urządzeniu, gdzie to konto Google jest już
+  zarejestrowane, teraz proponuje zalogowanie się zamiast pokazać goły
+  błąd (ta sama poprawka co wcześniej działała już dla e-maila/hasła).
+- Dodano jasną uwagę: zalogowanie się na już istniejące konto na nowym
+  urządzeniu na razie tylko potwierdza tożsamość — spiżarnia/lista zakupów
+  z innego urządzenia jeszcze się nie synchronizują (to osobny, kolejny
+  krok, patrz docs/FIREBASE_MIGRATION_PLAN.md), żeby nikt nie czekał na
+  coś, co jeszcze nie działa.
+
+Przy okazji: potwierdzono, że domena przemas230.github.io (prawdziwe
+miejsce, z którego działa aplikacja) została dodana do autoryzowanych
+domen w Firebase — bez tego logowanie Google w ogóle nie ruszało
+(auth/unauthorized-domain).
