@@ -353,15 +353,12 @@
   }
   header.app-top .quick-add-btn:active{ transform:scale(.92); background:rgba(90,210,140,.48); }
   header.app-top .header-water-row{
-    display:flex; align-items:center; gap:1px; margin-top:8px;
+    display:flex; align-items:center; gap:5px; margin-top:8px; cursor:pointer;
     font-size:11px; color:rgba(255,255,255,.85); font-family:var(--font-mono);
     user-select:none;
   }
-  header.app-top .header-water-row .hwr-drops{display:flex; align-items:center;}
-  header.app-top .header-water-row .hwr-drop{
-    font-size:11px; line-height:1; padding:6px 1px; cursor:pointer;
-  }
-  header.app-top .header-water-row .hwr-count{opacity:.85; margin-left:4px;}
+  header.app-top .header-water-row .hwr-drops{letter-spacing:1px; font-size:11px;}
+  header.app-top .header-water-row .hwr-count{opacity:.85;}
   header.app-top .header-collapsible{
     max-height:280px; opacity:1; overflow:hidden;
     transition:max-height .2s ease, opacity .15s ease;
@@ -1383,10 +1380,9 @@
         <select id="arCat"></select>
       </label>
       <label>Czas przygotowania<input type="text" id="arTime" placeholder="np. 15 min"></label>
-      <label class="span2">Składniki (jeden na linię, z gramaturą jeśli możesz)
-        <textarea id="arIngredients" rows="4" placeholder="2 jajka&#10;100 g ryżu&#10;garść szpinaku"></textarea>
+      <label class="span2">Składniki (jeden na linię)
+        <textarea id="arIngredients" rows="4" placeholder="2 jajka&#10;1/2 awokado&#10;garść szpinaku"></textarea>
       </label>
-      <div class="hint-text" id="arAutoCalcHint" style="margin:0; grid-column:1 / -1;">Wpisz składniki, a kalorie i makroskładniki obliczą się automatycznie.</div>
       <label class="span2">Sposób przygotowania
         <textarea id="arMethod" rows="3" placeholder="Krótki opis przygotowania"></textarea>
       </label>
@@ -2120,164 +2116,6 @@ function estimateSnackKcal(text){
   const grams = (p.unitCat==="weight" || p.unitCat==="volume") ? p.baseQty : entry.typicalG * p.baseQty;
   return {kcal: Math.round(entry.kcal * grams / 100), canon, basis: `${entry.kcal} kcal / 100 g × ${Math.round(grams)} g`};
 }
-
-// ---------- INGREDIENT MACRO DATABASE (for auto-calculating custom recipes) ----------
-// Curated per-100g (or per-typical-unit) protein/carbs/fat/kcal for the most
-// common ingredients appearing across the 229 built-in recipes, so "Dodaj
-// swój przepis" can compute real macros from what the user actually typed
-// instead of asking them to already know their dish's nutrition breakdown.
-// Same "per 1szt vs per 100g + typicalG" shape as SNACK_NUTRITION_DB, and
-// several values (jajka, chleb żytni, oliwa z oliwek, marchewka, ogórek,
-// papryka, pomidor, banan, jabłko, gruszka, cytryna, kiwi, truskawki, czosnek)
-// deliberately match the baseKcal already used in built-in recipes' calc[]
-// so a custom recipe using the same ingredient gets a consistent number.
-// Standard nutrition-table values (USDA-style), same spirit/accuracy level
-// as the rest of this app's "Jak policzono" methodology — orientacyjne, not
-// lab measurements.
-const INGREDIENT_MACRO_DB = {
-  "jajka": {per:"1szt", kcal:78, protein:6.3, carbs:0.6, fat:5.3},
-  "kurczak (pierś)": {per:"100g", kcal:165, protein:31, carbs:0, fat:3.6, typicalG:150},
-  "indyk": {per:"100g", kcal:135, protein:29, carbs:0, fat:1.6, typicalG:150},
-  "wołowina": {per:"100g", kcal:215, protein:26, carbs:0, fat:12, typicalG:150},
-  "wieprzowina": {per:"100g", kcal:242, protein:27, carbs:0, fat:14, typicalG:150},
-  "łosoś": {per:"100g", kcal:208, protein:20, carbs:0, fat:13, typicalG:150},
-  "dorsz": {per:"100g", kcal:82, protein:18, carbs:0, fat:0.7, typicalG:150},
-  "makrela": {per:"100g", kcal:205, protein:19, carbs:0, fat:14, typicalG:120},
-  "pstrąg": {per:"100g", kcal:148, protein:20, carbs:0, fat:7, typicalG:150},
-  "tuńczyk": {per:"100g", kcal:116, protein:26, carbs:0, fat:1, typicalG:100},
-  "krewetki": {per:"100g", kcal:99, protein:24, carbs:0.2, fat:0.3, typicalG:100},
-  "tofu": {per:"100g", kcal:76, protein:8, carbs:1.9, fat:4.8, typicalG:100},
-  "ciecierzyca": {per:"100g", kcal:164, protein:8.9, carbs:27, fat:2.6, typicalG:150},
-  "fasola": {per:"100g", kcal:127, protein:8.7, carbs:23, fat:0.5, typicalG:150},
-  "soczewica": {per:"100g", kcal:116, protein:9, carbs:20, fat:0.4, typicalG:150},
-  "hummus": {per:"100g", kcal:166, protein:8, carbs:14, fat:10, typicalG:50},
-  "ryż": {per:"100g", kcal:130, protein:2.7, carbs:28, fat:0.3, typicalG:150},
-  "kasza gryczana": {per:"100g", kcal:92, protein:3.4, carbs:20, fat:0.6, typicalG:150},
-  "kasza jaglana": {per:"100g", kcal:118, protein:3.5, carbs:24, fat:1, typicalG:150},
-  "kasza pęczak": {per:"100g", kcal:123, protein:4.7, carbs:26, fat:0.4, typicalG:150},
-  "kasza bulgur": {per:"100g", kcal:83, protein:3, carbs:18, fat:0.2, typicalG:150},
-  "kasza kuskus": {per:"100g", kcal:112, protein:3.8, carbs:23, fat:0.2, typicalG:150},
-  "komosa ryżowa": {per:"100g", kcal:120, protein:4.4, carbs:21, fat:1.9, typicalG:150},
-  "makaron soba": {per:"100g", kcal:99, protein:5, carbs:21, fat:0.1, typicalG:150},
-  "makaron pszenny": {per:"100g", kcal:158, protein:5.8, carbs:31, fat:0.9, typicalG:150},
-  "płatki owsiane": {per:"100g", kcal:379, protein:13, carbs:67, fat:7, typicalG:50},
-  "mąka": {per:"100g", kcal:364, protein:10, carbs:76, fat:1, typicalG:60},
-  "chleb żytni": {per:"1szt", kcal:80, protein:2.5, carbs:15, fat:1},
-  "chleb pszenny": {per:"1szt", kcal:90, protein:3, carbs:17, fat:1},
-  "bułka pszenna": {per:"1szt", kcal:150, protein:5, carbs:29, fat:1.5},
-  "wafle chrupkie": {per:"1szt", kcal:35, protein:1, carbs:7, fat:0.3},
-  "tortilla": {per:"1szt", kcal:140, protein:4, carbs:24, fat:3.5},
-  "ziemniaki": {per:"100g", kcal:77, protein:2, carbs:17, fat:0.1, typicalG:200},
-  "batat": {per:"100g", kcal:86, protein:1.6, carbs:20, fat:0.1, typicalG:200},
-  "cebula": {per:"100g", kcal:40, protein:1.1, carbs:9.3, fat:0.1, typicalG:70},
-  "czerwona cebula": {per:"100g", kcal:40, protein:1.1, carbs:9.3, fat:0.1, typicalG:70},
-  "cukinia": {per:"100g", kcal:17, protein:1.2, carbs:3.1, fat:0.3, typicalG:200},
-  "marchewka": {per:"1szt", kcal:25, protein:0.5, carbs:5.6, fat:0.1},
-  "burak": {per:"100g", kcal:43, protein:1.6, carbs:10, fat:0.2, typicalG:100},
-  "ogórek": {per:"1szt", kcal:20, protein:0.6, carbs:3, fat:0.1},
-  "ogórek kiszony": {per:"100g", kcal:12, protein:0.7, carbs:1.9, fat:0.2, typicalG:60},
-  "papryka": {per:"1szt", kcal:31, protein:1, carbs:6, fat:0.3},
-  "papryka słodka (mielona)": {per:"100g", kcal:282, protein:14, carbs:34, fat:13, typicalG:2},
-  "pomidor": {per:"1szt", kcal:22, protein:1, carbs:4, fat:0.2},
-  "pomidorki koktajlowe": {per:"100g", kcal:18, protein:0.9, carbs:3.9, fat:0.2, typicalG:100},
-  "koncentrat / passata pomidorowa": {per:"100g", kcal:82, protein:4.3, carbs:19, fat:0.5, typicalG:100},
-  "rzodkiewka": {per:"100g", kcal:16, protein:0.7, carbs:3.4, fat:0.1, typicalG:60},
-  "szpinak": {per:"100g", kcal:23, protein:2.9, carbs:3.6, fat:0.4, typicalG:60},
-  "jarmuż": {per:"100g", kcal:49, protein:4.3, carbs:8.8, fat:0.9, typicalG:60},
-  "sałata / mix sałat": {per:"100g", kcal:15, protein:1.4, carbs:2.9, fat:0.2, typicalG:50},
-  "brokuł": {per:"100g", kcal:34, protein:2.8, carbs:6.6, fat:0.4, typicalG:150},
-  "kalafior": {per:"100g", kcal:25, protein:1.9, carbs:5, fat:0.3, typicalG:150},
-  "seler naciowy": {per:"100g", kcal:16, protein:0.7, carbs:3, fat:0.2, typicalG:50},
-  "czosnek": {per:"100g", kcal:149, protein:6.4, carbs:33, fat:0.5, typicalG:3},
-  "koperek": {per:"100g", kcal:43, protein:3.5, carbs:7, fat:1.1, typicalG:5},
-  "szczypiorek": {per:"100g", kcal:30, protein:3.3, carbs:4.4, fat:0.7, typicalG:5},
-  "kiełki": {per:"100g", kcal:30, protein:3, carbs:4, fat:0.5, typicalG:20},
-  "mrożone warzywa": {per:"100g", kcal:60, protein:3, carbs:10, fat:0.5, typicalG:150},
-  "pieczarki": {per:"100g", kcal:22, protein:3.1, carbs:3.3, fat:0.3, typicalG:100},
-  "dynia": {per:"100g", kcal:26, protein:1, carbs:6.5, fat:0.1, typicalG:150},
-  "fasolka szparagowa": {per:"100g", kcal:31, protein:1.8, carbs:7, fat:0.2, typicalG:120},
-  "groszek zielony": {per:"100g", kcal:81, protein:5.4, carbs:14, fat:0.4, typicalG:80},
-  "awokado": {per:"100g", kcal:160, protein:2, carbs:8.5, fat:14.7, typicalG:100},
-  "banan": {per:"1szt", kcal:105, protein:1.3, carbs:27, fat:0.4},
-  "jabłko": {per:"1szt", kcal:78, protein:0.4, carbs:21, fat:0.3},
-  "gruszka": {per:"1szt", kcal:86, protein:0.6, carbs:23, fat:0.2},
-  "cytryna": {per:"1szt", kcal:17, protein:0.6, carbs:5, fat:0.2},
-  "kiwi": {per:"1szt", kcal:42, protein:0.8, carbs:10, fat:0.4},
-  "pomarańcza": {per:"1szt", kcal:62, protein:1.2, carbs:15, fat:0.2},
-  "maliny": {per:"100g", kcal:32, protein:1.2, carbs:5.4, fat:0.5, typicalG:125},
-  "borówki / jagody": {per:"100g", kcal:43, protein:0.7, carbs:9.7, fat:0.5, typicalG:125},
-  "truskawki": {per:"100g", kcal:32, protein:0.7, carbs:7.7, fat:0.3, typicalG:150},
-  "ananas": {per:"100g", kcal:50, protein:0.5, carbs:13, fat:0.1, typicalG:100},
-  "migdały": {per:"100g", kcal:579, protein:21, carbs:22, fat:50, typicalG:20},
-  "orzechy": {per:"100g", kcal:654, protein:15, carbs:14, fat:65, typicalG:20},
-  "pestki (dyni/słonecznika)": {per:"100g", kcal:559, protein:30, carbs:11, fat:49, typicalG:15},
-  "siemię lniane / chia": {per:"100g", kcal:486, protein:17, carbs:42, fat:31, typicalG:10},
-  "sezam": {per:"100g", kcal:573, protein:18, carbs:23, fat:50, typicalG:10},
-  "masło orzechowe / migdałowe": {per:"100g", kcal:588, protein:25, carbs:20, fat:50, typicalG:15},
-  "oliwa z oliwek": {per:"1szt", kcal:40, protein:0, carbs:0, fat:4.5},
-  "olej kokosowy": {per:"1szt", kcal:40, protein:0, carbs:0, fat:4.5},
-  "olej sezamowy": {per:"1szt", kcal:40, protein:0, carbs:0, fat:4.5},
-  "masło klarowane": {per:"1szt", kcal:42, protein:0, carbs:0, fat:4.7},
-  "oliwki": {per:"100g", kcal:115, protein:0.8, carbs:6, fat:11, typicalG:20},
-  "miód": {per:"1szt", kcal:21, protein:0, carbs:5.7, fat:0},
-  "dżem": {per:"100g", kcal:250, protein:0.4, carbs:61, fat:0.1, typicalG:20},
-  "gorzka czekolada": {per:"100g", kcal:546, protein:5, carbs:46, fat:31, typicalG:15},
-  "granola": {per:"100g", kcal:450, protein:10, carbs:60, fat:18, typicalG:40},
-  "daktyle suszone": {per:"100g", kcal:282, protein:2.5, carbs:75, fat:0.4, typicalG:20},
-  "rodzynki / żurawina": {per:"100g", kcal:299, protein:3, carbs:79, fat:0.5, typicalG:15},
-  "morele suszone": {per:"100g", kcal:241, protein:3.4, carbs:63, fat:0.5, typicalG:20},
-  "napój roślinny (migdałowy/owsiany/kokosowy)": {per:"100g", kcal:40, protein:0.5, carbs:6, fat:1.5, typicalG:200},
-  "mleko kokosowe": {per:"100g", kcal:180, protein:1.8, carbs:3, fat:18, typicalG:100},
-  "wiórki kokosowe": {per:"100g", kcal:660, protein:6.9, carbs:24, fat:65, typicalG:10},
-  "jogurt bez laktozy": {per:"100g", kcal:61, protein:3.5, carbs:4.7, fat:3.3, typicalG:150},
-  "skyr bez laktozy": {per:"100g", kcal:63, protein:11, carbs:4, fat:0.2, typicalG:150},
-  "serek bez laktozy": {per:"100g", kcal:98, protein:11, carbs:3.4, fat:4.3, typicalG:150},
-  "twaróg bez laktozy": {per:"100g", kcal:98, protein:18, carbs:3.5, fat:1.5, typicalG:150},
-  "feta / ser bez laktozy": {per:"100g", kcal:264, protein:14, carbs:4, fat:21, typicalG:50},
-  "odżywka białkowa": {per:"1szt", kcal:120, protein:24, carbs:3, fat:1.5},
-  "sos sojowy / tamari": {per:"100g", kcal:60, protein:8, carbs:6, fat:0, typicalG:15},
-  "ocet balsamiczny": {per:"100g", kcal:88, protein:0.5, carbs:17, fat:0, typicalG:15},
-  "bulion warzywny": {per:"100g", kcal:6, protein:0.3, carbs:0.8, fat:0.2, typicalG:250},
-  "musztarda": {per:"100g", kcal:66, protein:4, carbs:5, fat:3.3, typicalG:10},
-  "pasta curry": {per:"100g", kcal:120, protein:2, carbs:10, fat:8, typicalG:15},
-};
-function estimateIngredientMacros(text){
-  const raw = (text||"").trim();
-  if(!raw) return null;
-  const p = parseIngredient(raw);
-  const canon = pantryCanon(p.name);
-  const entry = INGREDIENT_MACRO_DB[canon];
-  if(!entry) return null;
-  const scale = entry.per === "1szt"
-    ? p.baseQty
-    : ((p.unitCat==="weight" || p.unitCat==="volume") ? p.baseQty : entry.typicalG * p.baseQty) / 100;
-  return {
-    canon,
-    kcal: entry.kcal * scale,
-    protein: entry.protein * scale,
-    carbs: entry.carbs * scale,
-    fat: entry.fat * scale,
-  };
-}
-// Sums estimateIngredientMacros() across every non-empty line of a
-// multi-line ingredients textarea, reporting how many lines were recognized
-// so the UI can be upfront about partial coverage instead of silently
-// under-counting unrecognized ingredients.
-function estimateRecipeMacrosFromText(ingredientsText){
-  const lines = (ingredientsText||"").split("\n").map(s=>s.trim()).filter(Boolean);
-  let kcal=0, protein=0, carbs=0, fat=0, matched=0;
-  lines.forEach(line=>{
-    const m = estimateIngredientMacros(line);
-    if(!m) return;
-    matched++;
-    kcal += m.kcal; protein += m.protein; carbs += m.carbs; fat += m.fat;
-  });
-  return {
-    total: lines.length, matched,
-    kcal: Math.round(kcal), protein: Math.round(protein*10)/10,
-    carbs: Math.round(carbs*10)/10, fat: Math.round(fat*10)/10,
-  };
-}
 const MICRO_TABLE = {
   "jajka": {ca:25, vitD:1.1, b12:0.45},
   "kurczak (pierś)": {ca:6, vitD:0.1, b12:0.3},
@@ -2743,35 +2581,24 @@ function renderHeader(){
 // Compact droplet strip in the header, always visible (even when the header
 // is collapsed) so today's hydration is a glance away from any tab, not
 // just the Postępy view — which still has the full interactive row.
-// Each droplet is its own tap target, set-to-that-level on click — the same
-// direct-manipulation pattern as the "cup" tiles on Postępy (renderWater),
-// not a simple increment counter. A plain increment-only strip meant an
-// accidental double-tap (or misclick) could never be undone from the
-// header — the only way "back" was wrapping all the way around at 8→0.
-// Clicking a droplet that's already the current level steps back by one,
-// exactly like clicking a cup tile a second time.
 function renderHeaderWater(){
   const row = document.getElementById("headerWaterRow");
   if(!row) return;
   if(state.water.date !== todayStr()){ state.water = {date:todayStr(), count:0}; }
   const count = state.water.count;
   let drops = "";
-  for(let i=0;i<8;i++) drops += `<span class="hwr-drop" data-i="${i}">${i<count ? "💧" : "⚪"}</span>`;
+  for(let i=0;i<8;i++) drops += (i<count ? "💧" : "⚪");
   row.innerHTML = `<span class="hwr-drops">${drops}</span><span class="hwr-count">${count}/8</span>`;
-  row.querySelectorAll(".hwr-drop").forEach(el=>{
-    el.addEventListener("click", (e)=>{
-      e.stopPropagation();
-      const i = parseInt(el.dataset.i, 10);
-      if(state.water.date !== todayStr()){ state.water = {date:todayStr(), count:0}; }
-      state.water.count = (state.water.count === i+1) ? i : i+1;
-      state.waterHistory[state.water.date] = state.water.count;
-      saveState();
-      renderHeaderWater();
-      if(document.getElementById("waterRow")) renderWater();
-      refreshWaterNotification();
-    });
-  });
 }
+document.getElementById("headerWaterRow").addEventListener("click", ()=>{
+  if(state.water.date !== todayStr()){ state.water = {date:todayStr(), count:0}; }
+  state.water.count = state.water.count >= 8 ? 0 : state.water.count + 1;
+  state.waterHistory[state.water.date] = state.water.count;
+  saveState();
+  renderHeaderWater();
+  if(document.getElementById("waterRow")) renderWater();
+  refreshWaterNotification();
+});
 
 function renderEatenSummary(dailyTarget){
   const box = document.getElementById("eatenSummary");
@@ -2973,10 +2800,6 @@ function describeAuthError(err){
       return null;
     case "auth/wrong-password":
       return "Nieprawidłowe hasło do tego konta.";
-    case "auth/invalid-credential":
-      return "Nie udało się zalogować tym e-mailem i hasłem. Jeśli to konto zakładałeś/aś przez Google (a nie przez ustawienie hasła), użyj przycisku „Zaloguj się na konto Google” zamiast e-maila/hasła — to konto może w ogóle nie mieć ustawionego hasła.";
-    case "auth/user-not-found":
-      return "Nie ma konta z tym adresem e-mail.";
     default:
       return "Nie udało się połączyć: " + err.message;
   }
@@ -3796,32 +3619,6 @@ document.getElementById("recipeReviewDeleteBtn").addEventListener("click", ()=>{
 });
 
 // ---------- ADD YOUR OWN RECIPE ----------
-// "Dirty" flags: auto-calc keeps filling kcal/protein/carbs/fat live as the
-// user types ingredients, but the moment the user types into one of those
-// fields directly, their number wins from then on — auto-calc never
-// overwrites a value the user deliberately entered.
-let arMacroDirty = {kcal:false, protein:false, carbs:false, fat:false};
-function recalcAddRecipeMacros(){
-  const result = estimateRecipeMacrosFromText(document.getElementById("arIngredients").value);
-  const hint = document.getElementById("arAutoCalcHint");
-  if(result.total === 0){
-    hint.textContent = "Wpisz składniki, a kalorie i makroskładniki obliczą się automatycznie.";
-    return;
-  }
-  hint.textContent = result.matched === 0
-    ? `Nie rozpoznano żadnego z ${result.total} składników — wpisz kalorie i makroskładniki ręcznie.`
-    : `Rozpoznano ${result.matched} z ${result.total} składników — obliczono na tej podstawie (możesz poprawić ręcznie).`;
-  if(result.matched === 0) return;
-  if(!arMacroDirty.kcal) document.getElementById("arKcal").value = result.kcal || "";
-  if(!arMacroDirty.protein) document.getElementById("arProtein").value = result.protein || "";
-  if(!arMacroDirty.carbs) document.getElementById("arCarbs").value = result.carbs || "";
-  if(!arMacroDirty.fat) document.getElementById("arFat").value = result.fat || "";
-}
-document.getElementById("arIngredients").addEventListener("input", recalcAddRecipeMacros);
-["arKcal","arProtein","arCarbs","arFat"].forEach(id=>{
-  const key = id.replace("ar","").toLowerCase();
-  document.getElementById(id).addEventListener("input", ()=>{ arMacroDirty[key] = true; });
-});
 function openAddRecipeModal(){
   document.getElementById("arName").value = "";
   document.getElementById("arTime").value = "";
@@ -3831,8 +3628,6 @@ function openAddRecipeModal(){
   document.getElementById("arProtein").value = "";
   document.getElementById("arCarbs").value = "";
   document.getElementById("arFat").value = "";
-  document.getElementById("arAutoCalcHint").textContent = "Wpisz składniki, a kalorie i makroskładniki obliczą się automatycznie.";
-  arMacroDirty = {kcal:false, protein:false, carbs:false, fat:false};
   const catSel = document.getElementById("arCat");
   catSel.innerHTML = CATS.map(c=>`<option value="${c.id}">${c.icon} ${c.label}</option>`).join("");
   catSel.value = currentCat;
@@ -3847,9 +3642,9 @@ document.getElementById("arSaveBtn").addEventListener("click", ()=>{
   const name = document.getElementById("arName").value.trim();
   const kcal = parseFloat(document.getElementById("arKcal").value);
   const ingredients = document.getElementById("arIngredients").value.split("\n").map(s=>s.trim()).filter(Boolean);
-  if(!name){ toast("Podaj nazwę dania"); document.getElementById("arName").focus(); return; }
-  if(ingredients.length===0){ toast("Dodaj przynajmniej jeden składnik"); document.getElementById("arIngredients").focus(); return; }
-  if(!Number.isFinite(kcal) || kcal<=0){ toast("Podaj kalorie dania (albo dopisz gramaturę do składników, żeby obliczyły się same)"); document.getElementById("arKcal").focus(); return; }
+  if(!name){ toast("Podaj nazwę dania"); return; }
+  if(!Number.isFinite(kcal) || kcal<=0){ toast("Podaj kalorie dania"); return; }
+  if(ingredients.length===0){ toast("Dodaj przynajmniej jeden składnik"); return; }
   const protein = parseFloat(document.getElementById("arProtein").value);
   const carbs = parseFloat(document.getElementById("arCarbs").value);
   const fat = parseFloat(document.getElementById("arFat").value);
