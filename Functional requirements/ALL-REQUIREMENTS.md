@@ -106,6 +106,9 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 ### Ustawienia / Profil
 - [FR-72: Wymuszenie ustawienia profilu przy pierwszym uruchomieniu](#fr-72-wymuszenie-ustawienia-profilu-przy-pierwszym-uruchomieniu)
 
+### Konto i chmura
+- [FR-73: Synchronizacja danych osobistych w chmurze między urządzeniami](#fr-73-synchronizacja-danych-osobistych-w-chmurze-między-urządzeniami)
+
 ---
 
 ## Analiza spójności i wykluczeń
@@ -1428,7 +1431,7 @@ Jeśli Firebase jest niedostępny (brak internetu, zablokowany dostęp do serwer
 - Cztery osobne, jasno opisane przyciski: połącz z Google, zaloguj się przez Google, połącz e-mailem, zaloguj się e-mailem — nie tylko "połącz", żeby logowanie na drugim/kolejnym urządzeniu (na już istniejące konto) było możliwe bez natrafiania na błąd jako jedyną drogę do informacji, że trzeba się zalogować, a nie połączyć.
 - Próba połączenia (linkowania) kontem/e-mailem już zajętym przez inne konto pokazuje czytelny komunikat po polsku i pyta, czy zalogować się do tego istniejącego konta — dla obu metod (Google i e-mail).
 - Karta „Konto w chmurze” pokazuje aktualny stan: niedostępność Firebase, brak logowania, lub zalogowanie (i którą metodą).
-- Jasna informacja przy przyciskach logowania, że zalogowanie się na już istniejące konto na nowym urządzeniu na razie tylko potwierdza tożsamość — dane (spiżarnia/lista zakupów) się jeszcze nie synchronizują.
+- Jasna informacja przy przyciskach logowania o tym, co zalogowanie się na już istniejące konto na nowym urządzeniu robi z danymi tego urządzenia (pobiera i NADPISUJE danymi z konta — patrz FR-73, mechanizm synchronizacji danych osobistych).
 - Całkowity brak dostępu do Firebase (np. zablokowana sieć) nie powoduje błędu JS ani nie psuje żadnej innej funkcji aplikacji — zweryfikowane w środowisku z faktycznie zablokowanym dostępem do serwerów Firebase.
 
 ## Uwagi
@@ -1444,6 +1447,7 @@ Zrewidowane ponownie 2026-08-08: użytkownik zgłosił błąd logowania e-mailem
 - **v1** (2026-08-08): Pierwsza wersja wymagania na podstawie polecenia użytkownika.
 - **v2** (2026-08-08): Dodano osobne przyciski logowania (nie tylko łączenia) po zgłoszeniu, że drugie urządzenie nie mogło zalogować się na już istniejące konto — patrz "Uwagi".
 - **v3** (2026-08-08): Doprecyzowano komunikat błędu `auth/invalid-credential` dla kont bez ustawionego hasła — patrz "Uwagi".
+- **v4** (2026-08-08): Zaktualizowano opis konsekwencji logowania na nowym urządzeniu po wdrożeniu synchronizacji danych osobistych (FR-73) — logowanie już nie "tylko potwierdza tożsamość", tylko realnie pobiera i nadpisuje dane tego urządzenia danymi z konta.
 
 ---
 
@@ -1561,5 +1565,95 @@ wpływa na istniejących użytkowników ani ich zapisane dane.
 - **v1** (2026-08-08): Pierwsza wersja wymagania, na życzenie użytkownika
   ("przy pierwszym otwarciu konta wyczyść domyślne ustawienia płci wieku
   wagi itp żeby ktoś musiał sam sobie ustawić zanim dopasuje dietę").
+
+---
+
+# FR-73: Synchronizacja danych osobistych w chmurze między urządzeniami
+
+**Obszar:** Konto i chmura
+**Status:** Zaimplementowane
+
+## Opis
+Po zalogowaniu na prawdziwe konto (Google lub e-mail/hasło — patrz FR-69),
+w odróżnieniu od domyślnego logowania anonimowego, aplikacja automatycznie
+zapisuje w Firestore i na bieżąco synchronizuje między wszystkimi
+urządzeniami zalogowanymi tym samym kontem następujące dane osobiste:
+
+- nazwę w aplikacji (`displayName`),
+- profil diety (płeć/wiek/wzrost/waga/cel/filtry, `profile`),
+- spiżarnię wraz z ręcznymi nadpisaniami jednostki/kategorii (`pantry`,
+  `pantryUnitOverride`, `pantryCategoryOverride`),
+- ulubione przepisy i ulubione składniki (`favorites`, `favIngredients`),
+- własne dodane przepisy (`myRecipes`, patrz FR-66),
+- oceny i recenzje przepisów (`recipeReviews`, `recipeRating`, patrz FR-67),
+- niestandardowe kafelki spiżarni (`customTiles`),
+- motyw, skalę interfejsu i styl etykiety oceniania przesunięciem
+  (`theme`, `uiScale`, `swipeRatingStyle`),
+- przełącznik „Pokazuj przepisy dodane przez innych użytkowników”
+  (`communityRecipesEnabled`).
+
+Mechanizm: każde wywołanie `saveState()` (czyli każdy zapis do
+`localStorage`, tak jak dotychczas) dodatkowo, z 1,5-sekundowym opóźnieniem
+(żeby nie wysyłać osobnego zapisu do chmury przy każdym pojedynczym
+kliknięciu), zapisuje powyższy wycinek stanu do dokumentu
+`users/{uid}` w Firestore — ale TYLKO gdy użytkownik jest zalogowany na
+prawdziwe (nie anonimowe) konto. Jednocześnie aplikacja nasłuchuje zmian
+tego samego dokumentu na żywo (`onSnapshot`) — zmiana wprowadzona na
+jednym zalogowanym urządzeniu pojawia się na pozostałych automatycznie,
+bez potrzeby ręcznego odświeżania, również po powrocie do sieci po pracy
+offline (dzięki wcześniej włączonemu trybowi offline Firestore,
+`enablePersistence`).
+
+Pierwsze zalogowanie na dane konto (dokument `users/{uid}` jeszcze nie
+istnieje w chmurze) wysyła obecny lokalny stan urządzenia jako punkt
+startowy („jednorazowa migracja”, zgodnie z `docs/FIREBASE_MIGRATION_PLAN.md`
+punkt 7 checklisty). Zalogowanie się na już ISTNIEJĄCE konto (dokument już
+ma dane z innego urządzenia) pobiera dane z chmury na to urządzenie —
+to pobranie ZASTĘPUJE dotychczasowe lokalne dane tego urządzenia, a nie
+scala ich pole po polu; to świadomy wybór (ostatni zapis w chmurze wygrywa
+całym dokumentem), a nie próba automatycznego rozwiązywania konfliktów
+między dwoma niezależnie używanymi urządzeniami.
+
+## Kryteria akceptacji
+- Użytkownik zalogowany wyłącznie anonimowo (domyślny stan przy pierwszym
+  uruchomieniu) NIGDY nie wysyła ani nie odbiera danych z chmury — zachowanie
+  identyczne jak przed wprowadzeniem tej funkcji.
+- Wielokrotne szybkie zmiany stanu (np. kilka kliknięć pod rząd) skutkują
+  JEDNYM zapisem do chmury po ustaniu aktywności, nie osobnym zapisem na
+  każdą zmianę.
+- Odebranie z chmury danych identycznych z już posiadanymi lokalnie (np.
+  echo własnego zapisu) NIE wywołuje ponownego renderowania interfejsu ani
+  powiadomienia — tylko rzeczywista zmiana wartości to robi.
+- Synchronizacji NIE podlegają: dziennik zjedzonych posiłków (`eaten`),
+  historia wagi (`weights`), historia nawodnienia (`waterHistory`), log
+  aktywności (`history`), historia gotowania (`cooked`), planer tygodniowy
+  (`planner`, `plannerScale`, `plannerLeftover`) ani lista zakupów
+  (`shopping`, `recipeAdded`) — to świadome ograniczenie zakresu tej rundy;
+  planer i lista zakupów docelowo mają być danymi WSPÓLNYMI całego
+  gospodarstwa domowego (`households/*` w `docs/FIREBASE_MIGRATION_PLAN.md`,
+  punkt 8 checklisty, wciąż niezaimplementowany), więc synchronizowanie ich
+  już teraz jako danych czysto osobistych byłoby niezgodne z docelowym
+  modelem i wymagałoby późniejszej migracji.
+- Włączenie przełącznika „Pokazuj przepisy społeczności” synchronizuje samą
+  WARTOŚĆ przełącznika między urządzeniami, ale nie powoduje jeszcze
+  pokazania przepisów dodanych przez innych użytkowników — do tego
+  potrzebna jest osobna, wciąż niezaimplementowana baza przepisów
+  społeczności z moderacją (patrz `docs/FIREBASE_MIGRATION_PLAN.md`).
+
+## Uwagi
+Rzeczywisty zapis/odczyt z prawdziwego Firestore można zweryfikować tylko
+na urządzeniu z dostępem do sieci Google/Firebase. Logika synchronizacji
+(wybór synchronizowanych pól, debouncing, scalanie tylko zmienionych pól,
+zachowanie przy nowym/istniejącym koncie) została zweryfikowana
+automatycznie z podstawionym (mockowanym) klientem Firestore; rzeczywiste
+działanie między dwoma prawdziwymi urządzeniami wymaga sprawdzenia przez
+użytkownika.
+
+## Historia rewizji
+- **v1** (2026-08-08): Pierwsza wersja wymagania — naprawia zgłoszony błąd
+  ("po zalogowaniu na dwóch urządzeniach nie zsynchronizowało mi nazwy
+  użytkownika ani spiżarni, ani żadnych ustawień jak chociażby to żeby
+  pokazywało przepisy innych użytkowników"), realizując punkt 6 checklisty
+  z `docs/FIREBASE_MIGRATION_PLAN.md`.
 
 ---

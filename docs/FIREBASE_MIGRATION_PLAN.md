@@ -31,10 +31,14 @@ bezpieczeństwa) jest nadal aktualnym planem na te pozostałe kroki.
 - **Logowanie Google i e-mail+hasło** (Ustawienia → „☁️ Konto w chmurze”) —
   obie metody `linkWithPopup`/`linkWithCredential` na istniejącym
   anonimowym koncie, z obsługą kolizji "ten e-mail już istnieje".
-- **Firestore włączone** (`enablePersistence` dla trybu offline), ale
-  jeszcze NIEUŻYWANE przez `loadState()`/`saveState()` — dane nadal żyją
-  wyłącznie w localStorage. To następny krok (patrz "Checklist" niżej,
-  punkty 5-8 są jeszcze do zrobienia).
+- **Firestore używane przez `saveState()`** dla danych OSOBISTYCH (profil,
+  spiżarnia, ulubione, własne przepisy, oceny, ustawienia — pełna lista w
+  Functional requirements/FR-73), gdy użytkownik jest zalogowany na
+  prawdziwe (nie anonimowe) konto — z `enablePersistence` dla trybu
+  offline i `onSnapshot` do synchronizacji na żywo między urządzeniami.
+  Dane WSPÓLNE gospodarstwa domowego (planer/lista zakupów/historia
+  gotowania) wciąż żyją wyłącznie w localStorage — to następny krok (patrz
+  "Checklist" niżej, punkt 8).
 
 ## Dlaczego zaskakująco mało trzeba dopisywać "warstwy synchronizacji"
 
@@ -206,14 +210,18 @@ Zgodnie z prośbą o włącznik w ustawieniach:
 5. ✅ Logowanie: anonimowe na starcie + opcjonalne połączenie z Google lub
    e-mailem/hasłem (`linkWithPopup`/`linkWithCredential`), z obsługą
    kolizji "ten e-mail już istnieje". Patrz FR-69.
-6. ⬜ **Następny krok:** podmień wewnętrzne działanie `loadState()`/
-   `saveState()`: zamiast wyłącznie `localStorage`, czytaj/pisz też z
-   Firestore (`onSnapshot` do nasłuchiwania zmian na żywo — ważne dla
-   współdzielenia z drugą osobą w czasie rzeczywistym). `enablePersistence()`
-   jest już włączone, więc tryb offline zadziała od razu.
-7. ⬜ Jednorazowa migracja: przy pierwszym prawdziwym zalogowaniu (nie
-   anonimowym), jeśli `users/{uid}` jeszcze nie istnieje, wgraj obecny
-   lokalny `state` jako punkt startowy zamiast zaczynać od zera.
+6. ✅ `saveState()` dodatkowo (z 1,5s debounce) zapisuje wycinek danych
+   OSOBISTYCH (`users/{uid}`, patrz Functional requirements/FR-73) do
+   Firestore, z `onSnapshot` nasłuchującym zmian na żywo. Dotyczy na razie
+   tylko danych osobistych z listy w FR-73 (profil, spiżarnia, ulubione,
+   własne przepisy, oceny, ustawienia) — dane WSPÓLNE gospodarstwa
+   (planer/lista zakupów/historia gotowania) czekają na krok 8 poniżej,
+   żeby nie synchronizować ich jako danych osobistych i nie wymagać potem
+   migracji na inny model. *(zrobione 2026-08-08)*
+7. ✅ Jednorazowa migracja zrobiona jako część kroku 6: pierwsze
+   zalogowanie na dane konto (`users/{uid}` jeszcze nie istnieje w chmurze)
+   wysyła obecny lokalny stan urządzenia jako punkt startowy. *(zrobione
+   2026-08-08)*
 8. ⬜ Dodaj UI gospodarstwa domowego: formularz "Dołącz do gospodarstwa" /
    "Utwórz gospodarstwo" (dopiero ma sens, gdy krok 6 faktycznie
    synchronizuje dane — inaczej byłby to formularz udający działanie,

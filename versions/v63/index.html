@@ -1125,7 +1125,7 @@
         <h3 style="margin:0 0 10px; font-size:15px;">☁️ Konto w chmurze</h3>
         <div class="hint-text" id="authStatusLine" style="margin:0 0 10px;">Sprawdzanie stanu połączenia…</div>
         <div id="authLinkedSection" style="display:none;">
-          <div class="hint-text" style="margin:0;">✅ Twoje konto jest zabezpieczone, a Twoje dane osobiste — nazwa w aplikacji, profil diety, spiżarnia, ulubione, własne przepisy, oceny i ten przełącznik ustawień — synchronizują się automatycznie między wszystkimi urządzeniami, na których jesteś zalogowana/y tym samym kontem. Wspólny planer i lista zakupów dla całego gospodarstwa domowego wciąż czekają na dokończenie (kolejny krok w <code>docs/FIREBASE_MIGRATION_PLAN.md</code>) — to osobna funkcja od synchronizacji danych osobistych.</div>
+          <div class="hint-text" style="margin:0;">✅ Twoje konto jest zabezpieczone — dane przetrwają zmianę urządzenia. Współdzielona spiżarnia i lista zakupów z domownikami wciąż czekają na dokończenie synchronizacji (kolejny krok w <code>docs/FIREBASE_MIGRATION_PLAN.md</code>) — samo logowanie już działa.</div>
         </div>
         <div id="authUnlinkedSection">
           <div class="hint-text" style="margin:0 0 6px; font-weight:700;">Pierwsze urządzenie / nowe konto:</div>
@@ -1141,14 +1141,14 @@
             <button class="btn ghost" id="connectEmailBtn" style="width:100%;">✉️ Połącz (nowe konto)</button>
             <button class="btn ghost" id="signInEmailBtn" style="width:100%;">✉️ Zaloguj się (istniejące konto)</button>
           </div>
-          <div class="hint-text" style="margin:8px 0 0;">Logowanie jest opcjonalne — bez niego aplikacja działa dokładnie tak jak dotąd, wyłącznie lokalnie na tym urządzeniu. Jeden e-mail = jedno konto, niezależnie czy logujesz się nim przez Google czy hasłem. Zalogowanie się na już istniejące konto na NOWYM urządzeniu pobierze na to urządzenie dane osobiste zapisane wcześniej na koncie (nazwa, profil, spiżarnia, ulubione, własne przepisy, oceny) — lokalne dane z tego urządzenia sprzed zalogowania NIE łączą się automatycznie z danymi z konta, tylko są przez nie zastępowane. Wspólny planer/lista zakupów dla domowników to osobna, jeszcze niegotowa funkcja (patrz <code>docs/FIREBASE_MIGRATION_PLAN.md</code>).</div>
+          <div class="hint-text" style="margin:8px 0 0;">Logowanie jest opcjonalne — bez niego aplikacja działa dokładnie tak jak dotąd, wyłącznie lokalnie na tym urządzeniu. Jeden e-mail = jedno konto, niezależnie czy logujesz się nim przez Google czy hasłem. Uwaga: zalogowanie się na już istniejące konto na NOWYM urządzeniu na razie tylko potwierdza tożsamość — spiżarnia/lista zakupów z innego urządzenia jeszcze się tu nie pojawią (to osobny, jeszcze niegotowy krok, patrz <code>docs/FIREBASE_MIGRATION_PLAN.md</code>).</div>
         </div>
       </div>
 
       <div class="card">
         <h3 style="margin:0 0 10px; font-size:15px;">🌍 Przepisy społeczności</h3>
         <label class="toggle-row"><input type="checkbox" id="setCommunityRecipes"> Pokazuj przepisy dodane przez innych użytkowników</label>
-        <div class="hint-text" style="margin:0;">Stan tego przełącznika synchronizuje się już dziś między Twoimi urządzeniami (patrz karta „Konto w chmurze” wyżej), ale samo pokazywanie przepisów dodanych przez INNYCH użytkowników wciąż czeka na osobną funkcję — wspólną bazę przepisów społeczności z moderacją (kolejny krok w <code>docs/FIREBASE_MIGRATION_PLAN.md</code>). Twoje własne przepisy (przycisk „➕ Dodaj swój przepis” w zakładce Przepisy) działają już dziś i synchronizują się między Twoimi urządzeniami, niezależnie od tego przełącznika.</div>
+        <div class="hint-text" style="margin:0;">Na razie nieaktywne — logowanie już działa (patrz karta wyżej), ale samo pokazywanie przepisów od innych osób wymaga jeszcze dokończenia synchronizacji danych. Twoje własne przepisy (przycisk „➕ Dodaj swój przepis” w zakładce Przepisy) działają już dziś, niezależnie od tego przełącznika.</div>
       </div>
     </div>
 
@@ -2481,70 +2481,6 @@ function applyUiScale(scale){
 applyUiScale(state.uiScale);
 function saveState(){
   try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
-  scheduleCloudPush();
-}
-// ---------- CLOUD SYNC (Firestore) ----------
-// Personal data only (users/{uid}), per docs/FIREBASE_MIGRATION_PLAN.md
-// checklist item 6. Shared household data (planer/lista zakupów/historia
-// gotowania) deliberately stays out of this list — that needs the
-// households/* model from the same doc (checklist item 8, still pending),
-// and mixing it in here now would silently overwrite one device's plan
-// with another's instead of actually merging them.
-const SYNCED_STATE_KEYS = ["displayName","profile","theme","uiScale","communityRecipesEnabled","pantry","pantryUnitOverride","pantryCategoryOverride","favorites","favIngredients","myRecipes","recipeReviews","recipeRating","customTiles","swipeRatingStyle"];
-function syncableStateSubset(){
-  const out = {};
-  SYNCED_STATE_KEYS.forEach(k=>{ if(state[k]!==undefined) out[k] = state[k]; });
-  return out;
-}
-let cloudPushTimer = null;
-function scheduleCloudPush(){
-  if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous) return;
-  clearTimeout(cloudPushTimer);
-  cloudPushTimer = setTimeout(pushStateToCloud, 1500);
-}
-function pushStateToCloud(){
-  if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous) return;
-  fbDb.collection("users").doc(currentFbUser.uid).set(
-    Object.assign(syncableStateSubset(), {updatedAt: firebase.firestore.FieldValue.serverTimestamp()}),
-    {merge:true}
-  ).catch(e=> console.warn("Nie udało się zsynchronizować danych z chmurą.", e));
-}
-function applyRemoteSyncedState(data){
-  let changed = false;
-  SYNCED_STATE_KEYS.forEach(k=>{
-    if(data[k]!==undefined && JSON.stringify(data[k]) !== JSON.stringify(state[k])){
-      state[k] = data[k];
-      changed = true;
-    }
-  });
-  if(!changed) return;
-  try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
-  refreshUiAfterSync();
-}
-function refreshUiAfterSync(){
-  document.documentElement.setAttribute("data-theme", state.theme || "teal");
-  applyUiScale(state.uiScale);
-  renderHeader();
-  renderPills();
-  renderRecipes();
-  if(document.getElementById("view-pantry").classList.contains("active")) renderPantry();
-  if(document.getElementById("view-settings").classList.contains("active")) loadSettingsForm();
-  toast("☁️ Zsynchronizowano dane z chmury");
-}
-let userDocUnsubscribe = null;
-let userDocListenerUid = null;
-function detachUserDocListener(){
-  if(userDocUnsubscribe){ userDocUnsubscribe(); userDocUnsubscribe = null; }
-  userDocListenerUid = null;
-}
-function attachUserDocListener(uid){
-  if(userDocListenerUid === uid) return;
-  detachUserDocListener();
-  userDocListenerUid = uid;
-  userDocUnsubscribe = fbDb.collection("users").doc(uid).onSnapshot(snap=>{
-    if(!snap.exists){ pushStateToCloud(); return; }
-    applyRemoteSyncedState(snap.data());
-  }, err=> console.warn("Błąd nasłuchiwania synchronizacji z chmurą.", err));
 }
 // ---------- THEME ----------
 const THEMES = [
@@ -3085,11 +3021,6 @@ if(firebaseReady){
     }
     currentFbUser = user;
     renderAuthStatus();
-    if(user.isAnonymous){
-      detachUserDocListener();
-    }else{
-      attachUserDocListener(user.uid);
-    }
   });
 }else{
   renderAuthStatus();
