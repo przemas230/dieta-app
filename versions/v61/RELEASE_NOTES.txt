@@ -1,0 +1,21 @@
+Wersja 61
+=========
+
+Pływający przycisk szybkiego dodawania na zakładce Postęp oraz podpowiedzi
+podczas wpisywania przekąski.
+
+Zmiany:
+- Na zakładce „Postęp” pojawił się pływający okrągły przycisk ➕ w prawym
+  dolnym rogu, otwierający dokładnie to samo okno szybkiego dodawania
+  przekąski/dodatkowego dania co plusik w nagłówku. Postęp to główna
+  zakładka aplikacji, więc dodanie czegoś do dziennika nie wymaga już
+  szukania przycisku w nagłówku.
+- W polu „Co zjadłaś/eś?” (zarówno w nagłówkowym, jak i nowym pływającym
+  oknie szybkiego dodawania) po wpisaniu 2 lub więcej liter pojawia się
+  lista podpowiedzi pasujących produktów z bazy — można kliknąć podpowiedź
+  zamiast wpisywać pełną nazwę i naciskać Enter. Wybranie podpowiedzi
+  automatycznie uzupełnia też szacowane kalorie.
+- Podpowiedzi znikają automatycznie po kliknięciu jednej z nich albo po
+  kliknięciu/przejściu gdzie indziej w formularzu.
+- Cache Service Workera podbity do dieta-app-v37, żeby zmiana od razu
+  dotarła do użytkowników.

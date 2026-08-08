@@ -717,11 +717,16 @@ Lista składników na karcie przepisu pokazuje, które pozycje są już w spiża
 ## Opis
 Zielony przycisk „➕” w nagłówku, widoczny na każdej zakładce (w tym w Planerze), otwiera okienko dodania przekąski lub dodatkowego dania niezależnie od tego, którą część aplikacji użytkownik akurat przegląda.
 
+Dodatkowo na zakładce „Postęp” (główna zakładka aplikacji) znajduje się pływający okrągły przycisk „➕” w prawym dolnym rogu ekranu (nad dolną nawigacją), otwierający dokładnie to samo okienko co przycisk w nagłówku — dzięki temu dodanie czegoś do dziennika nie wymaga sięgania do nagłówka, gdy jest się już na tej zakładce.
+
 ## Kryteria akceptacji
 - Dodana pozycja pojawia się natychmiast w dziennym bilansie kalorycznym w nagłówku i w zakładce Postępy.
+- Pływający przycisk na zakładce Postęp jest widoczny wyłącznie, gdy ta zakładka jest aktywna, i znika przy przełączeniu na inną zakładkę.
+- Oba przyciski („➕” w nagłówku i pływający na Postępie) używają tego samego okienka i tej samej logiki dodawania — nie ma dwóch niezależnych implementacji.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-08): Dodano pływający przycisk („FAB”) na zakładce Postęp, na życzenie użytkownika ("dodaj jeszcze pływający button z takim menu wyświetlany na zakładce postęp bo to powinna być główna zakładka").
 
 ---
 
@@ -733,14 +738,19 @@ Zielony przycisk „➕” w nagłówku, widoczny na każdej zakładce (w tym w 
 ## Opis
 Formularz dodawania przekąski przyjmuje wolny tekst (np. „1 banan”, „150g ryżu”, „prince polo”) i automatycznie szacuje kalorie na podstawie bazy `SNACK_NUTRITION_DB` (336 pozycji): dla produktów liczonych sztukowo mnoży kaloryczność jednej sztuki przez podaną liczbę, dla pozostałych przelicza z kaloryczności na 100g wg podanej lub typowej gramatury. Jeśli produkt nie zostanie rozpoznany, pole kalorii pozostaje puste do ręcznego uzupełnienia.
 
+Podczas wpisywania nazwy (od 2. wpisanego znaku) pod polem pojawia się lista podpowiedzi — nazwy produktów z bazy zaczynające się od wpisanego tekstu, a w dalszej kolejności te, które go zawierają w środku nazwy (maks. 8 pozycji, z ikoną emoji produktu, jeśli rozpoznana). Kliknięcie podpowiedzi wpisuje pełną nazwę produktu w pole i automatycznie uzupełnia szacowane kalorie — nie trzeba wpisywać całej nazwy ani naciskać Enter. Lista chowa się automatycznie po wybraniu podpowiedzi albo po opuszczeniu pola.
+
 ## Kryteria akceptacji
 - Rozpoznanie NIE wymaga podania gramatury — bez niej używana jest typowa porcja.
 - Podanie gramatury/liczby sztuk zawsze nadpisuje typową wartość dokładnym przeliczeniem.
 - Baza pokrywa owoce, warzywa, nabiał, mięso/wędliny, pieczywo/kasze, orzechy/strączki, napoje, słodycze i popularne dania gotowe/restauracyjne.
 - Każda pozycja bazy jest zweryfikowana automatycznym testem jako faktycznie rozpoznawalna po wpisaniu (nie tylko obecna w słowniku).
+- Podpowiedzi pojawiają się dopiero od 2 znaków wpisanego tekstu (żeby nie zalewać użytkownika setkami wyników przy jednej literze).
+- Lista podpowiedzi jest dostępna zarówno w oknie otwartym z nagłówka, jak i z pływającego przycisku na zakładce Postęp (FR-33) — to ten sam formularz.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-08): Dodano listę podpowiedzi podczas wpisywania, na życzenie użytkownika ("jak użytkownik zaczyna pisać to niech system podpowiada co można wpisać i nie czeka na całą nazwę i enter").
 
 ---
 

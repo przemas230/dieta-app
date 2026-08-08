@@ -925,26 +925,6 @@
   }
   .back-to-top-btn.show{opacity:1; pointer-events:auto; transform:translateY(0) scale(1);}
   .back-to-top-btn:active{transform:scale(.9);}
-  .progress-fab{
-    position:fixed; right:16px; bottom:96px; z-index:25;
-    width:56px; height:56px; border-radius:50%; border:none;
-    background:var(--teal); color:#fff; font-size:26px; line-height:1;
-    display:flex; align-items:center; justify-content:center;
-    box-shadow:0 6px 18px rgba(0,0,0,.25);
-    transition:transform var(--dur-fast,.2s) var(--ease,ease);
-  }
-  .progress-fab:active{transform:scale(.9);}
-  .snack-suggest-list{
-    display:none; position:absolute; top:100%; left:0; right:0; margin-top:-4px;
-    background:var(--card); border:1px solid var(--line); border-radius:9px;
-    max-height:190px; overflow-y:auto; z-index:50;
-    box-shadow:0 8px 20px rgba(0,0,0,.15);
-  }
-  .snack-suggest-item{
-    padding:8px 10px; font-size:13px; cursor:pointer; border-bottom:1px solid var(--line);
-  }
-  .snack-suggest-item:last-child{border-bottom:none;}
-  .snack-suggest-item:active{background:rgba(0,0,0,.06);}
   .view{display:none;}
   .view.active{display:block; animation:viewIn var(--dur-med) var(--ease);}
   @keyframes viewIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
@@ -1203,7 +1183,6 @@
 
   <!-- VIEW: POSTEP -->
   <section id="view-progress" class="view">
-    <button class="progress-fab" id="progressFabBtn" title="Dodaj przekąskę lub dodatkowe danie" aria-label="Dodaj przekąskę lub dodatkowe danie">➕</button>
     <div class="rules-card" id="hashimotoRulesCard">
       <h3>⭐ Złote zasady przy Hashimoto i insulinooporności</h3>
       <ol>
@@ -3666,7 +3645,6 @@ function openQuickAddModal(){
   document.getElementById("quickAddOverlay").classList.add("show");
 }
 document.getElementById("quickAddBtn").addEventListener("click", openQuickAddModal);
-document.getElementById("progressFabBtn").addEventListener("click", openQuickAddModal);
 document.getElementById("quickAddClose").addEventListener("click", ()=> document.getElementById("quickAddOverlay").classList.remove("show"));
 document.getElementById("quickAddOverlay").addEventListener("click", (e)=>{
   if(e.target===document.getElementById("quickAddOverlay")) e.target.classList.remove("show");
@@ -5337,10 +5315,7 @@ function removeSnack(date, snackId){
 function buildSnackAddForm(dateStr, onAdded){
   const wrap = document.createElement("div");
   wrap.innerHTML = `
-    <div style="position:relative;">
-      <input type="text" autocomplete="off" placeholder="Co zjadłaś/eś? np. 1 banan, 150g ryżu, jogurt 200g" style="width:100%; border:1px solid var(--line); border-radius:9px; padding:8px 10px; font-size:13px; margin-bottom:6px;">
-      <div class="snack-suggest-list"></div>
-    </div>
+    <input type="text" placeholder="Co zjadłaś/eś? np. 1 banan, 150g ryżu, jogurt 200g" style="width:100%; border:1px solid var(--line); border-radius:9px; padding:8px 10px; font-size:13px; margin-bottom:6px;">
     <div class="hint-text" style="margin:0 0 6px; min-height:16px;"></div>
     <div style="display:flex; gap:6px;">
       <input type="number" min="0" step="10" placeholder="kcal" style="width:70px; border:1px solid var(--line); border-radius:9px; padding:8px 10px; font-size:13px;">
@@ -5348,29 +5323,12 @@ function buildSnackAddForm(dateStr, onAdded){
     </div>
   `;
   const nameInput = wrap.querySelector('input[type="text"]');
-  const suggestBox = wrap.querySelector(".snack-suggest-list");
   const estimateHint = wrap.querySelector(".hint-text");
   const kcalInput = wrap.querySelector('input[type="number"]');
   const addBtn = wrap.querySelector("button");
   let kcalWasAutoFilled = false;
-  const SNACK_NAMES = Object.keys(SNACK_NUTRITION_DB);
-  function hideSuggestions(){ suggestBox.style.display = "none"; suggestBox.innerHTML = ""; }
-  function renderSuggestions(query){
-    const q = query.trim().toLowerCase();
-    if(q.length < 2){ hideSuggestions(); return; }
-    const starts = SNACK_NAMES.filter(n=>n.startsWith(q));
-    const includes = SNACK_NAMES.filter(n=>!n.startsWith(q) && n.includes(q));
-    const matches = starts.concat(includes).slice(0,8);
-    if(!matches.length){ hideSuggestions(); return; }
-    suggestBox.innerHTML = matches.map(n=>{
-      const emoji = canonEmoji(n);
-      return `<div class="snack-suggest-item" data-name="${n.replace(/"/g,"&quot;")}">${emoji ? emoji+" " : ""}${n}</div>`;
-    }).join("");
-    suggestBox.style.display = "block";
-  }
   nameInput.addEventListener("input", ()=>{
     const text = nameInput.value;
-    renderSuggestions(text);
     const est = estimateSnackKcal(text);
     if(est){
       kcalInput.value = est.kcal;
@@ -5384,16 +5342,6 @@ function buildSnackAddForm(dateStr, onAdded){
       if(kcalWasAutoFilled){ kcalInput.value = ""; kcalWasAutoFilled = false; }
       estimateHint.textContent = "";
     }
-  });
-  nameInput.addEventListener("focus", ()=>{ if(nameInput.value.trim().length>=2) renderSuggestions(nameInput.value); });
-  nameInput.addEventListener("blur", ()=> setTimeout(hideSuggestions, 150));
-  suggestBox.addEventListener("click", (e)=>{
-    const item = e.target.closest(".snack-suggest-item");
-    if(!item) return;
-    nameInput.value = item.dataset.name;
-    nameInput.dispatchEvent(new Event("input"));
-    hideSuggestions();
-    kcalInput.focus();
   });
   kcalInput.addEventListener("input", ()=>{ kcalWasAutoFilled = false; });
   addBtn.addEventListener("click", ()=>{
