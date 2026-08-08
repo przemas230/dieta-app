@@ -55,6 +55,11 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
+    implementation("androidx.navigation:navigation-compose:2.8.2")
+    // Extended icon set (TrendingUp, Inventory2, Restaurant aren't in the
+    // small default set) — comes from the same Compose BOM above, so its
+    // version always matches the rest of Compose automatically.
+    implementation("androidx.compose.material:material-icons-extended")
 
     // Wired up for the next milestone (auth + Firestore sync) — not called
     // anywhere yet, so having no google-services.json doesn't break anything.

@@ -5,7 +5,12 @@ projektu Firebase (`dieta-app-323b4`) co wersja webowa w tym repozytorium —
 kolekcje `users/{uid}`, `recipes/{id}`, `publicProfiles/{uid}` będą docelowo
 wspólne między obiema wersjami, bez migracji.
 
-## Status: pierwszy krok (lista przepisów, bez Firebase)
+Obie wersje (web i Android) rozwijane są równolegle, z celem braku różnic
+funkcjonalnych między nimi. **`PARITY.md`** w tym folderze śledzi dokładnie,
+które funkcje z wersji webowej mają już odpowiednik tutaj, a które jeszcze
+czekają — sprawdź tam, zanim zapytasz "czy X już jest w Androidzie".
+
+## Status: nawigacja + lista przepisów, bez Firebase
 
 Co już działa:
 - Pełny szkielet projektu Gradle/Kotlin/Compose.
@@ -15,12 +20,18 @@ Co już działa:
   "Śniadania" łączy `sniadania` i `drugie`, tak jak w wersji webowej, patrz
   `Functional requirements/FR-74.md`), wyszukiwanie, rozwijanie karty po
   kliknięciu.
+- Nawigacja dolna (`NavigationBar` + `NavHost`) z pięcioma zakładkami
+  odpowiadającymi `nav.bottom` z wersji webowej — Przepisy/Zakupy/Planer/
+  Postęp/Spiżarnia — plus przycisk Ustawień w górnym pasku (jak w wersji
+  webowej, gdzie Ustawienia też nie są zakładką dolną, tylko ikoną w
+  nagłówku). Wszystkie zakładki poza Przepisami pokazują na razie
+  `PlaceholderScreen` — budowane będą kolejno, patrz "Co dalej".
 
 Czego jeszcze NIE ma (kolejne kroki, patrz "Co dalej"):
 - Logowania i synchronizacji z Firebase (zależności są już dodane w Gradle,
   ale kod nigdzie ich jeszcze nie wywołuje).
-- Pozostałych zakładek (Planer, Zakupy, Spiżarnia, Postęp, Ustawienia).
-- Nawigacji dolnej między zakładkami.
+- Rzeczywistej zawartości pozostałych zakładek (Planer, Zakupy, Spiżarnia,
+  Postęp, Ustawienia) — na razie same placeholdery.
 
 **Nie mogłem tego skompilować ani uruchomić** — środowisko, w którym to
 piszę, nie ma zainstalowanego Android SDK/Gradle/emulatora. Kod jest napisany
@@ -66,7 +77,7 @@ zrobić to raz, świadomie, niż zmieniać po fakcie).
 Kolejność, w jakiej sensownie budować resztę (każdy krok to coś, co da się
 realnie sprawdzić w Android Studio, zanim przejdziemy do następnego):
 
-1. Nawigacja dolna (`NavigationBar` + `NavHost`) między pustymi na razie
+1. ✅ Nawigacja dolna (`NavigationBar` + `NavHost`) między pustymi na razie
    ekranami odpowiadającymi zakładkom z wersji webowej.
 2. Logowanie anonimowe + zapis/odczyt jednego prostego pola w `users/{uid}`
    (np. `displayName`) — potwierdzenie, że Firestore realnie działa z tym
