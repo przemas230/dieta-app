@@ -633,9 +633,6 @@
     font-weight:800; border-radius:999px; padding:2px 6px; min-width:16px; text-align:center; line-height:1.3;
     box-shadow:0 1px 3px rgba(0,0,0,.2); white-space:nowrap;
   }
-  .pt-badge-ok{background:var(--teal);}
-  .shop-tile-checked{opacity:.5;}
-  .shop-tile-checked .pt-name{text-decoration:line-through;}
   .pantry-item .pi-name{font-size:14px; font-weight:600;}
   .pantry-item .pi-qty{font-size:12px; color:var(--muted);}
   .pantry-item .pi-del{border:none; background:none; color:var(--danger); font-size:16px; cursor:pointer; padding:2px 4px;}
@@ -1036,10 +1033,6 @@
     <div class="shop-summary">
       <strong>🛒 Lista zakupów</strong>
       <span class="count" id="shopCount">0 pozycji</span>
-    </div>
-    <div class="pill-row" id="shopViewToggle" style="margin-bottom:8px;">
-      <button class="pill active" data-shop-view="list">📃 Lista</button>
-      <button class="pill" data-shop-view="tiles">🏺 Kafelki (jak w spiżarni)</button>
     </div>
     <div class="shop-actions" style="margin:0 0 8px;">
       <button class="btn ghost" id="addWeekBtn" style="width:100%;">📅 Dodaj składniki z całego tygodnia w Planerze</button>
@@ -4147,7 +4140,6 @@ function classify(label){
 }
 const GROUP_ORDER = ["Nabiał bez laktozy","Warzywa i owoce","Mięso, ryby i jajka","Strączki, orzechy i nasiona","Pieczywo i zboża","Przyprawy i dodatki","Inne"];
 
-let shopViewMode = "list";
 function renderShop(){
   renderShopDayStrip();
   const box = document.getElementById("shopList");
@@ -4158,7 +4150,6 @@ function renderShop(){
     box.innerHTML = `<div class="empty">Lista jest pusta — dodaj składniki zaznaczając przepisy w zakładce Przepisy 🍽 lub przyciskiem w Planerze.</div>`;
     return;
   }
-  if(shopViewMode==="tiles"){ renderShopTiles(box); return; }
   const groups = {};
   keys.forEach(k=>{
     const item = state.shopping[k];
@@ -4185,61 +4176,6 @@ function renderShop(){
     });
   });
 }
-// Alternate "like the pantry" tile view of the same shopping list — same
-// underlying state.shopping items and grouping (classify()/GROUP_ORDER) as
-// the list view above, just rendered as icon tiles. The badge shows how
-// much of each item is still MISSING relative to what's already in the
-// spiżarnia (negative = still need to buy that much; ✓ = pantry already
-// covers the full planned quantity), per the user's request to see
-// "wartości ujemne produktów które są potrzebne".
-function renderShopTiles(box){
-  const keys = Object.keys(state.shopping);
-  const groups = {};
-  keys.forEach(k=>{
-    const item = state.shopping[k];
-    const g = classify(item.name);
-    (groups[g] = groups[g] || []).push({key:k, ...item});
-  });
-  GROUP_ORDER.forEach(g=>{
-    if(!groups[g]) return;
-    const title = document.createElement("div");
-    title.className = "group-title";
-    title.textContent = g;
-    box.appendChild(title);
-    const grid = document.createElement("div");
-    grid.className = "tile-grid";
-    groups[g].sort((a,b)=>a.name.localeCompare(b.name,'pl')).forEach(item=>{
-      const pq = pantryQtyFor(item.name, item.unitCat);
-      const have = (pq && pq.unitCat===item.unitCat) ? pq.baseQty : 0;
-      const shortage = item.qty - have;
-      const covered = shortage <= 0.0001;
-      const tile = document.createElement("button");
-      tile.type = "button";
-      tile.className = "pantry-tile shop-tile" + (item.checked ? " shop-tile-checked" : "");
-      const emoji = canonEmoji(item.name) || "🛒";
-      const displayName = shopDisplayName(item.name, item.unitCat, item.qty);
-      const badge = covered ? "✓" : "−" + formatQty(item.unitCat, shortage);
-      tile.title = covered
-        ? "Masz w spiżarni wystarczająco — stuknij, aby oznaczyć jako kupione"
-        : `Brakuje jeszcze ${formatQty(item.unitCat, shortage)} — stuknij, aby oznaczyć jako kupione`;
-      tile.innerHTML = `<span class="pt-emoji">${emoji}</span><span class="pt-name">${displayName}</span><span class="pt-badge${covered?" pt-badge-ok":""}">${badge}</span>`;
-      tile.addEventListener("click", ()=>{
-        state.shopping[item.key].checked = !state.shopping[item.key].checked;
-        saveState();
-        renderShop();
-      });
-      grid.appendChild(tile);
-    });
-    box.appendChild(grid);
-  });
-}
-document.querySelectorAll("#shopViewToggle .pill").forEach(btn=>{
-  btn.addEventListener("click", ()=>{
-    shopViewMode = btn.dataset.shopView;
-    document.querySelectorAll("#shopViewToggle .pill").forEach(b=> b.classList.toggle("active", b===btn));
-    renderShop();
-  });
-});
 
 function buildListText(){
   const keys = Object.keys(state.shopping).filter(k=>!state.shopping[k].checked);
