@@ -573,31 +573,6 @@
     font-size:12.5px; font-weight:700; color:var(--teal-dark); cursor:pointer;
   }
   .pantry-check-btn:active{ transform:scale(.98); }
-  .recipe-comments-section{margin-top:10px; padding-top:10px; border-top:1px solid var(--line);}
-  .comments-toggle-btn{
-    display:flex; align-items:center; justify-content:space-between; width:100%;
-    border:none; background:none; padding:6px 2px; margin:2px 0 0;
-    font-size:12.5px; font-weight:700; color:var(--muted); cursor:pointer;
-  }
-  .comments-toggle-btn.open .expand-chevron{transform:rotate(180deg);}
-  .comments-body{margin-top:6px;}
-  .comment-item{padding:8px 0; border-top:1px solid var(--line);}
-  .comment-item:first-child{border-top:none;}
-  .comment-head{display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12.5px;}
-  .comment-stars{color:var(--honey); font-size:11px; white-space:nowrap;}
-  .comment-body{font-size:12.5px; color:var(--muted); margin-top:2px; word-break:break-word;}
-  .comments-more-btn{width:100%; margin-top:8px; font-size:12px; padding:8px;}
-  .user-list-row{
-    display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%;
-    border:1px solid var(--line); background:var(--card); border-radius:11px;
-    padding:10px 12px; margin-bottom:6px; font-size:13px; cursor:pointer; text-align:left;
-  }
-  .user-list-row:active{transform:scale(.98);}
-  .user-list-name{font-weight:700;}
-  .user-list-date{font-size:11.5px; color:var(--muted); white-space:nowrap;}
-  .user-profile-list{list-style:none; padding:0; margin:0; font-size:12.5px;}
-  .user-profile-list li{padding:6px 0; border-top:1px solid var(--line);}
-  .user-profile-list li:first-child{border-top:none;}
   .macro-row{display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:11px; color:var(--muted); margin:0 0 10px; font-family:var(--font-mono);}
   .match-badge{background:var(--teal-pale); color:var(--teal-dark); font-weight:700; padding:1px 7px; border-radius:999px; font-family:var(--font-body);}
   .micro-row{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;}
@@ -1180,8 +1155,7 @@
       <div class="card">
         <h3 style="margin:0 0 10px; font-size:15px;">🌍 Przepisy społeczności</h3>
         <label class="toggle-row"><input type="checkbox" id="setCommunityRecipes"> Pokazuj przepisy dodane przez innych użytkowników</label>
-        <div class="hint-text" style="margin:0 0 10px;">Wymaga zalogowania na prawdziwe konto (patrz karta „Konto w chmurze” wyżej). Nowo dodane przepisy są widoczne dla innych dopiero po ręcznym zatwierdzeniu (moderacja) — Twoje własne przepisy widzisz zawsze, niezależnie od statusu zatwierdzenia i tego przełącznika.</div>
-        <button class="btn ghost" id="openUserListBtn" style="width:100%;">👥 Przeglądaj użytkowników</button>
+        <div class="hint-text" style="margin:0;">Stan tego przełącznika synchronizuje się już dziś między Twoimi urządzeniami (patrz karta „Konto w chmurze” wyżej), ale samo pokazywanie przepisów dodanych przez INNYCH użytkowników wciąż czeka na osobną funkcję — wspólną bazę przepisów społeczności z moderacją (kolejny krok w <code>docs/FIREBASE_MIGRATION_PLAN.md</code>). Twoje własne przepisy (przycisk „➕ Dodaj swój przepis” w zakładce Przepisy) działają już dziś i synchronizują się między Twoimi urządzeniami, niezależnie od tego przełącznika.</div>
       </div>
     </div>
 
@@ -1494,27 +1468,6 @@
   </div>
 </div>
 
-
-<div class="modal-overlay center" id="userListOverlay">
-  <div class="modal-sheet center-sheet">
-    <div class="modal-head">
-      <h3>👥 Użytkownicy</h3>
-      <button id="userListClose">✕</button>
-    </div>
-    <div class="hint-text" style="margin:0 0 8px;">Pseudonimy i data ostatniego logowania osób, które zalogowały się w tej aplikacji na prawdziwe konto (Google lub e-mail).</div>
-    <div id="userListBody"></div>
-  </div>
-</div>
-
-<div class="modal-overlay center" id="userProfileOverlay">
-  <div class="modal-sheet center-sheet">
-    <div class="modal-head">
-      <h3 id="userProfileTitle">👤 Profil</h3>
-      <button id="userProfileClose">✕</button>
-    </div>
-    <div id="userProfileBody"></div>
-  </div>
-</div>
 
 <div class="modal-overlay center" id="planPickerOverlay">
   <div class="modal-sheet center-sheet">
@@ -2575,7 +2528,6 @@ function pushStateToCloud(){
     Object.assign(syncableStateSubset(), {updatedAt: firebase.firestore.FieldValue.serverTimestamp()}),
     {merge:true}
   ).catch(e=> console.warn("Nie udało się zsynchronizować danych z chmurą.", e));
-  touchPublicProfile();
 }
 function applyRemoteSyncedState(data){
   let changed = false;
@@ -2587,7 +2539,6 @@ function applyRemoteSyncedState(data){
   });
   if(!changed) return;
   try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
-  refreshCommunityRecipesSubscription();
   refreshUiAfterSync();
 }
 function refreshUiAfterSync(){
@@ -2615,176 +2566,6 @@ function attachUserDocListener(uid){
     applyRemoteSyncedState(snap.data());
   }, err=> console.warn("Błąd nasłuchiwania synchronizacji z chmurą.", err));
 }
-// ---------- COMMUNITY: public profiles, shared recipes, multi-user ratings ----------
-// New PUBLIC/shared Firestore collections, on top of the private users/{uid}
-// doc from FR-73 — none of this works until the security rules in
-// docs/FIREBASE_MIGRATION_PLAN.md are pasted into the Firebase console
-// (client code can't push security rules itself). Any text coming from
-// these collections originates on ANOTHER user's device, so it is escaped
-// before ever being inserted via innerHTML anywhere in the app — see
-// escapeHtml()/sanitizeCommunityRecipeDoc()/sanitizeRatingDoc() below.
-function escapeHtml(str){
-  return String(str==null ? "" : str).replace(/[&<>"']/g, ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
-}
-function sanitizeCommunityRecipeDoc(data, id){
-  const num = v=> Number.isFinite(Number(v)) ? Number(v) : undefined;
-  const validCat = CATS.some(c=>c.id===data.cat) ? data.cat : "obiady";
-  const out = {
-    id,
-    cat: validCat,
-    name: escapeHtml(String(data.name||"Przepis bez nazwy").slice(0,200)),
-    time: escapeHtml(String(data.time||"—").slice(0,40)),
-    kcal: num(data.kcal) || 0,
-    ingredients: Array.isArray(data.ingredients) ? data.ingredients.filter(x=>typeof x==="string").slice(0,60).map(x=>escapeHtml(x.slice(0,200))) : [],
-    method: escapeHtml(String(data.method||"—").slice(0,4000)),
-    source: "community",
-    authorUid: typeof data.authorUid==="string" ? data.authorUid : null,
-    authorDisplayName: escapeHtml(String(data.authorDisplayName||"Anonimowy użytkownik").slice(0,60)),
-  };
-  const p = num(data.protein), c = num(data.carbs), f = num(data.fat);
-  if(p!==undefined && c!==undefined && f!==undefined){
-    out.protein = p; out.carbs = c; out.fat = f;
-    out.fiber = num(data.fiber) || 0; out.gi = num(data.gi) || 50; out.gl = num(data.gl) || 0;
-  }
-  return out;
-}
-function sanitizeRatingDoc(data){
-  return {
-    stars: Math.min(5, Math.max(1, Math.round(Number(data.stars)) || 0)),
-    comment: escapeHtml(String(data.comment||"").slice(0,600)),
-    displayName: escapeHtml(String(data.displayName||"Anonimowy użytkownik").slice(0,60)),
-    createdAt: data.createdAt || null,
-  };
-}
-function touchPublicProfile(){
-  if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous) return;
-  fbDb.collection("publicProfiles").doc(currentFbUser.uid).set({
-    displayName: state.displayName || "",
-    lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
-  }, {merge:true}).catch(e=> console.warn("Nie udało się zaktualizować publicznego profilu.", e));
-}
-function pushCommunityRecipe(recipe){
-  if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous) return;
-  fbDb.collection("recipes").doc(recipe.id).set(Object.assign({}, recipe, {
-    authorUid: currentFbUser.uid,
-    authorDisplayName: state.displayName || "Anonimowy użytkownik",
-    status: "pending",
-    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-  })).catch(e=> console.warn("Nie udało się opublikować przepisu w społeczności.", e));
-}
-function deleteCommunityRecipe(recipeId){
-  if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous) return;
-  fbDb.collection("recipes").doc(recipeId).delete().catch(e=> console.warn("Nie udało się usunąć przepisu ze społeczności.", e));
-}
-function pushRecipeRating(recipeId, stars, comment){
-  if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous) return;
-  const payload = {
-    stars, comment: comment||"",
-    displayName: state.displayName || "Anonimowy użytkownik",
-    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-  };
-  fbDb.collection("recipes").doc(recipeId).collection("ratings").doc(currentFbUser.uid).set(payload)
-    .catch(e=> console.warn("Nie udało się opublikować oceny.", e));
-  fbDb.collection("publicProfiles").doc(currentFbUser.uid).collection("reviewedRecipes").doc(recipeId).set(payload)
-    .catch(e=> console.warn("Nie udało się zapisać oceny w profilu publicznym.", e));
-}
-function deleteRecipeRating(recipeId){
-  if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous) return;
-  fbDb.collection("recipes").doc(recipeId).collection("ratings").doc(currentFbUser.uid).delete().catch(()=>{});
-  fbDb.collection("publicProfiles").doc(currentFbUser.uid).collection("reviewedRecipes").doc(recipeId).delete().catch(()=>{});
-}
-let communityRecipesCache = [];
-let communityRecipesUnsubscribe = null;
-function refreshCommunityRecipesSubscription(){
-  const shouldListen = !!(firebaseReady && currentFbUser && !currentFbUser.isAnonymous && state.communityRecipesEnabled);
-  if(!shouldListen){
-    if(communityRecipesUnsubscribe){ communityRecipesUnsubscribe(); communityRecipesUnsubscribe = null; }
-    if(communityRecipesCache.length){ communityRecipesCache = []; renderRecipes(); }
-    return;
-  }
-  if(communityRecipesUnsubscribe) return;
-  communityRecipesUnsubscribe = fbDb.collection("recipes").where("status","==","approved").onSnapshot(snap=>{
-    communityRecipesCache = snap.docs.map(d=> sanitizeCommunityRecipeDoc(d.data(), d.id));
-    renderRecipes();
-  }, err=> console.warn("Błąd pobierania przepisów społeczności.", err));
-}
-// ---------- COMMUNITY: browsable user list + public profile ----------
-function formatLastLogin(ts){
-  if(!ts || typeof ts.toDate !== "function") return "brak danych";
-  return ts.toDate().toLocaleDateString("pl-PL", {year:"numeric", month:"long", day:"numeric"});
-}
-function openUserListModal(){
-  const body = document.getElementById("userListBody");
-  document.getElementById("userListOverlay").classList.add("show");
-  if(!firebaseReady){
-    body.innerHTML = `<div class="empty">☁️ Chmura niedostępna — lista użytkowników wymaga połączenia z internetem.</div>`;
-    return;
-  }
-  body.innerHTML = `<div class="empty">Wczytywanie…</div>`;
-  fbDb.collection("publicProfiles").orderBy("lastLoginAt","desc").limit(50).get().then(snap=>{
-    if(snap.empty){ body.innerHTML = `<div class="empty">Brak zalogowanych użytkowników.</div>`; return; }
-    body.innerHTML = "";
-    snap.docs.forEach(d=>{
-      const data = d.data();
-      const name = escapeHtml(String(data.displayName||"").trim() || "Anonimowy użytkownik");
-      const row = document.createElement("button");
-      row.type = "button";
-      row.className = "user-list-row";
-      row.innerHTML = `<span class="user-list-name">👤 ${name}</span><span class="user-list-date">${formatLastLogin(data.lastLoginAt)}</span>`;
-      row.addEventListener("click", ()=> openUserProfileModal(d.id, name));
-      body.appendChild(row);
-    });
-  }).catch(err=>{
-    body.innerHTML = `<div class="empty">Nie udało się wczytać listy użytkowników.</div>`;
-    console.warn("Błąd wczytywania listy użytkowników", err);
-  });
-}
-function openUserProfileModal(uid, displayName){
-  document.getElementById("userProfileTitle").textContent = `👤 ${displayName}`;
-  const body = document.getElementById("userProfileBody");
-  body.innerHTML = `<div class="empty">Wczytywanie…</div>`;
-  document.getElementById("userProfileOverlay").classList.add("show");
-  Promise.all([
-    fbDb.collection("publicProfiles").doc(uid).get(),
-    fbDb.collection("recipes").where("authorUid","==",uid).where("status","==","approved").get(),
-    fbDb.collection("publicProfiles").doc(uid).collection("reviewedRecipes").orderBy("createdAt","desc").limit(20).get(),
-  ]).then(([profileSnap, recipesSnap, reviewsSnap])=>{
-    const profile = profileSnap.exists ? profileSnap.data() : {};
-    const recipesHtml = recipesSnap.empty
-      ? `<div class="hint-text" style="margin:0;">Brak zatwierdzonych przepisów.</div>`
-      : `<ul class="user-profile-list">${recipesSnap.docs.map(d=>{
-          const r = sanitizeCommunityRecipeDoc(d.data(), d.id);
-          return `<li>${r.name} (${r.kcal} kcal)</li>`;
-        }).join("")}</ul>`;
-    const reviewsHtml = reviewsSnap.empty
-      ? `<div class="hint-text" style="margin:0;">Brak ocenionych przepisów.</div>`
-      : `<ul class="user-profile-list">${reviewsSnap.docs.map(d=>{
-          const rv = sanitizeRatingDoc(d.data());
-          const recipe = findRecipeById(d.id);
-          const name = recipe ? recipe.name : "(usunięty przepis)";
-          return `<li>${name} — ${"★".repeat(rv.stars)}${"☆".repeat(5-rv.stars)}${rv.comment?` „${rv.comment}”`:""}</li>`;
-        }).join("")}</ul>`;
-    body.innerHTML = `
-      <div class="hint-text" style="margin:0 0 12px;">🕓 Ostatnie logowanie: ${formatLastLogin(profile.lastLoginAt)}</div>
-      <h4 style="margin:0 0 6px; font-size:13.5px;">🍽️ Dodane przepisy</h4>
-      ${recipesHtml}
-      <h4 style="margin:12px 0 6px; font-size:13.5px;">⭐ Oceny i komentarze</h4>
-      ${reviewsHtml}
-    `;
-  }).catch(err=>{
-    body.innerHTML = `<div class="empty">Nie udało się wczytać profilu.</div>`;
-    console.warn("Błąd wczytywania profilu użytkownika", err);
-  });
-}
-document.getElementById("openUserListBtn").addEventListener("click", openUserListModal);
-document.getElementById("userListClose").addEventListener("click", ()=> document.getElementById("userListOverlay").classList.remove("show"));
-document.getElementById("userListOverlay").addEventListener("click", (e)=>{
-  if(e.target===document.getElementById("userListOverlay")) e.target.classList.remove("show");
-});
-document.getElementById("userProfileClose").addEventListener("click", ()=> document.getElementById("userProfileOverlay").classList.remove("show"));
-document.getElementById("userProfileOverlay").addEventListener("click", (e)=>{
-  if(e.target===document.getElementById("userProfileOverlay")) e.target.classList.remove("show");
-});
 // ---------- THEME ----------
 const THEMES = [
   {id:"teal", label:"Zielony (domyślny)", swatch:"#1F6B5C", metaColor:"#1F6B5C"},
@@ -3275,7 +3056,6 @@ document.getElementById("setDisplayName").addEventListener("input", (e)=>{
 document.getElementById("setCommunityRecipes").addEventListener("change", (e)=>{
   state.communityRecipesEnabled = e.target.checked;
   saveState();
-  refreshCommunityRecipesSubscription();
 });
 
 // ---------- AUTH (Google / e-mail, optional, anonymous by default) ----------
@@ -3329,9 +3109,7 @@ if(firebaseReady){
       detachUserDocListener();
     }else{
       attachUserDocListener(user.uid);
-      touchPublicProfile();
     }
-    refreshCommunityRecipesSubscription();
   });
 }else{
   renderAuthStatus();
@@ -3747,8 +3525,6 @@ function recipeCard(r, onChange, opts={}){
     : "";
   const customBadge = r.source==="custom"
     ? `<span class="goal-badge" style="background:var(--honey-pale); color:var(--honey-dark);" title="Przepis dodany przez Ciebie">✍️ Twój przepis</span>`
-    : r.source==="community"
-    ? `<span class="goal-badge" style="background:var(--teal-pale); color:var(--teal-dark);" title="Przepis dodany przez innego użytkownika, zatwierdzony do wspólnej listy">🌍 ${r.authorDisplayName || "Społeczność"}</span>`
     : "";
   // "Śniadania" and "II Śniadanie" share one browse tab (BROWSE_CATS) even
   // though they're still two separate Planer slots — this badge is the only
@@ -3772,6 +3548,7 @@ function recipeCard(r, onChange, opts={}){
     <div class="card-collapsible-body"><div class="card-collapsible-inner">
       ${macroLine}
       <button type="button" class="pantry-check-btn" data-pantry-check>🏺 Sprawdź stan spiżarni dla tego dania</button>
+      <button type="button" class="pantry-check-btn" data-review-recipe>${reviewLabel}</button>
       <ul class="ingredients">${r.ingredients.map(i=>{
         const canon = pantryCanon(coreName(i));
         const f = !!state.favIngredients[canon];
@@ -3780,16 +3557,6 @@ function recipeCard(r, onChange, opts={}){
       }).join("")}</ul>
       <p class="method">${r.method}</p>
       ${review && review.comment ? `<p class="hint-text" style="margin-top:8px;">💬 Twój komentarz: „${review.comment}”</p>` : ""}
-      <div class="recipe-comments-section">
-        <button type="button" class="pantry-check-btn" data-review-recipe>${reviewLabel}</button>
-        <button type="button" class="comments-toggle-btn" data-comments-toggle>
-          <span>💬 Komentarze innych użytkowników</span><span class="expand-chevron">⌄</span>
-        </button>
-        <div class="comments-body" data-comments-body style="display:none;">
-          <div class="comments-list" data-comments-list></div>
-          <button type="button" class="btn ghost comments-more-btn" data-comments-more style="display:none;">Pokaż więcej</button>
-        </div>
-      </div>
     </div></div>
     <div class="card-actions">
       <button class="add-btn ${added?'on':''}" data-add="${r.id}">${added?'✓ Na liście zakupów':'🛒 Dodaj do listy zakupów'}</button>
@@ -3828,21 +3595,6 @@ function recipeCard(r, onChange, opts={}){
     e.stopPropagation();
     openRecipeReviewModal(r, refreshAll);
   });
-  const commentsToggleBtn = card.querySelector("[data-comments-toggle]");
-  const commentsBody = card.querySelector("[data-comments-body]");
-  const commentsList = card.querySelector("[data-comments-list]");
-  const commentsMoreBtn = card.querySelector("[data-comments-more]");
-  commentsToggleBtn.addEventListener("click", (e)=>{
-    e.stopPropagation();
-    const opening = commentsBody.style.display === "none";
-    commentsBody.style.display = opening ? "block" : "none";
-    commentsToggleBtn.classList.toggle("open", opening);
-    if(opening && !commentsPageState[r.id]) loadRecipeComments(r.id, commentsList, commentsMoreBtn, false);
-  });
-  commentsMoreBtn.addEventListener("click", (e)=>{
-    e.stopPropagation();
-    loadRecipeComments(r.id, commentsList, commentsMoreBtn, true);
-  });
   const deleteRecipeBtn = card.querySelector("[data-delete-recipe]");
   if(deleteRecipeBtn){
     deleteRecipeBtn.addEventListener("click", (e)=>{
@@ -3850,7 +3602,6 @@ function recipeCard(r, onChange, opts={}){
       if(!confirm(`Usunąć Twój przepis „${r.name}”? Tej operacji nie można cofnąć.`)) return;
       state.myRecipes = state.myRecipes.filter(x=>x.id!==r.id);
       saveState();
-      deleteCommunityRecipe(r.id);
       TILE_UNIT_CAT = computeTileUnitCats();
       toast("Usunięto przepis");
       refreshAll();
@@ -4107,7 +3858,7 @@ function renderRecipes(){
   if(onlyFav) items = items.filter(r=>state.favorites[r.id]);
   if(onlyIngFav) items = items.filter(r=>r.ingredients.some(i=>state.favIngredients[pantryCanon(coreName(i))]));
   if(onlyPantryReady) items = items.filter(r=>pantryCoverageRatio(r) >= 0.6);
-  if(onlyUserRecipes) items = items.filter(r=>r.source==="custom" || r.source==="community");
+  if(onlyUserRecipes) items = items.filter(r=>r.source==="custom");
   if(minRatingFilter>0) items = items.filter(r=>{
     const review = state.recipeReviews[r.id];
     return review && review.stars >= minRatingFilter;
@@ -4230,70 +3981,17 @@ document.getElementById("recipeReviewSaveBtn").addEventListener("click", ()=>{
   const comment = document.getElementById("recipeReviewComment").value.trim();
   state.recipeReviews[reviewModalRecipe.id] = {stars, comment, at:new Date().toISOString()};
   saveState();
-  pushRecipeRating(reviewModalRecipe.id, stars, comment);
   toast("Zapisano ocenę");
   document.getElementById("recipeReviewOverlay").classList.remove("show");
   if(reviewModalOnChange) reviewModalOnChange();
-  invalidateRecipeComments(reviewModalRecipe.id);
 });
 document.getElementById("recipeReviewDeleteBtn").addEventListener("click", ()=>{
   delete state.recipeReviews[reviewModalRecipe.id];
   saveState();
-  deleteRecipeRating(reviewModalRecipe.id);
   toast("Usunięto ocenę");
   document.getElementById("recipeReviewOverlay").classList.remove("show");
   if(reviewModalOnChange) reviewModalOnChange();
-  invalidateRecipeComments(reviewModalRecipe.id);
 });
-
-// ---------- RECIPE COMMENTS THREAD (multi-user, live from Firestore) ----------
-// Reads recipes/{id}/ratings — the same sub-collection pushRecipeRating()
-// writes to — paginated 3-then-+10 per the user's request. Every field is
-// run through sanitizeRatingDoc() before ever reaching innerHTML, since
-// this is the first place the app renders free text written by OTHER
-// users' devices (see escapeHtml() next to the rest of the community code).
-const COMMENTS_FIRST_PAGE = 3;
-const COMMENTS_MORE_PAGE = 10;
-let commentsPageState = {};
-function invalidateRecipeComments(recipeId){
-  delete commentsPageState[recipeId];
-}
-function loadRecipeComments(recipeId, listEl, moreBtn, append){
-  if(!firebaseReady){
-    listEl.innerHTML = `<div class="hint-text" style="margin:6px 0 0;">☁️ Chmura niedostępna — komentarze innych użytkowników wymagają połączenia z internetem.</div>`;
-    moreBtn.style.display = "none";
-    return;
-  }
-  const st = commentsPageState[recipeId] || (commentsPageState[recipeId] = {docs:[], lastDoc:null, exhausted:false, loading:false});
-  if(st.loading) return;
-  st.loading = true;
-  const pageSize = append ? COMMENTS_MORE_PAGE : COMMENTS_FIRST_PAGE;
-  let q = fbDb.collection("recipes").doc(recipeId).collection("ratings").orderBy("createdAt","desc").limit(pageSize);
-  if(append && st.lastDoc) q = q.startAfter(st.lastDoc);
-  q.get().then(snap=>{
-    st.loading = false;
-    if(snap.empty && !append){
-      listEl.innerHTML = `<div class="hint-text" style="margin:6px 0 0;">Brak komentarzy — bądź pierwszą osobą, która oceni to danie.</div>`;
-      moreBtn.style.display = "none";
-      return;
-    }
-    if(snap.docs.length < pageSize) st.exhausted = true;
-    if(snap.docs.length) st.lastDoc = snap.docs[snap.docs.length-1];
-    const newDocs = snap.docs.map(d=> sanitizeRatingDoc(d.data()));
-    st.docs = append ? st.docs.concat(newDocs) : newDocs;
-    listEl.innerHTML = st.docs.map(c=>`
-      <div class="comment-item">
-        <div class="comment-head"><strong>${c.displayName}</strong><span class="comment-stars">${"★".repeat(c.stars)}${"☆".repeat(5-c.stars)}</span></div>
-        ${c.comment ? `<div class="comment-body">${c.comment}</div>` : ""}
-      </div>
-    `).join("");
-    moreBtn.style.display = st.exhausted ? "none" : "block";
-  }).catch(err=>{
-    st.loading = false;
-    listEl.innerHTML = `<div class="hint-text" style="margin:6px 0 0;">Nie udało się wczytać komentarzy.</div>`;
-    console.warn("Błąd wczytywania komentarzy", err);
-  });
-}
 
 // ---------- ADD YOUR OWN RECIPE ----------
 // "Dirty" flags: auto-calc keeps filling kcal/protein/carbs/fat live as the
@@ -4370,7 +4068,6 @@ document.getElementById("arSaveBtn").addEventListener("click", ()=>{
   }
   state.myRecipes.push(recipe);
   saveState();
-  pushCommunityRecipe(recipe);
   TILE_UNIT_CAT = computeTileUnitCats();
   toast("Dodano Twój przepis");
   document.getElementById("addRecipeOverlay").classList.remove("show");
@@ -5231,16 +4928,7 @@ modalOverlay.addEventListener("click", (e)=>{ if(e.target===modalOverlay) modalO
 // can be looked up — planner, shopping list, pantry check, cook history,
 // swipe rating — not just in the browsing list.
 function allRecipes(){
-  let out = (state.myRecipes && state.myRecipes.length) ? RECIPES.concat(state.myRecipes) : RECIPES;
-  if(communityRecipesCache.length){
-    // A recipe the user submitted themselves already shows via state.myRecipes
-    // (with the full local editing/delete UI) — once a moderator approves it,
-    // the SAME id also starts appearing in the community listener, so drop
-    // that duplicate rather than listing the same dish twice.
-    const ownIds = new Set(state.myRecipes.map(r=>r.id));
-    out = out.concat(communityRecipesCache.filter(r=>!ownIds.has(r.id)));
-  }
-  return out;
+  return (state.myRecipes && state.myRecipes.length) ? RECIPES.concat(state.myRecipes) : RECIPES;
 }
 function findRecipeById(id){ return allRecipes().find(x=>x.id===id); }
 function recipesByCat(cat){ return allRecipes().filter(r=>r.cat===cat); }

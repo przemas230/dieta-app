@@ -1,0 +1,46 @@
+Wersja 66
+=========
+
+Przepisy społeczności, publiczna lista użytkowników z profilami oraz
+komentarze wielu użytkowników pod przepisem.
+
+Zmiany:
+- Zapisanie własnego przepisu (jeśli jesteś zalogowana/y na prawdziwe
+  konto) publikuje jego kopię w chmurze ze statusem „oczekujący”. Dopóki
+  ręcznie nie zatwierdzisz go w konsoli Firebase, widzisz go tylko Ty —
+  po zatwierdzeniu zaczyna się pokazywać innym użytkownikom, którzy mają
+  włączony przełącznik „Pokazuj przepisy dodane przez innych użytkowników”
+  w Ustawieniach, ze znaczkiem „🌍 [Twój pseudonim]”. Usunięcie własnego
+  przepisu usuwa też jego kopię w chmurze.
+- Przełącznik „🧑‍🍳 tylko przepisy użytkowników” na liście przepisów
+  pokazuje teraz zarówno Twoje własne, jak i zatwierdzone przepisy innych
+  użytkowników.
+- Nowy przycisk „👥 Przeglądaj użytkowników” (Ustawienia → „Przepisy
+  społeczności”) pokazuje listę pseudonimów osób zalogowanych na prawdziwe
+  konto wraz z datą ostatniego logowania. Kliknięcie osoby otwiera jej
+  publiczny profil: pseudonim, ostatnie logowanie, jej zatwierdzone
+  przepisy oraz przepisy, które oceniła/skomentowała. Profil NIE pokazuje
+  adresu e-mail ani żadnych danych osobistych profilu diety.
+- Przycisk „⭐ Oceń i skomentuj” przeniesiono na sam dół rozwiniętej karty
+  przepisu. Bezpośrednio pod nim jest teraz rozwijana sekcja „💬 Komentarze
+  innych użytkowników” — domyślnie pokazuje 3 najnowsze komentarze, a
+  przycisk „Pokaż więcej” doczytuje kolejnych 10 na raz.
+- Każdy tekst wpisywany przez innych użytkowników (nazwy przepisów,
+  komentarze, pseudonimy) jest teraz zawsze oczyszczany przed pokazaniem
+  na ekranie, żeby żadna osoba nie mogła wstawić złośliwego kodu widocznego
+  u innych.
+- Cache Service Workera podbity do dieta-app-v42.
+
+WAŻNE — wymagana Twoja akcja w konsoli Firebase: te funkcje potrzebują
+nowych reguł bezpieczeństwa Firestore, których nie mogę wkleić za Ciebie.
+Bez tego kroku po prostu nic się nie pokaże ani nie zapisze (bezpieczne,
+ale nieaktywne) — dokładne, gotowe do wklejenia reguły i instrukcja są w
+docs/FIREBASE_MIGRATION_PLAN.md (sekcja „Reguły bezpieczeństwa Firestore”,
+Firebase Console → Firestore Database → Reguły → wklej całość → Opublikuj).
+
+Uwaga: rzeczywiste działanie (widoczność między dwoma kontami, prawdziwe
+zapisy/odczyty z Firestore) można zweryfikować tylko na urządzeniu z
+dostępem do internetu, po wklejeniu reguł — środowisko, w którym pracuję,
+nie ma dostępu do serwerów Firebase/Google. Logika (oczyszczanie danych,
+łączenie list, paginacja komentarzy, zabezpieczenia przed pustymi/błędnymi
+danymi) została przetestowana automatycznie z podstawionym Firestore.

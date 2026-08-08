@@ -147,52 +147,99 @@ Najprostszy, bezpieczny sposób bez własnego systemu zaproszeń e-mail:
    w aplikacji przełącza się z danych osobistych na
    `households/{householdId}/...`.
 
-## Reguły bezpieczeństwa Firestore (szkic)
+## Reguły bezpieczeństwa Firestore
+
+**AKTUALIZACJA 2026-08-08: `recipes/{id}`, `recipes/{id}/ratings/{uid}` i
+`publicProfiles/{uid}` (+ `publicProfiles/{uid}/reviewedRecipes/{recipeId}`)
+są już używane przez kod aplikacji** (patrz Functional requirements/FR-76,
+FR-77) — poniższe reguły są GOTOWE DO WKLEJENIA (Firebase Console →
+Firestore Database → Reguły), nie szkicem. Bez nich Firestore w trybie
+produkcyjnym domyślnie ODRZUCA każdy odczyt/zapis do tych kolekcji — więc
+najbardziej prawdopodobny efekt braku tego kroku to "funkcja nic nie
+pokazuje/nie zapisuje", NIE wyciek danych (bezpieczne domyślne zachowanie).
+`households/*` w tym szkicu wciąż czeka na punkt 8 checklisty niżej.
 
 ```
-match /households/{hid} {
-  allow read, write: if request.auth.uid in resource.data.memberUids;
-  match /{collection}/{docId} {
-    allow read, write: if request.auth.uid in
-      get(/databases/$(database)/documents/households/$(hid)).data.memberUids;
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    match /publicProfiles/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+
+      match /reviewedRecipes/{recipeId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+
+    match /recipes/{recipeId} {
+      allow read: if resource.data.status == "approved"
+        || (request.auth != null && request.auth.uid == resource.data.authorUid);
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.authorUid
+        && request.resource.data.status == "pending";
+      // Autor może poprawić inne pola (np. literówkę), ale NIE może sam
+      // zmienić status z "pending" na "approved" — to zatwierdza tylko Ty,
+      // ręcznie w konsoli Firebase (edycja pola w konsoli nie przechodzi
+      // przez te reguły, więc to nadal działa).
+      allow update: if request.auth != null
+        && request.auth.uid == resource.data.authorUid
+        && request.resource.data.status == resource.data.status;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.authorUid;
+
+      match /ratings/{uid} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+
+    match /households/{hid} {
+      allow read, write: if request.auth != null && request.auth.uid in resource.data.memberUids;
+      match /{collection}/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid in
+          get(/databases/$(database)/documents/households/$(hid)).data.memberUids;
+      }
+    }
   }
 }
-match /users/{uid} {
-  allow read, write: if request.auth.uid == uid;
-}
-match /recipes/{rid} {
-  allow read: if resource.data.status == "approved" || request.auth.uid == resource.data.authorUid;
-  allow create: if request.auth != null;
-  allow update, delete: if request.auth.uid == resource.data.authorUid;
-}
-match /recipes/{rid}/ratings/{uid} {
-  allow read: if true;
-  allow write: if request.auth.uid == uid;
-}
 ```
 
-(Szkic do dopracowania w Firebase Console — priorytet: żaden użytkownik nie
-może czytać/pisać do gospodarstwa, do którego nie należy.)
+Priorytet dla `households/*` pozostaje szkicem, dopóki punkt 8 checklisty
+(UI gospodarstwa) nie powstanie — nie ma dziś żadnego kodu, który by z
+tego czytał/pisał, więc wklejenie samej reguły nic nie zmienia w
+zachowaniu aplikacji, ale nie zaszkodzi na zapas.
 
 ## Przepisy społecznościowe — moderacja
 
-Zgodnie z prośbą o włącznik w ustawieniach:
+**AKTUALIZACJA 2026-08-08: zaimplementowane** (patrz Functional
+requirements/FR-76). Zgodnie z pierwotnym planem poniżej:
 
-- `users/{uid}.communityRecipesEnabled` (domyślnie `false`) — gdy
-  wyłączony, lista przepisów pokazuje tylko 229 wbudowanych (`source:
-  "built-in"`).
-- Gdy włączony: dodatkowo pokazują się przepisy `source: "community"` ze
-  `status: "approved"` — NIGDY automatycznie `"pending"`, żeby uniknąć
-  pokazywania niesprawdzonych/spamowych zgłoszeń wszystkim.
-- Formularz "Dodaj swój przepis" zapisuje nowy dokument w `recipes/` ze
-  `status: "pending"`, widoczny od razu tylko dla autora.
-- Zatwierdzanie `"pending" → "approved"`: na start wystarczy ręczna zmiana
-  pola w konsoli Firebase (Ty jako jedyny "moderator"); docelowo prosty
-  panel albo Cloud Function.
-- Sortowanie po ocenie: średnia z `recipes/{id}/ratings/*` licząca się do
-  osobnego pola `avgRating`/`ratingCount` na dokumencie przepisu
-  (aktualizowanego np. Cloud Function przy każdej nowej ocenie, żeby nie
-  trzeba było czytać całej podkolekcji ocen tylko po to, by posortować listę).
+- ✅ `state.communityRecipesEnabled` (domyślnie `false`, synchronizowane w
+  `users/{uid}` — FR-73) — gdy wyłączony, lista przepisów pokazuje tylko
+  229 wbudowanych i własne (`state.myRecipes`).
+- ✅ Gdy włączony (i użytkownik zalogowany na prawdziwe konto): dodatkowo
+  pokazują się przepisy `source: "community"` ze `status: "approved"` —
+  NIGDY automatycznie `"pending"`.
+- ✅ Formularz "Dodaj swój przepis" zapisuje nowy dokument w `recipes/` ze
+  `status: "pending"`, widoczny od razu tylko dla autora (lokalnie, przez
+  `state.myRecipes` — niezależnie od statusu zatwierdzenia w chmurze).
+- ✅ Zatwierdzanie `"pending" → "approved"`: ręczna zmiana pola w konsoli
+  Firebase (Ty jako jedyny moderator) — reguły bezpieczeństwa wyżej
+  jawnie NIE pozwalają autorowi samodzielnie zmienić własny status.
+- ⬜ Jeszcze nie zrobione: sortowanie po ŚREDNIEJ ocenie od wszystkich
+  użytkowników. Dziś sortowanie "🏆" nadal patrzy tylko na `state.
+  recipeReviews` (Twoją własną ocenę na tym urządzeniu) — prawdziwa,
+  zagregowana średnia wymagałaby osobnego pola `avgRating`/`ratingCount`
+  na dokumencie przepisu, aktualizowanego np. Cloud Function przy każdej
+  nowej ocenie (żeby nie czytać całej podkolekcji ocen tylko po to, by
+  posortować listę). Komentarze pod przepisem (FR-77) DZIAŁAJĄ już w pełni
+  wielo-użytkownikowo — to tylko SORTOWANIE listy wciąż patrzy lokalnie.
 
 ## Checklist
 
@@ -226,8 +273,16 @@ Zgodnie z prośbą o włącznik w ustawieniach:
    "Utwórz gospodarstwo" (dopiero ma sens, gdy krok 6 faktycznie
    synchronizuje dane — inaczej byłby to formularz udający działanie,
    czego świadomie unikamy, patrz FR-68).
-9. ⬜ Wdróż reguły bezpieczeństwa (szkic wyżej) — PRZED udostępnieniem
-   komukolwiek innemu niż Ty.
+9. ✅ Przepisy społeczności, komentarze wielo-użytkownikowe i przeglądana
+   lista użytkowników/profili zaimplementowane po stronie klienta (FR-76,
+   FR-77). *(zrobione 2026-08-08)*
+10. ⬜ **Wymagana Twoja akcja w konsoli Firebase, żeby krok 9 zadziałał:**
+   wklej reguły bezpieczeństwa z sekcji wyżej (Firebase Console → Firestore
+   Database → Reguły → zastąp całą treść → Opublikuj). Bez tego kroku
+   Firestore w trybie produkcyjnym domyślnie ODRZUCA każdy odczyt/zapis do
+   `recipes/*` i `publicProfiles/*` — funkcja po prostu nic nie pokaże ani
+   nie zapisze (bezpieczne, ale niedziałające), dopóki reguły nie zostaną
+   wklejone.
 
 ## Jeśli jednak przepiszesz na Kotlin / Android Studio
 
