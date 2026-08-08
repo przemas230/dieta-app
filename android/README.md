@@ -10,7 +10,7 @@ funkcjonalnych między nimi. **`PARITY.md`** w tym folderze śledzi dokładnie,
 które funkcje z wersji webowej mają już odpowiednik tutaj, a które jeszcze
 czekają — sprawdź tam, zanim zapytasz "czy X już jest w Androidzie".
 
-## Status: nawigacja + lista przepisów, bez Firebase
+## Status: nawigacja + lista przepisów + test Firebase
 
 Co już działa:
 - Pełny szkielet projektu Gradle/Kotlin/Compose.
@@ -24,14 +24,21 @@ Co już działa:
   odpowiadającymi `nav.bottom` z wersji webowej — Przepisy/Zakupy/Planer/
   Postęp/Spiżarnia — plus przycisk Ustawień w górnym pasku (jak w wersji
   webowej, gdzie Ustawienia też nie są zakładką dolną, tylko ikoną w
-  nagłówku). Wszystkie zakładki poza Przepisami pokazują na razie
-  `PlaceholderScreen` — budowane będą kolejno, patrz "Co dalej".
+  nagłówku).
+- Zakładka Ustawienia: na razie tylko test połączenia z Firebase — logowanie
+  anonimowe (jak `onAuthStateChanged` w web-owym `index.html`) + zapis i
+  odczyt pola `debugPing` w `users/{uid}` w TYM SAMYM projekcie Firebase
+  (`dieta-app-323b4`). To potwierdzi, że Firestore realnie działa stąd,
+  zanim dobuduję resztę synchronizacji. **Wymaga dodania
+  `android/app/google-services.json`** (patrz sekcja "Podłączenie Firebase"
+  niżej) — bez tego pliku przycisk "Testuj Firebase" pokaże czytelny błąd
+  po polsku zamiast crashować aplikację.
 
 Czego jeszcze NIE ma (kolejne kroki, patrz "Co dalej"):
-- Logowania i synchronizacji z Firebase (zależności są już dodane w Gradle,
-  ale kod nigdzie ich jeszcze nie wywołuje).
+- Reszty synchronizacji (profil, spiżarnia, planer, lista zakupów itd.) —
+  na razie tylko jedno testowe pole.
 - Rzeczywistej zawartości pozostałych zakładek (Planer, Zakupy, Spiżarnia,
-  Postęp, Ustawienia) — na razie same placeholdery.
+  Postęp) — na razie same placeholdery.
 
 **Nie mogłem tego skompilować ani uruchomić** — środowisko, w którym to
 piszę, nie ma zainstalowanego Android SDK/Gradle/emulatora. Kod jest napisany
@@ -79,9 +86,10 @@ realnie sprawdzić w Android Studio, zanim przejdziemy do następnego):
 
 1. ✅ Nawigacja dolna (`NavigationBar` + `NavHost`) między pustymi na razie
    ekranami odpowiadającymi zakładkom z wersji webowej.
-2. Logowanie anonimowe + zapis/odczyt jednego prostego pola w `users/{uid}`
-   (np. `displayName`) — potwierdzenie, że Firestore realnie działa z tym
-   projektem.
+2. ⏳ Logowanie anonimowe + zapis/odczyt jednego prostego pola (`debugPing`)
+   w `users/{uid}` — kod gotowy w zakładce Ustawienia, ale wymaga dodania
+   `android/app/google-services.json`, żeby dało się to sprawdzić w Android
+   Studio.
 3. Ekran Spiżarni i Listy zakupów — najbliższe strukturze mapy
    `{nazwa: ilość}`, którą już zna kod webowy.
 4. Planer tygodniowy.
