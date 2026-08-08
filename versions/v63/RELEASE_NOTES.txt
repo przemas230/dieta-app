@@ -1,0 +1,39 @@
+Wersja 63
+=========
+
+Prawdziwa synchronizacja danych osobistych w chmurze między urządzeniami
+(Firestore) — naprawia zgłoszony problem, że po zalogowaniu na dwóch
+urządzeniach nazwa użytkownika, spiżarnia i ustawienia się nie
+synchronizowały.
+
+Zmiany:
+- Po zalogowaniu na prawdziwe konto (Google lub e-mail/hasło, nie
+  anonimowe) aplikacja automatycznie zapisuje w chmurze i na bieżąco
+  synchronizuje między wszystkimi urządzeniami: nazwę w aplikacji, profil
+  diety (płeć/wiek/wzrost/waga/cel/filtry), spiżarnię, ulubione przepisy i
+  składniki, własne dodane przepisy, oceny/recenzje przepisów, motyw,
+  skalę interfejsu oraz przełącznik „Pokazuj przepisy społeczności”.
+- Zmiana wprowadzona na jednym zalogowanym urządzeniu (np. dodanie czegoś
+  do spiżarni) pojawia się na innych zalogowanych urządzeniach automatycznie,
+  bez potrzeby ręcznego odświeżania — również gdy urządzenie jest offline
+  w danej chwili, dzięki wcześniej włączonemu trybowi offline Firestore.
+- Zalogowanie się na już istniejące konto na nowym urządzeniu pobiera na
+  nie dane osobiste zapisane wcześniej na tym koncie. Uwaga: to pobranie
+  ZASTĘPUJE dotychczasowe lokalne dane tego urządzenia, a nie łączy je —
+  to świadomy wybór (ostatni zapis w chmurze wygrywa), zgodny z planem w
+  docs/FIREBASE_MIGRATION_PLAN.md.
+- Ta runda NIE obejmuje jeszcze wspólnego planera i listy zakupów dla
+  całego gospodarstwa domowego (to osobny, większy mechanizm — „gospodarstwo
+  domowe” z tego samego planu, wciąż w budowie) ani wyświetlania przepisów
+  dodanych przez INNYCH użytkowników (do tego potrzebna jest jeszcze baza
+  przepisów społeczności z moderacją). Aktualizowano opisy w Ustawieniach,
+  żeby dokładnie odzwierciedlały, co już synchronizuje się dziś, a co wciąż
+  czeka na dokończenie.
+- Cache Service Workera podbity do dieta-app-v39.
+
+Uwaga: prawdziwe zapisywanie/odczyt z Firestore można zweryfikować tylko
+na urządzeniu z dostępem do internetu (środowisko, w którym pracuję, nie
+ma dostępu do serwerów Google/Firebase) — logika synchronizacji została
+przetestowana automatycznie z podstawionym (mockowanym) Firestore, ale
+rzeczywiste działanie między dwoma prawdziwymi telefonami/komputerami
+wymaga sprawdzenia przez Ciebie.
