@@ -96,6 +96,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-56: Duży, balonowy napis podczas oceniania przesunięciem](#fr-56-duży-balonowy-napis-podczas-oceniania-przesunięciem)
 - [FR-57: Trwałe oznaczenie oceny i ranking sort](#fr-57-trwałe-oznaczenie-oceny-i-ranking-sort)
 - [FR-67: Ocena gwiazdkowa i komentarz przy przepisie](#fr-67-ocena-gwiazdkowa-i-komentarz-przy-przepisie)
+- [FR-77: Komentarze wielu użytkowników pod przepisem, z paginacją](#fr-77-komentarze-wielu-użytkowników-pod-przepisem-z-paginacją)
 
 ### Konto i współdzielenie
 - [FR-65: Własna, opcjonalna nazwa użytkownika w aplikacji](#fr-65-własna-opcjonalna-nazwa-użytkownika-w-aplikacji)
@@ -110,6 +111,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 
 ### Konto i chmura
 - [FR-73: Synchronizacja danych osobistych w chmurze między urządzeniami](#fr-73-synchronizacja-danych-osobistych-w-chmurze-między-urządzeniami)
+- [FR-76: Przepisy społeczności oraz przeglądana lista użytkowników i profili](#fr-76-przepisy-społeczności-oraz-przeglądana-lista-użytkowników-i-profili)
 
 ---
 
@@ -157,7 +159,7 @@ Aplikacja przechowuje 229 przepisów, każdy przypisany do jednej z pięciu kate
 ## Opis
 Nad listą przepisów znajduje się pole wyszukiwania (po nazwie dania i składnikach) oraz zestaw przełączników: tylko ulubione przepisy (⭐), tylko z ulubionymi składnikami (🌟), tylko dania możliwe do zrobienia z tego, co jest w spiżarni (🏺), sortowanie wg dopasowania do profilu (🎯), sortowanie rankingowe wg oceny (❤️), sortowanie wg oceny gwiazdkowej (🏆), tylko przepisy dodane przez użytkowników (🧑‍🍳) oraz rozwijana lista z progiem oceny gwiazdkowej („Dowolna ocena” / „★ 3+” / „★ 4+” / „★ 5”).
 
-Przełącznik „tylko przepisy dodane przez użytkowników” pokazuje wyłącznie pozycje z `state.myRecipes` (przepisy dodane przyciskiem „➕ Dodaj swój przepis”, patrz FR-66), z pominięciem 229 wbudowanych przepisów aplikacji.
+Przełącznik „tylko przepisy dodane przez użytkowników” pokazuje pozycje z `state.myRecipes` (własne przepisy, przycisk „➕ Dodaj swój przepis”, patrz FR-66) ORAZ zatwierdzone przepisy społeczności dodane przez innych użytkowników (`source: "community"`, patrz FR-76), z pominięciem 229 wbudowanych przepisów aplikacji.
 
 Filtr progu oceny pokazuje wyłącznie przepisy, których ocena gwiazdkowa (⭐ „Oceń i skomentuj”, patrz FR-67) jest równa lub wyższa od wybranego progu; przepisy bez żadnej oceny są wtedy ukrywane. Dopóki synchronizacja danych między urządzeniami (`docs/FIREBASE_MIGRATION_PLAN.md`) nie jest ukończona, ocena widoczna w filtrze to ocena własna z tego urządzenia — po dokończeniu synchronizacji stanie się to bez zmian w tym mechanizmie średnią oceną od wszystkich użytkowników (ten sam kształt danych, patrz komentarz przy `recipeReviews` w kodzie).
 
@@ -170,6 +172,7 @@ Filtr progu oceny pokazuje wyłącznie przepisy, których ocena gwiazdkowa (⭐ 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-08): Dodano przełącznik „tylko przepisy użytkowników” (🧑‍🍳) i filtr progu oceny gwiazdkowej, na życzenie użytkownika ("rozbuduj funkcję filtrowania, dodaj opcje żeby wyświetlać tylko przepisy dodane przez użytkowników albo tylko z określoną oceną dania ustaloną na podstawie ocen od różnych użytkowników").
+- **v3** (2026-08-08): Przełącznik „tylko przepisy użytkowników” objął też zatwierdzone przepisy społeczności dodane przez INNYCH użytkowników, po wdrożeniu FR-76 (wcześniej pokazywał tylko własne przepisy).
 
 ---
 
@@ -1357,6 +1360,7 @@ Zrewidowane 2026-08-08: dodano automatyczne obliczanie kalorii/makroskładników
 ## Historia rewizji
 - **v1** (2026-08-07): Pierwsza wersja wymagania na podstawie polecenia użytkownika.
 - **v2** (2026-08-08): Dodano automatyczne obliczanie makroskładników z listy składników oraz poprawiono czytelność walidacji — patrz "Uwagi" i zaktualizowane kryteria akceptacji.
+- **v3** (2026-08-08): Przewidywanie z "Uwag" ("gotowy stać się przepisem społecznościowym po podłączeniu Firebase, bez zmiany kształtu danych") zrealizowane — patrz FR-76.
 
 ---
 
@@ -1366,7 +1370,7 @@ Zrewidowane 2026-08-08: dodano automatyczne obliczanie kalorii/makroskładników
 **Status:** Zaimplementowane
 
 ## Opis
-Każda karta przepisu (wbudowanego lub własnego, FR-66) ma przycisk „⭐ Oceń i skomentuj”, otwierający okienko z 5 dużymi gwiazdkami (ta sama, pełnoszerokia stylistyka co ocena w historii gotowania, FR-17) i opcjonalnym polem komentarza tekstowego (do 300 znaków). Zapisana ocena i komentarz pokazują się bezpośrednio na karcie przepisu: liczba gwiazdek w etykiecie przycisku oraz treść komentarza pod opisem przygotowania. Osobny przycisk sortowania (🏆) w pasku narzędzi zakładki Przepisy sortuje listę wg tej oceny, malejąco.
+Każda karta przepisu (wbudowanego lub własnego, FR-66) ma przycisk „⭐ Oceń i skomentuj”, umieszczony na samym dole rozwiniętej karty (pod składnikami i sposobem przygotowania — patrz FR-77), otwierający okienko z 5 dużymi gwiazdkami (ta sama, pełnoszerokia stylistyka co ocena w historii gotowania, FR-17) i opcjonalnym polem komentarza tekstowego (do 300 znaków). Zapisana ocena i komentarz pokazują się bezpośrednio na karcie przepisu: liczba gwiazdek w etykiecie przycisku oraz treść komentarza pod opisem przygotowania. Osobny przycisk sortowania (🏆) w pasku narzędzi zakładki Przepisy sortuje listę wg tej oceny, malejąco. Bezpośrednio pod przyciskiem oceny znajduje się rozwijana sekcja komentarzy od innych użytkowników, opisana osobno w FR-77.
 
 To mechanizm inny niż istniejący ranking podoba/nie podoba mi się (FR-55/57, gest przesunięcia karty) — tamten jest szybkim, binarnym gestem bez komentarza; ten jest świadomą oceną 1-5 gwiazdek z możliwością opisania, co konkretnie się podobało lub co poprawić, myślaną pod przyszłe współdzielenie ocen z innymi użytkownikami.
 
@@ -1382,8 +1386,11 @@ Spisane 2026-08-07: dane zapisywane lokalnie w `state.recipeReviews[recipeId] = 
 
 Podczas implementacji wykryto i naprawiono błąd w logice przełącznika gwiazdek w okienku oceny: podwójny, nadmiarowy zapis stanu zaznaczenia (raz wewnątrz funkcji renderującej, raz zaraz po jej wywołaniu) powodował, że kliknięcie gwiazdki cofało własną zmianę, blokując zapisanie jakiejkolwiek oceny.
 
+Zrewidowane 2026-08-08: `recipes/{id}/ratings/{uid}` z powyższego akapitu przestało być tylko teoretycznym docelowym kształtem — FR-77 faktycznie zapisuje tam każdą ocenę (dla zalogowanych na prawdziwe konto), więc komentarze pod przepisem są już dziś prawdziwie wieloosobowe, niezależnie od sortowania 🏆 (które nadal patrzy tylko na lokalną ocenę tego urządzenia — patrz `docs/FIREBASE_MIGRATION_PLAN.md`).
+
 ## Historia rewizji
 - **v1** (2026-08-07): Pierwsza wersja wymagania na podstawie polecenia użytkownika.
+- **v2** (2026-08-08): Przeniesiono przycisk na dół karty i dodano pod nim wielo-użytkownikowy wątek komentarzy — patrz FR-77 i sekcja "Uwagi".
 
 ---
 
@@ -1752,5 +1759,63 @@ zawsze w pełni zsynchronizowane (nie ma dwóch niezależnych źródeł prawdy).
   ("na zakładce zakupy daj możliwość przełączania widoku na taki jak w
   spiżarni żeby było widać ikonki tego co trzeba kupić, niech będą na
   minus jak czegoś brakuje").
+
+---
+
+# FR-76: Przepisy społeczności oraz przeglądana lista użytkowników i profili
+
+**Obszar:** Konto i chmura
+**Status:** Zaimplementowane (wymaga wdrożenia reguł bezpieczeństwa Firestore w konsoli — patrz `docs/FIREBASE_MIGRATION_PLAN.md`)
+
+## Opis
+Rozszerzenie synchronizacji z chmury (FR-73) o dane WSPÓLNE/publiczne, widoczne dla innych zalogowanych użytkowników, nie tylko dla właściciela konta:
+
+**Przepisy społeczności.** Zapisanie własnego przepisu (przycisk „➕ Dodaj swój przepis”) — jeśli użytkownik jest zalogowany na prawdziwe (nie anonimowe) konto — dodatkowo publikuje jego kopię w kolekcji `recipes/{id}` ze statusem `"pending"`. Przepis od razu widać LOKALNIE u autora (tak jak dotychczas, przez `state.myRecipes`, niezależnie od statusu). Dopiero po ręcznym zatwierdzeniu statusu na `"approved"` w konsoli Firebase (jedyny mechanizm moderacji — brak panelu w aplikacji) przepis zaczyna się pokazywać u INNYCH użytkowników, którzy mają włączony przełącznik „🌍 Pokazuj przepisy dodane przez innych użytkowników” w Ustawieniach. Taki przepis ma na karcie znaczek „🌍 [pseudonim autora]” zamiast „✍️ Twój przepis”. Usunięcie własnego przepisu usuwa też jego kopię w chmurze. Przełącznik „🧑‍🍳 tylko przepisy użytkowników” na liście przepisów obejmuje teraz zarówno własne, jak i zatwierdzone przepisy społeczności.
+
+**Lista użytkowników i profile.** Przycisk „👥 Przeglądaj użytkowników” (Ustawienia → „🌍 Przepisy społeczności”) otwiera listę pseudonimów wszystkich osób, które kiedykolwiek zalogowały się na prawdziwe konto, z datą ostatniego logowania (aktualizowaną automatycznie przy każdym uruchomieniu aplikacji zalogowanym). Kliknięcie osoby na liście otwiera jej profil: pseudonim, data ostatniego logowania, lista jej zatwierdzonych przepisów społeczności oraz lista przepisów, które oceniła/skomentowała (patrz FR-77). Profil NIE pokazuje adresu e-mail, danych profilu diety, spiżarni ani ulubionych — wyłącznie te jawnie publiczne informacje.
+
+## Kryteria akceptacji
+- Wszystko powyżej działa WYŁĄCZNIE dla zalogowanych na prawdziwe konto (nie anonimowe) — logowanie anonimowe nigdy nie publikuje ani nie widzi danych innych osób.
+- Nowo dodany przepis społeczności jest niewidoczny dla innych użytkowników, dopóki status nie zostanie ręcznie zmieniony na `"approved"` w konsoli Firebase — reguły bezpieczeństwa Firestore jawnie uniemożliwiają autorowi samodzielną zmianę własnego statusu.
+- Dane wpisywane przez innych użytkowników (nazwa przepisu, składniki, sposób przygotowania, pseudonim autora) są zawsze oczyszczane (`escapeHtml`) przed wstawieniem do strony — żadna karta przepisu społeczności ani wpis na liście użytkowników nie może wykonać obcego kodu (ochrona przed XSS).
+- Nieprawidłowe/niekompletne dane w dokumencie przepisu społeczności (zła kategoria, brakujące liczby) nie psują aplikacji — `sanitizeCommunityRecipeDoc()` podstawia bezpieczne wartości domyślne zamiast pozwolić na `NaN`/nieistniejącą kategorię.
+- Bez wdrożonych reguł bezpieczeństwa w konsoli Firebase te funkcje nie pokazują ani nie zapisują niczego (Firestore w trybie produkcyjnym domyślnie odrzuca dostęp) — nie jest to błąd aplikacji, tylko oczekiwany, bezpieczny stan „jeszcze nie skonfigurowane”.
+- Rzeczywiste działanie (widoczność między dwoma kontami, aktualizacja daty logowania) wymaga weryfikacji na urządzeniu z dostępem do internetu, po wdrożeniu reguł — środowisko deweloperskie nie ma dostępu do serwerów Firebase.
+
+## Historia rewizji
+- **v1** (2026-08-08): Pierwsza wersja wymagania, na życzenie użytkownika
+  ("chciałbym żeby można było przeglądać listę dań dodanych przez
+  użytkowników oraz listę użytkowników, po kliknięciu na nazwę użytkownika
+  w jego profilu będzie można podejrzeć tylko login, oraz datę ostatniego
+  logowania, ewentualnie ulubione przepisy bądź oceniane komentowane
+  przepisy").
+
+---
+
+# FR-77: Komentarze wielu użytkowników pod przepisem, z paginacją
+
+**Obszar:** Ocenianie i ranking przepisów
+**Status:** Zaimplementowane (wymaga wdrożenia reguł bezpieczeństwa Firestore w konsoli — patrz `docs/FIREBASE_MIGRATION_PLAN.md`)
+
+## Opis
+Przycisk „⭐ Oceń i skomentuj” (FR-67) przeniesiono z góry rozwiniętej karty przepisu na sam dół, pod składniki i sposób przygotowania. Bezpośrednio pod nim znajduje się rozwijany przycisk „💬 Komentarze innych użytkowników”. Po rozwinięciu pokazuje się lista do 3 komentarzy (autor + gwiazdki + treść komentarza, jeśli podana), pobrana na żywo z Firestore (`recipes/{id}/ratings`, ta sama kolekcja, do której zapisuje zapisanie własnej oceny). Przycisk „Pokaż więcej” pod listą doczytuje kolejne, tym razem po 10 komentarzy na raz, aż do wyczerpania wszystkich ocen tego przepisu.
+
+Zapisanie własnej oceny/komentarza (FR-67) publikuje ją — jeśli użytkownik jest zalogowany na prawdziwe konto — jednocześnie w dwóch miejscach: `recipes/{id}/ratings/{uid}` (widoczne w komentarzach pod TYM przepisem) oraz `publicProfiles/{uid}/reviewedRecipes/{id}` (widoczne w publicznym profilu tego użytkownika, patrz FR-76). Usunięcie własnej oceny usuwa oba wpisy.
+
+## Kryteria akceptacji
+- Lista komentarzy jest domyślnie zwinięta — trzeba jawnie kliknąć „💬 Komentarze innych użytkowników”, żeby ją zobaczyć i pobrać.
+- Pierwsze rozwinięcie pokazuje maksymalnie 3 komentarze; każde kolejne kliknięcie „Pokaż więcej” doczytuje kolejnych maksymalnie 10, aż serwer zwróci mniej niż żądano (koniec listy — przycisk znika).
+- Gdy chmura jest niedostępna (brak sieci albo `firebaseReady===false`), sekcja komentarzy pokazuje czytelny komunikat po polsku zamiast pustej listy albo błędu w konsoli.
+- Brak jakichkolwiek komentarzy dla danego przepisu pokazuje zachętę „bądź pierwszą osobą, która oceni to danie”, nie pusty ekran.
+- Treść komentarza i pseudonim autora są zawsze oczyszczane (`escapeHtml`/`sanitizeRatingDoc`) przed wstawieniem do strony — to pierwsze miejsce w aplikacji renderujące dowolny tekst wpisany przez INNE urządzenie, więc ochrona przed XSS jest tu krytyczna (patrz też FR-76).
+- Zapisanie/usunięcie własnej oceny odświeża od razu widoczną listę komentarzy na tej karcie, jeśli jest akurat rozwinięta (nie trzeba ręcznie odświeżać strony).
+- Przycisk „⭐ Oceń i skomentuj” działa dokładnie tak samo jak wcześniej (ten sam modal) — zmieniło się tylko jego położenie na karcie.
+
+## Historia rewizji
+- **v1** (2026-08-08): Pierwsza wersja wymagania, na życzenie użytkownika
+  ("przycisk oceń i skomentuj przenieś na sam dół kafelka z możliwością
+  rozwinięcia tego i zobaczenia domyślnie 3 komentarzy a po show more/pokaż
+  więcej żeby doczytywało powiedzmy po 10 komentarzy do tego przepisu jeśli
+  takie będą").
 
 ---
