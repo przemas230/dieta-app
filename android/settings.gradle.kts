@@ -14,3 +14,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "DietaApp"
 include(":app")
+include(":logic")

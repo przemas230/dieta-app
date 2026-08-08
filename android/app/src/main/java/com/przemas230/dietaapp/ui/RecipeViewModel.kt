@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.data.RecipeRepository
+import com.przemas230.dietaapp.logic.CATEGORIES
+import com.przemas230.dietaapp.logic.RecipeBrowsing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,21 +14,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-data class RecipeCategory(val id: String, val label: String, val emoji: String)
-
 /**
- * Same 4-tab grouping as the web app's browse view (FR-74): "Śniadania" and
- * "II Śniadanie" share one tab here too, even though they're still distinct
- * `cat` values in the data (the Planer/meal-slot distinction only matters
- * once there's a planner screen — this is just the recipe browser).
+ * Thin StateFlow/Android glue around RecipeBrowsing (in the :logic module,
+ * see android/logic/ — unit-tested there in RecipeBrowsingTest). This class
+ * itself can't be unit-tested here (needs AndroidViewModel/Application),
+ * but the actual filtering rules it delegates to are genuinely covered.
  */
-val CATEGORIES = listOf(
-    RecipeCategory("sniadania", "Śniadania", "🍳"),
-    RecipeCategory("obiady", "Obiady", "🍲"),
-    RecipeCategory("kolacje", "Kolacje", "🌙"),
-    RecipeCategory("deser", "Deser / Przekąska", "🍰"),
-)
-
 class RecipeViewModel(application: Application) : AndroidViewModel(application) {
     private val allRecipes = MutableStateFlow<List<Recipe>>(emptyList())
 
@@ -62,17 +55,6 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun recompute() {
-        val category = _selectedCategory.value
-        val matchesCategory: (Recipe) -> Boolean = { recipe ->
-            if (category == "sniadania") recipe.cat == "sniadania" || recipe.cat == "drugie"
-            else recipe.cat == category
-        }
-        val term = _searchTerm.value.trim().lowercase()
-        _visibleRecipes.value = allRecipes.value.filter { recipe ->
-            matchesCategory(recipe) &&
-                (term.isEmpty() ||
-                    recipe.name.lowercase().contains(term) ||
-                    recipe.ingredients.any { it.lowercase().contains(term) })
-        }
+        _visibleRecipes.value = RecipeBrowsing.visibleRecipes(allRecipes.value, _selectedCategory.value, _searchTerm.value)
     }
 }

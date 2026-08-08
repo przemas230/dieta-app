@@ -6,6 +6,9 @@ package com.przemas230.dietaapp.data
  * remember a translation. The per-ingredient "calc" breakdown from the web
  * app isn't modeled here yet (not needed until the macro-info screen is
  * built) but stays present in assets/recipes.json for when it is.
+ *
+ * Lives in the plain :logic module (no Android dependency) so recipe
+ * filtering logic can be unit-tested — see RecipeBrowsingTest.
  */
 data class Recipe(
     val id: String,

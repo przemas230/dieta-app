@@ -7,6 +7,9 @@ package com.przemas230.dietaapp.data
  * here is a simplified stand-in for the web app's much larger per-ingredient
  * category database — good enough for local browsing, to be reconciled
  * once the real sync (android/README.md step 6) ports pantry data itself.
+ *
+ * Lives in the plain :logic module (no Android dependency) so the pantry
+ * mutation logic can be unit-tested — see PantryOperationsTest.
  */
 enum class PantryCategory(val label: String) {
     NABIAL("Nabiał"),

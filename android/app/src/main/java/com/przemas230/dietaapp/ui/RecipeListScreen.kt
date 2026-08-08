@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.przemas230.dietaapp.data.Recipe
+import com.przemas230.dietaapp.logic.CATEGORIES
 
 /**
  * Pure screen content — no own Scaffold/TopAppBar, since the app-level
