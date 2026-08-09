@@ -9,6 +9,8 @@ import com.przemas230.dietaapp.data.RecipeRepository
 import com.przemas230.dietaapp.logic.CATEGORIES
 import com.przemas230.dietaapp.logic.CookHistoryOperations
 import com.przemas230.dietaapp.logic.RecipeBrowsing
+import com.przemas230.dietaapp.logic.RecipeRating
+import com.przemas230.dietaapp.logic.RecipeRatingOperations
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,6 +45,10 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     // FR-15: recipeId -> history of "✅ Zrobione" entries (date + optional FR-17 star rating).
     private val _cooked = MutableStateFlow<Map<String, List<CookEntry>>>(emptyMap())
     val cooked: StateFlow<Map<String, List<CookEntry>>> = _cooked.asStateFlow()
+
+    // FR-55/57: recipeId -> like/dislike, persistent (never removes the card from the list).
+    private val _ratings = MutableStateFlow<Map<String, RecipeRating>>(emptyMap())
+    val ratings: StateFlow<Map<String, RecipeRating>> = _ratings.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -81,6 +87,15 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
 
     fun removeCookEntry(recipeId: String, index: Int) {
         _cooked.value = CookHistoryOperations.removeEntry(_cooked.value, recipeId, index)
+    }
+
+    /** FR-55: swipe right (or tap the rating badge again to toggle) sets/clears like; swipe left sets dislike. */
+    fun setRating(recipeId: String, rating: RecipeRating) {
+        _ratings.value = RecipeRatingOperations.setRating(_ratings.value, recipeId, rating)
+    }
+
+    fun clearRating(recipeId: String) {
+        _ratings.value = RecipeRatingOperations.clearRating(_ratings.value, recipeId)
     }
 
     private fun recompute() {

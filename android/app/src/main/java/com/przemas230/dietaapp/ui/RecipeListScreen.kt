@@ -3,10 +3,13 @@ package com.przemas230.dietaapp.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -54,9 +58,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -74,6 +81,8 @@ import com.przemas230.dietaapp.logic.PlannerOperations
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.RecipeMatching
 import com.przemas230.dietaapp.logic.RecipePantryMatching
+import com.przemas230.dietaapp.logic.RecipeRating
+import com.przemas230.dietaapp.logic.RecipeRatingOperations
 import com.przemas230.dietaapp.logic.ShoppingOperations
 import com.przemas230.dietaapp.logic.WeekPlan
 import com.przemas230.dietaapp.logic.forCategory
@@ -100,6 +109,7 @@ fun RecipeListScreen(
     val searchTerm by viewModel.searchTerm.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val cookedMap by viewModel.cooked.collectAsState()
+    val ratings by viewModel.ratings.collectAsState()
     val pantryItems by pantryViewModel.items.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
     val shoppingItems by shoppingViewModel.items.collectAsState()
@@ -109,13 +119,20 @@ fun RecipeListScreen(
     }
 
     var sortByMatch by remember { mutableStateOf(false) }
+    var sortByRating by remember { mutableStateOf(false) }
     val macroTargets = remember(profile) { ProfileCalculations.calcMacroTargets(profile) }
     val kcalTargets = remember(profile) { ProfileCalculations.calcTargets(profile) }
     val matchScores = remember(recipes, macroTargets, profile) {
         recipes.associate { it.id to RecipeMatching.matchScore(it, macroTargets.forCategory(it.cat), profile) }
     }
-    val displayedRecipes = remember(recipes, sortByMatch, matchScores) {
-        if (sortByMatch) recipes.sortedByDescending { matchScores[it.id] ?: -1 } else recipes
+    val displayedRecipes = remember(recipes, sortByMatch, sortByRating, matchScores, ratings) {
+        // FR-2/FR-57: independent toggles applied in sequence (matches
+        // index.html's own if(sortByMatch){...} if(sortByRating){...}), not
+        // combined into one composite key.
+        var result = recipes
+        if (sortByMatch) result = result.sortedByDescending { matchScores[it.id] ?: -1 }
+        if (sortByRating) result = RecipeRatingOperations.sortByRating(result, ratings)
+        result
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -148,6 +165,14 @@ fun RecipeListScreen(
                     label = { Text("🎯 Dopasowanie") },
                 )
             }
+            item {
+                // FR-57: liked first, then unrated, then disliked.
+                FilterChip(
+                    selected = sortByRating,
+                    onClick = { sortByRating = !sortByRating },
+                    label = { Text("❤️ Ranking") },
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -163,6 +188,7 @@ fun RecipeListScreen(
                 displayedRecipes,
                 matchScores,
                 cookedMap,
+                ratings,
                 pantryItems,
                 weekPlan,
                 shoppingItems,
@@ -186,6 +212,7 @@ private fun RecipeListWithScrollToTop(
     recipes: List<Recipe>,
     matchScores: Map<String, Int?>,
     cookedMap: Map<String, List<CookEntry>>,
+    ratings: Map<String, RecipeRating>,
     pantryItems: Map<String, PantryItem>,
     weekPlan: WeekPlan,
     shoppingItems: Map<String, ShoppingItem>,
@@ -251,6 +278,9 @@ private fun RecipeListWithScrollToTop(
                             shoppingViewModel.addRecipe(recipe)
                         }
                     },
+                    rating = ratings[recipe.id],
+                    onSwipeRate = { rating -> viewModel.setRating(recipe.id, rating) },
+                    onClearSwipeRating = { viewModel.clearRating(recipe.id) },
                 )
             }
         }
@@ -286,6 +316,9 @@ private fun RecipeCard(
     onPlanRecipe: (day: Int, cat: String) -> Unit,
     isAddedToShopping: Boolean,
     onToggleAddToShopping: () -> Unit,
+    rating: RecipeRating?,
+    onSwipeRate: (RecipeRating) -> Unit,
+    onClearSwipeRating: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
@@ -295,11 +328,47 @@ private fun RecipeCard(
     // FR-4: deterministic emoji thumbnail from the recipe's own biggest
     // ingredient — no network round-trip, same icon set as pantry tiles.
     val thumbEmoji = remember(recipe.id) { IngredientCanon.mainIngredientInfo(recipe)?.emoji ?: "🍽️" }
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { expanded = !expanded },
-    ) {
+
+    // FR-55: horizontal drag past the 90dp threshold commits like/dislike;
+    // detectHorizontalDragGestures only engages once it sees a clearly
+    // horizontal motion (its own touch-slop check), so plain vertical list
+    // scrolling is left alone -- same axis-lock intent as index.html's
+    // gesture, without hand-rolling the disambiguation.
+    val offsetX = remember { Animatable(0f) }
+    val swipeCoroutineScope = rememberCoroutineScope()
+    val swipeThresholdPx = with(LocalDensity.current) { 90.dp.toPx() }
+    val borderColor = when (rating) {
+        RecipeRating.LIKE -> Color(0xFF43A047)
+        RecipeRating.DISLIKE -> Color(0xFFE53935)
+        null -> Color.Transparent
+    }
+
+    Box {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .border(2.dp, borderColor, MaterialTheme.shapes.medium)
+                .pointerInput(recipe.id) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            val committed = offsetX.value
+                            swipeCoroutineScope.launch {
+                                when {
+                                    committed > swipeThresholdPx -> onSwipeRate(RecipeRating.LIKE)
+                                    committed < -swipeThresholdPx -> onSwipeRate(RecipeRating.DISLIKE)
+                                }
+                                offsetX.animateTo(0f)
+                            }
+                        },
+                        onDragCancel = { swipeCoroutineScope.launch { offsetX.animateTo(0f) } },
+                    ) { change, dragAmount ->
+                        change.consume()
+                        swipeCoroutineScope.launch { offsetX.snapTo(offsetX.value + dragAmount) }
+                    }
+                }
+                .clickable { expanded = !expanded },
+        ) {
         Column {
             Row(modifier = Modifier.padding(14.dp)) {
                 Box(
@@ -354,6 +423,21 @@ private fun RecipeCard(
                 ) {
                     Text("📅 Zaplanuj")
                 }
+            }
+        }
+        }
+        // FR-57: persistent 👍/👎 badge on a rated card -- tap to clear the rating.
+        if (rating != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(10.dp)
+                    .size(30.dp)
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(15.dp))
+                    .clickable { onClearSwipeRating() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(if (rating == RecipeRating.LIKE) "👍" else "👎", fontSize = 16.sp)
             }
         }
     }
