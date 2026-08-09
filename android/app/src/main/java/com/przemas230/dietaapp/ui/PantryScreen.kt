@@ -37,6 +37,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.przemas230.dietaapp.data.PantryCategory
 import com.przemas230.dietaapp.data.PantryItem
+import com.przemas230.dietaapp.logic.PantryDisplay
+import kotlin.math.roundToInt
 
 /**
  * Local pantry screen, structurally closest to state.pantry in the web app
@@ -107,7 +109,15 @@ private fun PantryRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column {
-                Text(item.name, fontWeight = FontWeight.SemiBold)
+                // FR-29: count-based products ("szt.") show the grammatically
+                // agreeing Polish form (jajko/jajka/jajek) instead of the
+                // raw stored name, recomputed live as the quantity changes.
+                val displayName = if (item is PantryItem.Product && PantryDisplay.isCountUnit(item.unit)) {
+                    PantryDisplay.displayName(item.name, item.quantity.roundToInt())
+                } else {
+                    item.name
+                }
+                Text(displayName, fontWeight = FontWeight.SemiBold)
                 Text(item.category.label, style = MaterialTheme.typography.bodySmall)
             }
             when (item) {
@@ -115,7 +125,12 @@ private fun PantryRow(
                     IconButton(onClick = { onAdjustQty(-1.0) }) {
                         Icon(Icons.Filled.Remove, contentDescription = "Zmniejsz ilość")
                     }
-                    Text("${item.quantity} ${item.unit}")
+                    val qtyLabel = if (PantryDisplay.isCountUnit(item.unit)) {
+                        "${formatQty(item.quantity)}"
+                    } else {
+                        "${formatQty(item.quantity)} ${item.unit}"
+                    }
+                    Text(qtyLabel)
                     IconButton(onClick = { onAdjustQty(1.0) }) {
                         Icon(Icons.Filled.Add, contentDescription = "Zwiększ ilość")
                     }
@@ -217,3 +232,7 @@ private fun AddPantryItemForm(
         }
     }
 }
+
+/** "8.0" -> "8", "8.5" -> "8.5" — matches how JS template literals print numbers. */
+private fun formatQty(value: Double): String =
+    if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()

@@ -28,11 +28,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -41,6 +43,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -54,11 +57,15 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.przemas230.dietaapp.data.CookEntry
+import com.przemas230.dietaapp.data.PantryCategory
+import com.przemas230.dietaapp.data.PantryItem
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.logic.CATEGORIES
 import com.przemas230.dietaapp.logic.IngredientCanon
+import com.przemas230.dietaapp.logic.PantryOperations
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.RecipeMatching
+import com.przemas230.dietaapp.logic.RecipePantryMatching
 import com.przemas230.dietaapp.logic.forCategory
 import kotlin.math.abs
 import kotlin.math.max
@@ -74,6 +81,7 @@ import kotlinx.coroutines.launch
 fun RecipeListScreen(
     profileViewModel: ProfileViewModel,
     pantryViewModel: PantryViewModel,
+    shoppingViewModel: ShoppingViewModel,
     viewModel: RecipeViewModel = viewModel(),
 ) {
     val recipes by viewModel.visibleRecipes.collectAsState()
@@ -81,6 +89,7 @@ fun RecipeListScreen(
     val searchTerm by viewModel.searchTerm.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val cookedMap by viewModel.cooked.collectAsState()
+    val pantryItems by pantryViewModel.items.collectAsState()
     val profile by profileViewModel.profile.collectAsState()
     LaunchedEffect(profile.glutenFree, profile.lactoseFree) {
         viewModel.setDietaryFilters(profile.glutenFree, profile.lactoseFree)
@@ -136,7 +145,15 @@ fun RecipeListScreen(
             displayedRecipes.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Brak przepisów spełniających kryteria.")
             }
-            else -> RecipeListWithScrollToTop(displayedRecipes, matchScores, cookedMap, viewModel, pantryViewModel)
+            else -> RecipeListWithScrollToTop(
+                displayedRecipes,
+                matchScores,
+                cookedMap,
+                pantryItems,
+                viewModel,
+                pantryViewModel,
+                shoppingViewModel,
+            )
         }
     }
 }
@@ -151,8 +168,10 @@ private fun RecipeListWithScrollToTop(
     recipes: List<Recipe>,
     matchScores: Map<String, Int?>,
     cookedMap: Map<String, List<CookEntry>>,
+    pantryItems: Map<String, PantryItem>,
     viewModel: RecipeViewModel,
     pantryViewModel: PantryViewModel,
+    shoppingViewModel: ShoppingViewModel,
 ) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -175,6 +194,7 @@ private fun RecipeListWithScrollToTop(
                     recipe = recipe,
                     matchScore = matchScores[recipe.id],
                     cookEntries = cookedMap[recipe.id].orEmpty(),
+                    pantryItems = pantryItems,
                     onMarkDoneToday = {
                         viewModel.markCookedToday(recipe.id)
                         pantryViewModel.subtractForRecipe(recipe)
@@ -183,6 +203,13 @@ private fun RecipeListWithScrollToTop(
                     onRemoveEntry = { index ->
                         pantryViewModel.restoreForRecipe(recipe)
                         viewModel.removeCookEntry(recipe.id, index)
+                    },
+                    onToggleHaveIngredient = { canonName, category, unitCat ->
+                        pantryViewModel.toggleHaveIngredient(canonName, category, unitCat)
+                    },
+                    onAddIngredientToShopping = { ingredientText ->
+                        val parsed = RecipePantryMatching.parseIngredient(ingredientText)
+                        shoppingViewModel.addItem(parsed.canonName, parsed.baseQty, unitLabelFor(parsed.unitCat))
                     },
                 )
             }
@@ -209,13 +236,17 @@ private fun RecipeCard(
     recipe: Recipe,
     matchScore: Int?,
     cookEntries: List<CookEntry>,
+    pantryItems: Map<String, PantryItem>,
     onMarkDoneToday: () -> Unit,
     onSetRating: (index: Int, rating: Int) -> Unit,
     onRemoveEntry: (index: Int) -> Unit,
+    onToggleHaveIngredient: (canonName: String, category: PantryCategory, unitCat: String) -> Unit,
+    onAddIngredientToShopping: (ingredientText: String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
     var showCookHistory by remember { mutableStateOf(false) }
+    var showPantryCheck by remember { mutableStateOf(false) }
     // FR-4: deterministic emoji thumbnail from the recipe's own biggest
     // ingredient — no network round-trip, same icon set as pantry tiles.
     val thumbEmoji = remember(recipe.id) { IngredientCanon.mainIngredientInfo(recipe)?.emoji ?: "🍽️" }
@@ -236,7 +267,13 @@ private fun RecipeCard(
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    RecipeCardBody(recipe, matchScore, expanded, onInfoClick = { showInfoDialog = true })
+                    RecipeCardBody(
+                        recipe,
+                        matchScore,
+                        expanded,
+                        onInfoClick = { showInfoDialog = true },
+                        onPantryCheckClick = { showPantryCheck = true },
+                    )
                 }
             }
             // FR-15: always visible (not gated by `expanded`), same as
@@ -269,10 +306,25 @@ private fun RecipeCard(
             onDismiss = { showCookHistory = false },
         )
     }
+    if (showPantryCheck) {
+        PantryCheckDialog(
+            recipe = recipe,
+            pantryItems = pantryItems,
+            onToggleHave = onToggleHaveIngredient,
+            onAddToShopping = onAddIngredientToShopping,
+            onDismiss = { showPantryCheck = false },
+        )
+    }
 }
 
 @Composable
-private fun RecipeCardBody(recipe: Recipe, matchScore: Int?, expanded: Boolean, onInfoClick: () -> Unit) {
+private fun RecipeCardBody(
+    recipe: Recipe,
+    matchScore: Int?,
+    expanded: Boolean,
+    onInfoClick: () -> Unit,
+    onPantryCheckClick: () -> Unit,
+) {
     Column {
         Text(recipe.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(4.dp))
@@ -298,6 +350,18 @@ private fun RecipeCardBody(recipe: Recipe, matchScore: Int?, expanded: Boolean, 
                         TextButton(onClick = onInfoClick) { Text("ℹ️") }
                     }
                 }
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            // FR-16: full button styling (border + filled background), not
+            // bare text, per the revised acceptance criteria in FR-16.md.
+            OutlinedButton(
+                onClick = onPantryCheckClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 38.dp),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            ) {
+                Text("🏺 Sprawdź stan spiżarni dla tego dania")
             }
             Spacer(modifier = Modifier.height(6.dp))
             Text("Składniki", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
@@ -421,6 +485,105 @@ private fun StarRatingRow(rating: Int?, onRate: (Int) -> Unit) {
                 contentAlignment = Alignment.Center,
             ) {
                 Text(if ((rating ?: 0) >= n) "★" else "☆", fontSize = 20.sp)
+            }
+        }
+    }
+}
+
+/** weight/volume/count -> the unit label PantryOperations.toggleHaveIngredient / the pantry step convention use. */
+private fun unitLabelFor(unitCat: String): String = when (unitCat) {
+    "weight" -> "g"
+    "volume" -> "ml"
+    else -> "szt."
+}
+
+private fun describePantryEntry(item: PantryItem): String = when (item) {
+    is PantryItem.Product -> "${formatNum(item.quantity)} ${item.unit}"
+    is PantryItem.Spice -> item.level.label
+}
+
+/**
+ * FR-16: styled like a recipe card (not a generic drawer), one row per
+ * ingredient with a big "Mam to" toggle (min. 34dp touch height) and a
+ * separate "🛒" button to add just that ingredient to the shopping list.
+ * Port of index.html's openPantryModal — the "📅 Zaplanuj to danie" button
+ * it also has isn't ported yet since there's no Planner screen (FR-18/19).
+ */
+@Composable
+private fun PantryCheckDialog(
+    recipe: Recipe,
+    pantryItems: Map<String, PantryItem>,
+    onToggleHave: (canonName: String, category: PantryCategory, unitCat: String) -> Unit,
+    onAddToShopping: (ingredientText: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val addedToShopping = remember { mutableStateMapOf<Int, Boolean>() }
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.widthIn(max = 480.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        recipe.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onDismiss) { Text("✕") }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                recipe.ingredients.forEachIndexed { index, ingredient ->
+                    val parsed = remember(ingredient) { RecipePantryMatching.parseIngredient(ingredient) }
+                    val category = remember(parsed.canonName) {
+                        PantryOperations.categoryForCanon(IngredientCanon.CANON_INFO[parsed.canonName]?.cat ?: "Inne")
+                    }
+                    val entry = pantryItems[parsed.canonName]
+                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                        Text(ingredient, style = MaterialTheme.typography.bodyMedium)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                entry?.let { "🏺 " + describePantryEntry(it) } ?: "Brak w spiżarni",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (entry != null) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (entry == null) {
+                                    val added = addedToShopping[index] == true
+                                    TextButton(
+                                        onClick = {
+                                            onAddToShopping(ingredient)
+                                            addedToShopping[index] = true
+                                        },
+                                        enabled = !added,
+                                        modifier = Modifier.heightIn(min = 34.dp),
+                                    ) {
+                                        Text(if (added) "✓" else "🛒")
+                                    }
+                                }
+                                Button(
+                                    onClick = { onToggleHave(parsed.canonName, category, parsed.unitCat) },
+                                    modifier = Modifier.heightIn(min = 34.dp),
+                                ) {
+                                    Text(if (entry != null) "✓ Mam" else "+ Mam to")
+                                }
+                            }
+                        }
+                    }
+                    HorizontalDivider()
+                }
             }
         }
     }

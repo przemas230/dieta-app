@@ -78,4 +78,38 @@ class PantryOperationsTest {
         items = PantryOperations.removeItem(items, "Ser")
         assertTrue(items.isEmpty())
     }
+
+    @Test
+    fun `categoryForCanon maps known labels and falls back to Inne`() {
+        assertEquals(PantryCategory.NABIAL, PantryOperations.categoryForCanon("Nabiał"))
+        assertEquals(PantryCategory.PRZYPRAWY, PantryOperations.categoryForCanon("Przyprawy"))
+        assertEquals(PantryCategory.INNE, PantryOperations.categoryForCanon("Strączki i orzechy"))
+        assertEquals(PantryCategory.INNE, PantryOperations.categoryForCanon("nieznana-kategoria"))
+    }
+
+    @Test
+    fun `toggleHaveIngredient adds a spice at Wystarczy for Przyprawy`() {
+        val items = PantryOperations.toggleHaveIngredient(emptyMap(), "sól", PantryCategory.PRZYPRAWY, "count")
+        assertEquals(SpiceLevel.WYSTARCZY, (items["sól"] as PantryItem.Spice).level)
+    }
+
+    @Test
+    fun `toggleHaveIngredient adds a default-step product for non-spice categories`() {
+        val weight = PantryOperations.toggleHaveIngredient(emptyMap(), "mąka", PantryCategory.ZBOZOWE, "weight")
+        assertEquals(100.0, (weight["mąka"] as PantryItem.Product).quantity)
+        assertEquals("g", (weight["mąka"] as PantryItem.Product).unit)
+
+        val count = PantryOperations.toggleHaveIngredient(emptyMap(), "jajka", PantryCategory.NABIAL, "count")
+        assertEquals(1.0, (count["jajka"] as PantryItem.Product).quantity)
+        assertEquals("szt.", (count["jajka"] as PantryItem.Product).unit)
+    }
+
+    @Test
+    fun `toggleHaveIngredient removes an existing entry regardless of type`() {
+        val withProduct = PantryOperations.addProduct(emptyMap(), "mąka", PantryCategory.ZBOZOWE, 500.0, "g")
+        assertTrue(PantryOperations.toggleHaveIngredient(withProduct, "mąka", PantryCategory.ZBOZOWE, "weight").isEmpty())
+
+        val withSpice = PantryOperations.addSpice(emptyMap(), "sól", PantryCategory.PRZYPRAWY, SpiceLevel.MALO)
+        assertTrue(PantryOperations.toggleHaveIngredient(withSpice, "sól", PantryCategory.PRZYPRAWY, "count").isEmpty())
+    }
 }

@@ -50,4 +50,9 @@ class PantryViewModel : ViewModel() {
     fun restoreForRecipe(recipe: Recipe) {
         _items.value = RecipePantryMatching.restoreForRecipe(_items.value, recipe)
     }
+
+    /** FR-16: "Mam to" toggle in the per-recipe pantry-check window. */
+    fun toggleHaveIngredient(name: String, category: PantryCategory, unitCat: String) {
+        _items.value = PantryOperations.toggleHaveIngredient(_items.value, name, category, unitCat)
+    }
 }

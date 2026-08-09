@@ -40,6 +40,7 @@ import com.przemas230.dietaapp.ui.ProfileViewModel
 import com.przemas230.dietaapp.ui.RecipeListScreen
 import com.przemas230.dietaapp.ui.SettingsScreen
 import com.przemas230.dietaapp.ui.ShoppingScreen
+import com.przemas230.dietaapp.ui.ShoppingViewModel
 import com.przemas230.dietaapp.ui.UiScaleViewModel
 import com.przemas230.dietaapp.ui.navigation.BOTTOM_NAV_SCREENS
 import com.przemas230.dietaapp.ui.navigation.Screen
@@ -98,6 +99,9 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // resulting stock change on the Spiżarnia tab see the same instance —
     // same reasoning as profileViewModel above.
     val pantryViewModel: PantryViewModel = viewModel()
+    // FR-16: shared for the same reason -- the "🛒" per-ingredient add button
+    // in the recipe pantry-check window must show up on the Zakupy tab too.
+    val shoppingViewModel: ShoppingViewModel = viewModel()
 
     Scaffold(
         topBar = {
@@ -160,9 +164,13 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
             modifier = Modifier.padding(padding),
         ) {
             composable(Screen.Recipes.route) {
-                RecipeListScreen(profileViewModel = profileViewModel, pantryViewModel = pantryViewModel)
+                RecipeListScreen(
+                    profileViewModel = profileViewModel,
+                    pantryViewModel = pantryViewModel,
+                    shoppingViewModel = shoppingViewModel,
+                )
             }
-            composable(Screen.Shopping.route) { ShoppingScreen() }
+            composable(Screen.Shopping.route) { ShoppingScreen(viewModel = shoppingViewModel) }
             composable(Screen.Planner.route) { PlaceholderScreen(Screen.Planner.label) }
             composable(Screen.Progress.route) { PlaceholderScreen(Screen.Progress.label) }
             composable(Screen.Pantry.route) { PantryScreen(viewModel = pantryViewModel) }

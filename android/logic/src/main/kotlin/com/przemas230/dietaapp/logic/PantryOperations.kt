@@ -48,4 +48,41 @@ object PantryOperations {
     }
 
     fun removeItem(items: Map<String, PantryItem>, name: String): Map<String, PantryItem> = items - name
+
+    /** IngredientCanon.CANON_INFO's cat labels don't have a "Strączki i orzechy" bucket here -- falls back to INNE, like an unrecognized ingredient would. */
+    fun categoryForCanon(label: String): PantryCategory = when (label) {
+        "Nabiał" -> PantryCategory.NABIAL
+        "Warzywa" -> PantryCategory.WARZYWA
+        "Owoce" -> PantryCategory.OWOCE
+        "Mięso, ryby, jajka" -> PantryCategory.MIESO
+        "Pieczywo i zboża" -> PantryCategory.ZBOZOWE
+        "Przyprawy" -> PantryCategory.PRZYPRAWY
+        else -> PantryCategory.INNE
+    }
+
+    /**
+     * FR-16: "Mam to" toggle in the per-recipe pantry-check window -- port of
+     * index.html's haveBtn handler in openPantryModal. Removes the entry if
+     * present; otherwise adds a spice at "Wystarczy" (for Przyprawy) or a
+     * product at a default step quantity (100 for weight/volume, 1 for
+     * count), same as web's tileStep().
+     */
+    fun toggleHaveIngredient(
+        items: Map<String, PantryItem>,
+        name: String,
+        category: PantryCategory,
+        unitCat: String,
+    ): Map<String, PantryItem> {
+        if (items.containsKey(name)) return items - name
+        return if (category == PantryCategory.PRZYPRAWY) {
+            items + (name to PantryItem.Spice(name, category, SpiceLevel.WYSTARCZY))
+        } else {
+            val (qty, unit) = when (unitCat) {
+                "weight" -> 100.0 to "g"
+                "volume" -> 100.0 to "ml"
+                else -> 1.0 to "szt."
+            }
+            items + (name to PantryItem.Product(name, category, qty, unit))
+        }
+    }
 }

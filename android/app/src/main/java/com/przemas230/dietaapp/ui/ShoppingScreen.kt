@@ -30,7 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.przemas230.dietaapp.data.ShoppingItem
 
 /**
@@ -40,7 +39,7 @@ import com.przemas230.dietaapp.data.ShoppingItem
  * synced — those come with README.md steps 4/6.
  */
 @Composable
-fun ShoppingScreen(viewModel: ShoppingViewModel = viewModel()) {
+fun ShoppingScreen(viewModel: ShoppingViewModel) {
     val items by viewModel.items.collectAsState()
     var showAddForm by remember { mutableStateOf(false) }
 
