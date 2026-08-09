@@ -263,9 +263,11 @@ private fun ProfileCard(viewModel: ProfileViewModel) {
                     )
                     viewModel.save(saved)
                     val t = ProfileCalculations.calcTargets(saved)
+                    val m = ProfileCalculations.calcMacroTargets(saved).daily
                     resultText = "Dopasowano: ${t.daily} kcal/dzień (śniadanie ${t.sniadania}, " +
                         "II śniadanie ${t.drugie}, obiad ${t.obiady}, kolacja ${t.kolacje}, " +
-                        "deser/przekąska ${t.deser})."
+                        "deser/przekąska ${t.deser}). Makra na dzień: ${m.protein} g białka, " +
+                        "${m.carbs} g węglowodanów, ${m.fat} g tłuszczu."
                 }) {
                     Text("Zapisz i dopasuj dietę")
                 }

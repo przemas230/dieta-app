@@ -55,6 +55,46 @@ class ProfileCalculationsTest {
     }
 
     @Test
+    fun `macro targets for default profile (kobieta, redukcja) match hand-calculated grams`() {
+        val profile = Profile(
+            sex = Sex.KOBIETA,
+            age = 37,
+            heightCm = 164,
+            weightKg = 67.0,
+            targetWeightKg = 62.0,
+            activity = ActivityLevel.LEKKO_AKTYWNY,
+            goal = Goal.REDUKCJA,
+            configured = true,
+        )
+
+        val macros = ProfileCalculations.calcMacroTargets(profile)
+
+        // daily=1480 kcal, redukcja ratios protein 0.30/carbs 0.35/fat 0.35
+        assertEquals(MacroGrams(protein = 111, carbs = 130, fat = 58), macros.daily)
+        // sniadania=340 kcal
+        assertEquals(MacroGrams(protein = 26, carbs = 30, fat = 13), macros.sniadania)
+    }
+
+    @Test
+    fun `macro targets for budowanie masy use the higher-carb ratio`() {
+        val profile = Profile(
+            sex = Sex.MEZCZYZNA,
+            age = 30,
+            heightCm = 180,
+            weightKg = 80.0,
+            targetWeightKg = 85.0,
+            activity = ActivityLevel.UMIARKOWANIE_AKTYWNY,
+            goal = Goal.BUDOWANIE,
+            configured = true,
+        )
+
+        val macros = ProfileCalculations.calcMacroTargets(profile)
+
+        // daily=3170 kcal, budowanie ratios protein 0.25/carbs 0.50/fat 0.25
+        assertEquals(MacroGrams(protein = 198, carbs = 396, fat = 88), macros.daily)
+    }
+
+    @Test
     fun `utrzymanie wagi does not scale TDEE`() {
         val profile = Profile(
             sex = Sex.KOBIETA,
