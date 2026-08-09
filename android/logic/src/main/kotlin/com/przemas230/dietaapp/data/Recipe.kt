@@ -1,11 +1,30 @@
 package com.przemas230.dietaapp.data
 
 /**
+ * One ingredient's contribution to a recipe's kcal/macros — mirrors an
+ * entry in index.html's `RECIPES[].calc` array (FR-12's "Skąd te liczby?"
+ * breakdown). `qty` is how many of that ingredient's base unit went in;
+ * `base*` is the per-unit nutrition, `kcal`/`p`/`c`/`f` is qty * base
+ * already multiplied out (as authored in recipes.json, not recomputed here).
+ */
+data class RecipeCalcItem(
+    val label: String,
+    val unit: String,
+    val qty: Double,
+    val baseKcal: Int,
+    val baseP: Double,
+    val baseC: Double,
+    val baseF: Double,
+    val kcal: Int,
+    val p: Double,
+    val c: Double,
+    val f: Double,
+)
+
+/**
  * Mirrors the recipe shape from the web app's `RECIPES` array (index.html) —
  * same field names, so anyone comparing the two sources doesn't have to
- * remember a translation. The per-ingredient "calc" breakdown from the web
- * app isn't modeled here yet (not needed until the macro-info screen is
- * built) but stays present in assets/recipes.json for when it is.
+ * remember a translation.
  *
  * Lives in the plain :logic module (no Android dependency) so recipe
  * filtering logic can be unit-tested — see RecipeBrowsingTest.
@@ -24,4 +43,5 @@ data class Recipe(
     val fiber: Double?,
     val gi: Double?,
     val gl: Double?,
+    val calc: List<RecipeCalcItem> = emptyList(),
 )

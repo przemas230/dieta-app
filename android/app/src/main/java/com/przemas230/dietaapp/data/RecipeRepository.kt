@@ -22,6 +22,28 @@ object RecipeRepository {
             for (j in 0 until ingredientsArray.length()) {
                 ingredients.add(ingredientsArray.getString(j))
             }
+            val calc = ArrayList<RecipeCalcItem>()
+            val calcArray = obj.optJSONArray("calc")
+            if (calcArray != null) {
+                for (j in 0 until calcArray.length()) {
+                    val item = calcArray.getJSONObject(j)
+                    calc.add(
+                        RecipeCalcItem(
+                            label = item.getString("label"),
+                            unit = item.getString("unit"),
+                            qty = item.getDouble("qty"),
+                            baseKcal = item.getInt("baseKcal"),
+                            baseP = item.getDouble("baseP"),
+                            baseC = item.getDouble("baseC"),
+                            baseF = item.getDouble("baseF"),
+                            kcal = item.getInt("kcal"),
+                            p = item.getDouble("p"),
+                            c = item.getDouble("c"),
+                            f = item.getDouble("f"),
+                        )
+                    )
+                }
+            }
             result.add(
                 Recipe(
                     id = obj.getString("id"),
@@ -37,6 +59,7 @@ object RecipeRepository {
                     fiber = if (obj.has("fiber")) obj.getDouble("fiber") else null,
                     gi = if (obj.has("gi")) obj.getDouble("gi") else null,
                     gl = if (obj.has("gl")) obj.getDouble("gl") else null,
+                    calc = calc,
                 )
             )
         }
