@@ -4,9 +4,11 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.przemas230.dietaapp.data.PlannedMeal
+import com.przemas230.dietaapp.data.Profile
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.data.RecipeRepository
 import com.przemas230.dietaapp.logic.PlannerOperations
+import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.WeekPlan
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,5 +49,36 @@ class PlannerViewModel(application: Application) : AndroidViewModel(application)
 
     fun setScale(day: Int, cat: String, scale: Double) {
         _weekPlan.value = PlannerOperations.setScale(_weekPlan.value, day, cat, scale)
+    }
+
+    /** FR-21: "🎲 Losuj ten dzień" -- overwrites only this one day. */
+    fun randomizeDay(day: Int, profile: Profile) {
+        val macroTargets = ProfileCalculations.calcMacroTargets(profile)
+        val kcalTargets = ProfileCalculations.calcTargets(profile)
+        _weekPlan.value = PlannerOperations.randomizeDay(_weekPlan.value, day, _allRecipes.value, profile, macroTargets, kcalTargets)
+    }
+
+    /** FR-21: "🎲 Wygeneruj losowo cały tydzień" -- overwrites the whole week. */
+    fun randomizeWeek(profile: Profile) {
+        val macroTargets = ProfileCalculations.calcMacroTargets(profile)
+        val kcalTargets = ProfileCalculations.calcTargets(profile)
+        _weekPlan.value = PlannerOperations.randomizeWeek(_allRecipes.value, profile, macroTargets, kcalTargets)
+    }
+
+    /** FR-22: "🗑️ Wyczyść ten dzień". */
+    fun clearDay(day: Int) {
+        _weekPlan.value = PlannerOperations.clearDay(_weekPlan.value, day)
+    }
+
+    /** "🔁 Losuj inne danie" for one slot. */
+    fun regenerateSlot(day: Int, cat: String, profile: Profile) {
+        val macroTargets = ProfileCalculations.calcMacroTargets(profile)
+        val kcalTargets = ProfileCalculations.calcTargets(profile)
+        _weekPlan.value = PlannerOperations.regenerateSlot(_weekPlan.value, day, cat, _allRecipes.value, profile, macroTargets, kcalTargets)
+    }
+
+    /** FR-23/24: carry a recipe over as a leftovers entry. */
+    fun planLeftover(day: Int, cat: String, recipeId: String) {
+        _weekPlan.value = PlannerOperations.planLeftover(_weekPlan.value, day, cat, recipeId)
     }
 }
