@@ -49,6 +49,7 @@ import com.przemas230.dietaapp.logic.ProfileCalculations
 fun SettingsScreen(
     profileViewModel: ProfileViewModel = viewModel(),
     firebaseTestViewModel: FirebaseTestViewModel = viewModel(),
+    appUpdateViewModel: AppUpdateViewModel = viewModel(),
 ) {
     Column(
         modifier = Modifier
@@ -57,8 +58,64 @@ fun SettingsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        AppUpdateCard(appUpdateViewModel)
         ProfileCard(profileViewModel)
         FirebaseTestCard(firebaseTestViewModel)
+    }
+}
+
+@Composable
+private fun AppUpdateCard(viewModel: AppUpdateViewModel) {
+    val state by viewModel.state.collectAsState()
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("🔄 Aktualizacja aplikacji", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Zainstalowana wersja: ${viewModel.installedVersionName}",
+                style = MaterialTheme.typography.bodySmall,
+            )
+
+            Button(
+                onClick = { viewModel.checkForUpdate() },
+                enabled = state !is UpdateState.Checking && state !is UpdateState.Downloading,
+            ) {
+                Text("Sprawdź aktualizację")
+            }
+
+            when (val s = state) {
+                is UpdateState.Checking -> {
+                    CircularProgressIndicator()
+                    Text("Sprawdzanie…", style = MaterialTheme.typography.bodySmall)
+                }
+                is UpdateState.Downloading -> {
+                    CircularProgressIndicator()
+                    Text("Pobieranie aktualizacji…", style = MaterialTheme.typography.bodySmall)
+                }
+                is UpdateState.UpToDate -> Text(
+                    "Masz najnowszą wersję (${s.versionName}).",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                is UpdateState.UpdateAvailable -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        "Dostępna aktualizacja: wersja ${s.versionName}.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Button(onClick = { viewModel.downloadAndInstall(s.apkUrl) }) {
+                        Text("Pobierz i zainstaluj")
+                    }
+                }
+                is UpdateState.Error -> Text(
+                    "Błąd: ${s.message}",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                UpdateState.Idle -> {}
+            }
+        }
     }
 }
 

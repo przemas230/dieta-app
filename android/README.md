@@ -25,7 +25,10 @@ Co już działa:
   Postęp/Spiżarnia — plus przycisk Ustawień w górnym pasku (jak w wersji
   webowej, gdzie Ustawienia też nie są zakładką dolną, tylko ikoną w
   nagłówku).
-- Zakładka Ustawienia: na razie tylko test połączenia z Firebase — logowanie
+- Zakładka Ustawienia: karta "🔄 Aktualizacja aplikacji" (sprawdza
+  `dist/version.json` na GitHubie, pobiera i instaluje `dist/app-debug.apk`
+  przez systemowy instalator — patrz `dist/README.md`), karta profilu
+  (FR-6/7/8/9 — patrz `PARITY.md`), i test połączenia z Firebase — logowanie
   anonimowe (jak `onAuthStateChanged` w web-owym `index.html`) + zapis i
   odczyt pola `debugPing` w `users/{uid}` w TYM SAMYM projekcie Firebase
   (`dieta-app-323b4`). To potwierdzi, że Firestore realnie działa stąd,

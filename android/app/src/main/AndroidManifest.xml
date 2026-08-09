@@ -2,6 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- In-app update (SettingsScreen "Aktualizacja aplikacji" card): lets
+         the system installer accept the APK we download ourselves instead
+         of one from the Play Store. Android still shows its own "allow
+         installs from this app" toggle the first time if the user hasn't
+         granted it yet — this permission just makes the app eligible for
+         that toggle at all, it doesn't skip it. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:allowBackup="true"
@@ -19,5 +26,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Exposes the downloaded update APK (app cache dir) to the system
+             package installer via a content:// URI — required on API 24+,
+             a plain file:// Uri would be rejected (FileUriExposedException). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>
