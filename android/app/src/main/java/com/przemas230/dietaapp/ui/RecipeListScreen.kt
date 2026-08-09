@@ -3,6 +3,7 @@ package com.przemas230.dietaapp.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,12 +15,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
@@ -43,10 +47,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.logic.CATEGORIES
+import com.przemas230.dietaapp.logic.IngredientCanon
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.RecipeMatching
 import com.przemas230.dietaapp.logic.forCategory
@@ -172,51 +178,72 @@ private fun RecipeListWithScrollToTop(recipes: List<Recipe>, matchScores: Map<St
 private fun RecipeCard(recipe: Recipe, matchScore: Int?) {
     var expanded by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
+    // FR-4: deterministic emoji thumbnail from the recipe's own biggest
+    // ingredient — no network round-trip, same icon set as pantry tiles.
+    val thumbEmoji = remember(recipe.id) { IngredientCanon.mainIngredientInfo(recipe)?.emoji ?: "🍽️" }
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { expanded = !expanded },
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(recipe.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(4.dp))
-            val matchSuffix = matchScore?.let { "   🎯 $it%" } ?: ""
-            Text("⏱ ${recipe.time}   🔥 ${recipe.kcal} kcal$matchSuffix", style = MaterialTheme.typography.bodySmall)
-
-            if (expanded) {
-                val protein = recipe.protein
-                val carbs = recipe.carbs
-                val fat = recipe.fat
-                if (protein != null && carbs != null && fat != null) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        val fiberPart = recipe.fiber?.let { " · Błonnik ${formatNum(it)}g" } ?: ""
-                        val giPart = recipe.gi?.let { " · IG ~${formatNum(it)}" } ?: ""
-                        val glPart = recipe.gl?.let { " (ŁG ${formatNum(it)})" } ?: ""
-                        Text(
-                            "B ${formatNum(protein)}g · W ${formatNum(carbs)}g · T ${formatNum(fat)}g$fiberPart$giPart$glPart",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.weight(1f),
-                        )
-                        if (recipe.calc.isNotEmpty()) {
-                            TextButton(onClick = { showInfoDialog = true }) { Text("ℹ️") }
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-                Text("Składniki", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-                recipe.ingredients.forEach { ingredient ->
-                    Text("• $ingredient", style = MaterialTheme.typography.bodySmall)
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Przygotowanie", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-                Text(recipe.method, style = MaterialTheme.typography.bodySmall)
+        Row(modifier = Modifier.padding(14.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(thumbEmoji, fontSize = 24.sp)
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                RecipeCardBody(recipe, matchScore, expanded, onInfoClick = { showInfoDialog = true })
             }
         }
     }
 
     if (showInfoDialog) {
         MacroInfoDialog(recipe = recipe, onDismiss = { showInfoDialog = false })
+    }
+}
+
+@Composable
+private fun RecipeCardBody(recipe: Recipe, matchScore: Int?, expanded: Boolean, onInfoClick: () -> Unit) {
+    Column {
+        Text(recipe.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(4.dp))
+        val matchSuffix = matchScore?.let { "   🎯 $it%" } ?: ""
+        Text("⏱ ${recipe.time}   🔥 ${recipe.kcal} kcal$matchSuffix", style = MaterialTheme.typography.bodySmall)
+
+        if (expanded) {
+            val protein = recipe.protein
+            val carbs = recipe.carbs
+            val fat = recipe.fat
+            if (protein != null && carbs != null && fat != null) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val fiberPart = recipe.fiber?.let { " · Błonnik ${formatNum(it)}g" } ?: ""
+                    val giPart = recipe.gi?.let { " · IG ~${formatNum(it)}" } ?: ""
+                    val glPart = recipe.gl?.let { " (ŁG ${formatNum(it)})" } ?: ""
+                    Text(
+                        "B ${formatNum(protein)}g · W ${formatNum(carbs)}g · T ${formatNum(fat)}g$fiberPart$giPart$glPart",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (recipe.calc.isNotEmpty()) {
+                        TextButton(onClick = onInfoClick) { Text("ℹ️") }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text("Składniki", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+            recipe.ingredients.forEach { ingredient ->
+                Text("• $ingredient", style = MaterialTheme.typography.bodySmall)
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Przygotowanie", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+            Text(recipe.method, style = MaterialTheme.typography.bodySmall)
+        }
     }
 }
 
