@@ -55,4 +55,9 @@ class PantryViewModel : ViewModel() {
     fun toggleHaveIngredient(name: String, category: PantryCategory, unitCat: String) {
         _items.value = PantryOperations.toggleHaveIngredient(_items.value, name, category, unitCat)
     }
+
+    /** FR-30: long-press a tile -> "🗂️ Zmień kategorię". */
+    fun changeCategory(name: String, category: PantryCategory) {
+        _items.value = PantryOperations.changeCategory(_items.value, name, category)
+    }
 }

@@ -1,5 +1,7 @@
 package com.przemas230.dietaapp.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.przemas230.dietaapp.data.PantryCategory
 import com.przemas230.dietaapp.data.PantryItem
 import com.przemas230.dietaapp.logic.PantryDisplay
@@ -49,6 +52,7 @@ import kotlin.math.roundToInt
 fun PantryScreen(viewModel: PantryViewModel) {
     val items by viewModel.items.collectAsState()
     var showAddForm by remember { mutableStateOf(false) }
+    var categoryEditTarget by remember { mutableStateOf<PantryItem?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -86,21 +90,42 @@ fun PantryScreen(viewModel: PantryViewModel) {
                         onAdjustQty = { delta -> viewModel.adjustProductQuantity(item.name, delta) },
                         onCycleLevel = { viewModel.cycleSpiceLevel(item.name) },
                         onRemove = { viewModel.removeItem(item.name) },
+                        // FR-30: long-press opens the category-change dialog.
+                        onLongPress = { categoryEditTarget = item },
                     )
                 }
             }
         }
     }
+
+    val editTarget = categoryEditTarget
+    if (editTarget != null) {
+        ChangeCategoryDialog(
+            item = editTarget,
+            onSave = { newCategory ->
+                viewModel.changeCategory(editTarget.name, newCategory)
+                categoryEditTarget = null
+            },
+            onDismiss = { categoryEditTarget = null },
+        )
+    }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PantryRow(
     item: PantryItem,
     onAdjustQty: (Double) -> Unit,
     onCycleLevel: () -> Unit,
     onRemove: () -> Unit,
+    onLongPress: () -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .combinedClickable(onClick = {}, onLongClick = onLongPress),
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -229,6 +254,55 @@ private fun AddPantryItemForm(
             quantity = "1"
         }) {
             Text("Dodaj do spiżarni")
+        }
+    }
+}
+
+/**
+ * FR-30: long-press a tile -> "🗂️ Zmień kategorię" (port of index.html's
+ * openTileAction/showCategoryPicker). Only the category moves; quantity/
+ * unit/spice level are untouched.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChangeCategoryDialog(item: PantryItem, onSave: (PantryCategory) -> Unit, onDismiss: () -> Unit) {
+    var selected by remember(item.name) { mutableStateOf(item.category) }
+    var menuExpanded by remember { mutableStateOf(false) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    "🗂️ Zmień kategorię: ${item.name}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                ExposedDropdownMenuBox(expanded = menuExpanded, onExpandedChange = { menuExpanded = it }) {
+                    OutlinedTextField(
+                        value = selected.label,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Kategoria") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    )
+                    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                        PantryCategory.entries.forEach { cat ->
+                            DropdownMenuItem(text = { Text(cat.label) }, onClick = {
+                                selected = cat
+                                menuExpanded = false
+                            })
+                        }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = onDismiss) { Text("Anuluj") }
+                    FilledTonalButton(onClick = { onSave(selected) }) { Text("Zapisz") }
+                }
+            }
         }
     }
 }

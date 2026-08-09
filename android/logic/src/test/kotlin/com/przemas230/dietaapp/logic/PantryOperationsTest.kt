@@ -80,6 +80,32 @@ class PantryOperationsTest {
     }
 
     @Test
+    fun `changeCategory moves a product to another category, keeping quantity and unit`() {
+        var items = PantryOperations.addProduct(emptyMap(), "Mąka", PantryCategory.ZBOZOWE, 500.0, "g")
+        items = PantryOperations.changeCategory(items, "Mąka", PantryCategory.INNE)
+
+        val product = items["Mąka"] as PantryItem.Product
+        assertEquals(PantryCategory.INNE, product.category)
+        assertEquals(500.0, product.quantity)
+        assertEquals("g", product.unit)
+    }
+
+    @Test
+    fun `changeCategory moves a spice to another category, keeping its level`() {
+        var items = PantryOperations.addSpice(emptyMap(), "Sól", PantryCategory.PRZYPRAWY, SpiceLevel.MALO)
+        items = PantryOperations.changeCategory(items, "Sól", PantryCategory.INNE)
+
+        val spice = items["Sól"] as PantryItem.Spice
+        assertEquals(PantryCategory.INNE, spice.category)
+        assertEquals(SpiceLevel.MALO, spice.level)
+    }
+
+    @Test
+    fun `changeCategory on a missing item is a no-op`() {
+        assertTrue(PantryOperations.changeCategory(emptyMap(), "Nieistniejące", PantryCategory.INNE).isEmpty())
+    }
+
+    @Test
     fun `categoryForCanon maps known labels and falls back to Inne`() {
         assertEquals(PantryCategory.NABIAL, PantryOperations.categoryForCanon("Nabiał"))
         assertEquals(PantryCategory.PRZYPRAWY, PantryOperations.categoryForCanon("Przyprawy"))

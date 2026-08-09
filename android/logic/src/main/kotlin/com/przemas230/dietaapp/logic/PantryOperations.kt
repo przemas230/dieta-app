@@ -49,6 +49,16 @@ object PantryOperations {
 
     fun removeItem(items: Map<String, PantryItem>, name: String): Map<String, PantryItem> = items - name
 
+    /** FR-30: long-press "🗂️ Zmień kategorię" -- moves the tile to another section without touching its quantity/unit/level. */
+    fun changeCategory(items: Map<String, PantryItem>, name: String, category: PantryCategory): Map<String, PantryItem> {
+        val item = items[name] ?: return items
+        val updated: PantryItem = when (item) {
+            is PantryItem.Product -> item.copy(category = category)
+            is PantryItem.Spice -> item.copy(category = category)
+        }
+        return items + (name to updated)
+    }
+
     /** IngredientCanon.CANON_INFO's cat labels don't have a "Strączki i orzechy" bucket here -- falls back to INNE, like an unrecognized ingredient would. */
     fun categoryForCanon(label: String): PantryCategory = when (label) {
         "Nabiał" -> PantryCategory.NABIAL
