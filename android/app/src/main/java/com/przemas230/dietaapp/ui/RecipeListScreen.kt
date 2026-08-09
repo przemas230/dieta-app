@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,6 +26,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
@@ -50,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.przemas230.dietaapp.data.CookEntry
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.logic.CATEGORIES
 import com.przemas230.dietaapp.logic.IngredientCanon
@@ -67,11 +71,16 @@ import kotlinx.coroutines.launch
  * shared across all tabs.
  */
 @Composable
-fun RecipeListScreen(profileViewModel: ProfileViewModel, viewModel: RecipeViewModel = viewModel()) {
+fun RecipeListScreen(
+    profileViewModel: ProfileViewModel,
+    pantryViewModel: PantryViewModel,
+    viewModel: RecipeViewModel = viewModel(),
+) {
     val recipes by viewModel.visibleRecipes.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
     val searchTerm by viewModel.searchTerm.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val cookedMap by viewModel.cooked.collectAsState()
     val profile by profileViewModel.profile.collectAsState()
     LaunchedEffect(profile.glutenFree, profile.lactoseFree) {
         viewModel.setDietaryFilters(profile.glutenFree, profile.lactoseFree)
@@ -127,7 +136,7 @@ fun RecipeListScreen(profileViewModel: ProfileViewModel, viewModel: RecipeViewMo
             displayedRecipes.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Brak przepisów spełniających kryteria.")
             }
-            else -> RecipeListWithScrollToTop(displayedRecipes, matchScores)
+            else -> RecipeListWithScrollToTop(displayedRecipes, matchScores, cookedMap, viewModel, pantryViewModel)
         }
     }
 }
@@ -138,7 +147,13 @@ fun RecipeListScreen(profileViewModel: ProfileViewModel, viewModel: RecipeViewMo
  * item on tap — same behavior as the web app's floating back-to-top button.
  */
 @Composable
-private fun RecipeListWithScrollToTop(recipes: List<Recipe>, matchScores: Map<String, Int?>) {
+private fun RecipeListWithScrollToTop(
+    recipes: List<Recipe>,
+    matchScores: Map<String, Int?>,
+    cookedMap: Map<String, List<CookEntry>>,
+    viewModel: RecipeViewModel,
+    pantryViewModel: PantryViewModel,
+) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -155,7 +170,22 @@ private fun RecipeListWithScrollToTop(recipes: List<Recipe>, matchScores: Map<St
             contentPadding = PaddingValues(12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            items(recipes, key = { it.id }) { recipe -> RecipeCard(recipe, matchScores[recipe.id]) }
+            items(recipes, key = { it.id }) { recipe ->
+                RecipeCard(
+                    recipe = recipe,
+                    matchScore = matchScores[recipe.id],
+                    cookEntries = cookedMap[recipe.id].orEmpty(),
+                    onMarkDoneToday = {
+                        viewModel.markCookedToday(recipe.id)
+                        pantryViewModel.subtractForRecipe(recipe)
+                    },
+                    onSetRating = { index, rating -> viewModel.setCookRating(recipe.id, index, rating) },
+                    onRemoveEntry = { index ->
+                        pantryViewModel.restoreForRecipe(recipe)
+                        viewModel.removeCookEntry(recipe.id, index)
+                    },
+                )
+            }
         }
         AnimatedVisibility(
             visible = showButton,
@@ -175,9 +205,17 @@ private fun RecipeListWithScrollToTop(recipes: List<Recipe>, matchScores: Map<St
 }
 
 @Composable
-private fun RecipeCard(recipe: Recipe, matchScore: Int?) {
+private fun RecipeCard(
+    recipe: Recipe,
+    matchScore: Int?,
+    cookEntries: List<CookEntry>,
+    onMarkDoneToday: () -> Unit,
+    onSetRating: (index: Int, rating: Int) -> Unit,
+    onRemoveEntry: (index: Int) -> Unit,
+) {
     var expanded by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
+    var showCookHistory by remember { mutableStateOf(false) }
     // FR-4: deterministic emoji thumbnail from the recipe's own biggest
     // ingredient — no network round-trip, same icon set as pantry tiles.
     val thumbEmoji = remember(recipe.id) { IngredientCanon.mainIngredientInfo(recipe)?.emoji ?: "🍽️" }
@@ -186,24 +224,50 @@ private fun RecipeCard(recipe: Recipe, matchScore: Int?) {
             .fillMaxWidth()
             .clickable { expanded = !expanded },
     ) {
-        Row(modifier = Modifier.padding(14.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(thumbEmoji, fontSize = 24.sp)
+        Column {
+            Row(modifier = Modifier.padding(14.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(thumbEmoji, fontSize = 24.sp)
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    RecipeCardBody(recipe, matchScore, expanded, onInfoClick = { showInfoDialog = true })
+                }
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                RecipeCardBody(recipe, matchScore, expanded, onInfoClick = { showInfoDialog = true })
+            // FR-15: always visible (not gated by `expanded`), same as
+            // index.html's always-shown card-actions bar. Tapping this never
+            // marks the dish done directly — it always opens the history
+            // dialog first (revised from the original press-and-hold design,
+            // see FR-15.md's "Uwagi").
+            TextButton(
+                onClick = { showCookHistory = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 38.dp)
+                    .padding(horizontal = 10.dp),
+            ) {
+                Text("✅ Zrobione" + if (cookEntries.isNotEmpty()) " (${cookEntries.size}×)" else "")
             }
         }
     }
 
     if (showInfoDialog) {
         MacroInfoDialog(recipe = recipe, onDismiss = { showInfoDialog = false })
+    }
+    if (showCookHistory) {
+        CookHistoryDialog(
+            recipe = recipe,
+            entries = cookEntries,
+            onMarkDoneToday = onMarkDoneToday,
+            onSetRating = onSetRating,
+            onRemoveEntry = onRemoveEntry,
+            onDismiss = { showCookHistory = false },
+        )
     }
 }
 
@@ -250,6 +314,130 @@ private fun RecipeCardBody(recipe: Recipe, matchScore: Int?, expanded: Boolean, 
 /** "18.0" -> "18", "9.1" -> "9.1" — matches how JS template literals print numbers. */
 private fun formatNum(value: Double): String =
     if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()
+
+/**
+ * FR-15/FR-17: "✅ Zrobione" always opens this — a history of past cook
+ * dates with a star rating each (FR-17), a "Zrobione dzisiaj" button to add
+ * today's entry, and a way to delete a wrong one. Port of index.html's
+ * cookHistoryOverlay / renderCookHistoryBody. FR-16 (the separate
+ * per-recipe pantry-check window) is a different button, not ported yet.
+ */
+@Composable
+private fun CookHistoryDialog(
+    recipe: Recipe,
+    entries: List<CookEntry>,
+    onMarkDoneToday: () -> Unit,
+    onSetRating: (index: Int, rating: Int) -> Unit,
+    onRemoveEntry: (index: Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var pendingDeleteIndex by remember { mutableStateOf<Int?>(null) }
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.widthIn(max = 480.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        recipe.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onDismiss) { Text("✕") }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = onMarkDoneToday, modifier = Modifier.fillMaxWidth()) {
+                    Text("✅ Zrobione dzisiaj")
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (entries.isEmpty()) {
+                    Text("Jeszcze nie oznaczone jako zrobione.", style = MaterialTheme.typography.bodyMedium)
+                } else {
+                    val rated = entries.filter { it.rating != null }
+                    val avg = if (rated.isNotEmpty()) rated.sumOf { it.rating!! }.toDouble() / rated.size else null
+                    val summary = "Zrobione ${entries.size}×" + (avg?.let { " · średnia ocena ${formatNum(roundTo(it, 1))}★" } ?: "")
+                    Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    entries.forEachIndexed { index, entry ->
+                        Column(modifier = Modifier.padding(vertical = 6.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    "${formatCookDate(entry.dateEpochMillis)} ${formatCookTime(entry.dateEpochMillis)}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                TextButton(onClick = { pendingDeleteIndex = index }) { Text("✕") }
+                            }
+                            StarRatingRow(rating = entry.rating, onRate = { n -> onSetRating(index, n) })
+                        }
+                        HorizontalDivider()
+                    }
+                }
+            }
+        }
+    }
+
+    val deleteIndex = pendingDeleteIndex
+    if (deleteIndex != null) {
+        AlertDialog(
+            onDismissRequest = { pendingDeleteIndex = null },
+            title = { Text("Usunąć wpis?") },
+            text = { Text("Usunąć ten wpis o zrobieniu dania? Odjęte wcześniej składniki wrócą do spiżarni.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onRemoveEntry(deleteIndex)
+                    pendingDeleteIndex = null
+                }) { Text("Usuń") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteIndex = null }) { Text("Anuluj") }
+            },
+        )
+    }
+}
+
+/**
+ * FR-17: 5 stars spread across the full row width (SpaceEvenly, each taking
+ * an equal weight) rather than crammed to one side — the touch-target fix
+ * described in FR-17.md's revision history.
+ */
+@Composable
+private fun StarRatingRow(rating: Int?, onRate: (Int) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+        for (n in 1..5) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 34.dp)
+                    .clickable { onRate(n) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(if ((rating ?: 0) >= n) "★" else "☆", fontSize = 20.sp)
+            }
+        }
+    }
+}
+
+private fun roundTo(value: Double, decimals: Int): Double {
+    val factor = Math.pow(10.0, decimals.toDouble())
+    return Math.round(value * factor) / factor
+}
+
+/** "09.08.2026" — matches index.html's toLocaleDateString('pl-PL', {day/month/year: '2-digit'/'numeric'}). */
+private fun formatCookDate(epochMillis: Long): String =
+    java.text.SimpleDateFormat("dd.MM.yyyy", java.util.Locale("pl", "PL")).format(java.util.Date(epochMillis))
+
+/** "13:45" — matches index.html's toLocaleTimeString('pl-PL', {hour/minute: '2-digit'}). */
+private fun formatCookTime(epochMillis: Long): String =
+    java.text.SimpleDateFormat("HH:mm", java.util.Locale("pl", "PL")).format(java.util.Date(epochMillis))
 
 /**
  * FR-12: per-ingredient kcal/macro breakdown ("📊 Jak policzono: <nazwa>")

@@ -34,6 +34,7 @@ import androidx.navigation.compose.rememberNavController
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.UiScale
 import com.przemas230.dietaapp.ui.PantryScreen
+import com.przemas230.dietaapp.ui.PantryViewModel
 import com.przemas230.dietaapp.ui.PlaceholderScreen
 import com.przemas230.dietaapp.ui.ProfileViewModel
 import com.przemas230.dietaapp.ui.RecipeListScreen
@@ -92,6 +93,11 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // otherwise Compose Navigation would hand each destination its own.
     val profileViewModel: ProfileViewModel = viewModel()
     val profile by profileViewModel.profile.collectAsState()
+    // FR-15: shared here (not PantryScreen's default viewModel() param) so
+    // marking a recipe "✅ Zrobione" on the Przepisy tab and viewing the
+    // resulting stock change on the Spiżarnia tab see the same instance —
+    // same reasoning as profileViewModel above.
+    val pantryViewModel: PantryViewModel = viewModel()
 
     Scaffold(
         topBar = {
@@ -153,11 +159,13 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
             startDestination = Screen.Recipes.route,
             modifier = Modifier.padding(padding),
         ) {
-            composable(Screen.Recipes.route) { RecipeListScreen(profileViewModel = profileViewModel) }
+            composable(Screen.Recipes.route) {
+                RecipeListScreen(profileViewModel = profileViewModel, pantryViewModel = pantryViewModel)
+            }
             composable(Screen.Shopping.route) { ShoppingScreen() }
             composable(Screen.Planner.route) { PlaceholderScreen(Screen.Planner.label) }
             composable(Screen.Progress.route) { PlaceholderScreen(Screen.Progress.label) }
-            composable(Screen.Pantry.route) { PantryScreen() }
+            composable(Screen.Pantry.route) { PantryScreen(viewModel = pantryViewModel) }
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     profileViewModel = profileViewModel,

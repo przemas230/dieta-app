@@ -3,9 +3,11 @@ package com.przemas230.dietaapp.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.przemas230.dietaapp.data.CookEntry
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.data.RecipeRepository
 import com.przemas230.dietaapp.logic.CATEGORIES
+import com.przemas230.dietaapp.logic.CookHistoryOperations
 import com.przemas230.dietaapp.logic.RecipeBrowsing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,6 +40,10 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    // FR-15: recipeId -> history of "✅ Zrobione" entries (date + optional FR-17 star rating).
+    private val _cooked = MutableStateFlow<Map<String, List<CookEntry>>>(emptyMap())
+    val cooked: StateFlow<Map<String, List<CookEntry>>> = _cooked.asStateFlow()
+
     init {
         viewModelScope.launch {
             val loaded = withContext(Dispatchers.IO) { RecipeRepository.loadRecipes(application) }
@@ -62,6 +68,19 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         this.glutenFree = glutenFree
         this.lactoseFree = lactoseFree
         recompute()
+    }
+
+    /** FR-15: pantry subtraction is a separate call — see RecipeListScreen, which also owns the PantryViewModel. */
+    fun markCookedToday(recipeId: String) {
+        _cooked.value = CookHistoryOperations.addToday(_cooked.value, recipeId, System.currentTimeMillis())
+    }
+
+    fun setCookRating(recipeId: String, index: Int, rating: Int) {
+        _cooked.value = CookHistoryOperations.setRating(_cooked.value, recipeId, index, rating)
+    }
+
+    fun removeCookEntry(recipeId: String, index: Int) {
+        _cooked.value = CookHistoryOperations.removeEntry(_cooked.value, recipeId, index)
     }
 
     private fun recompute() {

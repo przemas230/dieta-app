@@ -35,7 +35,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.przemas230.dietaapp.data.PantryCategory
 import com.przemas230.dietaapp.data.PantryItem
 
@@ -45,7 +44,7 @@ import com.przemas230.dietaapp.data.PantryItem
  * and spices (Brak/Mało/Wystarczy level). No sync yet.
  */
 @Composable
-fun PantryScreen(viewModel: PantryViewModel = viewModel()) {
+fun PantryScreen(viewModel: PantryViewModel) {
     val items by viewModel.items.collectAsState()
     var showAddForm by remember { mutableStateOf(false) }
 

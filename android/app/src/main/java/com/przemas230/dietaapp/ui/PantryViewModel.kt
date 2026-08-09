@@ -3,8 +3,10 @@ package com.przemas230.dietaapp.ui
 import androidx.lifecycle.ViewModel
 import com.przemas230.dietaapp.data.PantryCategory
 import com.przemas230.dietaapp.data.PantryItem
+import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.data.SpiceLevel
 import com.przemas230.dietaapp.logic.PantryOperations
+import com.przemas230.dietaapp.logic.RecipePantryMatching
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,5 +39,15 @@ class PantryViewModel : ViewModel() {
 
     fun removeItem(name: String) {
         _items.value = PantryOperations.removeItem(_items.value, name)
+    }
+
+    /** FR-15: called when a recipe is marked "✅ Zrobione dzisiaj". */
+    fun subtractForRecipe(recipe: Recipe) {
+        _items.value = RecipePantryMatching.subtractForRecipe(_items.value, recipe)
+    }
+
+    /** FR-15: called when a cook-history entry is deleted, to undo its subtraction. */
+    fun restoreForRecipe(recipe: Recipe) {
+        _items.value = RecipePantryMatching.restoreForRecipe(_items.value, recipe)
     }
 }
