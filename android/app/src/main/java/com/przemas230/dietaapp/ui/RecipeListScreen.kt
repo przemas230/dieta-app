@@ -1,5 +1,8 @@
 package com.przemas230.dietaapp.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,24 +16,30 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.logic.CATEGORIES
+import kotlinx.coroutines.launch
 
 /**
  * Pure screen content — no own Scaffold/TopAppBar, since the app-level
@@ -77,11 +86,48 @@ fun RecipeListScreen(viewModel: RecipeViewModel = viewModel()) {
             recipes.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Brak przepisów spełniających kryteria.")
             }
-            else -> LazyColumn(
-                contentPadding = PaddingValues(12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                items(recipes, key = { it.id }) { recipe -> RecipeCard(recipe) }
+            else -> RecipeListWithScrollToTop(recipes)
+        }
+    }
+}
+
+/**
+ * FR-5: a "⬆️" FAB that appears once the list has scrolled roughly 400px
+ * past the top (index.html's threshold) and animates back to the first
+ * item on tap — same behavior as the web app's floating back-to-top button.
+ */
+@Composable
+private fun RecipeListWithScrollToTop(recipes: List<Recipe>) {
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val thresholdPx = with(density) { 400.dp.toPx() }
+    val showButton by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > thresholdPx
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            items(recipes, key = { it.id }) { recipe -> RecipeCard(recipe) }
+        }
+        AnimatedVisibility(
+            visible = showButton,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+        ) {
+            FloatingActionButton(onClick = {
+                coroutineScope.launch { listState.animateScrollToItem(0) }
+            }) {
+                Text("⬆️")
             }
         }
     }

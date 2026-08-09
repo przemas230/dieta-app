@@ -14,9 +14,9 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-2 | Wyszukiwanie i filtrowanie przepisów | ⏳ częściowo (patrz uwagi niżej) |
 | FR-3 | Karta przepisu — widok skrócony i rozwinięty | ⏳ zaimplementowane w ekranie listy przepisów, do sprawdzenia w Android Studio |
 | FR-4 | Miniatura przepisu jako emoji głównego składnika | ⬜ nie rozpoczęte |
-| FR-5 | Przycisk powrotu do góry listy przepisów | ⬜ nie rozpoczęte |
+| FR-5 | Przycisk powrotu do góry listy przepisów | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-6 | Profil użytkownika i wyliczanie zapotrzebowania kalorycznego | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-7 | Podział dziennego celu kalorycznego na 5 posiłków | ⬜ nie rozpoczęte |
+| FR-7 | Podział dziennego celu kalorycznego na 5 posiłków | ✅ zaimplementowane jako część FR-6 (ProfileCalculations.calcTargets) |
 | FR-8 | Filtr bez glutenu / bez laktozy | ⬜ nie rozpoczęte |
 | FR-9 | Przełącznik rygoru niskiego indeksu glikemicznego | ⬜ nie rozpoczęte |
 | FR-10 | Docelowe proporcje makroskładników zależne od celu | ⬜ nie rozpoczęte |
@@ -101,6 +101,8 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 - **Testy automatyczne**: reguły biznesowe stojące za FR-2 (wyszukiwanie/filtrowanie), FR-26 (odhaczanie/czyszczenie zakupów) i FR-28/FR-30 (mutacje spiżarni) są pokryte prawdziwie uruchamianymi testami JUnit w `android/logic/`. Patrz `android/README.md`, sekcja "Testy automatyczne".
 - **Ekran Spiżarni ręcznie zweryfikowany na emulatorze (2026-08-09)**: dodawanie produktu i przyprawy, +/- ilości, auto-usuwanie produktu przy zejściu ilości do zera, jawne usuwanie (ikona kosza) i cykl poziomu przyprawy (Wystarczy → Brak → Mało → Wystarczy) — wszystko przetestowane klik po kliku, bez crasha aplikacji, zachowanie zgodne z `PantryOperations`. Status FR-28/FR-30 zostaje "częściowo" nie z powodu braku weryfikacji, tylko dlatego że sama funkcjonalność jest niepełna względem wersji webowej (brak kafelków, uproszczone kategorie, brak zmiany kategorii po dodaniu — patrz wyżej).
 - **FR-6** (profil + BMR/TDEE): port `calcTargets` z `index.html` jeden-do-jednego (`ProfileCalculations.kt` w `logic/`, testy JUnit z ręcznie przeliczonymi wartościami). Formularz w Ustawieniach (płeć, wiek, wzrost, waga obecna/docelowa, aktywność, cel) + wynik w tej samej karcie + podsumowanie w nagłówku (współdzielony `ProfileViewModel` na poziomie `DietaAppRoot`, nie per-ekran, żeby oba miejsca zawsze zgadzały się co do stanu). Ręcznie zweryfikowane na emulatorze 2026-08-09: zapis (30/170/65/60 → 1540 kcal/dzień, śniadanie 350/II śniadanie 270/obiad 430/kolacja 290/deser 210) i reset do domyślnych (→ 1480 kcal/dzień) dają dokładnie te same liczby co ręczne przeliczenie wzoru Mifflin-St Jeor, zero crashy. Lokalny stan (bez trwałego zapisu/synchronizacji) — jak Spiżarnia/Zakupy, do czasu kroku 6. Makra (FR-10) i dopasowanie przepisu (FR-11) NIE są jeszcze zrobione — to osobne, kolejne FR-y.
+- **FR-7**: `calcTargets` zwraca już wszystkie 5 targetów posiłkowych (patrz FR-6 wyżej) — przy okazji poprawiono nieaktualne proporcje w `Functional requirements/FR-7.md`/`ALL-REQUIREMENTS.md` (opisywały 370/280/450/300/100 sprzed dodania Deseru jako pełnoprawnej kategorii; realny kod w `index.html` już dawno używa 340/260/420/280/200).
+- **FR-5** (przycisk powrotu do góry): `RecipeListWithScrollToTop` w `RecipeListScreen.kt` — FAB "⬆️" pojawia się po przewinięciu >400dp (albo poza pierwszy element listy) i scrolluje z animacją do indeksu 0. Ręcznie zweryfikowane na emulatorze 2026-08-09: pojawia się przy scrollu, znika z powrotem na górze, `animateScrollToItem` faktycznie płynnie przewija, zero crashy.
 
 ## Jak to utrzymywać
 
