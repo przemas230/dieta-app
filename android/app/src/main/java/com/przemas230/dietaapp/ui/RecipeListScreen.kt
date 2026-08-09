@@ -1,6 +1,8 @@
 package com.przemas230.dietaapp.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -52,6 +54,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -196,6 +199,10 @@ private fun RecipeListWithScrollToTop(
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
     val thresholdPx = with(density) { 400.dp.toPx() }
+    // FR-50: honors the system-wide "remove animations" setting, same as
+    // the web app's prefers-reduced-motion handling.
+    val context = LocalContext.current
+    val reducedMotion = remember { isReducedMotionEnabled(context) }
     val showButton by remember {
         derivedStateOf {
             listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > thresholdPx
@@ -249,8 +256,8 @@ private fun RecipeListWithScrollToTop(
         }
         AnimatedVisibility(
             visible = showButton,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = if (reducedMotion) EnterTransition.None else fadeIn(),
+            exit = if (reducedMotion) ExitTransition.None else fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp),
