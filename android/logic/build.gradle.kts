@@ -18,10 +18,16 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-// No explicit jvmToolchain() here on purpose — this compiles with whatever
-// JDK actually runs Gradle (Android Studio's bundled JDK when opened there),
-// so there's nothing extra to auto-provision/download if that JDK's version
-// doesn't match a hardcoded number.
+// jvmToolchain(21) pinned explicitly: without it, compileJava targets
+// whatever JDK actually runs Gradle (e.g. Android Studio's bundled JBR),
+// while the Kotlin plugin caps its own target at the newest JDK it
+// supports — on newer bundled JDKs (25) those two land on different
+// versions and compileKotlin fails with "Inconsistent JVM Target
+// Compatibility". JDK 21 is broadly available (bundled with recent
+// Android Studio / IntelliJ) so this shouldn't require downloading one.
+kotlin {
+    jvmToolchain(21)
+}
 
 tasks.test {
     useJUnitPlatform()

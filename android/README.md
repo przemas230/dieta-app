@@ -52,15 +52,20 @@ Czego jeszcze NIE ma (kolejne kroki, patrz "Co dalej"):
 - Rzeczywistej zawartości pozostałych zakładek (Planer, Postęp) — na razie
   same placeholdery.
 
-**Nie mogłem skompilować ani uruchomić samej aplikacji** (ekranów, nawigacji,
-Compose) — środowisko, w którym to piszę, nie ma dostępu do repozytorium
-Maven Google (`dl.google.com`), z którego pochodzi Android Gradle Plugin,
-AndroidX i Compose. **Wyjątek: moduł `logic/` (patrz "Testy automatyczne"
-niżej) faktycznie się kompiluje i jego testy faktycznie przechodzą** — bo
-korzysta wyłącznie z Maven Central, który jest dostępny. Reszta (ekrany,
-nawigacja, wiązanie z Compose/Firebase) jest napisana starannie, standardowymi,
-dobrze udokumentowanymi wzorcami, ale **pierwsza rzecz do zrobienia to
-otworzyć to w Android Studio i sprawdzić, czy się buduje i uruchamia**.
+**Stan na 2026-08-09, lokalna sesja Claude Code na maszynie użytkownika:**
+ta sesja MA dostęp do `dl.google.com` i normalny Gradle cache, więc
+`./gradlew :app:assembleDebug` i `./gradlew test` realnie kompilują cały
+projekt (`app` + `logic`) i uruchamiają testy JUnit — nie tylko `logic/`
+jak wcześniej. To znaczy, że w takiej sesji błędy kompilacji (literówki,
+brakujące importy, brakujące `@OptIn` na eksperymentalnych API Compose)
+łapiemy od razu, zamiast czekać na Android Studio. **To wciąż NIE weryfikuje
+wyglądu, UX ani zachowania na emulatorze/telefonie** — sama udana kompilacja
+nie znaczy, że ekran działa poprawnie wizualnie, więc pierwsza rzecz do
+zrobienia po większej zmianie to nadal otworzyć to w Android Studio i
+sprawdzić na emulatorze. (Wcześniejsze sesje pracujące w innych,
+odizolowanych środowiskach mogły nie mieć dostępu do `dl.google.com` —
+jeśli trafisz na błąd 403 przy rozwiązywaniu pluginu
+`com.android.application`, to oznacza tamten inny przypadek, nie ten tutaj.)
 
 ## Jak otworzyć
 
@@ -88,22 +93,16 @@ odpowiednie ViewModel-e (`RecipeViewModel`, `PantryViewModel`,
 `ShoppingViewModel` są teraz tylko cienką "sklejką" ze StateFlow, delegującą
 do `logic/`).
 
-Dzięki temu, że `logic/` nie potrzebuje niczego z zablokowanego
-`dl.google.com`, **jego testy JUnit naprawdę się kompilują i naprawdę
-przechodzą w tym środowisku** — to jedyna część całego projektu Android,
-którą osobiście zweryfikowałem, że działa (włącznie z sanity-checkiem: celowo
-zepsułem jeden test, potwierdziłem że faktycznie failuje, potem cofnąłem).
-22 testy w 3 klasach, wszystkie zielone.
+`logic/` nie potrzebuje niczego z `dl.google.com`, więc jego testy JUnit
+się kompilują i przechodzą nawet w środowiskach bez dostępu do Maven Google
+— to był (i pozostaje) najbardziej przenośny sposób weryfikacji logiki
+biznesowej niezależnie od tego, gdzie akurat pracujemy.
 
-**Jak uruchomić w Android Studio:** panel Gradle (z prawej) →
+**Jak uruchomić:** panel Gradle w Android Studio (z prawej) →
 `DietaApp` → `logic` → `Tasks` → `verification` → `test`, albo z terminala
-w folderze `android/`: `./gradlew :logic:test` (po tym, jak Android Studio
-wygeneruje wrapper przy pierwszym otwarciu — patrz "Jak otworzyć" wyżej).
-U Ciebie to powinno zadziałać bez żadnych sztuczek, bo masz normalny dostęp
-do internetu — w moim środowisku musiałem tymczasowo wyłączyć moduł `app`
-z builda, żeby ominąć blokadę `dl.google.com` (root `build.gradle.kts`
-deklaruje pluginy Androida nawet z `apply false`, a to już wymaga
-rozwiązania ich wersji).
+w folderze `android/`: `./gradlew :logic:test`. W sesji z pełnym dostępem
+do sieci (patrz uwaga na górze README) działa też `./gradlew test` dla
+całego projektu (`app` + `logic`) i `./gradlew :app:assembleDebug`.
 
 **Czego to NIE testuje:** samych ekranów Compose (`RecipeListScreen`,
 `PantryScreen`, `ShoppingScreen`, `SettingsScreen`) ani nawigacji czy

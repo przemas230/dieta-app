@@ -63,16 +63,24 @@ równolegle, bez różnic funkcjonalnych między nimi. W praktyce:
 2. `android/PARITY.md` to źródło prawdy o tym, co jest, a co nie jest
    jeszcze przeniesione — aktualizować przy każdej zmianie po którejkolwiek
    stronie, żeby nigdy nie trzeba było zgadywać.
-3. Kod Kotlin/Gradle NIE MOŻE być tu skompilowany ani uruchomiony —
-   `dl.google.com` (repozytorium Maven Google, źródło Android Gradle
-   Plugin/AndroidX/Compose/Firebase Android SDK) jest zablokowane przez
-   politykę sieciową tego środowiska (potwierdzone: `gradle help` kończy się
-   błędem 403 przy próbie rozwiązania pluginu `com.android.application`).
-   Każda zmiana w `android/` jest więc z konieczności niezweryfikowana aż do
-   sprawdzenia przez użytkownika w prawdziwym Android Studio — pisać
-   ostrożnie, standardowymi/dobrze udokumentowanymi wzorcami, i jasno
-   oznaczać w PARITY.md co czeka na potwierdzenie (⏳) vs co jest już
-   potwierdzone (✅).
+3. W środowiskach z zablokowanym dostępem do `dl.google.com` (repozytorium
+   Maven Google, źródło Android Gradle Plugin/AndroidX/Compose/Firebase
+   Android SDK) kod Kotlin/Gradle nie da się skompilować ani uruchomić
+   (potwierdzone kiedyś błędem 403 przy rozwiązywaniu pluginu
+   `com.android.application`) — w takim wypadku każda zmiana w `android/`
+   jest z konieczności niezweryfikowana aż do sprawdzenia przez użytkownika
+   w prawdziwym Android Studio. To NIE dotyczy jednak lokalnej sesji Claude
+   Code na maszynie użytkownika (Windows, ten sam katalog co working
+   directory) — tam `./gradlew` ma pełny dostęp do sieci i lokalnego cache'u
+   Gradle/AndroidX i realnie kompiluje, linkuje i uruchamia testy JUnit dla
+   `:logic` i `:app` (potwierdzone 2026-08-09: `./gradlew :app:assembleDebug`
+   i `./gradlew test` przechodzą offline i online). W takiej sesji:
+   kompilować i uruchamiać testy po każdej większej zmianie w `android/`
+   zamiast zakładać, że weryfikacja nie jest możliwa; nadal pisać ostrożnie
+   i jasno oznaczać w PARITY.md co czeka na potwierdzenie wizualne/manualne
+   w Android Studio (⏳) vs co jest już potwierdzone (✅), bo sama udana
+   kompilacja nie dowodzi poprawności UI/UX ani przepływów wymagających
+   emulatora.
 4. Nie piętrzyć wielu niezweryfikowanych kroków w Kotlinie na raz bez
    szansy na sprawdzenie między nimi — jeden błąd na wczesnym etapie cicho
    psuje wszystko zbudowane na nim później, a nie ma tu jak tego złapać

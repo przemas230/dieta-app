@@ -103,7 +103,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 ## Jak to utrzymywać
 
 1. Każda nowa funkcja dodana do `index.html` (wersja web) dostaje odpowiadający wpis/aktualizację tutaj.
-2. Jeśli funkcja zostanie od razu przeniesiona też do Kotlina — status ⏳ (do potwierdzenia przez brak możliwości kompilacji w tym środowisku, patrz `android/README.md`).
+2. Jeśli funkcja zostanie od razu przeniesiona też do Kotlina — status ⏳ (do potwierdzenia wizualnie/manualnie w Android Studio lub na emulatorze; od 2026-08-09 lokalna sesja Claude Code na maszynie użytkownika potrafi realnie skompilować i uruchomić testy `./gradlew :app:assembleDebug` / `./gradlew test`, więc błędy kompilacji łapiemy od razu tutaj — ⏳ oznacza już tylko brak weryfikacji UI/UX/emulatora, nie niepewność co do kompilowalności).
 3. Jeśli sprawdzisz coś w Android Studio i działa — zmień ⏳ na ✅ (albo daj mi znać, zrobię to sam).
 4. Jeśli sprawdzisz i NIE działa — zostaw jako ⏳ i opisz błąd, poprawię.
 5. Jeśli nowa logika biznesowa da się wydzielić bez Androida (jak `PantryOperations`/`ShoppingOperations`/`RecipeBrowsing` w `android/logic/`) — dostaje testy JUnit w tej samej turze, żeby faktycznie zweryfikowane pozostawało zweryfikowane przy kolejnych zmianach (regresja), zamiast znów zgadywać. Patrz `android/README.md`, sekcja "Testy automatyczne".
