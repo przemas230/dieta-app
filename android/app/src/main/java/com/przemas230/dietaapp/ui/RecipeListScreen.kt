@@ -40,6 +40,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.logic.CATEGORIES
+import com.przemas230.dietaapp.logic.ProfileCalculations
+import com.przemas230.dietaapp.logic.RecipeMatching
+import com.przemas230.dietaapp.logic.forCategory
 import kotlinx.coroutines.launch
 
 /**
@@ -56,6 +59,15 @@ fun RecipeListScreen(profileViewModel: ProfileViewModel, viewModel: RecipeViewMo
     val profile by profileViewModel.profile.collectAsState()
     LaunchedEffect(profile.glutenFree, profile.lactoseFree) {
         viewModel.setDietaryFilters(profile.glutenFree, profile.lactoseFree)
+    }
+
+    var sortByMatch by remember { mutableStateOf(false) }
+    val macroTargets = remember(profile) { ProfileCalculations.calcMacroTargets(profile) }
+    val matchScores = remember(recipes, macroTargets, profile) {
+        recipes.associate { it.id to RecipeMatching.matchScore(it, macroTargets.forCategory(it.cat), profile) }
+    }
+    val displayedRecipes = remember(recipes, sortByMatch, matchScores) {
+        if (sortByMatch) recipes.sortedByDescending { matchScores[it.id] ?: -1 } else recipes
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -80,6 +92,14 @@ fun RecipeListScreen(profileViewModel: ProfileViewModel, viewModel: RecipeViewMo
                     label = { Text("${category.emoji} ${category.label}") },
                 )
             }
+            item {
+                // FR-11/FR-2: sorts the visible list by 🎯 match-to-profile score, descending.
+                FilterChip(
+                    selected = sortByMatch,
+                    onClick = { sortByMatch = !sortByMatch },
+                    label = { Text("🎯 Dopasowanie") },
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -88,10 +108,10 @@ fun RecipeListScreen(profileViewModel: ProfileViewModel, viewModel: RecipeViewMo
             isLoading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Wczytywanie przepisów…")
             }
-            recipes.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            displayedRecipes.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Brak przepisów spełniających kryteria.")
             }
-            else -> RecipeListWithScrollToTop(recipes)
+            else -> RecipeListWithScrollToTop(displayedRecipes, matchScores)
         }
     }
 }
@@ -102,7 +122,7 @@ fun RecipeListScreen(profileViewModel: ProfileViewModel, viewModel: RecipeViewMo
  * item on tap — same behavior as the web app's floating back-to-top button.
  */
 @Composable
-private fun RecipeListWithScrollToTop(recipes: List<Recipe>) {
+private fun RecipeListWithScrollToTop(recipes: List<Recipe>, matchScores: Map<String, Int?>) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -119,7 +139,7 @@ private fun RecipeListWithScrollToTop(recipes: List<Recipe>) {
             contentPadding = PaddingValues(12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            items(recipes, key = { it.id }) { recipe -> RecipeCard(recipe) }
+            items(recipes, key = { it.id }) { recipe -> RecipeCard(recipe, matchScores[recipe.id]) }
         }
         AnimatedVisibility(
             visible = showButton,
@@ -139,7 +159,7 @@ private fun RecipeListWithScrollToTop(recipes: List<Recipe>) {
 }
 
 @Composable
-private fun RecipeCard(recipe: Recipe) {
+private fun RecipeCard(recipe: Recipe, matchScore: Int?) {
     var expanded by remember { mutableStateOf(false) }
     Card(
         modifier = Modifier
@@ -149,7 +169,8 @@ private fun RecipeCard(recipe: Recipe) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(recipe.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(4.dp))
-            Text("⏱ ${recipe.time}   🔥 ${recipe.kcal} kcal", style = MaterialTheme.typography.bodySmall)
+            val matchSuffix = matchScore?.let { "   🎯 $it%" } ?: ""
+            Text("⏱ ${recipe.time}   🔥 ${recipe.kcal} kcal$matchSuffix", style = MaterialTheme.typography.bodySmall)
 
             if (expanded) {
                 Spacer(modifier = Modifier.height(10.dp))

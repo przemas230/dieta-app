@@ -20,7 +20,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-8 | Filtr bez glutenu / bez laktozy | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-9 | Przełącznik rygoru niskiego indeksu glikemicznego | ⏳ częściowo (patrz uwagi niżej) |
 | FR-10 | Docelowe proporcje makroskładników zależne od celu | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-11 | Wynik dopasowania przepisu do profilu (🎯) | ⬜ nie rozpoczęte |
+| FR-11 | Wynik dopasowania przepisu do profilu (🎯) | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-12 | Modal wyjaśniający wyliczenia makro/IG/ŁG | ⬜ nie rozpoczęte |
 | FR-13 | Piąta kategoria posiłku: Deser/Przekąska | ⏳ częściowo (patrz uwagi niżej) |
 | FR-14 | Skalowanie rozmiaru interfejsu (UI scale) | ⬜ nie rozpoczęte |
@@ -93,7 +93,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 ## Uwagi do częściowych wpisów
 
 - **FR-1** (5 kategorii): dane i kafelki kategorii są w Kotlinie, przepisy działają; zakładki Planer i Postęp to nadal placeholdery.
-- **FR-2** (wyszukiwanie i filtrowanie): samo pole wyszukiwania działa; przełączniki ulubione/spiżarnia/dopasowanie/ocena jeszcze nie.
+- **FR-2** (wyszukiwanie i filtrowanie): pole wyszukiwania i przełącznik sortowania wg 🎯 dopasowania (FR-11) działają; przełączniki ulubione/spiżarnia/ocena jeszcze nie.
 - **FR-13** (5. kategoria Deser/Przekąska): kategoria istnieje i jest wybieralna, ale przepisy w niej nie mają jeszcze nic ekstra ponad pozostałe (to samo dotyczy wszystkich kategorii — brak jest jeszcze osobnych funkcji per-kategoria).
 - **FR-26** (odhaczanie/udostępnianie/czyszczenie zakupów): odhaczanie i "usuń kupione" działają; udostępnianie listy (np. przez Intent) jeszcze nie ma. Dane są tylko lokalne w pamięci — bez trwałego zapisu, bez synchronizacji.
 - **FR-28** (spiżarnia w kafelkach z kategoriami): jest lista z etykietą kategorii i rozróżnieniem produkt/przyprawa, ale nie w formie kafelków jak w wersji webowej, i kategorie to uproszczony ręczny zestaw 7 opcji zamiast pełnej bazy klasyfikacji składników. Dane tylko lokalne, bez synchronizacji.
@@ -104,7 +104,8 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 - **FR-7**: `calcTargets` zwraca już wszystkie 5 targetów posiłkowych (patrz FR-6 wyżej) — przy okazji poprawiono nieaktualne proporcje w `Functional requirements/FR-7.md`/`ALL-REQUIREMENTS.md` (opisywały 370/280/450/300/100 sprzed dodania Deseru jako pełnoprawnej kategorii; realny kod w `index.html` już dawno używa 340/260/420/280/200).
 - **FR-5** (przycisk powrotu do góry): `RecipeListWithScrollToTop` w `RecipeListScreen.kt` — FAB "⬆️" pojawia się po przewinięciu >400dp (albo poza pierwszy element listy) i scrolluje z animacją do indeksu 0. Ręcznie zweryfikowane na emulatorze 2026-08-09: pojawia się przy scrollu, znika z powrotem na górze, `animateScrollToItem` faktycznie płynnie przewija, zero crashy.
 - **FR-8/FR-9** (filtry glutenu/laktozy/niskiego IG): `RecipeBrowsing.isGlutenFree`/`isLactoseFree` to jeden-do-jednego port `GLUTEN_KEYWORDS`/`DAIRY_KEYWORDS` z `index.html`, wpięte w `visibleRecipes` i sterowane checkboxami w karcie Profilu (`ProfileViewModel` współdzielony, więc filtr w Ustawieniach od razu wpływa na ekran Przepisów). Ręcznie zweryfikowane na emulatorze: wyszukanie "chleb" dawało kilka wyników bez filtra, "Brak przepisów spełniających kryteria" z aktywnym filtrem bezglutenowym, zero crashy. `strictLowGI` to na razie tylko pole w profilu i checkbox w UI, bez żadnego efektu — zacznie coś robić dopiero gdy powstanie `recipeMatchScore` (FR-11), które konsumuje ten flag do kary za wysoki ładunek glikemiczny.
-- **FR-10** (proporcje makro): `ProfileCalculations.calcMacroTargets` — jeden-do-jednego port `MACRO_RATIOS`/`calcMacroTargets` z `index.html`. Wynik (białko/węgle/tłuszcz na dzień) doklejony do tego samego komunikatu "Dopasowano..." po zapisaniu profilu. Ręcznie zweryfikowane na emulatorze: domyślny profil (kobieta/redukcja) dał dokładnie 111 g białka / 130 g węglowodanów / 58 g tłuszczu — identycznie jak w teście JUnit, zero crashy. Nie ma jeszcze osobnego, samodzielnego ekranu/wizualizacji makr — czeka na FR-11/FR-12, które go faktycznie konsumują.
+- **FR-10** (proporcje makro): `ProfileCalculations.calcMacroTargets` — jeden-do-jednego port `MACRO_RATIOS`/`calcMacroTargets` z `index.html`. Wynik (białko/węgle/tłuszcz na dzień) doklejony do tego samego komunikatu "Dopasowano..." po zapisaniu profilu. Ręcznie zweryfikowane na emulatorze: domyślny profil (kobieta/redukcja) dał dokładnie 111 g białka / 130 g węglowodanów / 58 g tłuszczu — identycznie jak w teście JUnit, zero crashy.
+- **FR-11** (dopasowanie 🎯): `RecipeMatching.matchScore` — jeden-do-jednego port `recipeMatchScore` z `index.html` (zbieżność B/W/T z targetem kategorii + kara GL zależna od `strictLowGI`/celu, testy JUnit z ręcznie przeliczonymi wartościami dla obu gałęzi kary). Plakietka "🎯 N%" na karcie przepisu + przełącznik "🎯 Dopasowanie" w pasku filtrów, sortujący malejąco (FR-2). Ręcznie zweryfikowane na emulatorze: plakietki pojawiły się na wszystkich kartach z pełnymi danymi odżywczymi, sortowanie dało poprawnie malejącą kolejność (73%, 73%, 72%, 71%...), zero crashy. Modal wyjaśniający wyliczenia (FR-12) jeszcze nie istnieje.
 
 ## Jak to utrzymywać
 
