@@ -62,8 +62,21 @@ class FirebaseTestViewModel : ViewModel() {
                         null
                     },
                 )
+            } catch (e: IllegalStateException) {
+                val notInitialized = e.message?.contains("FirebaseApp", ignoreCase = true) == true
+                val message = if (notInitialized) {
+                    "Brak pliku konfiguracyjnego Firebase (android/app/google-services.json)." +
+                        " Dodaj go i przebuduj projekt — patrz android/README.md," +
+                        " sekcja \"Podłączenie Firebase\"."
+                } else {
+                    "Nie udało się połączyć z Firebase: ${e.message ?: e.toString()}"
+                }
+                _uiState.value = FirebaseTestUiState(isLoading = false, error = message)
             } catch (e: Exception) {
-                _uiState.value = FirebaseTestUiState(isLoading = false, error = e.message ?: e.toString())
+                _uiState.value = FirebaseTestUiState(
+                    isLoading = false,
+                    error = "Nie udało się połączyć z Firebase: ${e.message ?: e.toString()}",
+                )
             }
         }
     }

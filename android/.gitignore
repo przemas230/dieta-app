@@ -9,3 +9,7 @@
 /captures
 .externalNativeBuild/
 .cxx/
+
+# Downloaded from the Firebase console per-developer (see README.md
+# "Podłączenie Firebase") — not committed since this repo is public.
+/app/google-services.json
