@@ -36,6 +36,8 @@ import com.przemas230.dietaapp.logic.UiScale
 import com.przemas230.dietaapp.ui.PantryScreen
 import com.przemas230.dietaapp.ui.PantryViewModel
 import com.przemas230.dietaapp.ui.PlaceholderScreen
+import com.przemas230.dietaapp.ui.PlannerScreen
+import com.przemas230.dietaapp.ui.PlannerViewModel
 import com.przemas230.dietaapp.ui.ProfileViewModel
 import com.przemas230.dietaapp.ui.RecipeListScreen
 import com.przemas230.dietaapp.ui.SettingsScreen
@@ -102,6 +104,9 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // FR-16: shared for the same reason -- the "🛒" per-ingredient add button
     // in the recipe pantry-check window must show up on the Zakupy tab too.
     val shoppingViewModel: ShoppingViewModel = viewModel()
+    // FR-19: shared so "📅 Zaplanuj" on a recipe card (Przepisy tab) and the
+    // Planer tab itself see the same week plan.
+    val plannerViewModel: PlannerViewModel = viewModel()
 
     Scaffold(
         topBar = {
@@ -168,10 +173,13 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     profileViewModel = profileViewModel,
                     pantryViewModel = pantryViewModel,
                     shoppingViewModel = shoppingViewModel,
+                    plannerViewModel = plannerViewModel,
                 )
             }
             composable(Screen.Shopping.route) { ShoppingScreen(viewModel = shoppingViewModel) }
-            composable(Screen.Planner.route) { PlaceholderScreen(Screen.Planner.label) }
+            composable(Screen.Planner.route) {
+                PlannerScreen(plannerViewModel = plannerViewModel, profileViewModel = profileViewModel)
+            }
             composable(Screen.Progress.route) { PlaceholderScreen(Screen.Progress.label) }
             composable(Screen.Pantry.route) { PantryScreen(viewModel = pantryViewModel) }
             composable(Screen.Settings.route) {

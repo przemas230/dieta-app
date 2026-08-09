@@ -8,6 +8,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -61,11 +63,14 @@ import com.przemas230.dietaapp.data.PantryCategory
 import com.przemas230.dietaapp.data.PantryItem
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.logic.CATEGORIES
+import com.przemas230.dietaapp.logic.DailyCalorieTargets
 import com.przemas230.dietaapp.logic.IngredientCanon
 import com.przemas230.dietaapp.logic.PantryOperations
+import com.przemas230.dietaapp.logic.PlannerOperations
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.RecipeMatching
 import com.przemas230.dietaapp.logic.RecipePantryMatching
+import com.przemas230.dietaapp.logic.WeekPlan
 import com.przemas230.dietaapp.logic.forCategory
 import kotlin.math.abs
 import kotlin.math.max
@@ -82,6 +87,7 @@ fun RecipeListScreen(
     profileViewModel: ProfileViewModel,
     pantryViewModel: PantryViewModel,
     shoppingViewModel: ShoppingViewModel,
+    plannerViewModel: PlannerViewModel,
     viewModel: RecipeViewModel = viewModel(),
 ) {
     val recipes by viewModel.visibleRecipes.collectAsState()
@@ -90,6 +96,7 @@ fun RecipeListScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val cookedMap by viewModel.cooked.collectAsState()
     val pantryItems by pantryViewModel.items.collectAsState()
+    val weekPlan by plannerViewModel.weekPlan.collectAsState()
     val profile by profileViewModel.profile.collectAsState()
     LaunchedEffect(profile.glutenFree, profile.lactoseFree) {
         viewModel.setDietaryFilters(profile.glutenFree, profile.lactoseFree)
@@ -97,6 +104,7 @@ fun RecipeListScreen(
 
     var sortByMatch by remember { mutableStateOf(false) }
     val macroTargets = remember(profile) { ProfileCalculations.calcMacroTargets(profile) }
+    val kcalTargets = remember(profile) { ProfileCalculations.calcTargets(profile) }
     val matchScores = remember(recipes, macroTargets, profile) {
         recipes.associate { it.id to RecipeMatching.matchScore(it, macroTargets.forCategory(it.cat), profile) }
     }
@@ -150,9 +158,12 @@ fun RecipeListScreen(
                 matchScores,
                 cookedMap,
                 pantryItems,
+                weekPlan,
+                kcalTargets,
                 viewModel,
                 pantryViewModel,
                 shoppingViewModel,
+                plannerViewModel,
             )
         }
     }
@@ -169,9 +180,12 @@ private fun RecipeListWithScrollToTop(
     matchScores: Map<String, Int?>,
     cookedMap: Map<String, List<CookEntry>>,
     pantryItems: Map<String, PantryItem>,
+    weekPlan: WeekPlan,
+    kcalTargets: DailyCalorieTargets,
     viewModel: RecipeViewModel,
     pantryViewModel: PantryViewModel,
     shoppingViewModel: ShoppingViewModel,
+    plannerViewModel: PlannerViewModel,
 ) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -211,6 +225,11 @@ private fun RecipeListWithScrollToTop(
                         val parsed = RecipePantryMatching.parseIngredient(ingredientText)
                         shoppingViewModel.addItem(parsed.canonName, parsed.baseQty, unitLabelFor(parsed.unitCat))
                     },
+                    weekPlan = weekPlan,
+                    onPlanRecipe = { day, cat ->
+                        val scale = PlannerOperations.idealScaleFor(recipe, kcalTargets.forCategory(cat))
+                        plannerViewModel.setMeal(day, cat, recipe.id, scale)
+                    },
                 )
             }
         }
@@ -242,11 +261,14 @@ private fun RecipeCard(
     onRemoveEntry: (index: Int) -> Unit,
     onToggleHaveIngredient: (canonName: String, category: PantryCategory, unitCat: String) -> Unit,
     onAddIngredientToShopping: (ingredientText: String) -> Unit,
+    weekPlan: WeekPlan,
+    onPlanRecipe: (day: Int, cat: String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
     var showCookHistory by remember { mutableStateOf(false) }
     var showPantryCheck by remember { mutableStateOf(false) }
+    var showPlanPicker by remember { mutableStateOf(false) }
     // FR-4: deterministic emoji thumbnail from the recipe's own biggest
     // ingredient — no network round-trip, same icon set as pantry tiles.
     val thumbEmoji = remember(recipe.id) { IngredientCanon.mainIngredientInfo(recipe)?.emoji ?: "🍽️" }
@@ -281,14 +303,23 @@ private fun RecipeCard(
             // marks the dish done directly — it always opens the history
             // dialog first (revised from the original press-and-hold design,
             // see FR-15.md's "Uwagi").
-            TextButton(
-                onClick = { showCookHistory = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 38.dp)
-                    .padding(horizontal = 10.dp),
-            ) {
-                Text("✅ Zrobione" + if (cookEntries.isNotEmpty()) " (${cookEntries.size}×)" else "")
+            Row(modifier = Modifier.padding(horizontal = 10.dp)) {
+                TextButton(
+                    onClick = { showCookHistory = true },
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 38.dp),
+                ) {
+                    Text("✅ Zrobione" + if (cookEntries.isNotEmpty()) " (${cookEntries.size}×)" else "")
+                }
+                TextButton(
+                    onClick = { showPlanPicker = true },
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 38.dp),
+                ) {
+                    Text("📅 Zaplanuj")
+                }
             }
         }
     }
@@ -313,6 +344,17 @@ private fun RecipeCard(
             onToggleHave = onToggleHaveIngredient,
             onAddToShopping = onAddIngredientToShopping,
             onDismiss = { showPantryCheck = false },
+        )
+    }
+    if (showPlanPicker) {
+        PlanPickerDialog(
+            recipe = recipe,
+            weekPlan = weekPlan,
+            onPick = { day, cat ->
+                onPlanRecipe(day, cat)
+                showPlanPicker = false
+            },
+            onDismiss = { showPlanPicker = false },
         )
     }
 }
@@ -583,6 +625,70 @@ private fun PantryCheckDialog(
                         }
                     }
                     HorizontalDivider()
+                }
+            }
+        }
+    }
+}
+
+/**
+ * FR-19: "📅 Zaplanuj" — lets you push a recipe into any day×category slot,
+ * not just its own category (default-selected but freely changeable). Both
+ * grids render as multi-row wraps rather than a horizontally scrolling
+ * strip, per the revised acceptance criteria in FR-19.md. Port of
+ * index.html's openPlanPicker.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PlanPickerDialog(
+    recipe: Recipe,
+    weekPlan: WeekPlan,
+    onPick: (day: Int, cat: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var selectedCat by remember { mutableStateOf(recipe.cat) }
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.widthIn(max = 480.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "📅 Zaplanuj: ${recipe.name}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onDismiss) { Text("✕") }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+                // FlowRow (not a fixed-size chunked Row) so each chip keeps
+                // its natural width and wraps onto a new line by itself --
+                // a plain Row squeezes whatever doesn't fit into leftover
+                // space instead of wrapping, which for a long Polish label
+                // ("Poniedziałek") corrupts into a single-letter-per-line
+                // column instead of moving to the next row.
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PlannerOperations.PLANNER_CATEGORIES.forEach { cat ->
+                        FilterChip(
+                            selected = cat.id == selectedCat,
+                            onClick = { selectedCat = cat.id },
+                            label = { Text("${cat.emoji} ${cat.label}") },
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PlannerOperations.DAYS_PL.forEachIndexed { day, dayName ->
+                        val already = weekPlan[day]?.get(selectedCat)?.recipeId == recipe.id
+                        FilterChip(
+                            selected = already,
+                            onClick = { onPick(day, selectedCat) },
+                            label = { Text(dayName + if (already) " ✓" else "") },
+                        )
+                    }
                 }
             }
         }

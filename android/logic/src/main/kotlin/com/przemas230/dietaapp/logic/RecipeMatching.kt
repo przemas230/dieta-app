@@ -17,6 +17,16 @@ fun MacroTargets.forCategory(cat: String): MacroGrams? = when (cat) {
     else -> null
 }
 
+/** Same lookup for the plain kcal targets, used by PlannerOperations.idealScaleFor. */
+fun DailyCalorieTargets.forCategory(cat: String): Int? = when (cat) {
+    "sniadania" -> sniadania
+    "drugie" -> drugie
+    "obiady" -> obiady
+    "kolacje" -> kolacje
+    "deser" -> deser
+    else -> null
+}
+
 /**
  * FR-11: port of index.html's recipeMatchScore — 0-100, how well a recipe's
  * macros fit its meal-slot target, penalized for high glycemic load (unless
