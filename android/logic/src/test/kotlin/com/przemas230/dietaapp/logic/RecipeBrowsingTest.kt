@@ -78,4 +78,35 @@ class RecipeBrowsingTest {
         val visible = RecipeBrowsing.visibleRecipes(recipes, "nieznana-kategoria", "")
         assertTrue(visible.isEmpty())
     }
+
+    @Test
+    fun `isGlutenFree flags recipes with a gluten keyword in ingredients or name`() {
+        assertTrue(RecipeBrowsing.isGlutenFree(recipe("x", "obiady", "Kurczak z ryżem", listOf("kurczak", "ryż", "brokuł"))))
+        assertTrue(!RecipeBrowsing.isGlutenFree(recipe("x", "drugie", "Kanapka z jajkiem", listOf("chleb", "jajko"))))
+        assertTrue(!RecipeBrowsing.isGlutenFree(recipe("x", "obiady", "Makaron bolognese", listOf("mięso mielone", "pomidory"))))
+    }
+
+    @Test
+    fun `isLactoseFree passes non-dairy ingredients and dairy explicitly marked bez laktozy`() {
+        val recipe = recipe("x", "sniadania", "Owsianka", listOf("płatki owsiane", "mleko bez laktozy", "jagody"))
+        assertTrue(RecipeBrowsing.isLactoseFree(recipe))
+    }
+
+    @Test
+    fun `isLactoseFree fails on unmarked dairy ingredient`() {
+        val recipe = recipe("x", "sniadania", "Owsianka", listOf("płatki owsiane", "mleko", "jagody"))
+        assertTrue(!RecipeBrowsing.isLactoseFree(recipe))
+    }
+
+    @Test
+    fun `glutenFree filter removes matching recipes from visibleRecipes`() {
+        val visible = RecipeBrowsing.visibleRecipes(recipes, "sniadania", "", glutenFree = true)
+        assertEquals(listOf("1"), visible.map { it.id })
+    }
+
+    @Test
+    fun `lactoseFree filter removes matching recipes from visibleRecipes`() {
+        val visible = RecipeBrowsing.visibleRecipes(recipes, "sniadania", "", lactoseFree = true)
+        assertTrue(visible.none { it.id == "1" })
+    }
 }

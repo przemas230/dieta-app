@@ -25,6 +25,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,11 +48,15 @@ import kotlinx.coroutines.launch
  * shared across all tabs.
  */
 @Composable
-fun RecipeListScreen(viewModel: RecipeViewModel = viewModel()) {
+fun RecipeListScreen(profileViewModel: ProfileViewModel, viewModel: RecipeViewModel = viewModel()) {
     val recipes by viewModel.visibleRecipes.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
     val searchTerm by viewModel.searchTerm.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val profile by profileViewModel.profile.collectAsState()
+    LaunchedEffect(profile.glutenFree, profile.lactoseFree) {
+        viewModel.setDietaryFilters(profile.glutenFree, profile.lactoseFree)
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         OutlinedTextField(

@@ -130,7 +130,7 @@ private fun DietaAppRoot() {
             startDestination = Screen.Recipes.route,
             modifier = Modifier.padding(padding),
         ) {
-            composable(Screen.Recipes.route) { RecipeListScreen() }
+            composable(Screen.Recipes.route) { RecipeListScreen(profileViewModel = profileViewModel) }
             composable(Screen.Shopping.route) { ShoppingScreen() }
             composable(Screen.Planner.route) { PlaceholderScreen(Screen.Planner.label) }
             composable(Screen.Progress.route) { PlaceholderScreen(Screen.Progress.label) }

@@ -1,5 +1,6 @@
 package com.przemas230.dietaapp.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -26,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -71,6 +74,9 @@ private fun ProfileCard(viewModel: ProfileViewModel) {
     var targetWeight by remember(profile) { mutableStateOf(if (profile.configured) profile.targetWeightKg.toString() else "") }
     var activity by remember(profile) { mutableStateOf(profile.activity) }
     var goal by remember(profile) { mutableStateOf(profile.goal) }
+    var glutenFree by remember(profile) { mutableStateOf(profile.glutenFree) }
+    var lactoseFree by remember(profile) { mutableStateOf(profile.lactoseFree) }
+    var strictLowGI by remember(profile) { mutableStateOf(profile.strictLowGI) }
     var activityMenuExpanded by remember { mutableStateOf(false) }
     var goalMenuExpanded by remember { mutableStateOf(false) }
     var resultText by remember { mutableStateOf("") }
@@ -162,6 +168,28 @@ private fun ProfileCard(viewModel: ProfileViewModel) {
                 }
             }
 
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { glutenFree = !glutenFree }) {
+                Checkbox(checked = glutenFree, onCheckedChange = { glutenFree = it })
+                Text(
+                    "Ukryj dania zawierające gluten (pieczywo, kasze glutenowe) — filtr orientacyjny",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { lactoseFree = !lactoseFree }) {
+                Checkbox(checked = lactoseFree, onCheckedChange = { lactoseFree = it })
+                Text(
+                    "Ukryj dania z nabiałem bez wyraźnej wersji „bez laktozy”",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { strictLowGI = !strictLowGI }) {
+                Checkbox(checked = strictLowGI, onCheckedChange = { strictLowGI = it })
+                Text(
+                    "Trzymaj się niskiego indeksu glikemicznego",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = {
                     val saved = Profile(
@@ -172,6 +200,9 @@ private fun ProfileCard(viewModel: ProfileViewModel) {
                         targetWeightKg = targetWeight.toDoubleOrNull() ?: Profile().targetWeightKg,
                         activity = activity,
                         goal = goal,
+                        glutenFree = glutenFree,
+                        lactoseFree = lactoseFree,
+                        strictLowGI = strictLowGI,
                     )
                     viewModel.save(saved)
                     val t = ProfileCalculations.calcTargets(saved)

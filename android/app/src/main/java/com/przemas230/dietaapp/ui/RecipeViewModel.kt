@@ -29,6 +29,9 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     private val _searchTerm = MutableStateFlow("")
     val searchTerm: StateFlow<String> = _searchTerm.asStateFlow()
 
+    private var glutenFree = false
+    private var lactoseFree = false
+
     private val _visibleRecipes = MutableStateFlow<List<Recipe>>(emptyList())
     val visibleRecipes: StateFlow<List<Recipe>> = _visibleRecipes.asStateFlow()
 
@@ -54,7 +57,20 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         recompute()
     }
 
+    /** FR-8: called from RecipeListScreen whenever the shared ProfileViewModel's profile changes. */
+    fun setDietaryFilters(glutenFree: Boolean, lactoseFree: Boolean) {
+        this.glutenFree = glutenFree
+        this.lactoseFree = lactoseFree
+        recompute()
+    }
+
     private fun recompute() {
-        _visibleRecipes.value = RecipeBrowsing.visibleRecipes(allRecipes.value, _selectedCategory.value, _searchTerm.value)
+        _visibleRecipes.value = RecipeBrowsing.visibleRecipes(
+            allRecipes.value,
+            _selectedCategory.value,
+            _searchTerm.value,
+            glutenFree,
+            lactoseFree,
+        )
     }
 }

@@ -31,5 +31,12 @@ data class Profile(
     val targetWeightKg: Double = 62.0,
     val activity: ActivityLevel = ActivityLevel.LEKKO_AKTYWNY,
     val goal: Goal = Goal.REDUKCJA,
+    val glutenFree: Boolean = false,
+    val lactoseFree: Boolean = false,
+    // Not yet consumed anywhere — only matters once recipeMatchScore (FR-11)
+    // exists to apply its glycemic-load penalty. Stored now so the profile
+    // shape matches DEFAULT_PROFILE in index.html and the toggle can be
+    // added to the UI without another Profile-shape change later.
+    val strictLowGI: Boolean = true,
     val configured: Boolean = false,
 )
