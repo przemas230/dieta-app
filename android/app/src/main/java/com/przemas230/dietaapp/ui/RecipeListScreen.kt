@@ -574,9 +574,13 @@ private fun CookHistoryDialog(
     var pendingDeleteIndex by remember { mutableStateOf<Int?>(null) }
     Dialog(onDismissRequest = onDismiss) {
         Card(modifier = Modifier.widthIn(max = 480.dp)) {
+            // FR-59: capped so long content (many cook-history entries,
+            // ingredients, or recipe picks) scrolls internally instead of
+            // being pushed off-screen unreachably.
             Column(
                 modifier = Modifier
                     .padding(16.dp)
+                    .heightIn(max = 560.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -689,9 +693,13 @@ private fun PantryCheckDialog(
     val addedToShopping = remember { mutableStateMapOf<Int, Boolean>() }
     Dialog(onDismissRequest = onDismiss) {
         Card(modifier = Modifier.widthIn(max = 480.dp)) {
+            // FR-59: capped so long content (many cook-history entries,
+            // ingredients, or recipe picks) scrolls internally instead of
+            // being pushed off-screen unreachably.
             Column(
                 modifier = Modifier
                     .padding(16.dp)
+                    .heightIn(max = 560.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -776,9 +784,13 @@ private fun PlanPickerDialog(
     var selectedCat by remember { mutableStateOf(recipe.cat) }
     Dialog(onDismissRequest = onDismiss) {
         Card(modifier = Modifier.widthIn(max = 480.dp)) {
+            // FR-59: capped so long content (many cook-history entries,
+            // ingredients, or recipe picks) scrolls internally instead of
+            // being pushed off-screen unreachably.
             Column(
                 modifier = Modifier
                     .padding(16.dp)
+                    .heightIn(max = 560.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -847,9 +859,13 @@ private fun MacroInfoDialog(recipe: Recipe, onDismiss: () -> Unit) {
     var legendExpanded by remember { mutableStateOf(false) }
     Dialog(onDismissRequest = onDismiss) {
         Card(modifier = Modifier.widthIn(max = 480.dp)) {
+            // FR-59: capped so long content (many cook-history entries,
+            // ingredients, or recipe picks) scrolls internally instead of
+            // being pushed off-screen unreachably.
             Column(
                 modifier = Modifier
                     .padding(16.dp)
+                    .heightIn(max = 560.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
