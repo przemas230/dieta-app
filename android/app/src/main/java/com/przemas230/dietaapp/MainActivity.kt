@@ -17,10 +17,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -28,12 +32,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.przemas230.dietaapp.logic.ProfileCalculations
+import com.przemas230.dietaapp.logic.UiScale
 import com.przemas230.dietaapp.ui.PantryScreen
 import com.przemas230.dietaapp.ui.PlaceholderScreen
 import com.przemas230.dietaapp.ui.ProfileViewModel
 import com.przemas230.dietaapp.ui.RecipeListScreen
 import com.przemas230.dietaapp.ui.SettingsScreen
 import com.przemas230.dietaapp.ui.ShoppingScreen
+import com.przemas230.dietaapp.ui.UiScaleViewModel
 import com.przemas230.dietaapp.ui.navigation.BOTTOM_NAV_SCREENS
 import com.przemas230.dietaapp.ui.navigation.Screen
 import com.przemas230.dietaapp.ui.theme.DietaAppTheme
@@ -43,8 +49,25 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            DietaAppTheme {
-                DietaAppRoot()
+            // FR-14: Compose has no CSS-zoom equivalent, so the whole app's
+            // "zoom" is done by scaling LocalDensity around everything below
+            // this point — including the top bar/bottom nav (this wraps them
+            // too, matching zoom's effect on position:fixed elements in the
+            // web version) — rather than scaling individual screens.
+            val uiScaleViewModel: UiScaleViewModel = viewModel()
+            val customScale by uiScaleViewModel.uiScale.collectAsState()
+            val screenWidthDp = LocalConfiguration.current.screenWidthDp
+            val effectiveScale = customScale ?: UiScale.detectDefault(screenWidthDp)
+            val baseDensity = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides Density(
+                    density = baseDensity.density * effectiveScale.toFloat(),
+                    fontScale = baseDensity.fontScale,
+                ),
+            ) {
+                DietaAppTheme {
+                    DietaAppRoot(uiScaleViewModel = uiScaleViewModel, effectiveScale = effectiveScale)
+                }
             }
         }
     }
@@ -59,7 +82,7 @@ class MainActivity : ComponentActivity() {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DietaAppRoot() {
+private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Double) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -135,7 +158,13 @@ private fun DietaAppRoot() {
             composable(Screen.Planner.route) { PlaceholderScreen(Screen.Planner.label) }
             composable(Screen.Progress.route) { PlaceholderScreen(Screen.Progress.label) }
             composable(Screen.Pantry.route) { PantryScreen() }
-            composable(Screen.Settings.route) { SettingsScreen(profileViewModel = profileViewModel) }
+            composable(Screen.Settings.route) {
+                SettingsScreen(
+                    profileViewModel = profileViewModel,
+                    uiScaleViewModel = uiScaleViewModel,
+                    effectiveUiScale = effectiveScale,
+                )
+            }
         }
     }
 }

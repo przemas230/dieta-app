@@ -20,6 +20,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -38,18 +39,22 @@ import com.przemas230.dietaapp.data.Goal
 import com.przemas230.dietaapp.data.Profile
 import com.przemas230.dietaapp.data.Sex
 import com.przemas230.dietaapp.logic.ProfileCalculations
+import com.przemas230.dietaapp.logic.UiScale
+import kotlin.math.roundToInt
 
 /**
- * Ustawienia — profile card (FR-6) on top, Firebase connectivity smoke test
- * below (android/README.md "Co dalej"). Tabs (Konto/Wygląd/Przypomnienia/
- * Ulubione from index.html) are FR-71, not done yet — everything lives on
- * one scrollable screen until then.
+ * Ustawienia — aktualizacja aplikacji, profil (FR-6), skalowanie interfejsu
+ * (FR-14) i test połączenia z Firebase (android/README.md "Co dalej"). Tabs
+ * (Konto/Wygląd/Przypomnienia/Ulubione from index.html) are FR-71, not done
+ * yet — everything lives on one scrollable screen until then.
  */
 @Composable
 fun SettingsScreen(
     profileViewModel: ProfileViewModel = viewModel(),
     firebaseTestViewModel: FirebaseTestViewModel = viewModel(),
     appUpdateViewModel: AppUpdateViewModel = viewModel(),
+    uiScaleViewModel: UiScaleViewModel = viewModel(),
+    effectiveUiScale: Double = 1.0,
 ) {
     Column(
         modifier = Modifier
@@ -60,7 +65,36 @@ fun SettingsScreen(
     ) {
         AppUpdateCard(appUpdateViewModel)
         ProfileCard(profileViewModel)
+        UiScaleCard(uiScaleViewModel, effectiveUiScale)
         FirebaseTestCard(firebaseTestViewModel)
+    }
+}
+
+@Composable
+private fun UiScaleCard(viewModel: UiScaleViewModel, effectiveScale: Double) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Text("🔍 Rozmiar aplikacji", style = MaterialTheme.typography.titleMedium)
+                Text("${(effectiveScale * 100).roundToInt()}%", style = MaterialTheme.typography.titleMedium)
+            }
+            Slider(
+                value = effectiveScale.toFloat(),
+                onValueChange = { viewModel.setScale(it.toDouble()) },
+                valueRange = UiScale.MIN.toFloat()..UiScale.MAX.toFloat(),
+                steps = ((UiScale.MAX - UiScale.MIN) / UiScale.STEP).roundToInt() - 1,
+            )
+            Text(
+                "Jeśli elementy aplikacji wyglądają za duże (albo za małe), dostosuj tutaj. Wartość " +
+                    "początkowa jest dobierana automatycznie na podstawie szerokości ekranu, ale to tylko " +
+                    "przybliżenie (aplikacja nie ma dostępu do systemowego ustawienia \"Rozmiar wyświetlacza\") " +
+                    "— swobodnie ją zmień, jeśli nie pasuje.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
     }
 }
 
