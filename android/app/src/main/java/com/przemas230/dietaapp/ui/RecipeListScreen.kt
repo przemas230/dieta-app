@@ -61,6 +61,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.przemas230.dietaapp.data.CookEntry
 import com.przemas230.dietaapp.data.PantryCategory
 import com.przemas230.dietaapp.data.PantryItem
+import com.przemas230.dietaapp.data.ShoppingItem
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.logic.CATEGORIES
 import com.przemas230.dietaapp.logic.DailyCalorieTargets
@@ -70,6 +71,7 @@ import com.przemas230.dietaapp.logic.PlannerOperations
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.RecipeMatching
 import com.przemas230.dietaapp.logic.RecipePantryMatching
+import com.przemas230.dietaapp.logic.ShoppingOperations
 import com.przemas230.dietaapp.logic.WeekPlan
 import com.przemas230.dietaapp.logic.forCategory
 import kotlin.math.abs
@@ -97,6 +99,7 @@ fun RecipeListScreen(
     val cookedMap by viewModel.cooked.collectAsState()
     val pantryItems by pantryViewModel.items.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
+    val shoppingItems by shoppingViewModel.items.collectAsState()
     val profile by profileViewModel.profile.collectAsState()
     LaunchedEffect(profile.glutenFree, profile.lactoseFree) {
         viewModel.setDietaryFilters(profile.glutenFree, profile.lactoseFree)
@@ -159,6 +162,7 @@ fun RecipeListScreen(
                 cookedMap,
                 pantryItems,
                 weekPlan,
+                shoppingItems,
                 kcalTargets,
                 viewModel,
                 pantryViewModel,
@@ -181,6 +185,7 @@ private fun RecipeListWithScrollToTop(
     cookedMap: Map<String, List<CookEntry>>,
     pantryItems: Map<String, PantryItem>,
     weekPlan: WeekPlan,
+    shoppingItems: Map<String, ShoppingItem>,
     kcalTargets: DailyCalorieTargets,
     viewModel: RecipeViewModel,
     pantryViewModel: PantryViewModel,
@@ -223,12 +228,21 @@ private fun RecipeListWithScrollToTop(
                     },
                     onAddIngredientToShopping = { ingredientText ->
                         val parsed = RecipePantryMatching.parseIngredient(ingredientText)
-                        shoppingViewModel.addItem(parsed.canonName, parsed.baseQty, unitLabelFor(parsed.unitCat))
+                        val sourceKey = "single:${recipe.id}:${parsed.canonName}"
+                        shoppingViewModel.addSingleIngredient(ingredientText, sourceKey)
                     },
                     weekPlan = weekPlan,
                     onPlanRecipe = { day, cat ->
                         val scale = PlannerOperations.idealScaleFor(recipe, kcalTargets.forCategory(cat))
                         plannerViewModel.setMeal(day, cat, recipe.id, scale)
+                    },
+                    isAddedToShopping = ShoppingOperations.isRecipeAdded(shoppingItems, recipe.id),
+                    onToggleAddToShopping = {
+                        if (ShoppingOperations.isRecipeAdded(shoppingItems, recipe.id)) {
+                            shoppingViewModel.removeRecipe(recipe)
+                        } else {
+                            shoppingViewModel.addRecipe(recipe)
+                        }
                     },
                 )
             }
@@ -263,6 +277,8 @@ private fun RecipeCard(
     onAddIngredientToShopping: (ingredientText: String) -> Unit,
     weekPlan: WeekPlan,
     onPlanRecipe: (day: Int, cat: String) -> Unit,
+    isAddedToShopping: Boolean,
+    onToggleAddToShopping: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
@@ -297,6 +313,17 @@ private fun RecipeCard(
                         onPantryCheckClick = { showPantryCheck = true },
                     )
                 }
+            }
+            // FR-25: whole-recipe add/remove toggle, mirrors index.html's
+            // data-add button ("🛒 Dodaj..." / "✓ Na liście zakupów").
+            TextButton(
+                onClick = onToggleAddToShopping,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 38.dp)
+                    .padding(horizontal = 10.dp),
+            ) {
+                Text(if (isAddedToShopping) "✓ Na liście zakupów" else "🛒 Dodaj do listy zakupów")
             }
             // FR-15: always visible (not gated by `expanded`), same as
             // index.html's always-shown card-actions bar. Tapping this never
@@ -530,13 +557,6 @@ private fun StarRatingRow(rating: Int?, onRate: (Int) -> Unit) {
             }
         }
     }
-}
-
-/** weight/volume/count -> the unit label PantryOperations.toggleHaveIngredient / the pantry step convention use. */
-private fun unitLabelFor(unitCat: String): String = when (unitCat) {
-    "weight" -> "g"
-    "volume" -> "ml"
-    else -> "szt."
 }
 
 private fun describePantryEntry(item: PantryItem): String = when (item) {

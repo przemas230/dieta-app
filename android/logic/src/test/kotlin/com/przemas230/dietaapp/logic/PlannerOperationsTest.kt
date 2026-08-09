@@ -252,6 +252,37 @@ class PlannerOperationsTest {
     }
 
     @Test
+    fun `scaleIngredientText scales the leading quantity and preserves the rest of the line`() {
+        assertEquals("3 jajka", PlannerOperations.scaleIngredientText("2 jajka", 1.5))
+        assertEquals("750 g mąki", PlannerOperations.scaleIngredientText("500g mąki", 1.5))
+        assertEquals("1 puszki pomidorów", PlannerOperations.scaleIngredientText("1/2 puszki pomidorów", 2.0))
+    }
+
+    @Test
+    fun `scaleIngredientText leaves lines without a leading number unchanged`() {
+        assertEquals("garść szpinaku", PlannerOperations.scaleIngredientText("garść szpinaku", 2.0))
+        assertEquals("sól", PlannerOperations.scaleIngredientText("sól", 1.5))
+    }
+
+    @Test
+    fun `scaleIngredientText is a no-op at 1x scale`() {
+        assertEquals("2 jajka", PlannerOperations.scaleIngredientText("2 jajka", 1.0))
+    }
+
+    @Test
+    fun `scaleIngredientText rounds large values to the nearest 5 and uses a comma for halves`() {
+        assertEquals("750", PlannerOperations.scaleIngredientText("500", 1.5)) // 750 -> already multiple of 5
+        assertEquals("3,5", PlannerOperations.scaleIngredientText("1", 3.5))
+    }
+
+    @Test
+    fun `scaleIngredients maps every line and is a no-op at 1x`() {
+        val ingredients = listOf("2 jajka", "sól")
+        assertEquals(ingredients, PlannerOperations.scaleIngredients(ingredients, 1.0))
+        assertEquals(listOf("4 jajka", "sól"), PlannerOperations.scaleIngredients(ingredients, 2.0))
+    }
+
+    @Test
     fun `regenerateSlot falls back to the same recipe when it's the only option`() {
         val recipes = listOf(matchingRecipe("obiady-1", "obiady", testMacroTargets.obiady!!))
         val plan = PlannerOperations.setMeal(emptyMap(), 0, "obiady", PlannedMeal("obiady-1"))

@@ -176,9 +176,15 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     plannerViewModel = plannerViewModel,
                 )
             }
-            composable(Screen.Shopping.route) { ShoppingScreen(viewModel = shoppingViewModel) }
+            composable(Screen.Shopping.route) {
+                ShoppingScreen(viewModel = shoppingViewModel, plannerViewModel = plannerViewModel)
+            }
             composable(Screen.Planner.route) {
-                PlannerScreen(plannerViewModel = plannerViewModel, profileViewModel = profileViewModel)
+                PlannerScreen(
+                    plannerViewModel = plannerViewModel,
+                    profileViewModel = profileViewModel,
+                    shoppingViewModel = shoppingViewModel,
+                )
             }
             composable(Screen.Progress.route) { PlaceholderScreen(Screen.Progress.label) }
             composable(Screen.Pantry.route) { PantryScreen(viewModel = pantryViewModel) }

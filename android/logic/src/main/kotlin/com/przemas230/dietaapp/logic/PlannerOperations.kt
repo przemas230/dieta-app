@@ -74,6 +74,36 @@ object PlannerOperations {
     /** Recipe.kcal scaled and rounded, matching index.html's scaleRecipe (Math.round(r.kcal*scale)). */
     fun scaledKcal(recipe: Recipe, scale: Double): Int = Math.round(recipe.kcal * scale).toInt()
 
+    private val LEADING_QTY_REGEX = Regex("""^(\d+(?:[.,]\d+)?)(?:/(\d+))?\s*(.*)$""")
+
+    // Matches index.html's formatScaledAmount: snaps to a multiple of 5 once
+    // the value is large (nobody needs "747 g", "745" reads fine), otherwise
+    // rounds to the nearest half and uses a Polish decimal comma.
+    private fun formatScaledAmount(value: Double): String {
+        if (value >= 20) return (Math.round(value / 5.0) * 5).toString()
+        val rounded = Math.round(value * 2) / 2.0
+        return if (rounded == rounded.toLong().toDouble()) rounded.toLong().toString() else rounded.toString().replace('.', ',')
+    }
+
+    /**
+     * FR-27: scales the leading quantity of a freeform ingredient line ("2
+     * jajka" -> "3 jajka" at 1.5x). Lines without a leading number ("garść
+     * szpinaku", "sól") are left as-is -- there's nothing reliable to scale.
+     * Port of index.html's scaleIngredientText.
+     */
+    fun scaleIngredientText(text: String, scale: Double): String {
+        if (scale == 1.0) return text
+        val match = LEADING_QTY_REGEX.find(text) ?: return text
+        val (numberPart, denominatorPart, rest) = match.destructured
+        var value = numberPart.replace(',', '.').toDoubleOrNull() ?: return text
+        if (denominatorPart.isNotEmpty()) value /= denominatorPart.toDouble()
+        val scaledLabel = formatScaledAmount(value * scale)
+        return if (rest.isNotEmpty()) "$scaledLabel $rest" else scaledLabel
+    }
+
+    fun scaleIngredients(ingredients: List<String>, scale: Double): List<String> =
+        if (scale == 1.0) ingredients else ingredients.map { scaleIngredientText(it, scale) }
+
     /** Sum of scaled kcal across all 5 slots for one day, for the day-card's "Razem: N kcal" footer. */
     fun dayTotalKcal(plan: WeekPlan, day: Int, recipesById: Map<String, Recipe>): Int {
         val dayMap = plan[day] ?: return 0

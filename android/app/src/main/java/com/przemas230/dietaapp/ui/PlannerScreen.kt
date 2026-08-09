@@ -53,12 +53,13 @@ import com.przemas230.dietaapp.logic.forCategory
  * FR-18/20/21/22/23/24: 7 day cards, each with the 5 meal-slot rows from
  * PlannerOperations.PLANNER_CATEGORIES, a portion-scale chip per filled slot
  * (FR-20), per-slot/per-day/whole-week random generation (FR-21), per-day
- * clearing (FR-22), "ugotuj na 2 dni" leftovers (FR-23) and the proactive
- * next-day carry-over suggestion (FR-24). FR-27 (add the whole week's
- * ingredients to the shopping list) isn't ported yet — see android/PARITY.md.
+ * clearing (FR-22), "ugotuj na 2 dni" leftovers (FR-23), the proactive
+ * next-day carry-over suggestion (FR-24), and a per-day "add this day's
+ * ingredients to the shopping list" button (the Zakupy tab's own whole-week
+ * version of this is FR-27, see ShoppingScreen.kt).
  */
 @Composable
-fun PlannerScreen(plannerViewModel: PlannerViewModel, profileViewModel: ProfileViewModel) {
+fun PlannerScreen(plannerViewModel: PlannerViewModel, profileViewModel: ProfileViewModel, shoppingViewModel: ShoppingViewModel) {
     val allRecipes by plannerViewModel.allRecipes.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
     val profile by profileViewModel.profile.collectAsState()
@@ -118,6 +119,7 @@ fun PlannerScreen(plannerViewModel: PlannerViewModel, profileViewModel: ProfileV
                         "Wyczyścić wszystkie dania zaplanowane na „$dayName”?",
                     ) { plannerViewModel.clearDay(day) }
                 },
+                onAddDayToShopping = { shoppingViewModel.addDayPlan(weekPlan[day].orEmpty(), recipesById) },
             )
         }
     }
@@ -184,6 +186,7 @@ private fun DayCard(
     onApplyPrepAhead: (cat: String, recipeId: String) -> Unit,
     onRandomizeDay: () -> Unit,
     onClearDay: () -> Unit,
+    onAddDayToShopping: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -249,6 +252,10 @@ private fun DayCard(
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
             )
+            Spacer(modifier = Modifier.height(6.dp))
+            OutlinedButton(onClick = onAddDayToShopping, modifier = Modifier.fillMaxWidth()) {
+                Text("🛒 Dodaj składniki z tego dnia do listy zakupów")
+            }
             Spacer(modifier = Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onRandomizeDay, modifier = Modifier.weight(1f)) {

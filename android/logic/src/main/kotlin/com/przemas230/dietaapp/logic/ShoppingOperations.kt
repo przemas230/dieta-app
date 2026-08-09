@@ -1,23 +1,122 @@
 package com.przemas230.dietaapp.logic
 
+import com.przemas230.dietaapp.data.PlannedMeal
+import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.data.ShoppingItem
 
 /**
- * Pure port of ShoppingViewModel's mutation logic from the app module — see
- * PantryOperations.kt for the same pattern.
+ * FR-25: pure port of index.html's addRecipeToShoppingList /
+ * removeRecipeFromShoppingList / addSingleIngredientToShopping. Every
+ * ingredient is parsed (RecipePantryMatching.parseIngredient) down to a
+ * canonical name + unitCat key ("canon|unitCat", matching index.html's own
+ * key format) so the same ingredient from two different recipes accumulates
+ * into one entry instead of two, and removing one recipe only subtracts its
+ * own `contributions` share rather than deleting the whole entry.
  */
 object ShoppingOperations {
-    fun addItem(items: Map<String, ShoppingItem>, name: String, quantity: Double, unit: String): Map<String, ShoppingItem> {
-        if (name.isBlank() || quantity <= 0) return items
-        return items + (name to ShoppingItem(name, quantity, unit))
+    fun keyFor(canonName: String, unitCat: String): String = "$canonName|$unitCat"
+
+    /** Shared by addRecipe/addSingleIngredient -- `sourceKey` is the recipe id, or a synthetic "single:<recipeId>:<canon>" key for a lone-ingredient add. */
+    private fun addContribution(
+        items: Map<String, ShoppingItem>,
+        ingredients: List<String>,
+        sourceKey: String,
+    ): Map<String, ShoppingItem> {
+        var result = items
+        ingredients.forEach { ingredient ->
+            val parsed = RecipePantryMatching.parseIngredient(ingredient)
+            val key = keyFor(parsed.canonName, parsed.unitCat)
+            val entry = result[key] ?: ShoppingItem(parsed.canonName, parsed.unitCat, 0.0)
+            val newContribution = (entry.contributions[sourceKey] ?: 0.0) + parsed.baseQty
+            result = result + (
+                key to entry.copy(
+                    quantity = entry.quantity + parsed.baseQty,
+                    contributions = entry.contributions + (sourceKey to newContribution),
+                )
+            )
+        }
+        return result
     }
 
-    fun toggleChecked(items: Map<String, ShoppingItem>, name: String): Map<String, ShoppingItem> {
-        val item = items[name] ?: return items
-        return items + (name to item.copy(checked = !item.checked))
+    private fun removeContribution(
+        items: Map<String, ShoppingItem>,
+        ingredients: List<String>,
+        sourceKey: String,
+    ): Map<String, ShoppingItem> {
+        var result = items
+        ingredients.forEach { ingredient ->
+            val parsed = RecipePantryMatching.parseIngredient(ingredient)
+            val key = keyFor(parsed.canonName, parsed.unitCat)
+            val entry = result[key] ?: return@forEach
+            val contribution = entry.contributions[sourceKey] ?: return@forEach
+            val newQty = entry.quantity - contribution
+            val newContributions = entry.contributions - sourceKey
+            result = if (newQty <= 0.0001 || newContributions.isEmpty()) {
+                result - key
+            } else {
+                result + (key to entry.copy(quantity = newQty, contributions = newContributions))
+            }
+        }
+        return result
     }
 
-    fun removeItem(items: Map<String, ShoppingItem>, name: String): Map<String, ShoppingItem> = items - name
+    /** FR-25: "Dodaj do listy zakupów" on a recipe card -- adds every ingredient, keyed by the recipe's own id. */
+    fun addRecipe(items: Map<String, ShoppingItem>, recipe: Recipe): Map<String, ShoppingItem> =
+        addContribution(items, recipe.ingredients, recipe.id)
+
+    /** Reverses addRecipe -- only this recipe's share is subtracted, so an item another recipe also needs survives. */
+    fun removeRecipe(items: Map<String, ShoppingItem>, recipe: Recipe): Map<String, ShoppingItem> =
+        removeContribution(items, recipe.ingredients, recipe.id)
+
+    /** FR-16's "🛒" per-ingredient add -- same accumulation, keyed by a synthetic source (not the recipe id) so it doesn't collide with a later whole-recipe add/remove. */
+    fun addSingleIngredient(items: Map<String, ShoppingItem>, ingredientText: String, sourceKey: String): Map<String, ShoppingItem> =
+        addContribution(items, listOf(ingredientText), sourceKey)
+
+    /** Whether any shopping entry still carries a contribution from this recipe -- drives the "✓ Na liście zakupów" toggle state. */
+    fun isRecipeAdded(items: Map<String, ShoppingItem>, recipeId: String): Boolean =
+        items.values.any { it.contributions.containsKey(recipeId) }
+
+    /**
+     * FR-27 / the Planer's own per-day add button: adds every planned meal's
+     * (scaled, FR-20) ingredients, skipping any recipe id already on the
+     * list -- same "if(state.recipeAdded[r.id]) return" dedup index.html's
+     * day/week-add loops use, so a dish planned twice in the same day/week
+     * is still only ever added once.
+     */
+    fun addDayPlan(
+        items: Map<String, ShoppingItem>,
+        dayMeals: Map<String, PlannedMeal>,
+        recipesById: Map<String, Recipe>,
+    ): Map<String, ShoppingItem> {
+        var result = items
+        dayMeals.values.forEach { meal ->
+            val recipe = recipesById[meal.recipeId] ?: return@forEach
+            if (isRecipeAdded(result, recipe.id)) return@forEach
+            val scaled = recipe.copy(ingredients = PlannerOperations.scaleIngredients(recipe.ingredients, meal.scale))
+            result = addRecipe(result, scaled)
+        }
+        return result
+    }
+
+    /** FR-27: "add the whole week's ingredients" button on the Zakupy tab. */
+    fun addWeekPlan(
+        items: Map<String, ShoppingItem>,
+        weekPlan: WeekPlan,
+        recipesById: Map<String, Recipe>,
+    ): Map<String, ShoppingItem> {
+        var result = items
+        weekPlan.keys.sorted().forEach { day ->
+            result = addDayPlan(result, weekPlan[day].orEmpty(), recipesById)
+        }
+        return result
+    }
+
+    fun toggleChecked(items: Map<String, ShoppingItem>, key: String): Map<String, ShoppingItem> {
+        val item = items[key] ?: return items
+        return items + (key to item.copy(checked = !item.checked))
+    }
+
+    fun removeItem(items: Map<String, ShoppingItem>, key: String): Map<String, ShoppingItem> = items - key
 
     fun clearChecked(items: Map<String, ShoppingItem>): Map<String, ShoppingItem> = items.filterValues { !it.checked }
 }
