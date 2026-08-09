@@ -58,6 +58,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -439,6 +440,21 @@ private fun RecipeCard(
             ) {
                 Text(if (rating == RecipeRating.LIKE) "👍" else "👎", fontSize = 16.sp)
             }
+        }
+        // FR-56: balloon feedback that fades in as the drag approaches the
+        // commit threshold, so the user sees what will happen before
+        // releasing -- alpha 0 at rest, 1 right at the threshold.
+        if (offsetX.value != 0f) {
+            val swipeProgress = (abs(offsetX.value) / swipeThresholdPx).coerceIn(0f, 1f)
+            Text(
+                text = if (offsetX.value > 0) "❤️ LUBIĘ" else "👎 NIE LUBIĘ",
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .alpha(swipeProgress),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (offsetX.value > 0) Color(0xFF43A047) else Color(0xFFE53935),
+            )
         }
     }
 
