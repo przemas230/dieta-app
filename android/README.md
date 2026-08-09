@@ -78,6 +78,16 @@ BOM) — to najbardziej prawdopodobne miejsce błędu, bo nie miałem jak tego
 sprawdzić. Android Studio zwykle podpowiada dokładnie, którą wersję podbić;
 daj mi znać, jaki błąd pokazuje, a poprawię.
 
+**Już naprawione:** "Incompatible JDK Version... The selected Kotlin version
+(2.0.21) does not support JDK versions newer than 25" — Twój Android Studio
+ma zainstalowany bardzo nowy JDK (25+), którego stara wersja Kotlina jeszcze
+nie obsługiwała. Podbiłem Kotlina do 2.1.20 (root `build.gradle.kts`) —
+zsynchronizuj projekt ponownie po `git pull`. Jeśli po tym Gradle zgłosi
+osobny błąd o WŁASNEJ (nie Kotlina) niezgodności z JDK — to zwykle prościej
+naprawić w Android Studio: **Settings → Build, Execution, Deployment → Build
+Tools → Gradle → Gradle JDK**, wybierz tam starszy wbudowany JDK (17 albo 21)
+zamiast podbijać samo Gradle.
+
 ## Testy automatyczne
 
 Moduł `logic/` to zwykły moduł Kotlin/JVM (bez Androida/AndroidX) trzymający
