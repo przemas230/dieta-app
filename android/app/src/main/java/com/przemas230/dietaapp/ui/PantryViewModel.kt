@@ -61,4 +61,9 @@ class PantryViewModel(application: Application) : AndroidViewModel(application) 
     fun changeCategory(name: String, category: PantryCategory) {
         update(PantryOperations.changeCategory(_items.value, name, category))
     }
+
+    /** FR-73: applies an incoming cloud snapshot wholesale (last-cloud-write-wins), replacing local state. */
+    fun replaceAll(items: Map<String, PantryItem>) {
+        update(items)
+    }
 }

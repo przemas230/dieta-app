@@ -88,6 +88,8 @@ import com.przemas230.dietaapp.logic.SnackNutritionDb
 import com.przemas230.dietaapp.logic.UiScale
 import com.przemas230.dietaapp.logic.WaterOperations
 import com.przemas230.dietaapp.logic.forCategory
+import com.przemas230.dietaapp.ui.AuthViewModel
+import com.przemas230.dietaapp.ui.CloudSyncCoordinator
 import com.przemas230.dietaapp.ui.EatenViewModel
 import com.przemas230.dietaapp.ui.PantryScreen
 import com.przemas230.dietaapp.ui.PantryViewModel
@@ -170,6 +172,10 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     val profileViewModel: ProfileViewModel = viewModel()
     val profile by profileViewModel.profile.collectAsState()
     val displayName by profileViewModel.displayName.collectAsState()
+    // FR-69/FR-73: shared so the header/Ustawienia (sign-in state) and
+    // CloudSyncCoordinator below (which only pushes/pulls once signed in)
+    // always agree on the same Firebase user.
+    val authViewModel: AuthViewModel = viewModel()
     // FR-15: shared here (not PantryScreen's default viewModel() param) so
     // marking a recipe "✅ Zrobione" on the Przepisy tab and viewing the
     // resulting stock change on the Spiżarnia tab see the same instance —
@@ -184,6 +190,17 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // FR-61: shared so a change on the Ustawienia screen is reflected
     // immediately by the swipe-drag card on the Przepisy tab.
     val swipeRatingStyleViewModel: SwipeRatingStyleViewModel = viewModel()
+    // FR-73: no UI of its own -- pushes/pulls the syncable subset of state
+    // above to/from Firestore while authViewModel reports a real (non-
+    // anonymous) signed-in user, no-ops otherwise.
+    CloudSyncCoordinator(
+        authViewModel = authViewModel,
+        profileViewModel = profileViewModel,
+        pantryViewModel = pantryViewModel,
+        themeViewModel = themeViewModel,
+        uiScaleViewModel = uiScaleViewModel,
+        swipeRatingStyleViewModel = swipeRatingStyleViewModel,
+    )
     // FR-70: shared at the Scaffold level (not per-screen) so the header
     // droplet strip below is the single source of truth, visible on every tab.
     val waterViewModel: WaterViewModel = viewModel()
@@ -369,6 +386,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     profileViewModel = profileViewModel,
+                    authViewModel = authViewModel,
                     uiScaleViewModel = uiScaleViewModel,
                     effectiveUiScale = effectiveScale,
                     swipeRatingStyleViewModel = swipeRatingStyleViewModel,

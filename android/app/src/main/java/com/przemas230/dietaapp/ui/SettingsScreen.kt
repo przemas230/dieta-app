@@ -41,6 +41,7 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -76,7 +77,7 @@ private enum class SettingsTab(val emoji: String, val label: String) {
 @Composable
 fun SettingsScreen(
     profileViewModel: ProfileViewModel = viewModel(),
-    firebaseTestViewModel: FirebaseTestViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel(),
     appUpdateViewModel: AppUpdateViewModel = viewModel(),
     uiScaleViewModel: UiScaleViewModel = viewModel(),
     swipeRatingStyleViewModel: SwipeRatingStyleViewModel = viewModel(),
@@ -129,7 +130,7 @@ fun SettingsScreen(
                             // the top of ProfileCard itself now, not a separate card
                             // above it (that was the pre-FR-71 layout).
                             ProfileCard(profileViewModel)
-                            FirebaseTestCard(firebaseTestViewModel)
+                            CloudAccountCard(authViewModel)
                         }
                         SettingsTab.WYGLAD -> {
                             ThemeCard(themeViewModel)
@@ -514,44 +515,89 @@ private fun ProfileCard(viewModel: ProfileViewModel) {
     }
 }
 
+/**
+ * FR-69 (e-mail/hasło) + FR-73: real, non-anonymous sign-in and the account
+ * status the rest of the app keys sync off of (CloudSyncCoordinator).
+ * Anonymous is always the fallback state (AuthViewModel re-signs-in
+ * anonymously right after signOut()), so this card only ever needs to
+ * offer "sign in/up" (Anonymous) or "sign out" (SignedIn) -- never a
+ * "log out completely" option, matching FR-69's "nigdy nie zostaje w
+ * stanie niezalogowany całkowicie".
+ */
 @Composable
-private fun FirebaseTestCard(viewModel: FirebaseTestViewModel) {
-    val state by viewModel.uiState.collectAsState()
+private fun CloudAccountCard(viewModel: AuthViewModel) {
+    val authState by viewModel.state.collectAsState()
+    val busy by viewModel.busy.collectAsState()
+    val error by viewModel.error.collectAsState()
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text("Test połączenia z Firebase", style = MaterialTheme.typography.titleMedium)
-            Text(
-                "Logowanie anonimowe + zapis i odczyt pola \"debugPing\" w " +
-                    "users/{uid} — ten sam projekt Firebase co wersja webowa " +
-                    "(dieta-app-323b4).",
-                style = MaterialTheme.typography.bodySmall,
-            )
-
-            Button(onClick = { viewModel.runTest() }, enabled = !state.isLoading) {
-                Text(if (state.isLoading) "Testowanie…" else "Testuj Firebase")
-            }
-
-            if (state.isLoading) {
-                CircularProgressIndicator()
-            }
-
-            state.uid?.let { uid ->
-                Text("UID: $uid", style = MaterialTheme.typography.bodySmall)
-            }
-            state.lastPingValue?.let { value ->
-                Text("Odczytana wartość debugPing: $value", style = MaterialTheme.typography.bodySmall)
-            }
-            state.error?.let { error ->
-                Text(
-                    "Błąd: $error",
+            Text("☁️ Konto w chmurze", style = MaterialTheme.typography.titleMedium)
+            when (val s = authState) {
+                is AuthState.Unavailable -> Text(
+                    "Chmura niedostępna: ${s.message}",
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Start,
                 )
+                is AuthState.Loading -> CircularProgressIndicator()
+                is AuthState.SignedIn -> {
+                    Text("Zalogowano jako: ${s.email ?: s.uid}", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "Profil, spiżarnia, motyw, skala interfejsu, styl oceniania i nazwa w aplikacji " +
+                            "synchronizują się automatycznie między urządzeniami zalogowanymi tym kontem.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    TextButton(onClick = { viewModel.signOut() }) { Text("🚪 Wyloguj się z tego urządzenia") }
+                }
+                is AuthState.Anonymous -> {
+                    Text(
+                        "Nie jesteś zalogowany — dane zostają wyłącznie na tym urządzeniu. Zaloguj się " +
+                            "albo załóż konto, żeby synchronizować je między urządzeniami.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("E-mail") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text("Hasło") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    val canSubmit = !busy && email.isNotBlank() && password.length >= 6
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { viewModel.signIn(email, password) },
+                            enabled = canSubmit,
+                            modifier = Modifier.weight(1f),
+                        ) { Text("Zaloguj się") }
+                        TextButton(
+                            onClick = { viewModel.signUp(email, password) },
+                            enabled = canSubmit,
+                            modifier = Modifier.weight(1f),
+                        ) { Text("Załóż konto") }
+                    }
+                    if (busy) CircularProgressIndicator()
+                    error?.let {
+                        Text(
+                            "Błąd: $it",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = TextAlign.Start,
+                        )
+                    }
+                }
             }
         }
     }
