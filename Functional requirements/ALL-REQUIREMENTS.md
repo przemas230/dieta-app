@@ -1842,6 +1842,9 @@ Ponieważ te pola (zwłaszcza lista zakupów i planer) mogą być edytowane niez
 - Dla pól typu „mapa" (lista zakupów, spiżarnia, planer, historia gotowania, ulubione, oceny, własne przepisy itd.) porównanie odbywa się PER POZYCJA: jeśli lokalnie dodano/zmieniono jedną pozycję, a w chmurze inną, obie zmiany zostają scalone bez utraty żadnej z nich.
 - Prawdziwa sprzeczność (dokładnie ta sama pozycja zmieniona różnie w obu miejscach) domyślnie rozstrzyga się na korzyść wersji z chmury, ale użytkownik widzi ją w okienku „🔄 Synchronizacja z chmury" z możliwością przywrócenia swojej wersji dla tej konkretnej pozycji.
 - Dla pól skalarnych (np. cały obiekt profilu, motyw) porównanie jest całościowe — sprzeczność zgłasza się tylko, gdy oba urządzenia rzeczywiście zmieniły dokładnie to samo pole na różne wartości.
+- Porównanie „czy coś się zmieniło" jest prawdziwie strukturalne (rekurencyjne, niezależne od kolejności kluczy w obiekcie) — NIE porównaniem tekstu `JSON.stringify()`. Prawdziwy Firestore (w odróżnieniu od uproszczonego zamiennika używanego w testach) nie gwarantuje zachowania kolejności kluczy przy odczycie dokumentu, więc porównanie tekstowe dawało fałszywe różnice dla niemal każdej pozycji mapy (np. całej spiżarni) nawet gdy nic naprawdę się nie zmieniło.
+- Okienko sprzeczności pokazuje też, z jakiego urządzenia pochodzi porównywana zmiana z chmury (krótka, autogenerowana etykieta typu „Windows • Chrome", zapisywana tylko lokalnie na danym urządzeniu, nigdy synchronizowana) — użytkownik wie nie tylko CO się zmieniło, ale i gdzie.
+- Zmiany w spiżarni mają w tym okienku własną, wyróżnioną sekcję („🏺 Zmiany w spiżarni — może trzeba dokupić") z konkretną deltą (np. „mleko: 1 l → 0 l (zużyto 1 l)"), nie tylko nową wartością — i okienko pojawia się dla takich zmian NAWET gdy nie ma prawdziwej sprzeczności (samo zamknięcie okienka przyciskiem „Gotowe" jest potwierdzeniem, że użytkownik widział zmianę i może dokupić brakujące produkty).
 
 **Wyjątek — pierwsza synchronizacja nowego urządzenia.** Jeśli urządzenie nigdy wcześniej nie synchronizowało się z danym kontem (`_lastSyncedSnapshot === null`, np. świeża instalacja albo pierwsze logowanie na już istniejące konto), nie ma żadnej wspólnej historii do porównania — w tym jednym przypadku dane z chmury po prostu ZASTĘPUJĄ dane lokalne w całości, bez okienka sprzeczności (bo nic tu naprawdę nie jest „sprzeczne", tylko urządzenie nie miało jeszcze żadnych danych tego konta).
 
@@ -1850,11 +1853,14 @@ Ponieważ te pola (zwłaszcza lista zakupów i planer) mogą być edytowane niez
 - Zmiana DOKŁADNIE tej samej pozycji na obu urządzeniach inaczej (np. różne ilości tego samego produktu) pokazuje okienko sprzeczności z opisem: nazwa pola, wersja z chmury, wersja lokalna, przycisk „Przywróć moją wersję".
 - Przywrócenie lokalnej wersji dla jednej pozycji w okienku sprzeczności nie cofa scalenia pozostałych, niesprzecznych zmian.
 - Pierwsze zalogowanie na nowym urządzeniu na już istniejące konto pobiera dane z konta bez pokazywania okienka sprzeczności.
-- Dane, których dane urządzenie nigdy nie miało zmienionych (identyczne z ostatnim znanym stanem), nigdy nie generują fałszywej sprzeczności — sprzeczność zgłasza się WYŁĄCZNIE, gdy obie strony faktycznie zmieniły tę samą rzecz inaczej.
+- Dane, których dane urządzenie nigdy nie miało zmienionych (identyczne z ostatnim znanym stanem), nigdy nie generują fałszywej sprzeczności — sprzeczność zgłasza się WYŁĄCZNIE, gdy obie strony faktycznie zmieniły tę samą rzecz inaczej. W szczególności: pozycja o identycznej zawartości, ale odczytana z Firestore z innym wewnętrznym uporządkowaniem pól, NIE jest traktowana jako zmieniona.
+- Zmiana ilości/poziomu jednej pozycji spiżarni na innym urządzeniu (bez sprzeczności z lokalną wersją) pokazuje okienko synchronizacji z sekcją „🏺 Zmiany w spiżarni" opisującą deltę (ubyło/przybyło ile), a nie tylko nową wartość — i wskazuje, z jakiego urządzenia pochodzi zmiana.
 - Po zastosowaniu scalenia (z ewentualnymi ręcznymi poprawkami z okienka sprzeczności) urządzenie odsyła scalony wynik do chmury, żeby oba urządzenia zgadzały się co do finalnego stanu.
 
 ## Uwagi
 Świadomie POZA zakresem: prawdziwie jednoczesna edycja (dwa urządzenia online w tej samej chwili, edytujące dokładnie to samo pole) może w rzadkich przypadkach nadal wygenerować krótkotrwałą niespójność, zanim obie strony się zsynchronizują — to nie jest pełnoprawna baza danych z transakcjami, tylko scalanie oparte na porównaniu trzech snapshotów przy każdej zmianie dokumentu. Dla użytku 1-2 osobowego gospodarstwa domowego to wystarczające; prawdziwie współbieżna edycja wielu osób tej samej wspólnej listy to docelowo zadanie dla modelu `households/*` (patrz `docs/FIREBASE_MIGRATION_PLAN.md`, wciąż niezaimplementowany).
+
+„Kto" zmienił dane to na razie etykieta URZĄDZENIA (przeglądarka + system operacyjny wykryte z User-Agent), nie tożsamość OSOBY — to jedno konto Firebase może być używane z kilku przeglądarek/urządzeń przez tę samą osobę, więc etykieta mówi „które urządzenie", nie „kto z rodziny". Prawdziwe rozróżnianie wielu OSÓB na wspólnym koncie to ten sam, wciąż niezaimplementowany model `households/*` co wyżej.
 
 Rzeczywiste działanie między dwoma prawdziwymi urządzeniami wymaga weryfikacji na urządzeniach z dostępem do internetu — środowisko deweloperskie nie ma dostępu do serwerów Firebase. Logika scalania (dodawanie/usuwanie/zmiana pozycji, wykrywanie sprzeczności, zachowanie przy pierwszej synchronizacji, przywracanie lokalnej wersji) została w pełni zweryfikowana automatycznie z podstawionym Firestore.
 
@@ -1866,6 +1872,16 @@ Rzeczywiste działanie między dwoma prawdziwymi urządzeniami wymaga weryfikacj
   skąd zmergować zmiany... stworzy listę co doda a co usunie i co zmieni
   się po synchro, wtedy użytkownik sam może zdecydować czy to prawda czy
   nie").
+- **v2** (2026-08-10): Naprawiono błąd zgłoszony przez użytkownika
+  ("teraz pokazuje całą długą listę wszystkich produktów w których stan
+  obecny i stan z chmury są takie same") — porównanie `deepEqualJson`
+  oparte o `JSON.stringify()` było wrażliwe na kolejność kluczy, a
+  prawdziwy Firestore tej kolejności nie gwarantuje, więc niemal każda
+  pozycja rejestrowała się jako "zmieniona" nawet gdy była identyczna.
+  Zamieniono na prawdziwe porównanie strukturalne. Przy okazji dodano
+  etykietę urządzenia źródła zmiany oraz wyróżnioną sekcję zmian w
+  spiżarni z konkretną deltą (ubyło/przybyło), pokazywaną też bez
+  prawdziwej sprzeczności — patrz Opis i Kryteria akceptacji.
 
 ---
 

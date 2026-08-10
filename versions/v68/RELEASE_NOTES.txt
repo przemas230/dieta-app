@@ -1,0 +1,33 @@
+Wersja v68 — poprawka synchronizacji z chmurą (FR-78)
+
+Co się zmieniło:
+
+1. Naprawiono błąd, przez który okienko "🔄 Synchronizacja z chmury" pokazywało
+   PRAWIE WSZYSTKIE pozycje (np. całą spiżarnię) jako "zmienione", nawet gdy
+   stan lokalny i stan w chmurze były identyczne. Przyczyna: porównanie
+   deepEqualJson() używało JSON.stringify(a)===JSON.stringify(b), a to jest
+   wrażliwe na kolejność kluczy w obiekcie — a prawdziwy Firestore (w
+   odróżnieniu od podstawianego Firestore używanego w testach) nie gwarantuje
+   zachowania kolejności kluczy przy odczycie dokumentu. Zamiana na prawdziwe,
+   rekurencyjne porównanie strukturalne (niezależne od kolejności kluczy)
+   naprawia to u źródła.
+
+2. Okienko synchronizacji pokazuje teraz, z jakiego urządzenia pochodzi
+   zmiana ("Zmiany zsynchronizowane z urządzenia: Windows • Chrome" itp.) —
+   etykieta generowana automatycznie z danych przeglądarki, zapisywana
+   TYLKO lokalnie (nie synchronizowana), żeby zawsze wskazywała faktyczne
+   urządzenie, a nie ostatnie zsynchronizowane konto.
+
+3. Zmiany w spiżarni dostały własną, wyróżnioną sekcję w okienku
+   ("🏺 Zmiany w spiżarni — może trzeba dokupić") z konkretną deltą, np.
+   "mleko: 1 l → 0 l (zużyto 1 l)" zamiast samej nowej wartości — łatwiej
+   od razu zobaczyć co ubyło i ewentualnie dokupić.
+
+4. Okienko synchronizacji pojawia się teraz też wtedy, gdy zmieniła się
+   spiżarnia na innym urządzeniu BEZ prawdziwej sprzeczności (wcześniej
+   pokazywało się tylko przy sprzecznościach) — to jest właśnie mechanizm
+   powiadomienia i "zaakceptowania" zmiany: przycisk "Gotowe" zamykający
+   okienko pełni rolę potwierdzenia, że użytkownik widział zmianę stanu
+   spiżarni.
+
+Backup w tym folderze to stan index.html SPRZED tych zmian.
