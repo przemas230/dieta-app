@@ -130,6 +130,22 @@ class ShoppingOperationsTest {
     }
 
     @Test
+    fun `addDayPlanWithSummary reports added and already counts alongside the mutated items`() {
+        var items = ShoppingOperations.addRecipe(emptyMap(), recipe("r1", "2 jajka"))
+        val dayMeals = mapOf(
+            "sniadania" to PlannedMeal("r1", scale = 1.0),
+            "obiady" to PlannedMeal("r2", scale = 1.0),
+        )
+        val recipesById = mapOf("r1" to recipe("r1", "2 jajka"), "r2" to recipe("r2", "500 g mąki"))
+
+        val result = ShoppingOperations.addDayPlanWithSummary(items, dayMeals, recipesById)
+
+        assertEquals(1, result.added)
+        assertEquals(1, result.already)
+        assertEquals(500.0, result.items["mąka|weight"]?.quantity)
+    }
+
+    @Test
     fun `addWeekPlan adds across every day and still dedups a repeated recipe id`() {
         val recipesById = mapOf("r1" to recipe("r1", "2 jajka"), "r2" to recipe("r2", "500 g mąki"))
         val plan = mapOf(

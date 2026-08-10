@@ -76,27 +76,45 @@ object ShoppingOperations {
     fun isRecipeAdded(items: Map<String, ShoppingItem>, recipeId: String): Boolean =
         items.values.any { it.contributions.containsKey(recipeId) }
 
+    /** Result of [addDayPlanWithSummary] -- counts drive the FR-58 day-strip's toast message. */
+    data class DayPlanAddResult(val items: Map<String, ShoppingItem>, val added: Int, val already: Int)
+
     /**
-     * FR-27 / the Planer's own per-day add button: adds every planned meal's
-     * (scaled, FR-20) ingredients, skipping any recipe id already on the
-     * list -- same "if(state.recipeAdded[r.id]) return" dedup index.html's
-     * day/week-add loops use, so a dish planned twice in the same day/week
-     * is still only ever added once.
+     * FR-27 / the Planer's own per-day add button / FR-58's shopping-day-strip
+     * card: adds every planned meal's (scaled, FR-20) ingredients, skipping
+     * any recipe id already on the list -- same "if(state.recipeAdded[r.id])
+     * return" dedup index.html's day/week-add loops use, so a dish planned
+     * twice in the same day/week is still only ever added once. Also reports
+     * how many recipes were newly added vs. already present, for callers that
+     * need to tell the user what happened (index.html's addDayToShoppingList
+     * toast).
      */
+    fun addDayPlanWithSummary(
+        items: Map<String, ShoppingItem>,
+        dayMeals: Map<String, PlannedMeal>,
+        recipesById: Map<String, Recipe>,
+    ): DayPlanAddResult {
+        var result = items
+        var added = 0
+        var already = 0
+        dayMeals.values.forEach { meal ->
+            val recipe = recipesById[meal.recipeId] ?: return@forEach
+            if (isRecipeAdded(result, recipe.id)) {
+                already++
+                return@forEach
+            }
+            val scaled = recipe.copy(ingredients = PlannerOperations.scaleIngredients(recipe.ingredients, meal.scale))
+            result = addRecipe(result, scaled)
+            added++
+        }
+        return DayPlanAddResult(result, added, already)
+    }
+
     fun addDayPlan(
         items: Map<String, ShoppingItem>,
         dayMeals: Map<String, PlannedMeal>,
         recipesById: Map<String, Recipe>,
-    ): Map<String, ShoppingItem> {
-        var result = items
-        dayMeals.values.forEach { meal ->
-            val recipe = recipesById[meal.recipeId] ?: return@forEach
-            if (isRecipeAdded(result, recipe.id)) return@forEach
-            val scaled = recipe.copy(ingredients = PlannerOperations.scaleIngredients(recipe.ingredients, meal.scale))
-            result = addRecipe(result, scaled)
-        }
-        return result
-    }
+    ): Map<String, ShoppingItem> = addDayPlanWithSummary(items, dayMeals, recipesById).items
 
     /** FR-27: "add the whole week's ingredients" button on the Zakupy tab. */
     fun addWeekPlan(

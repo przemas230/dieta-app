@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import com.przemas230.dietaapp.data.PlannedMeal
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.data.ShoppingItem
+import com.przemas230.dietaapp.logic.ShoppingDayStrip
 import com.przemas230.dietaapp.logic.ShoppingOperations
 import com.przemas230.dietaapp.logic.WeekPlan
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +35,13 @@ class ShoppingViewModel : ViewModel() {
     /** The Planer's own per-day "🛒 Dodaj składniki z tego dnia" button. */
     fun addDayPlan(dayMeals: Map<String, PlannedMeal>, recipesById: Map<String, Recipe>) {
         _items.value = ShoppingOperations.addDayPlan(_items.value, dayMeals, recipesById)
+    }
+
+    /** FR-58: a shopping-day-strip card tap -- same mutation as [addDayPlan], plus the index.html-style toast text for the result. */
+    fun addDayPlanWithMessage(dayMeals: Map<String, PlannedMeal>, recipesById: Map<String, Recipe>, dayLabel: String): String {
+        val result = ShoppingOperations.addDayPlanWithSummary(_items.value, dayMeals, recipesById)
+        _items.value = result.items
+        return ShoppingDayStrip.addResultMessage(dayLabel, result.added, result.already)
     }
 
     /** FR-27: "add the whole week's ingredients" button on the Zakupy tab. */
