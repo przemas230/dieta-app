@@ -507,6 +507,8 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     themeViewModel = themeViewModel,
                     waterNotificationViewModel = waterNotificationViewModel,
                     currentWaterCount = waterViewModel.count.collectAsState().value,
+                    favoriteIngredientsViewModel = favoriteIngredientsViewModel,
+                    allRecipes = allRecipes,
                     onClearLocalData = {
                         // FR-79: "wyczyść dane lokalne" -- resets every local
                         // ViewModel to fresh-install defaults. LocalPersistenceCoordinator

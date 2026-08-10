@@ -63,6 +63,7 @@ import com.przemas230.dietaapp.data.Goal
 import com.przemas230.dietaapp.data.Profile
 import com.przemas230.dietaapp.data.Sex
 import com.przemas230.dietaapp.logic.AppThemes
+import com.przemas230.dietaapp.logic.PantryTiles
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.UiScale
 import kotlin.math.roundToInt
@@ -96,6 +97,11 @@ fun SettingsScreen(
     // -- needed so "Włącz powiadomienie" can seed the notification with
     // today's actual count instead of always starting it at 0.
     currentWaterCount: Int = 0,
+    favoriteIngredientsViewModel: FavoriteIngredientsViewModel = viewModel(),
+    // Same reason as currentWaterCount above: PantryTiles.buildTileNames
+    // needs the full recipe list, which only MainActivity's PlannerViewModel
+    // already has loaded, not something SettingsScreen fetches itself.
+    allRecipes: List<com.przemas230.dietaapp.data.Recipe> = emptyList(),
     effectiveUiScale: Double = 1.0,
     // FR-79: resets every local ViewModel to fresh-install defaults --
     // needs to reach ALL of them, not just what this screen otherwise
@@ -162,10 +168,7 @@ fun SettingsScreen(
                             WaterNotificationLogCard(waterNotificationViewModel)
                         }
                         SettingsTab.ULUBIONE -> {
-                            Text(
-                                "Ulubione składniki jeszcze nie działają w aplikacji na Androida (FR-32).",
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
+                            FavoriteIngredientsCard(favoriteIngredientsViewModel, allRecipes)
                         }
                     }
                 }
@@ -895,6 +898,68 @@ private fun WaterNotificationLogCard(viewModel: WaterNotificationViewModel) {
                         "$time  action=${entry.action}  ${entry.countBefore} → ${entry.countAfter}"
                     }
                     Text(line, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * FR-32 (Ulubione settings tab): a searchable, alphabetized grid of every
+ * ingredient name that appears in any recipe (`PantryTiles.buildTileNames`,
+ * the same source as the Spiżarnia tile grid), each toggleable ☆/★ -- port
+ * of index.html's `renderFavIngChips`/`favIngSearch`. Deliberately a
+ * different surface from the inline ☆ on a recipe card's ingredient list
+ * (RecipeListScreen.kt) -- same underlying FavoriteIngredientsViewModel, but
+ * this one lets you manage favorites for ingredients you haven't opened a
+ * recipe card for yet, matching the web version's own separate tab.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FavoriteIngredientsCard(
+    viewModel: FavoriteIngredientsViewModel,
+    allRecipes: List<com.przemas230.dietaapp.data.Recipe>,
+) {
+    val favorites by viewModel.favorites.collectAsState()
+    var query by rememberSaveable { mutableStateOf("") }
+    val collator = remember { java.text.Collator.getInstance(java.util.Locale("pl", "PL")) }
+    val allNames = remember(allRecipes) {
+        PantryTiles.buildTileNames(allRecipes).sortedWith(collator)
+    }
+    val visibleNames = remember(allNames, query) {
+        val q = query.trim().lowercase(java.util.Locale("pl", "PL"))
+        if (q.isEmpty()) allNames else allNames.filter { it.lowercase(java.util.Locale("pl", "PL")).contains(q) }
+    }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("⭐ Ulubione składniki", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Wybrane tutaj składniki będą pogrubione na liście przepisów (tak samo jak gwiazdka przy " +
+                    "składniku w przepisie — to ten sam wybór).",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                label = { Text("Szukaj składnika…") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                visibleNames.forEach { name ->
+                    val active = name in favorites
+                    FilterChip(
+                        selected = active,
+                        onClick = { viewModel.toggle(name) },
+                        label = { Text((if (active) "★ " else "☆ ") + name) },
+                    )
                 }
             }
         }
