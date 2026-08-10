@@ -7,10 +7,13 @@ import com.przemas230.dietaapp.data.PantryCategory
 import com.przemas230.dietaapp.data.PantryItem
 import com.przemas230.dietaapp.data.PlannedMeal
 import com.przemas230.dietaapp.data.Profile
+import com.przemas230.dietaapp.data.Recipe
+import com.przemas230.dietaapp.data.RecipeReview
 import com.przemas230.dietaapp.data.Sex
 import com.przemas230.dietaapp.data.ShoppingItem
 import com.przemas230.dietaapp.data.Snack
 import com.przemas230.dietaapp.data.SpiceLevel
+import com.przemas230.dietaapp.data.WeightEntry
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -313,6 +316,95 @@ object CloudSyncCodec {
         if (map == null) return null
         if (map["date"] as? String != todayUtcDateString()) return null
         return numberFrom(map["count"])?.toInt()
+    }
+
+    /**
+     * FR-66: index.html's state.myRecipes entries (`{id, cat, name, time,
+     * kcal, ingredients, method, source, protein?, carbs?, fat?, fiber?,
+     * gi?, gl?}`) -- not currently pushed to Firestore (see class doc), but
+     * used for LOCAL persistence (LocalStateStore) so custom recipes survive
+     * an app restart. Only ever encodes recipes with source=="custom" --
+     * the 229 built-in ones are loaded from recipes.json every launch, never
+     * round-tripped through this store.
+     */
+    fun encodeMyRecipes(recipes: List<Recipe>): List<Map<String, Any?>> =
+        recipes.filter { it.source == "custom" }.map { r ->
+            mapOf(
+                "id" to r.id,
+                "cat" to r.cat,
+                "name" to r.name,
+                "time" to r.time,
+                "kcal" to r.kcal,
+                "ingredients" to r.ingredients,
+                "method" to r.method,
+                "source" to "custom",
+                "protein" to r.protein,
+                "carbs" to r.carbs,
+                "fat" to r.fat,
+                "fiber" to r.fiber,
+                "gi" to r.gi,
+                "gl" to r.gl,
+            )
+        }
+
+    fun decodeMyRecipes(list: List<*>?): List<Recipe>? {
+        if (list == null) return null
+        return list.mapNotNull { raw ->
+            val m = raw as? Map<*, *> ?: return@mapNotNull null
+            val id = m["id"] as? String ?: return@mapNotNull null
+            val name = m["name"] as? String ?: return@mapNotNull null
+            val ingredients = (m["ingredients"] as? List<*>)?.mapNotNull { it as? String } ?: return@mapNotNull null
+            Recipe(
+                id = id,
+                cat = m["cat"] as? String ?: "obiady",
+                name = name,
+                time = m["time"] as? String ?: "15 min",
+                kcal = numberFrom(m["kcal"])?.toInt() ?: return@mapNotNull null,
+                ingredients = ingredients,
+                method = m["method"] as? String ?: "",
+                protein = numberFrom(m["protein"]),
+                carbs = numberFrom(m["carbs"]),
+                fat = numberFrom(m["fat"]),
+                fiber = numberFrom(m["fiber"]),
+                gi = numberFrom(m["gi"]),
+                gl = numberFrom(m["gl"]),
+                source = "custom",
+            )
+        }
+    }
+
+    /** FR-67: index.html's state.recipeReviews[id] = {stars, comment, at}. Not currently pushed to Firestore (see class doc) -- used for LOCAL persistence only. */
+    fun encodeReviews(reviews: Map<String, RecipeReview>): Map<String, Any?> =
+        reviews.mapValues { (_, r) ->
+            mapOf("stars" to r.stars, "comment" to r.comment, "at" to Instant.ofEpochMilli(r.atEpochMillis).toString())
+        }
+
+    fun decodeReviews(map: Map<*, *>?): Map<String, RecipeReview>? {
+        if (map == null) return null
+        val result = LinkedHashMap<String, RecipeReview>()
+        map.forEach { (k, v) ->
+            val id = k as? String ?: return@forEach
+            val entry = v as? Map<*, *> ?: return@forEach
+            val stars = numberFrom(entry["stars"])?.toInt() ?: return@forEach
+            val atStr = entry["at"] as? String
+            val at = atStr?.let { try { Instant.parse(it).toEpochMilli() } catch (e: Exception) { null } } ?: 0L
+            result[id] = RecipeReview(stars, entry["comment"] as? String, at)
+        }
+        return result
+    }
+
+    /** FR-40: index.html's state.weights entries (`{date, kg}`). Not currently pushed to Firestore (see class doc) -- used for LOCAL persistence only. */
+    fun encodeWeights(entries: List<WeightEntry>): List<Map<String, Any?>> =
+        entries.map { mapOf("date" to it.dateStr, "kg" to it.kg) }
+
+    fun decodeWeights(list: List<*>?): List<WeightEntry>? {
+        if (list == null) return null
+        return list.mapNotNull { raw ->
+            val m = raw as? Map<*, *> ?: return@mapNotNull null
+            val date = m["date"] as? String ?: return@mapNotNull null
+            val kg = numberFrom(m["kg"]) ?: return@mapNotNull null
+            WeightEntry(date, kg)
+        }
     }
 
     private fun todayUtcDateString(): String = LocalDate.now(ZoneOffset.UTC).toString()

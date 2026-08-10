@@ -5,8 +5,11 @@ import com.przemas230.dietaapp.data.Goal
 import com.przemas230.dietaapp.data.PantryCategory
 import com.przemas230.dietaapp.data.PantryItem
 import com.przemas230.dietaapp.data.Profile
+import com.przemas230.dietaapp.data.Recipe
+import com.przemas230.dietaapp.data.RecipeReview
 import com.przemas230.dietaapp.data.Sex
 import com.przemas230.dietaapp.data.SpiceLevel
+import com.przemas230.dietaapp.data.WeightEntry
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
@@ -155,6 +158,30 @@ class CloudSyncCodecTest {
         val encoded = CloudSyncCodec.encodeWater(5)
         assertEquals(5, CloudSyncCodec.decodeWater(encoded))
         assertNull(CloudSyncCodec.decodeWater(mapOf("date" to "2000-01-01", "count" to 3)))
+    }
+
+    @Test
+    fun `myRecipes round-trips a custom recipe and skips built-in ones`() {
+        val custom = Recipe("custom-1", "obiady", "Test", "10 min", 300, listOf("a", "b"), "Zrób.", 20.0, 30.0, 10.0, null, null, null, source = "custom")
+        val builtin = Recipe("r1", "obiady", "Wbudowany", "10 min", 300, listOf("a"), "Zrób.", null, null, null, null, null, null)
+        val encoded = CloudSyncCodec.encodeMyRecipes(listOf(custom, builtin))
+        assertEquals(1, encoded.size)
+        assertEquals(listOf(custom), CloudSyncCodec.decodeMyRecipes(encoded))
+    }
+
+    @Test
+    fun `reviews round-trips through encode-decode with an ISO date`() {
+        val reviews = mapOf("r1" to RecipeReview(4, "Pyszne", 1_700_000_000_000L))
+        val encoded = CloudSyncCodec.encodeReviews(reviews)
+        val entry = encoded["r1"] as Map<*, *>
+        assertEquals(true, (entry["at"] as String).startsWith("20"))
+        assertEquals(reviews, CloudSyncCodec.decodeReviews(encoded))
+    }
+
+    @Test
+    fun `weights round-trips through encode-decode`() {
+        val entries = listOf(WeightEntry("2026-08-10", 68.5))
+        assertEquals(entries, CloudSyncCodec.decodeWeights(CloudSyncCodec.encodeWeights(entries)))
     }
 
     @Test

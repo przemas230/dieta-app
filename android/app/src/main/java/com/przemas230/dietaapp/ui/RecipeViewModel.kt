@@ -148,6 +148,16 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         _ratings.value = ratings
     }
 
+    fun replaceReviews(reviews: Map<String, RecipeReview>) {
+        _reviews.value = reviews
+    }
+
+    /** Used by LocalStateStore on app startup to restore custom recipes saved on a previous run. */
+    fun replaceMyRecipes(recipes: List<Recipe>) {
+        _myRecipes.value = recipes
+        recompute()
+    }
+
     private fun recompute() {
         _visibleRecipes.value = RecipeBrowsing.visibleRecipes(
             builtInRecipes + _myRecipes.value,

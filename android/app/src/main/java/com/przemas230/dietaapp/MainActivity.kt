@@ -95,6 +95,7 @@ import com.przemas230.dietaapp.ui.FavoriteIngredientsViewModel
 import com.przemas230.dietaapp.ui.PantryScreen
 import com.przemas230.dietaapp.ui.PantryViewModel
 import com.przemas230.dietaapp.ui.PlannerScreen
+import com.przemas230.dietaapp.ui.LocalPersistenceCoordinator
 import com.przemas230.dietaapp.ui.PlannerViewModel
 import com.przemas230.dietaapp.ui.PostepScreen
 import com.przemas230.dietaapp.ui.ProfileViewModel
@@ -206,6 +207,27 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     val waterViewModel: WaterViewModel = viewModel()
     // FR-36: shared for the same reason as waterViewModel above.
     val eatenViewModel: EatenViewModel = viewModel()
+    // FR-40: hoisted here (not PostepScreen's default viewModel() param) so
+    // LocalPersistenceCoordinator below can read/restore it.
+    val weightViewModel: WeightViewModel = viewModel()
+    // No UI of its own -- restores every local ViewModel's state on launch
+    // and debounce-saves it to a local file on every change, regardless of
+    // sign-in state (unlike CloudSyncCoordinator below, this always runs --
+    // before this, ALL local state was lost on every app restart).
+    LocalPersistenceCoordinator(
+        profileViewModel = profileViewModel,
+        pantryViewModel = pantryViewModel,
+        themeViewModel = themeViewModel,
+        uiScaleViewModel = uiScaleViewModel,
+        swipeRatingStyleViewModel = swipeRatingStyleViewModel,
+        favoriteIngredientsViewModel = favoriteIngredientsViewModel,
+        recipeViewModel = recipeViewModel,
+        shoppingViewModel = shoppingViewModel,
+        plannerViewModel = plannerViewModel,
+        eatenViewModel = eatenViewModel,
+        waterViewModel = waterViewModel,
+        weightViewModel = weightViewModel,
+    )
     // FR-73: no UI of its own -- pushes/pulls the syncable subset of state
     // above to/from Firestore while authViewModel reports a real (non-
     // anonymous) signed-in user, no-ops otherwise. Declared after every
@@ -405,7 +427,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                 PostepScreen(
                     profileViewModel = profileViewModel,
                     waterViewModel = waterViewModel,
-                    weightViewModel = viewModel(),
+                    weightViewModel = weightViewModel,
                 )
             }
             composable(Screen.Pantry.route) { PantryScreen(viewModel = pantryViewModel, allRecipes = allRecipes) }

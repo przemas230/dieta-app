@@ -21,4 +21,9 @@ class WeightViewModel : ViewModel() {
         _entries.value = result
         return true
     }
+
+    /** Used by LocalStateStore on app startup to restore the weight log saved on a previous run. */
+    fun replaceAll(entries: List<WeightEntry>) {
+        _entries.value = entries
+    }
 }
