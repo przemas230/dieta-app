@@ -1523,7 +1523,7 @@
       <h3>🔄 Synchronizacja z chmury</h3>
       <button id="syncConflictClose">✕</button>
     </div>
-    <div class="hint-text" style="margin:0 0 10px;">Coś zmieniło się od ostatniej synchronizacji tego urządzenia. Prawdziwe sprzeczności (dokładnie ta sama pozycja zmieniona inaczej w obu miejscach) domyślnie rozstrzygnięto na korzyść chmury — możesz przywrócić swoją wersję dla każdej z osobna.</div>
+    <div class="hint-text" style="margin:0 0 10px;">To urządzenie i inne urządzenie zmieniły te same rzeczy inaczej (np. jedno było offline). Zastosowano domyślnie wersję z chmury — możesz przywrócić swoją wersję dla każdej pozycji osobno.</div>
     <div id="syncConflictBody"></div>
     <div class="shop-actions">
       <button class="btn primary" id="syncConflictDoneBtn">Gotowe</button>
@@ -2595,36 +2595,7 @@ function pickSyncedKeys(obj){
   SYNCED_STATE_KEYS.forEach(k=>{ if(obj && obj[k]!==undefined) out[k] = obj[k]; });
   return out;
 }
-// Real recursive, key-order-independent structural equality -- NOT
-// JSON.stringify(a)===JSON.stringify(b). That naive version broke on real
-// Firestore round-trips: Firestore does not guarantee preserving JS object
-// key insertion order when a doc comes back from snap.data(), so the same
-// pantry entry written and re-read could serialize to a different string
-// purely from key reordering, registering as "changed" even though every
-// field was identical. That's what made the sync review modal list nearly
-// every item as a remote change even when nothing had actually changed.
-function deepEqualJson(a,b){
-  if(a===undefined) a = null;
-  if(b===undefined) b = null;
-  if(a===b) return true;
-  if(a===null || b===null) return false;
-  if(typeof a!=="object" || typeof b!=="object") return false;
-  const aIsArray = Array.isArray(a), bIsArray = Array.isArray(b);
-  if(aIsArray!==bIsArray) return false;
-  if(aIsArray){
-    if(a.length!==b.length) return false;
-    for(let i=0;i<a.length;i++) if(!deepEqualJson(a[i], b[i])) return false;
-    return true;
-  }
-  const aKeys = Object.keys(a).filter(k=> a[k]!==undefined);
-  const bKeys = Object.keys(b).filter(k=> b[k]!==undefined);
-  if(aKeys.length!==bKeys.length) return false;
-  for(const k of aKeys){
-    if(!Object.prototype.hasOwnProperty.call(b,k)) return false;
-    if(!deepEqualJson(a[k], b[k])) return false;
-  }
-  return true;
-}
+function deepEqualJson(a,b){ return JSON.stringify(a===undefined?null:a) === JSON.stringify(b===undefined?null:b); }
 // Per-entry 3-way diff for one map-shaped key. base = last state we know
 // both sides agreed on; local/remote = current values on each side.
 // Returns the merged map plus any genuine conflicts (same entry changed
@@ -2644,7 +2615,7 @@ function diffMergeMapKey(key, base, local, remote){
     if(localChanged && !remoteChanged){ if(l!==undefined) merged[id] = l; return; }
     if(!localChanged && remoteChanged){
       if(r!==undefined) merged[id] = r;
-      remoteChanges.push({key, id, kind: r===undefined ? "removed" : (b===undefined ? "added" : "changed"), value:r, previous:b});
+      remoteChanges.push({key, id, kind: r===undefined ? "removed" : (b===undefined ? "added" : "changed"), value:r});
       return;
     }
     if(deepEqualJson(l,r)){ if(l!==undefined) merged[id] = l; return; }
@@ -2676,42 +2647,13 @@ function computeMergedSyncState(remoteData){
       const localChanged = !deepEqualJson(l,b);
       const remoteChanged = !deepEqualJson(r,b);
       if(!remoteChanged){ merged[key] = l; return; }
-      if(!localChanged){ merged[key] = r; remoteChanges.push({key, id:null, kind:"changed", value:r, previous:b}); return; }
+      if(!localChanged){ merged[key] = r; remoteChanges.push({key, id:null, kind:"changed", value:r}); return; }
       if(deepEqualJson(l,r)){ merged[key] = l; return; }
       conflicts.push({key, id:null, localValue:l, remoteValue:r, baseValue:b});
       merged[key] = r;
     }
   });
   return {merged, conflicts, remoteChanges};
-}
-// A short, human-readable "which device did this" label -- local-only
-// (never in SYNCED_STATE_KEYS, so it stays per-device instead of being
-// overwritten by whichever device last synced), auto-generated once from
-// the UA string and cached. Lets the sync review modal say "zmiany
-// zsynchronizowane z: {device}" instead of just "z chmury" / "z innego
-// urządzenia", per the user's explicit ask to see who made a change.
-function getOrCreateDeviceLabel(){
-  try{
-    let label = localStorage.getItem("dietaAppDeviceLabelV1");
-    if(label) return label;
-    const ua = navigator.userAgent || "";
-    let platform = "Urządzenie";
-    if(/iPad/.test(ua)) platform = "iPad";
-    else if(/iPhone/.test(ua)) platform = "iPhone";
-    else if(/Android/.test(ua)) platform = "Android";
-    else if(/Windows/.test(ua)) platform = "Windows";
-    else if(/Macintosh/.test(ua)) platform = "Mac";
-    else if(/Linux/.test(ua)) platform = "Linux";
-    let browser = "przeglądarka";
-    if(/Edg\//.test(ua)) browser = "Edge";
-    else if(/OPR\//.test(ua)) browser = "Opera";
-    else if(/Chrome\//.test(ua)) browser = "Chrome";
-    else if(/Firefox\//.test(ua)) browser = "Firefox";
-    else if(/Safari\//.test(ua) && !/Chrome/.test(ua)) browser = "Safari";
-    label = `${platform} • ${browser}`;
-    try{ localStorage.setItem("dietaAppDeviceLabelV1", label); }catch(e){}
-    return label;
-  }catch(e){ return "Nieznane urządzenie"; }
 }
 let cloudPushTimer = null;
 function scheduleCloudPush(){
@@ -2723,10 +2665,7 @@ function pushStateToCloud(){
   if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous) return;
   const subset = syncableStateSubset();
   fbDb.collection("users").doc(currentFbUser.uid).set(
-    Object.assign({}, subset, {
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      lastEditedByDevice: getOrCreateDeviceLabel(),
-    }),
+    Object.assign({}, subset, {updatedAt: firebase.firestore.FieldValue.serverTimestamp()}),
     {merge:true}
   ).then(()=>{
     // Only adopt this as the new merge baseline once the server actually
@@ -2771,15 +2710,7 @@ function applyRemoteSyncedState(data){
   // in the user's favor below) need to reach the cloud too, so both
   // sides converge instead of one silently reverting on the next sync.
   scheduleCloudPush();
-  // Show the review modal for genuine conflicts (as before), AND whenever
-  // the pantry changed remotely with no conflict -- e.g. someone on another
-  // device used up milk or eggs. That's not a "sprzeczność" (nothing to
-  // resolve, the merge already applied cleanly), but the user still wants
-  // to be told their stock changed so they know to restock, and the modal
-  // itself IS the "zaakceptuj" step -- dismissing it ("Gotowe") is the
-  // acknowledgement, no separate accept button needed.
-  const pantryRemoteChanges = remoteChanges.filter(c=> c.key==="pantry");
-  if(conflicts.length || pantryRemoteChanges.length) showSyncConflictModal(conflicts, remoteChanges, data.lastEditedByDevice);
+  if(conflicts.length) showSyncConflictModal(conflicts, remoteChanges);
 }
 function refreshUiAfterSync(silent){
   document.documentElement.setAttribute("data-theme", state.theme || "teal");
@@ -2835,43 +2766,14 @@ function describeMergeItemValue(key, id, value){
   }catch(e){}
   return typeof value==="object" ? JSON.stringify(value) : String(value);
 }
-// Pantry-specific phrasing: shows the before→after and, for products, the
-// actual delta ("zużyto"/"dodano" + amount) instead of just the new value
-// -- so "mleko: 1 l → 0 l (zużyto 1 l)" instead of a bare "mleko: 0 l" that
-// reads the same whether stock went up or down.
-function describePantryDelta(id, prevVal, newVal){
-  if(newVal===undefined) return `${id}: usunięto ze śledzenia (było ${describeMergeItemValue("pantry", id, prevVal)})`;
-  if(prevVal===undefined) return `${id}: zaczęto śledzić — ${describeMergeItemValue("pantry", id, newVal)}`;
-  if(newVal.type==="spice"){
-    if(prevVal.type==="spice" && prevVal.level!==newVal.level) return `${id}: ${prevVal.level} → ${newVal.level}`;
-    return describeMergeItemValue("pantry", id, newVal);
-  }
-  if(newVal.type==="product" && prevVal.type==="product" && prevVal.unitCat===newVal.unitCat && prevVal.qty!==newVal.qty){
-    const delta = newVal.qty - prevVal.qty;
-    const deltaTxt = delta<0 ? `zużyto ${formatQty(newVal.unitCat, Math.abs(delta))}` : `dodano ${formatQty(newVal.unitCat, delta)}`;
-    return `${id}: ${formatQty(prevVal.unitCat, prevVal.qty)} → ${formatQty(newVal.unitCat, newVal.qty)} (${deltaTxt})`;
-  }
-  return describeMergeItemValue("pantry", id, newVal);
-}
-function showSyncConflictModal(conflicts, remoteChanges, remoteDeviceLabel){
+function showSyncConflictModal(conflicts, remoteChanges){
   const body = document.getElementById("syncConflictBody");
-  // Pantry changes get their own, more prominent block (with actual
-  // deltas) instead of being buried alphabetically among shopping-list/
-  // planner/etc. changes -- that's the whole point: the user asked to be
-  // able to tell at a glance "co się zmieniło w spiżarni, mogę dokupić".
-  const pantryChanges = remoteChanges.filter(c=> c.key==="pantry");
-  const otherChanges = remoteChanges.filter(c=> c.key!=="pantry");
   const byKind = {added:[], removed:[], changed:[]};
-  otherChanges.forEach(c=> (byKind[c.kind]||byKind.changed).push(c));
+  remoteChanges.forEach(c=> (byKind[c.kind]||byKind.changed).push(c));
   const summaryBlock = (title, list) => list.length ? `
     <h4 style="margin:10px 0 4px; font-size:13px;">${title}</h4>
     <ul class="user-profile-list">${list.map(c=>`<li>${describeMergeKeyLabel(c.key)}: ${escapeHtml(describeMergeItemValue(c.key, c.id, c.value))}</li>`).join("")}</ul>
   ` : "";
-  const pantryBlock = pantryChanges.length ? `
-    <h4 style="margin:10px 0 4px; font-size:13px;">🏺 Zmiany w spiżarni — może trzeba dokupić</h4>
-    <ul class="user-profile-list">${pantryChanges.map(c=>`<li>${escapeHtml(describePantryDelta(c.id, c.previous, c.value))}</li>`).join("")}</ul>
-  ` : "";
-  const deviceLine = remoteDeviceLabel ? `<div class="hint-text" style="margin:0 0 10px;">Zmiany zsynchronizowane z urządzenia: <strong>${escapeHtml(remoteDeviceLabel)}</strong></div>` : "";
   const conflictsHtml = conflicts.map((c,i)=>`
     <div class="comment-item" data-conflict-row="${i}">
       <div class="comment-head"><strong>${describeMergeKeyLabel(c.key)}</strong></div>
@@ -2881,10 +2783,8 @@ function showSyncConflictModal(conflicts, remoteChanges, remoteDeviceLabel){
     </div>
   `).join("");
   body.innerHTML = `
-    ${deviceLine}
     ${conflicts.length ? `<h4 style="margin:0 0 4px; font-size:13px;">⚠️ Sprzeczne zmiany — wybierz, co zostawić</h4>` : ""}
     ${conflictsHtml}
-    ${pantryBlock}
     ${summaryBlock("➕ Dodane z innego urządzenia", byKind.added)}
     ${summaryBlock("➖ Usunięte na innym urządzeniu", byKind.removed)}
     ${summaryBlock("✏️ Zmienione na innym urządzeniu", byKind.changed)}
