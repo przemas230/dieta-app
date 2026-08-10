@@ -63,6 +63,26 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     private val _reviews = MutableStateFlow<Map<String, RecipeReview>>(emptyMap())
     val reviews: StateFlow<Map<String, RecipeReview>> = _reviews.asStateFlow()
 
+    // FR-2: recipeId -> starred as a favorite RECIPE (index.html's
+    // state.favorites) -- a distinct concept from FavoriteIngredientsViewModel's
+    // favIngredients (favorite INGREDIENTS). Drives the ⭐ star button on each
+    // card's head and the "⭐ Ulubione" filter toggle.
+    private val _favoriteRecipes = MutableStateFlow<Set<String>>(emptySet())
+    val favoriteRecipes: StateFlow<Set<String>> = _favoriteRecipes.asStateFlow()
+
+    fun toggleFavoriteRecipe(recipeId: String) {
+        _favoriteRecipes.value = if (recipeId in _favoriteRecipes.value) {
+            _favoriteRecipes.value - recipeId
+        } else {
+            _favoriteRecipes.value + recipeId
+        }
+    }
+
+    /** Used by LocalPersistenceCoordinator on app startup to restore favorites saved on a previous run. */
+    fun replaceFavoriteRecipes(favorites: Set<String>) {
+        _favoriteRecipes.value = favorites
+    }
+
     init {
         viewModelScope.launch {
             val loaded = withContext(Dispatchers.IO) { RecipeRepository.loadRecipes(application) }

@@ -119,4 +119,25 @@ class RecipePantryMatchingTest {
         val pantry = PantryItem.Product("mąka", PantryCategory.ZBOZOWE, 10.0, "szt.")
         assertEquals(500.0, RecipePantryMatching.missingAfterPantry(500.0, "weight", pantry))
     }
+
+    @Test
+    fun `pantryCoverageRatio is the fraction of ingredients present in the pantry`() {
+        val pantry = mapOf(
+            "mąka" to PantryItem.Product("mąka", PantryCategory.ZBOZOWE, 500.0, "g"),
+            "jajka" to PantryItem.Product("jajka", PantryCategory.NABIAL, 2.0, "szt."),
+        )
+        val recipe = recipeWithIngredients("500 g mąki", "2 jajka", "3 cytryny", "1 cebula")
+        assertEquals(0.5, RecipePantryMatching.pantryCoverageRatio(recipe, pantry))
+    }
+
+    @Test
+    fun `pantryCoverageRatio is 0 for a recipe with no ingredients`() {
+        assertEquals(0.0, RecipePantryMatching.pantryCoverageRatio(recipeWithIngredients(), emptyMap()))
+    }
+
+    @Test
+    fun `pantryCoverageRatio is 1 when every ingredient is tracked`() {
+        val pantry = mapOf("mąka" to PantryItem.Product("mąka", PantryCategory.ZBOZOWE, 500.0, "g"))
+        assertEquals(1.0, RecipePantryMatching.pantryCoverageRatio(recipeWithIngredients("500 g mąki"), pantry))
+    }
 }

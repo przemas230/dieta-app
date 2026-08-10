@@ -101,4 +101,19 @@ object RecipePantryMatching {
         val missing = shoppingQty - pantryQtyInBaseUnits
         return if (missing <= 0.0001) null else missing
     }
+
+    /**
+     * FR-2 (🏺 "dania z tego, co mam w spiżarni" filter): fraction of a
+     * recipe's ingredients that already have a pantry entry -- port of
+     * index.html's `pantryCoverageRatio`/`pantryMatch`. Same presence-only
+     * check (`containsKey`, ignoring product quantity) already used
+     * elsewhere in this app for the "have it" ingredient highlight
+     * (RecipeListScreen's `haveIt`) -- intentionally not re-adding web's
+     * qty<=0 exclusion here, for consistency with that existing convention.
+     */
+    fun pantryCoverageRatio(recipe: Recipe, pantryItems: Map<String, PantryItem>): Double {
+        if (recipe.ingredients.isEmpty()) return 0.0
+        val have = recipe.ingredients.count { ingredient -> parseIngredient(ingredient).canonName in pantryItems }
+        return have.toDouble() / recipe.ingredients.size
+    }
 }

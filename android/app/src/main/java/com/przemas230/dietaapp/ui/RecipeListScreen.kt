@@ -139,6 +139,7 @@ fun RecipeListScreen(
     val shoppingItems by shoppingViewModel.items.collectAsState()
     val profile by profileViewModel.profile.collectAsState()
     val favIngredients by favoriteIngredientsViewModel.favorites.collectAsState()
+    val favoriteRecipeIds by viewModel.favoriteRecipes.collectAsState()
     var showIdeaDialog by remember { mutableStateOf(false) }
     LaunchedEffect(profile.glutenFree, profile.lactoseFree) {
         viewModel.setDietaryFilters(profile.glutenFree, profile.lactoseFree)
@@ -147,6 +148,14 @@ fun RecipeListScreen(
     var sortByMatch by remember { mutableStateOf(false) }
     var sortByRating by remember { mutableStateOf(false) }
     var sortByReview by remember { mutableStateOf(false) }
+    // FR-2: independent filter toggles, applied before the three sorts above
+    // -- same order as index.html's renderRecipes() (favorites -> ingredient
+    // favorites -> pantry-ready -> user recipes -> rating threshold -> sorts).
+    var onlyFavorites by remember { mutableStateOf(false) }
+    var onlyIngFav by remember { mutableStateOf(false) }
+    var onlyPantryReady by remember { mutableStateOf(false) }
+    var onlyUserRecipes by remember { mutableStateOf(false) }
+    var minRatingFilter by remember { mutableStateOf(0) }
     var showAddRecipeDialog by remember { mutableStateOf(false) }
     val macroTargets = remember(profile) { ProfileCalculations.calcMacroTargets(profile) }
     val kcalTargets = remember(profile) { ProfileCalculations.calcTargets(profile) }
@@ -161,11 +170,27 @@ fun RecipeListScreen(
             recipes.associate { it.id to RecipeMatching.matchScore(it, macroTargets.forCategory(it.cat), profile) }
         }
     }
-    val displayedRecipes = remember(recipes, sortByMatch, sortByRating, sortByReview, matchScores, ratings, reviews) {
+    val displayedRecipes = remember(
+        recipes, onlyFavorites, onlyIngFav, onlyPantryReady, onlyUserRecipes, minRatingFilter,
+        sortByMatch, sortByRating, sortByReview, matchScores, ratings, reviews,
+        favoriteRecipeIds, favIngredients, pantryItems,
+    ) {
         // FR-2/FR-57/FR-67: independent toggles applied in sequence (matches
-        // index.html's own if(sortByMatch){...} if(sortByRating){...}
-        // if(sortByReview){...}), not combined into one composite key.
+        // index.html's own if(onlyFav){...} if(onlyIngFav){...} ...
+        // if(sortByMatch){...} if(sortByRating){...} if(sortByReview){...}),
+        // not combined into one composite key.
         var result = recipes
+        if (onlyFavorites) result = result.filter { it.id in favoriteRecipeIds }
+        if (onlyIngFav) result = result.filter { r ->
+            r.ingredients.any { RecipePantryMatching.parseIngredient(it).canonName in favIngredients }
+        }
+        if (onlyPantryReady) result = result.filter { RecipePantryMatching.pantryCoverageRatio(it, pantryItems) >= 0.6 }
+        // Community recipes (source == "community") aren't ported yet (FR-76,
+        // still ⬜ in android/PARITY.md) -- this only ever shows own recipes
+        // (source == "custom") until that lands, a narrower but correct
+        // subset of index.html's "own + community" criterion.
+        if (onlyUserRecipes) result = result.filter { it.source == "custom" }
+        if (minRatingFilter > 0) result = result.filter { (reviews[it.id]?.stars ?: 0) >= minRatingFilter }
         if (sortByMatch) result = result.sortedByDescending { matchScores[it.id] ?: -1 }
         if (sortByRating) result = RecipeRatingOperations.sortByRating(result, ratings)
         if (sortByReview) result = RecipeReviewOperations.sortByReview(result, reviews)
@@ -216,6 +241,56 @@ fun RecipeListScreen(
                     selected = sortByReview,
                     onClick = { sortByReview = !sortByReview },
                     label = { Text("🏆 Ocena") },
+                )
+            }
+            item {
+                // FR-2: only recipes starred ⭐ (index.html's onlyFav/state.favorites).
+                FilterChip(
+                    selected = onlyFavorites,
+                    onClick = { onlyFavorites = !onlyFavorites },
+                    label = { Text("⭐ Ulubione") },
+                )
+            }
+            item {
+                // FR-2: only recipes containing at least one ☆-starred favorite ingredient.
+                FilterChip(
+                    selected = onlyIngFav,
+                    onClick = { onlyIngFav = !onlyIngFav },
+                    label = { Text("🌟 Ulub. składniki") },
+                )
+            }
+            item {
+                // FR-2: only recipes ≥60% coverable from the current pantry.
+                FilterChip(
+                    selected = onlyPantryReady,
+                    onClick = { onlyPantryReady = !onlyPantryReady },
+                    label = { Text("🏺 Ze spiżarni") },
+                )
+            }
+            item {
+                // FR-2/FR-66: own recipes only (community recipes not ported yet, see FR-76).
+                FilterChip(
+                    selected = onlyUserRecipes,
+                    onClick = { onlyUserRecipes = !onlyUserRecipes },
+                    label = { Text("🧑‍🍳 Moje przepisy") },
+                )
+            }
+            items(listOf(0, 3, 4, 5)) { threshold ->
+                // FR-2: rating-threshold filter -- a chip row (not a native
+                // dropdown) to stay consistent with every other toggle on
+                // this bar; "Dowolna ocena" (0) turns the filter off entirely.
+                FilterChip(
+                    selected = minRatingFilter == threshold,
+                    onClick = { minRatingFilter = threshold },
+                    label = {
+                        Text(
+                            when (threshold) {
+                                0 -> "Dowolna ocena"
+                                5 -> "★ 5"
+                                else -> "★ $threshold+"
+                            },
+                        )
+                    },
                 )
             }
         }
@@ -270,6 +345,8 @@ fun RecipeListScreen(
                 reviews,
                 activityLogViewModel,
                 listState,
+                favoriteRecipeIds,
+                viewModel::toggleFavoriteRecipe,
             )
         }
     }
@@ -518,6 +595,8 @@ private fun RecipeListWithScrollToTop(
     reviews: Map<String, RecipeReview>,
     activityLogViewModel: ActivityLogViewModel,
     listState: LazyListState,
+    favoriteRecipeIds: Set<String>,
+    onToggleFavoriteRecipe: (recipeId: String) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -596,6 +675,8 @@ private fun RecipeListWithScrollToTop(
                     onSaveReview = { stars, comment -> viewModel.setReview(recipe.id, stars, comment) },
                     onClearReview = { viewModel.clearReview(recipe.id) },
                     onDeleteCustomRecipe = { viewModel.removeCustomRecipe(recipe.id) },
+                    isFavorite = recipe.id in favoriteRecipeIds,
+                    onToggleFavorite = { onToggleFavoriteRecipe(recipe.id) },
                 )
             }
         }
@@ -642,6 +723,8 @@ private fun RecipeCard(
     onSaveReview: (stars: Int, comment: String?) -> Boolean,
     onClearReview: () -> Unit,
     onDeleteCustomRecipe: () -> Unit,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
@@ -757,6 +840,8 @@ private fun RecipeCard(
                         review = review,
                         onOpenReview = { showReviewDialog = true },
                         onDeleteCustomRecipe = { showDeleteConfirm = true },
+                        isFavorite = isFavorite,
+                        onToggleFavorite = onToggleFavorite,
                     )
                 }
             }
@@ -971,6 +1056,8 @@ private fun RecipeCardBody(
     review: RecipeReview?,
     onOpenReview: () -> Unit,
     onDeleteCustomRecipe: () -> Unit,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
 ) {
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -985,6 +1072,15 @@ private fun RecipeCardBody(
                         .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(6.dp))
                         .padding(horizontal = 6.dp, vertical = 2.dp),
                 )
+            }
+            // FR-2: ⭐ favorite-RECIPE toggle -- port of index.html's
+            // .star-btn (distinct from the ☆ per-ingredient toggles below).
+            TextButton(
+                onClick = onToggleFavorite,
+                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                modifier = Modifier.widthIn(min = 32.dp),
+            ) {
+                Text(if (isFavorite) "★" else "☆", style = MaterialTheme.typography.titleMedium)
             }
         }
         Spacer(modifier = Modifier.height(4.dp))

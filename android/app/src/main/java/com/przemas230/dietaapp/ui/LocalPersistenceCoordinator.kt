@@ -58,6 +58,7 @@ fun LocalPersistenceCoordinator(
     val ratings by recipeViewModel.ratings.collectAsState()
     val reviews by recipeViewModel.reviews.collectAsState()
     val myRecipes by recipeViewModel.myRecipes.collectAsState()
+    val favoriteRecipes by recipeViewModel.favoriteRecipes.collectAsState()
     val shoppingItems by shoppingViewModel.items.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
     val eatenEntries by eatenViewModel.entries.collectAsState()
@@ -89,6 +90,7 @@ fun LocalPersistenceCoordinator(
             CloudSyncCodec.decodeCooked(data["cooked"] as? Map<*, *>)?.let { recipeViewModel.replaceCooked(it) }
             CloudSyncCodec.decodeReviews(data["recipeReviews"] as? Map<*, *>)?.let { recipeViewModel.replaceReviews(it) }
             CloudSyncCodec.decodeMyRecipes(data["myRecipes"] as? List<*>)?.let { recipeViewModel.replaceMyRecipes(it) }
+            CloudSyncCodec.decodeFavIngredients(data["favorites"] as? Map<*, *>)?.let { recipeViewModel.replaceFavoriteRecipes(it) }
             CloudSyncCodec.decodeShopping(data["shopping"] as? Map<*, *>)?.let { shoppingViewModel.replaceAll(it) }
             CloudSyncCodec.decodeWeekPlan(
                 data["planner"] as? Map<*, *>,
@@ -110,7 +112,7 @@ fun LocalPersistenceCoordinator(
 
     LaunchedEffect(
         initialLoadDone, profile, displayName, pantryItems, themeId, uiScale, swipeStyle,
-        favIngredients, cooked, ratings, reviews, myRecipes, shoppingItems, weekPlan,
+        favIngredients, cooked, ratings, reviews, myRecipes, favoriteRecipes, shoppingItems, weekPlan,
         eatenEntries, snacks, waterCount, weightEntries, kcalHistory, waterHistory, activityLogEntries,
     ) {
         if (!initialLoadDone) return@LaunchedEffect
@@ -133,6 +135,11 @@ fun LocalPersistenceCoordinator(
         ) + mapOf(
             "recipeReviews" to CloudSyncCodec.encodeReviews(reviews),
             "myRecipes" to CloudSyncCodec.encodeMyRecipes(myRecipes),
+            // FR-2: recipe-level favorites (state.favorites in index.html) --
+            // reuses encodeFavIngredients/decodeFavIngredients above since
+            // the shape (Set<String> -> {name: true}) is identical to
+            // favIngredients, just a different top-level key/meaning.
+            "favorites" to CloudSyncCodec.encodeFavIngredients(favoriteRecipes),
             "weights" to CloudSyncCodec.encodeWeights(weightEntries),
             "kcalHistory" to CloudSyncCodec.encodeDateIntMap(kcalHistory),
             "waterHistory" to CloudSyncCodec.encodeDateIntMap(waterHistory),
