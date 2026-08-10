@@ -54,6 +54,7 @@ fun SettingsScreen(
     firebaseTestViewModel: FirebaseTestViewModel = viewModel(),
     appUpdateViewModel: AppUpdateViewModel = viewModel(),
     uiScaleViewModel: UiScaleViewModel = viewModel(),
+    swipeRatingStyleViewModel: SwipeRatingStyleViewModel = viewModel(),
     effectiveUiScale: Double = 1.0,
 ) {
     Column(
@@ -67,6 +68,7 @@ fun SettingsScreen(
         DisplayNameCard(profileViewModel)
         ProfileCard(profileViewModel)
         UiScaleCard(uiScaleViewModel, effectiveUiScale)
+        SwipeRatingStyleCard(swipeRatingStyleViewModel)
         FirebaseTestCard(firebaseTestViewModel)
     }
 }
@@ -93,6 +95,33 @@ private fun UiScaleCard(viewModel: UiScaleViewModel, effectiveScale: Double) {
                     "początkowa jest dobierana automatycznie na podstawie szerokości ekranu, ale to tylko " +
                     "przybliżenie (aplikacja nie ma dostępu do systemowego ustawienia \"Rozmiar wyświetlacza\") " +
                     "— swobodnie ją zmień, jeśli nie pasuje.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+/** FR-61: two-way toggle for the FR-55/56 swipe-drag feedback style, independent of the color theme (FR-48, not done yet). */
+@Composable
+private fun SwipeRatingStyleCard(viewModel: SwipeRatingStyleViewModel) {
+    val style by viewModel.style.collectAsState()
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("🎈 Styl oceniania kart przesunięciem", style = MaterialTheme.typography.titleMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = { viewModel.setStyle(SwipeRatingStyle.BALLOON) }) {
+                    Text(if (style == SwipeRatingStyle.BALLOON) "● Balonowa czcionka" else "○ Balonowa czcionka")
+                }
+                TextButton(onClick = { viewModel.setStyle(SwipeRatingStyle.GLOW) }) {
+                    Text(if (style == SwipeRatingStyle.GLOW) "● Kolorowa karta" else "○ Kolorowa karta")
+                }
+            }
+            Text(
+                "Wpływa wyłącznie na kartę podczas samego przesuwania (FR-55) — karta w spoczynku wygląda tak samo w obu stylach.",
                 style = MaterialTheme.typography.bodySmall,
             )
         }

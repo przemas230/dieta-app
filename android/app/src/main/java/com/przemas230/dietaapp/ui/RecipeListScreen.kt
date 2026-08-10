@@ -103,8 +103,10 @@ fun RecipeListScreen(
     pantryViewModel: PantryViewModel,
     shoppingViewModel: ShoppingViewModel,
     plannerViewModel: PlannerViewModel,
+    swipeRatingStyleViewModel: SwipeRatingStyleViewModel,
     viewModel: RecipeViewModel = viewModel(),
 ) {
+    val swipeRatingStyle by swipeRatingStyleViewModel.style.collectAsState()
     val recipes by viewModel.visibleRecipes.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
     val searchTerm by viewModel.searchTerm.collectAsState()
@@ -198,6 +200,7 @@ fun RecipeListScreen(
                 pantryViewModel,
                 shoppingViewModel,
                 plannerViewModel,
+                swipeRatingStyle,
             )
         }
     }
@@ -222,6 +225,7 @@ private fun RecipeListWithScrollToTop(
     pantryViewModel: PantryViewModel,
     shoppingViewModel: ShoppingViewModel,
     plannerViewModel: PlannerViewModel,
+    swipeRatingStyle: SwipeRatingStyle,
 ) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -282,6 +286,7 @@ private fun RecipeListWithScrollToTop(
                     rating = ratings[recipe.id],
                     onSwipeRate = { rating -> viewModel.setRating(recipe.id, rating) },
                     onClearSwipeRating = { viewModel.clearRating(recipe.id) },
+                    swipeRatingStyle = swipeRatingStyle,
                 )
             }
         }
@@ -320,6 +325,7 @@ private fun RecipeCard(
     rating: RecipeRating?,
     onSwipeRate: (RecipeRating) -> Unit,
     onClearSwipeRating: () -> Unit,
+    swipeRatingStyle: SwipeRatingStyle,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
@@ -338,10 +344,23 @@ private fun RecipeCard(
     val offsetX = remember { Animatable(0f) }
     val swipeCoroutineScope = rememberCoroutineScope()
     val swipeThresholdPx = with(LocalDensity.current) { 90.dp.toPx() }
-    val borderColor = when (rating) {
+    val restBorderColor = when (rating) {
         RecipeRating.LIKE -> Color(0xFF43A047)
         RecipeRating.DISLIKE -> Color(0xFFE53935)
         null -> Color.Transparent
+    }
+    // FR-61: "glow" style tints the whole border while dragging (classic
+    // pre-FR-56 look), scaling from a still-visible 0.3 alpha up to 0.9 right
+    // at the commit threshold -- same 0.3+0.6*intensity formula as
+    // index.html's useGlow branch. "balloon" (default) leaves the border
+    // alone during the drag and lets the FR-56 label alone carry the
+    // feedback; either way it reverts to restBorderColor once offsetX is 0.
+    val dragBorderColor = if (offsetX.value != 0f && swipeRatingStyle == SwipeRatingStyle.GLOW) {
+        val intensity = (abs(offsetX.value) / swipeThresholdPx).coerceIn(0f, 1f)
+        val alpha = 0.3f + 0.6f * intensity
+        if (offsetX.value > 0) Color(0xFF3CAA6E).copy(alpha = alpha) else Color(0xFFBE463C).copy(alpha = alpha)
+    } else {
+        restBorderColor
     }
 
     Box {
@@ -349,7 +368,7 @@ private fun RecipeCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                .border(2.dp, borderColor, MaterialTheme.shapes.medium)
+                .border(2.dp, dragBorderColor, MaterialTheme.shapes.medium)
                 .pointerInput(recipe.id) {
                     detectHorizontalDragGestures(
                         onDragEnd = {

@@ -43,6 +43,7 @@ import com.przemas230.dietaapp.ui.RecipeListScreen
 import com.przemas230.dietaapp.ui.SettingsScreen
 import com.przemas230.dietaapp.ui.ShoppingScreen
 import com.przemas230.dietaapp.ui.ShoppingViewModel
+import com.przemas230.dietaapp.ui.SwipeRatingStyleViewModel
 import com.przemas230.dietaapp.ui.UiScaleViewModel
 import com.przemas230.dietaapp.ui.navigation.BOTTOM_NAV_SCREENS
 import com.przemas230.dietaapp.ui.navigation.Screen
@@ -108,6 +109,9 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // FR-19: shared so "📅 Zaplanuj" on a recipe card (Przepisy tab) and the
     // Planer tab itself see the same week plan.
     val plannerViewModel: PlannerViewModel = viewModel()
+    // FR-61: shared so a change on the Ustawienia screen is reflected
+    // immediately by the swipe-drag card on the Przepisy tab.
+    val swipeRatingStyleViewModel: SwipeRatingStyleViewModel = viewModel()
 
     Scaffold(
         topBar = {
@@ -176,6 +180,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     pantryViewModel = pantryViewModel,
                     shoppingViewModel = shoppingViewModel,
                     plannerViewModel = plannerViewModel,
+                    swipeRatingStyleViewModel = swipeRatingStyleViewModel,
                 )
             }
             composable(Screen.Shopping.route) {
@@ -195,6 +200,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     profileViewModel = profileViewModel,
                     uiScaleViewModel = uiScaleViewModel,
                     effectiveUiScale = effectiveScale,
+                    swipeRatingStyleViewModel = swipeRatingStyleViewModel,
                 )
             }
         }
