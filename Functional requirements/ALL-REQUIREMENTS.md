@@ -806,14 +806,16 @@ Gdy wpisywany tekst (w formularzu przekąski) albo nazwa składnika (na karcie p
 **Status:** Zaimplementowane
 
 ## Opis
-Nagłówek pokazuje pierścień postępu dziennego spożycia kalorii względem celu, listę zaplanowanych posiłków dnia z możliwością przesunięcia wiersza w prawo, by oznaczyć posiłek jako zjedzony, oraz podsumowanie zjedzone/pozostało.
+Nagłówek pokazuje pierścień postępu dziennego spożycia kalorii względem celu, listę zaplanowanych posiłków dnia z możliwością przesunięcia wiersza w prawo, by oznaczyć posiłek jako zjedzony, oraz podsumowanie zjedzone/pozostało. Pierścień jest podwójny — zewnętrzny łuk (pomarańczowy) to kalorie zjedzone/cel, wewnętrzny łuk (niebieski) to dzisiejsze nawodnienie/8 szklanek, w jednym wspólnym pierścieniu (patrz FR-37). Po lewej stronie pierścienia widoczna jest liczba pozostałych do wykorzystania kalorii.
 
 ## Kryteria akceptacji
 - Przesunięcie wiersza posiłku poniżej progu cofa się do pozycji wyjściowej bez oznaczenia.
-- Oznaczenie/odznaczenie posiłku natychmiast aktualizuje pierścień i podsumowanie.
+- Oznaczenie/odznaczenie posiłku natychmiast aktualizuje ZARÓWNO pierścień (zewnętrzny łuk), jak i podsumowanie zjedzone/pozostało oraz liczbę pozostałych kalorii przy pierścieniu.
+- Dotknięcie kropelki/kubeczka nawodnienia w nagłówku natychmiast aktualizuje wewnętrzny (niebieski) łuk pierścienia.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-10): Naprawiono rozbieżność między tym dokumentem a rzeczywistym kodem — mimo że Opis/Kryteria od zawsze opisywały pierścień jako odzwierciedlający SPOŻYCIE (i aktualizujący się przy oznaczeniu posiłku jako zjedzonego), faktyczny kod liczył pierścień z `todaysPlannedKcal()` (zaplanowane dania z Planera), całkowicie niezależnie od `state.eaten` — oznaczenie/odznaczenie posiłku zmieniało tylko linijkę „Zjedzone/Zostało” pod pierścieniem, nie sam pierścień. Przy okazji szerszej restylizacji obu wersji aplikacji pod nowy design system (patrz `android/PARITY.md`), na wyraźne życzenie użytkownika (dopasowanie do referencyjnych zrzutów ekranu, gdzie pierścień jednoznacznie pokazuje zjedzone/pozostałe kalorie), pierścień faktycznie przeliczono na `dailyEatenKcal(dziś)` — teraz zachowanie kodu W KOŃCU zgadza się z tym, co ten dokument opisywał od v1.
 
 ---
 
@@ -823,14 +825,15 @@ Nagłówek pokazuje pierścień postępu dziennego spożycia kalorii względem c
 **Status:** Zaimplementowane
 
 ## Opis
-Zakładka Postępy pokazuje interaktywny rząd 8 „szklanek” do zaznaczenia dziennego spożycia wody. W nagłówku (widocznym nawet po jego zwinięciu) pokazywany jest dodatkowo kompaktowy pasek kropelek z liczbą (np. „💧💧💧⚪⚪⚪⚪⚪ 3/8”), który po dotknięciu dodaje kolejną szklankę i jest zsynchronizowany z pełnym widokiem.
+Zakładka Postępy pokazuje interaktywny rząd 8 „kubeczków” (rysowana ikonka, wypełniona = zaznaczona) do zaznaczenia dziennego spożycia wody. W nagłówku (widocznym nawet po jego zwinięciu) pokazywany jest dodatkowo kompaktowy pasek tych samych ikonek kubeczka z liczbą (np. „3/8”), który po dotknięciu dodaje kolejną szklankę i jest zsynchronizowany z pełnym widokiem. Ten sam licznik napędza też wewnętrzny (niebieski) łuk podwójnego pierścienia kalorii w nagłówku (patrz FR-36) — dotknięcie kubeczka w którymkolwiek z trzech miejsc (nagłówek, Postępy, pierścień) natychmiast odświeża pozostałe dwa.
 
 ## Kryteria akceptacji
-- Zmiana w jednym miejscu (nagłówek lub pełny widok) natychmiast odzwierciedla się w drugim.
+- Zmiana w jednym miejscu (nagłówek, pełny widok lub wewnętrzny łuk pierścienia) natychmiast odzwierciedla się w pozostałych.
 - Licznik resetuje się automatycznie o północy (nowy dzień = nowy licznik).
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-11): Kropelki 💧/⚪ zastąpiono rysowanym kubeczkiem (ikona SVG w web, `Canvas` w Android) — czysto wizualna zmiana, zachowanie dotknięcia bez zmian. Przy okazji przeprojektowania nagłówka pod podwójny pierścień (FR-36/v2) ten sam licznik nawodnienia zaczął też napędzać wewnętrzny łuk pierścienia, więc dodano trzecie zsynchronizowane miejsce do opisu i kryteriów.
 
 ---
 

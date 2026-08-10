@@ -39,6 +39,14 @@
     --honey-dark:#8A5C10;
     --plum:#7C4F63;
     --plum-pale:#F3E9ED;
+    /* Fixed (not per-theme) semantic colors for the kcal/water dual-ring and
+       cup-icon water tracker -- declared only here in the base :root so
+       every one of the 11 themes inherits the same values via normal CSS
+       cascade (custom properties inherit per-property, not per-block), same
+       spirit as the reference design where these stay orange/blue
+       regardless of the app's overall accent color. */
+    --ring-kcal:#F5822B;
+    --ring-water:#3E8EF5;
     --bg:#F7F6F2;
     --card:#FFFFFF;
     --text:#22302B;
@@ -387,13 +395,17 @@
     flex:0 0 auto; background:rgba(255,255,255,.14); border-radius:10px;
     padding:6px 10px; font-size:11.5px; white-space:nowrap;
   }
-  .kcal-row{display:flex; align-items:center; gap:12px; margin-top:10px;}
-  .kcal-ring-wrap{position:relative; width:78px; height:78px; flex:0 0 auto;}
+  .kcal-row{display:flex; align-items:center; gap:10px; margin-top:10px;}
+  .kcal-remaining{display:flex; flex-direction:column; align-items:center; flex:0 0 auto; width:52px;}
+  .kcal-remaining .kr-label{font-size:9px; color:rgba(255,255,255,.75); text-transform:uppercase; letter-spacing:.3px;}
+  .kcal-remaining .kr-value{font-size:19px; font-weight:700; color:#fff; line-height:1.2;}
+  .kcal-remaining .kr-unit{font-size:9px; color:rgba(255,255,255,.75);}
+  .kcal-ring-wrap{position:relative; width:100px; height:100px; flex:0 0 auto;}
   .kcal-ring-svg{width:100%; height:100%; display:block;}
-  #kcalRingProgress{transition:stroke-dasharray .5s ease;}
+  #kcalRingProgress, #waterRingProgress{transition:stroke-dasharray .5s ease;}
   .kcal-ring-center{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;}
-  .kcal-ring-value{font-size:16px; font-weight:600; color:#fff; line-height:1.1;}
-  .kcal-ring-caption{font-size:8px; color:rgba(255,255,255,.75); margin-top:1px;}
+  .kcal-ring-value{font-size:21px; font-weight:700; color:#fff; line-height:1.1;}
+  .kcal-ring-caption{font-size:9.5px; color:rgba(255,255,255,.75); margin-top:2px;}
   .kcal-meal-list-wrap{flex:1; min-width:0;}
   .kcal-meal-list{display:flex; flex-direction:column; gap:5px; min-width:0;}
   .kcal-meal-row{
@@ -904,11 +916,12 @@
   .rules-card ol{margin:0; padding-left:18px; font-size:13px; line-height:1.6;}
   .water-row{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 4px;}
   .cup{
-    width:38px; height:38px; border-radius:10px; border:2px solid var(--plum);
-    background:var(--card); display:flex; align-items:center; justify-content:center;
-    font-size:17px; cursor:pointer; transition:background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+    width:38px; height:38px; border-radius:10px; background:transparent;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; transition:transform var(--dur-fast) var(--ease);
   }
-  .cup.full{background:var(--plum); color:#fff;}
+  .cup:active{transform:scale(.9);}
+  .cup svg{display:block;}
   .weight-input-row{display:flex; gap:8px; margin:10px 0;}
   .weight-input-row input{flex:1; border:1px solid var(--line); border-radius:10px; padding:9px 10px; font-size:14px;}
   .weight-list{margin-top:10px;}
@@ -1019,10 +1032,17 @@
   <div class="header-water-row" id="headerWaterRow" title="Nawodnienie dzisiaj — stuknij, aby dodać szklankę"></div>
   <div class="header-collapsible">
     <div class="kcal-row">
+      <div class="kcal-remaining">
+        <span class="kr-label">Pozostało</span>
+        <span class="kr-value" id="kcalRemainingValue">0</span>
+        <span class="kr-unit">kcal</span>
+      </div>
       <div class="kcal-ring-wrap">
         <svg viewBox="0 0 120 120" class="kcal-ring-svg">
-          <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="10"/>
-          <circle id="kcalRingProgress" cx="60" cy="60" r="52" fill="none" stroke="var(--honey)" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 326.7" transform="rotate(-90 60 60)"/>
+          <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.20)" stroke-width="11"/>
+          <circle id="kcalRingProgress" cx="60" cy="60" r="52" fill="none" stroke="var(--ring-kcal)" stroke-width="11" stroke-linecap="round" stroke-dasharray="0 326.7" transform="rotate(-90 60 60)"/>
+          <circle cx="60" cy="60" r="39" fill="none" stroke="rgba(255,255,255,.20)" stroke-width="8"/>
+          <circle id="waterRingProgress" cx="60" cy="60" r="39" fill="none" stroke="var(--ring-water)" stroke-width="8" stroke-linecap="round" stroke-dasharray="0 245" transform="rotate(-90 60 60)"/>
         </svg>
         <div class="kcal-ring-center">
           <div class="kcal-ring-value" id="kcalRingValue">0</div>
@@ -3421,9 +3441,17 @@ function todaysPlannerMeals(){
   });
   return result;
 }
-function todaysPlannedKcal(){
-  const meals = todaysPlannerMeals();
-  return CATS.reduce((sum,c)=> sum + (meals[c.id] ? meals[c.id].kcal : 0), 0);
+// Inner blue arc of the header's dual ring -- today's hydration (count/8),
+// FR-36/v2. Split out from renderHeader() so the two water click handlers
+// (renderHeaderWater's droplet strip, renderWater's Postęp cup row) can
+// refresh just the ring's water arc without re-running the whole header
+// (meal list, eaten summary, ...) on every single water tap.
+function updateWaterRing(){
+  const el = document.getElementById("waterRingProgress");
+  if(!el) return;
+  const waterPct = Math.max(0, Math.min(1, state.water.count / 8));
+  const waterCircumference = 2 * Math.PI * 39;
+  el.setAttribute("stroke-dasharray", `${(waterPct*waterCircumference).toFixed(1)} ${waterCircumference.toFixed(1)}`);
 }
 function renderHeader(){
   const p = state.profile;
@@ -3435,13 +3463,21 @@ function renderHeader(){
     ? `${namePrefix}👋 Ustaw swój profil w Ustawieniach, aby dopasować dietę do siebie`
     : `${namePrefix}${sexLabel}, ${p.age} lat · ${p.height} cm · ${p.weight}\u00A0kg → cel ${p.targetWeight}\u00A0kg · ${goalLabel} · ~${t.daily}\u00A0kcal/dzień`;
   const meals = todaysPlannerMeals();
-  const planned = todaysPlannedKcal();
-  const pct = t.daily ? Math.max(0, Math.min(1, planned / t.daily)) : 0;
-  const circumference = 2 * Math.PI * 52;
-  document.getElementById("kcalRingProgress").setAttribute("stroke-dasharray", `${(pct*circumference).toFixed(1)} ${circumference.toFixed(1)}`);
-  document.getElementById("kcalRingValue").textContent = planned;
-  document.getElementById("kcalRingCaption").textContent = `z ${t.daily} kcal`;
   const today = todayStr();
+  // FR-36/v2: the ring reflects what's actually been EATEN today (not the
+  // day's planned meals, which the meal-list rows below still show) -- the
+  // outer orange arc is eaten/target kcal, matching the reference design's
+  // "Pozostało"/center-number semantics.
+  const eaten = dailyEatenKcal(today);
+  const remaining = Math.max(0, t.daily - eaten);
+  const kcalPct = t.daily ? Math.max(0, Math.min(1, eaten / t.daily)) : 0;
+  const kcalCircumference = 2 * Math.PI * 52;
+  document.getElementById("kcalRingProgress").setAttribute("stroke-dasharray", `${(kcalPct*kcalCircumference).toFixed(1)} ${kcalCircumference.toFixed(1)}`);
+  document.getElementById("kcalRingValue").textContent = eaten;
+  document.getElementById("kcalRingCaption").textContent = `z ${t.daily} kcal`;
+  document.getElementById("kcalRemainingValue").textContent = remaining;
+  if(state.water.date !== today){ state.water = {date:today, count:0}; }
+  updateWaterRing();
   document.getElementById("kcalMealList").innerHTML = CATS.map(c=>{
     const r = meals[c.id];
     const scaleSuffix = r && r._scale && r._scale!==1 ? ` · ${String(r._scale).replace(".",",")}×` : "";
@@ -3470,7 +3506,7 @@ function renderHeaderWater(){
   if(state.water.date !== todayStr()){ state.water = {date:todayStr(), count:0}; }
   const count = state.water.count;
   let drops = "";
-  for(let i=0;i<8;i++) drops += `<span class="hwr-drop" data-i="${i}">${i<count ? "💧" : "⚪"}</span>`;
+  for(let i=0;i<8;i++) drops += `<span class="hwr-drop" data-i="${i}">${cupIconSvg(i<count, 14)}</span>`;
   row.innerHTML = `<span class="hwr-drops">${drops}</span><span class="hwr-count">${count}/8</span>`;
   row.querySelectorAll(".hwr-drop").forEach(el=>{
     el.addEventListener("click", (e)=>{
@@ -3482,6 +3518,7 @@ function renderHeaderWater(){
       saveState();
       renderHeaderWater();
       if(document.getElementById("waterRow")) renderWater();
+      updateWaterRing();
       refreshWaterNotification();
     });
   });
@@ -5932,6 +5969,19 @@ plannerModalOverlay.addEventListener("click", (e)=>{ if(e.target===plannerModalO
 // ---------- PROGRESS ----------
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 
+// Small inline-SVG cup/mug icon shared by the header water strip and the
+// Postęp "Nawodnienie" cup row -- replaces the old plain 💧 emoji with a
+// graphic closer to the reference design's blue mug icons. Filled = solid
+// blue mug (water logged for that slot), empty = light outline only.
+function cupIconSvg(filled, size){
+  size = size || 20;
+  const color = filled ? "var(--ring-water)" : "var(--line)";
+  return `<svg viewBox="0 0 24 24" width="${size}" height="${size}">
+    <path d="M5 4h11v9a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V4z" fill="${filled ? color : "none"}" stroke="${color}" stroke-width="1.8" stroke-linejoin="round"/>
+    <path d="M16 7.5h1.3a2 2 0 0 1 0 4H16" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round"/>
+  </svg>`;
+}
+
 function renderWater(){
   const row = document.getElementById("waterRow");
   if(state.water.date !== todayStr()){ state.water = {date:todayStr(), count:0}; saveState(); }
@@ -5939,11 +5989,13 @@ function renderWater(){
   for(let i=0;i<8;i++){
     const cup = document.createElement("div");
     cup.className = "cup" + (i < state.water.count ? " full":"");
-    cup.textContent = "💧";
+    cup.innerHTML = cupIconSvg(i < state.water.count);
     cup.addEventListener("click", ()=>{
       state.water.count = (state.water.count === i+1) ? i : i+1;
       state.waterHistory[state.water.date] = state.water.count;
       saveState(); renderWater();
+      if(document.getElementById("headerWaterRow")) renderHeaderWater();
+      updateWaterRing();
       refreshWaterNotification();
     });
     row.appendChild(cup);

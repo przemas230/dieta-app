@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -55,7 +56,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -63,6 +71,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -264,9 +273,6 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     val todayIdx = remember { ShoppingDayStrip.todayIndex(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) - 1) }
     val todayMeals = weekPlan[todayIdx].orEmpty()
     val kcalTargets = remember(profile) { ProfileCalculations.calcTargets(profile) }
-    val plannedTodayKcal = remember(weekPlan, recipesById, todayIdx) {
-        PlannerOperations.dayTotalKcal(weekPlan, todayIdx, recipesById)
-    }
     // FR-44: starts expanded on Przepisy, collapsed elsewhere -- keyed on
     // currentRoute so switching tabs always resets to that tab's default,
     // same as index.html's `if(name!=="recipes") headerEl.classList.add("collapsed")`.
@@ -372,13 +378,13 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     HeaderWaterRow(waterViewModel)
                     if (headerExpanded) {
                         HeaderKcalPanel(
-                            plannedKcal = plannedTodayKcal,
                             targetKcal = kcalTargets.daily,
                             kcalTargets = kcalTargets,
                             todayMeals = todayMeals,
                             recipesById = recipesById,
                             eatenEntries = eatenEntries,
                             snacks = snacks,
+                            waterViewModel = waterViewModel,
                             onToggleEaten = { cat, kcal, name -> eatenViewModel.toggle(cat, kcal, name) },
                             onRemoveSnack = { id -> eatenViewModel.removeSnack(id) },
                         )
@@ -510,9 +516,9 @@ private fun formatWeight(value: Double): String =
     if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()
 
 /**
- * FR-70: compact droplet strip, always visible in the header on every tab
+ * FR-70: compact cup-icon strip, always visible in the header on every tab
  * (not gated by a collapse state -- FR-44/45's header auto-hide isn't
- * ported yet). Each droplet is its own tap target -- port of index.html's
+ * ported yet). Each cup is its own tap target -- port of index.html's
  * renderHeaderWater, minus the Postępy tab's full water view to mirror it
  * with (that tab is still a placeholder, see android/PARITY.md).
  */
@@ -525,58 +531,125 @@ private fun HeaderWaterRow(viewModel: WaterViewModel) {
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         for (i in 0 until WaterOperations.MAX_LEVEL) {
-            Text(
-                if (i < count) "💧" else "⚪",
-                fontSize = 12.sp,
-                modifier = Modifier.clickable { viewModel.tapDroplet(i) },
+            WaterCupIcon(
+                filled = i < count,
+                size = 14.dp,
+                modifier = Modifier.padding(3.dp).clickable { viewModel.tapDroplet(i) },
             )
         }
         Text(
             "$count/${WaterOperations.MAX_LEVEL}",
             style = MaterialTheme.typography.labelSmall,
+            color = Color.White,
             modifier = Modifier.padding(start = 4.dp),
         )
     }
 }
 
 /**
- * FR-36: today's kcal ring (planned kcal vs daily target -- NOT eaten kcal;
- * index.html's own renderHeader computes the ring from todaysPlannedKcal(),
- * independent of the eaten toggle below it, so this is a faithful port even
- * though it means marking something eaten doesn't move the ring itself,
- * only the "Zjedzone/Zostało" line), the 5 Planer-slot rows (swipe right to
- * toggle eaten), and the eaten-kcal summary line. Only shown while
- * headerExpanded, in DietaAppRoot.
+ * Small hand-drawn mug icon (Canvas, no vector-asset dependency -- same "no
+ * extra Gradle deps" spirit as WeightChart/KcalHistoryChart) replacing the
+ * old 💧/⚪ emoji, matching index.html's new cupIconSvg (FR-36/v2 redesign):
+ * a rounded-bottom mug body with a small handle loop, solid ring-water blue
+ * when filled, thin outline in a neutral color when empty.
+ */
+@Composable
+private fun WaterCupIcon(filled: Boolean, size: Dp, modifier: Modifier = Modifier) {
+    val filledColor = Color(0xFF3E8EF5)
+    val emptyColor = Color.White.copy(alpha = 0.45f)
+    val color = if (filled) filledColor else emptyColor
+    Canvas(modifier = modifier.size(size)) {
+        val w = this.size.width
+        val h = this.size.height
+        val strokeWidth = w * 0.12f
+        val bodyWidth = w * 0.62f
+        val bodyHeight = h * 0.7f
+        val bodyLeft = w * 0.06f
+        val bodyTop = h * 0.12f
+        val corner = CornerRadius(bodyWidth * 0.22f, bodyWidth * 0.22f)
+        val bodyPath = Path().apply {
+            addRoundRect(
+                RoundRect(
+                    rect = Rect(Offset(bodyLeft, bodyTop), Size(bodyWidth, bodyHeight)),
+                    bottomLeft = corner,
+                    bottomRight = corner,
+                ),
+            )
+        }
+        if (filled) {
+            drawPath(bodyPath, color)
+        } else {
+            drawPath(bodyPath, color, style = Stroke(width = strokeWidth))
+        }
+        drawArc(
+            color = color,
+            startAngle = -80f,
+            sweepAngle = 160f,
+            useCenter = false,
+            topLeft = Offset(bodyLeft + bodyWidth - w * 0.05f, h * 0.26f),
+            size = Size(w * 0.34f, h * 0.4f),
+            style = Stroke(width = strokeWidth),
+        )
+    }
+}
+
+/**
+ * FR-36/v2: today's dual kcal/water ring (outer orange arc = eaten kcal vs
+ * daily target, inner blue arc = today's hydration count/8, in one ring --
+ * port of index.html's redesigned renderHeader). Previously (before
+ * 2026-08-10) the ring showed PLANNED kcal from the Planer, independent of
+ * the eaten toggle -- a faithfully-ported quirk from the source that never
+ * actually matched FR-36.md's own description. Fixed together with the
+ * wider design-system restyle, on the user's explicit choice to match the
+ * reference screenshots (see android/PARITY.md). Also renders the 5
+ * Planer-slot rows (swipe right to toggle eaten) and the eaten-kcal summary
+ * line. Only shown while headerExpanded, in DietaAppRoot.
  */
 @Composable
 private fun HeaderKcalPanel(
-    plannedKcal: Int,
     targetKcal: Int,
     kcalTargets: DailyCalorieTargets,
     todayMeals: Map<String, PlannedMeal>,
     recipesById: Map<String, Recipe>,
     eatenEntries: Map<String, EatenEntry>,
     snacks: List<Snack>,
+    waterViewModel: WaterViewModel,
     onToggleEaten: (cat: String, plannedKcal: Int?, plannedName: String?) -> Unit,
     onRemoveSnack: (id: String) -> Unit,
 ) {
-    val pct = if (targetKcal > 0) (plannedKcal.toFloat() / targetKcal).coerceIn(0f, 1f) else 0f
+    val eatenKcal = EatenOperations.dailyEatenKcal(eatenEntries) + EatenOperations.snacksKcal(snacks)
+    val remaining = max(0, targetKcal - eatenKcal)
+    val kcalPct = if (targetKcal > 0) (eatenKcal.toFloat() / targetKcal).coerceIn(0f, 1f) else 0f
+    val waterCount by waterViewModel.count.collectAsState()
+    val waterPct = (waterCount.toFloat() / WaterOperations.MAX_LEVEL).coerceIn(0f, 1f)
     Column(modifier = Modifier.padding(top = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(60.dp)) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(48.dp)) {
+                Text("POZOSTAŁO", fontSize = 8.sp, color = Color.White.copy(alpha = 0.75f), maxLines = 1)
+                Text(remaining.toString(), fontWeight = FontWeight.Bold, fontSize = 17.sp, color = Color.White)
+                Text("kcal", fontSize = 8.sp, color = Color.White.copy(alpha = 0.75f))
+            }
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(78.dp)) {
                 CircularProgressIndicator(
-                    progress = { pct },
+                    progress = { kcalPct },
                     modifier = Modifier.fillMaxSize(),
-                    strokeWidth = 7.dp,
-                    color = Color(0xFFE8B93C),
-                    trackColor = Color.White.copy(alpha = 0.22f),
+                    strokeWidth = 8.dp,
+                    color = Color(0xFFF5822B),
+                    trackColor = Color.White.copy(alpha = 0.20f),
+                )
+                CircularProgressIndicator(
+                    progress = { waterPct },
+                    modifier = Modifier.fillMaxSize().padding(11.dp),
+                    strokeWidth = 6.dp,
+                    color = Color(0xFF3E8EF5),
+                    trackColor = Color.White.copy(alpha = 0.20f),
                 )
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(plannedKcal.toString(), fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                    Text(eatenKcal.toString(), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
                     Text("z $targetKcal kcal", fontSize = 8.sp, color = Color.White.copy(alpha = 0.85f))
                 }
             }
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 PlannerOperations.PLANNER_CATEGORIES.forEach { category ->
                     val meal = todayMeals[category.id]
@@ -615,8 +688,6 @@ private fun HeaderKcalPanel(
             }
         }
         Spacer(modifier = Modifier.height(6.dp))
-        val eatenKcal = EatenOperations.dailyEatenKcal(eatenEntries) + EatenOperations.snacksKcal(snacks)
-        val remaining = max(0, targetKcal - eatenKcal)
         Text(
             "🍽️ Zjedzone: $eatenKcal kcal · Zostało: $remaining kcal",
             style = MaterialTheme.typography.labelSmall,

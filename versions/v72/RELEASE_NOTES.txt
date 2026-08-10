@@ -1,0 +1,19 @@
+Wersja 72 (2026-08-11)
+
+- Nagłówek dostał przeprojektowany, PODWÓJNY pierścień: zewnętrzny
+  pomarańczowy łuk pokazuje zjedzone kalorie względem celu dnia, a nowy
+  wewnętrzny niebieski łuk pokazuje dzisiejsze nawodnienie (X/8 szklanek) —
+  oba w jednym wspólnym pierścieniu w nagłówku.
+- Naprawiono rozbieżność między tym, co pierścień pokazywał, a tym, co od
+  zawsze opisywały wymagania (FR-36): pierścień liczył się z ZAPLANOWANYCH
+  posiłków w Planerze, a nie z tego, co realnie zostało oznaczone jako
+  zjedzone. Teraz pierścień faktycznie odzwierciedla spożycie i aktualizuje
+  się natychmiast po oznaczeniu/odznaczeniu posiłku.
+- Po lewej stronie pierścienia dodano czytelną liczbę pozostałych do
+  wykorzystania kalorii ("POZOSTAŁO").
+- Kropelki nawodnienia (💧/⚪) w pasku nagłówka i w zakładce Postęp zastąpiono
+  rysowanym kubeczkiem — dotknięcie kubeczka natychmiast aktualizuje też
+  wewnętrzny (niebieski) łuk pierścienia.
+- Zmiana wprowadzona równolegle w wersji webowej (index.html) i natywnej
+  aplikacji Android (MainActivity.kt), zweryfikowana ręcznie na emulatorze
+  w obu motywach (jasnym i ciemnym).
