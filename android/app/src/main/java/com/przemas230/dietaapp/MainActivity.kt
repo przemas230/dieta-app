@@ -4,7 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -20,11 +23,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -33,6 +39,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.UiScale
+import com.przemas230.dietaapp.logic.WaterOperations
 import com.przemas230.dietaapp.ui.PantryScreen
 import com.przemas230.dietaapp.ui.PantryViewModel
 import com.przemas230.dietaapp.ui.PlaceholderScreen
@@ -45,6 +52,7 @@ import com.przemas230.dietaapp.ui.ShoppingScreen
 import com.przemas230.dietaapp.ui.ShoppingViewModel
 import com.przemas230.dietaapp.ui.SwipeRatingStyleViewModel
 import com.przemas230.dietaapp.ui.UiScaleViewModel
+import com.przemas230.dietaapp.ui.WaterViewModel
 import com.przemas230.dietaapp.ui.navigation.BOTTOM_NAV_SCREENS
 import com.przemas230.dietaapp.ui.navigation.Screen
 import com.przemas230.dietaapp.ui.theme.DietaAppTheme
@@ -112,6 +120,9 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // FR-61: shared so a change on the Ustawienia screen is reflected
     // immediately by the swipe-drag card on the Przepisy tab.
     val swipeRatingStyleViewModel: SwipeRatingStyleViewModel = viewModel()
+    // FR-70: shared at the Scaffold level (not per-screen) so the header
+    // droplet strip below is the single source of truth, visible on every tab.
+    val waterViewModel: WaterViewModel = viewModel()
 
     Scaffold(
         topBar = {
@@ -134,6 +145,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
+                        HeaderWaterRow(waterViewModel)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -210,3 +222,33 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
 /** "67.0" -> "67", "67.5" -> "67.5" — matches how JS template literals print numbers. */
 private fun formatWeight(value: Double): String =
     if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()
+
+/**
+ * FR-70: compact droplet strip, always visible in the header on every tab
+ * (not gated by a collapse state -- FR-44/45's header auto-hide isn't
+ * ported yet). Each droplet is its own tap target -- port of index.html's
+ * renderHeaderWater, minus the Postępy tab's full water view to mirror it
+ * with (that tab is still a placeholder, see android/PARITY.md).
+ */
+@Composable
+private fun HeaderWaterRow(viewModel: WaterViewModel) {
+    val count by viewModel.count.collectAsState()
+    Row(
+        modifier = Modifier.padding(top = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        for (i in 0 until WaterOperations.MAX_LEVEL) {
+            Text(
+                if (i < count) "💧" else "⚪",
+                fontSize = 12.sp,
+                modifier = Modifier.clickable { viewModel.tapDroplet(i) },
+            )
+        }
+        Text(
+            "$count/${WaterOperations.MAX_LEVEL}",
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(start = 4.dp),
+        )
+    }
+}
