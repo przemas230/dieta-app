@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Dieta App</title>
-<meta name="theme-color" content="#1F6B5C">
+<meta name="theme-color" content="#1B5E3F">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,15 +22,24 @@
 </script>
 <style>
   :root{
-    --teal:#1F6B5C;
-    --teal-dark:#123D34;
-    --teal-pale:#EAF3EE;
-    --honey:#C98A3E;
-    --honey-pale:#FBF0DC;
-    --honey-dark:#8A6417;
+    /* Brand refresh (2026-08-10): brighter, more saturated identity matching
+       the reference design (green header, mustard-yellow CTAs) -- see
+       Functional requirements/FR-48.md's Historia rewizji for the exact
+       before/after and android/PARITY.md for the Kotlin-side AppThemes.kt
+       twin of these same values. --header-end is new: decouples the header
+       gradient's END color from --teal-dark, which stays a readable
+       dark-text-on-pale-badge color (used in ~25 unrelated places) rather
+       than being repurposed as a gradient stop. */
+    --teal:#1B5E3F;
+    --teal-dark:#123423;
+    --teal-pale:#E7F2EC;
+    --header-end:#2E7D5B;
+    --honey:#F5A623;
+    --honey-pale:#FDF0DC;
+    --honey-dark:#8A5C10;
     --plum:#7C4F63;
     --plum-pale:#F3E9ED;
-    --bg:#FAF7F0;
+    --bg:#F7F6F2;
     --card:#FFFFFF;
     --text:#22302B;
     --muted:#64756C;
@@ -89,23 +98,28 @@
     --dur-fast:.18s; --dur-med:.25s; --ease:cubic-bezier(.4,0,.2,1);
   }
   :root[data-theme="dark"]{
-    --teal:#2F9078;
+    /* Brand refresh (2026-08-10): same green/mustard identity as the
+       default :root theme (header gradient unchanged between light and
+       dark, per the reference design's "header stays green" spec) -- only
+       bg/card/text go near-black. See :root's comment above for why
+       --header-end exists separately from --teal-dark. */
+    --teal:#1B5E3F;
     --teal-dark:#8FE0C7;
     --teal-pale:#163830;
-    --honey:#E0A559;
+    --header-end:#2E7D5B;
+    --honey:#F5A623;
     --honey-pale:#3A2C15;
     --honey-dark:#F0CE93;
     --plum:#8C5D78;
     --plum-pale:#3A2A33;
-    --bg:#151A18;
-    --card:#1E2523;
-    --text:#E7EEE9;
-    --muted:#93A39B;
-    --line:#313B37;
+    --bg:#0D0D0D;
+    --card:#1A1A1A;
+    --text:#F2F2F2;
+    --muted:#A0A0A0;
+    --line:#2A2A2A;
     --danger:#E5786B;
     --danger-pale:#3A211D;
     --star-off:#4A554F;
-    --header-end:#0D211C;
     --font-heading:"Fraunces", Georgia, serif;
     --font-body:"Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     --font-mono:"IBM Plex Mono","SF Mono",monospace;
@@ -438,7 +452,7 @@
   }
   .card{
     background:linear-gradient(165deg, var(--card) 0%, var(--teal-pale) 145%);
-    border:1px solid var(--line); border-radius:16px;
+    border:1px solid var(--line); border-radius:26px;
     padding:14px; margin-bottom:12px;
     box-shadow:0 1px 2px rgba(30,30,20,.04), 0 8px 20px rgba(30,30,20,.05);
   }

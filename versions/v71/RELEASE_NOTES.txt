@@ -1,0 +1,23 @@
+Wersja v71 (2026-08-10)
+
+1. Odświeżona paleta domyślnego motywu "Zielony" (i jego ciemnego wariantu
+   "Ciemny") na życzenie użytkownika, na podstawie referencyjnych zrzutów
+   ekranu innej popularnej aplikacji do liczenia kalorii — bardziej
+   nasycony, ciemnoleśny zielony nagłówek (#1B5E3F -> #2E7D5B) i żywszy,
+   musztardowy akcent (#F5A623) zamiast dotychczasowego przygaszonego
+   brązowego. Karty dostały mocniej zaokrąglone rogi (16px -> 26px).
+   Motyw "Ciemny" dostał ten sam zielono-musztardowy charakter co domyślny
+   (nagłówek zostaje zielony, tło/karty zmieniają się na prawie czarne
+   #0D0D0D/#1A1A1A) zamiast własnego, odrębnego stonowanego zielonego
+   akcentu — obie odmiany (jasna/ciemna) tej samej tożsamości wizualnej.
+   Pozostałych 9 motywów (Jasny, Różowy, Zbiory, Cytrusowy, Miętowy,
+   Jagodowa noc, Polaroid, Fluent, Kafelki) NIE zostało zmienionych — nadal
+   działają jako osobne opcje wyboru.
+
+To pierwsza z kilku zaplanowanych tur restylizacji obu wersji aplikacji
+(web + Android) pod wspólny, nowy design system — kolejne tury dodadzą
+nowe komponenty (dwukolorowy pierścień kalorii/nawodnienia, kubeczkowy
+licznik wody, pasek "Droga do celu", siatkę kart przepisów).
+
+Podbito wersję Service Workera (dieta-app-v45 -> v46), żeby nowa paleta
+dotarła do już zainstalowanych użytkowników PWA.

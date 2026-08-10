@@ -30,13 +30,13 @@ class AppThemesTest {
     @Test
     fun `spot-checked hex values match index_html's CSS custom properties`() {
         val teal = AppThemes.byId("teal")
-        assertEquals(0xFF1F6B5CL, teal.teal)
-        assertEquals(0xFFFAF7F0L, teal.bg)
+        assertEquals(0xFF1B5E3FL, teal.teal)
+        assertEquals(0xFFF7F6F2L, teal.bg)
 
         val dark = AppThemes.byId("dark")
-        assertEquals(0xFF151A18L, dark.bg)
-        assertEquals(0xFF2F9078L, dark.teal)
-        assertEquals(0xFF0D211CL, dark.metaColor)
+        assertEquals(0xFF0D0D0DL, dark.bg)
+        assertEquals(0xFF1B5E3FL, dark.teal)
+        assertEquals(0xFF1B5E3FL, dark.metaColor)
 
         val berry = AppThemes.byId("berry")
         assertEquals(0xFF241A24L, berry.card)

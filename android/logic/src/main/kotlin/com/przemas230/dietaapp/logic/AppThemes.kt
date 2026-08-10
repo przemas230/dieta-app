@@ -40,11 +40,11 @@ object AppThemes {
     /** Same order as index.html's THEMES array, so the picker UI matches the web app. */
     val ALL: List<AppThemeDef> = listOf(
         AppThemeDef(
-            id = "teal", label = "Zielony (domyślny)", swatch = 0xFF1F6B5C, metaColor = 0xFF1F6B5C,
-            teal = 0xFF1F6B5C, tealDark = 0xFF123D34, tealPale = 0xFFEAF3EE,
-            honey = 0xFFC98A3E, honeyPale = 0xFFFBF0DC, honeyDark = 0xFF8A6417,
+            id = "teal", label = "Zielony (domyślny)", swatch = 0xFF1B5E3F, metaColor = 0xFF1B5E3F,
+            teal = 0xFF1B5E3F, tealDark = 0xFF123423, tealPale = 0xFFE7F2EC,
+            honey = 0xFFF5A623, honeyPale = 0xFFFDF0DC, honeyDark = 0xFF8A5C10,
             plum = 0xFF7C4F63, plumPale = 0xFFF3E9ED,
-            bg = 0xFFFAF7F0, card = 0xFFFFFFFF, text = 0xFF22302B, muted = 0xFF64756C, line = 0xFFE3DECF,
+            bg = 0xFFF7F6F2, card = 0xFFFFFFFF, text = 0xFF22302B, muted = 0xFF64756C, line = 0xFFE3DECF,
             danger = 0xFFB54F3F, dangerPale = 0xFFF6E3E0, starOff = 0xFFD8D2C2, isDark = false,
         ),
         AppThemeDef(
@@ -64,11 +64,11 @@ object AppThemes {
             danger = 0xFFC4415A, dangerPale = 0xFFFBE3E8, starOff = 0xFFEAD3DC, isDark = false,
         ),
         AppThemeDef(
-            id = "dark", label = "Ciemny", swatch = 0xFF151A18, metaColor = 0xFF0D211C,
-            teal = 0xFF2F9078, tealDark = 0xFF8FE0C7, tealPale = 0xFF163830,
-            honey = 0xFFE0A559, honeyPale = 0xFF3A2C15, honeyDark = 0xFFF0CE93,
+            id = "dark", label = "Ciemny", swatch = 0xFF0D0D0D, metaColor = 0xFF1B5E3F,
+            teal = 0xFF1B5E3F, tealDark = 0xFF8FE0C7, tealPale = 0xFF163830,
+            honey = 0xFFF5A623, honeyPale = 0xFF3A2C15, honeyDark = 0xFFF0CE93,
             plum = 0xFF8C5D78, plumPale = 0xFF3A2A33,
-            bg = 0xFF151A18, card = 0xFF1E2523, text = 0xFFE7EEE9, muted = 0xFF93A39B, line = 0xFF313B37,
+            bg = 0xFF0D0D0D, card = 0xFF1A1A1A, text = 0xFFF2F2F2, muted = 0xFFA0A0A0, line = 0xFF2A2A2A,
             danger = 0xFFE5786B, dangerPale = 0xFF3A211D, starOff = 0xFF4A554F, isDark = true,
         ),
         AppThemeDef(
