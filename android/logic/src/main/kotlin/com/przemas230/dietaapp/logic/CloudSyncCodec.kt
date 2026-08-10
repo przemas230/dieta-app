@@ -1,6 +1,7 @@
 package com.przemas230.dietaapp.logic
 
 import com.przemas230.dietaapp.data.ActivityLevel
+import com.przemas230.dietaapp.data.ActivityLogEntry
 import com.przemas230.dietaapp.data.EatenEntry
 import com.przemas230.dietaapp.data.Goal
 import com.przemas230.dietaapp.data.PantryCategory
@@ -419,6 +420,21 @@ object CloudSyncCodec {
             result[date] = value
         }
         return result
+    }
+
+    /** FR-42: ActivityLogViewModel.entries -- local-persistence only, not cloud-synced (same as kcal/water history). */
+    fun encodeActivityLog(entries: List<ActivityLogEntry>): List<Map<String, Any?>> =
+        entries.map { mapOf("ts" to it.tsEpochMillis, "action" to it.action, "detail" to it.detail) }
+
+    fun decodeActivityLog(list: List<*>?): List<ActivityLogEntry>? {
+        if (list == null) return null
+        return list.mapNotNull { raw ->
+            val m = raw as? Map<*, *> ?: return@mapNotNull null
+            val ts = numberFrom(m["ts"])?.toLong() ?: return@mapNotNull null
+            val action = m["action"] as? String ?: return@mapNotNull null
+            val detail = m["detail"] as? String ?: return@mapNotNull null
+            ActivityLogEntry(ts, action, detail)
+        }
     }
 
     private fun todayUtcDateString(): String = LocalDate.now(ZoneOffset.UTC).toString()

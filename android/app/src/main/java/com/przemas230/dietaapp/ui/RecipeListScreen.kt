@@ -119,6 +119,7 @@ fun RecipeListScreen(
     plannerViewModel: PlannerViewModel,
     swipeRatingStyleViewModel: SwipeRatingStyleViewModel,
     favoriteIngredientsViewModel: FavoriteIngredientsViewModel,
+    activityLogViewModel: ActivityLogViewModel,
     viewModel: RecipeViewModel = viewModel(),
     // FR-44: hoisted (not the default rememberLazyListState()) so
     // MainActivity's header can observe scroll direction to auto-hide/show
@@ -267,6 +268,7 @@ fun RecipeListScreen(
                 favIngredients,
                 favoriteIngredientsViewModel::toggle,
                 reviews,
+                activityLogViewModel,
                 listState,
             )
         }
@@ -514,6 +516,7 @@ private fun RecipeListWithScrollToTop(
     favIngredients: Set<String>,
     onToggleFavIngredient: (canonName: String) -> Unit,
     reviews: Map<String, RecipeReview>,
+    activityLogViewModel: ActivityLogViewModel,
     listState: LazyListState,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -545,19 +548,28 @@ private fun RecipeListWithScrollToTop(
                     onMarkDoneToday = {
                         viewModel.markCookedToday(recipe.id)
                         pantryViewModel.subtractForRecipe(recipe)
+                        activityLogViewModel.log("cook_subtract", "Ugotowano „${recipe.name}” — odjęto składniki ze spiżarni")
                     },
                     onSetRating = { index, rating -> viewModel.setCookRating(recipe.id, index, rating) },
                     onRemoveEntry = { index ->
                         pantryViewModel.restoreForRecipe(recipe)
                         viewModel.removeCookEntry(recipe.id, index)
+                        activityLogViewModel.log("pantry_add", "Cofnięto wpis „${recipe.name}” — przywrócono w spiżarni")
                     },
                     onToggleHaveIngredient = { canonName, category, unitCat ->
+                        val hadBefore = pantryItems.containsKey(canonName)
                         pantryViewModel.toggleHaveIngredient(canonName, category, unitCat)
+                        if (hadBefore) {
+                            activityLogViewModel.log("pantry_delete", "Usunięto ze spiżarni: $canonName")
+                        } else {
+                            activityLogViewModel.log("pantry_add", "Dodano do spiżarni: $canonName")
+                        }
                     },
                     onAddIngredientToShopping = { ingredientText ->
                         val parsed = RecipePantryMatching.parseIngredient(ingredientText)
                         val sourceKey = "single:${recipe.id}:${parsed.canonName}"
                         shoppingViewModel.addSingleIngredient(ingredientText, sourceKey)
+                        activityLogViewModel.log("shopping_add", "Dodano pojedynczy składnik do listy: ${parsed.canonName}")
                     },
                     favIngredients = favIngredients,
                     onToggleFavIngredient = onToggleFavIngredient,
@@ -570,8 +582,10 @@ private fun RecipeListWithScrollToTop(
                     onToggleAddToShopping = {
                         if (ShoppingOperations.isRecipeAdded(shoppingItems, recipe.id)) {
                             shoppingViewModel.removeRecipe(recipe)
+                            activityLogViewModel.log("shopping_remove", "Usunięto z listy zakupów: ${recipe.name}")
                         } else {
                             shoppingViewModel.addRecipe(recipe)
+                            activityLogViewModel.log("shopping_add", "Dodano do listy zakupów: ${recipe.name}")
                         }
                     },
                     rating = ratings[recipe.id],

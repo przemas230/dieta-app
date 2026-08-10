@@ -88,6 +88,7 @@ import com.przemas230.dietaapp.logic.SnackNutritionDb
 import com.przemas230.dietaapp.logic.UiScale
 import com.przemas230.dietaapp.logic.WaterOperations
 import com.przemas230.dietaapp.logic.forCategory
+import com.przemas230.dietaapp.ui.ActivityLogViewModel
 import com.przemas230.dietaapp.ui.AuthViewModel
 import com.przemas230.dietaapp.ui.CloudSyncCoordinator
 import com.przemas230.dietaapp.ui.EatenViewModel
@@ -211,6 +212,9 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // FR-40: hoisted here (not PostepScreen's default viewModel() param) so
     // LocalPersistenceCoordinator below can read/restore it.
     val weightViewModel: WeightViewModel = viewModel()
+    // FR-42: shared for the same reason as weightViewModel above -- both
+    // RecipeListScreen and PantryScreen log to it, PostepScreen displays it.
+    val activityLogViewModel: ActivityLogViewModel = viewModel()
     // No UI of its own -- restores every local ViewModel's state on launch
     // and debounce-saves it to a local file on every change, regardless of
     // sign-in state (unlike CloudSyncCoordinator below, this always runs --
@@ -228,6 +232,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
         eatenViewModel = eatenViewModel,
         waterViewModel = waterViewModel,
         weightViewModel = weightViewModel,
+        activityLogViewModel = activityLogViewModel,
     )
     // FR-73: no UI of its own -- pushes/pulls the syncable subset of state
     // above to/from Firestore while authViewModel reports a real (non-
@@ -411,6 +416,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     swipeRatingStyleViewModel = swipeRatingStyleViewModel,
                     favoriteIngredientsViewModel = favoriteIngredientsViewModel,
                     viewModel = recipeViewModel,
+                    activityLogViewModel = activityLogViewModel,
                     listState = recipeListState,
                 )
             }
@@ -430,9 +436,12 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     waterViewModel = waterViewModel,
                     weightViewModel = weightViewModel,
                     eatenViewModel = eatenViewModel,
+                    activityLogViewModel = activityLogViewModel,
                 )
             }
-            composable(Screen.Pantry.route) { PantryScreen(viewModel = pantryViewModel, allRecipes = allRecipes) }
+            composable(Screen.Pantry.route) {
+                PantryScreen(viewModel = pantryViewModel, allRecipes = allRecipes, activityLogViewModel = activityLogViewModel)
+            }
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     profileViewModel = profileViewModel,
@@ -461,6 +470,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                         waterViewModel.setCount(0)
                         waterViewModel.replaceHistory(emptyMap())
                         weightViewModel.replaceAll(emptyList())
+                        activityLogViewModel.clear()
                         themeViewModel.setTheme(com.przemas230.dietaapp.logic.AppThemes.DEFAULT_ID)
                         uiScaleViewModel.resetToAuto()
                         swipeRatingStyleViewModel.setStyle(SwipeRatingStyle.BALLOON)

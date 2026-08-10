@@ -1,6 +1,7 @@
 package com.przemas230.dietaapp.logic
 
 import com.przemas230.dietaapp.data.ActivityLevel
+import com.przemas230.dietaapp.data.ActivityLogEntry
 import com.przemas230.dietaapp.data.Goal
 import com.przemas230.dietaapp.data.PantryCategory
 import com.przemas230.dietaapp.data.PantryItem
@@ -190,6 +191,17 @@ class CloudSyncCodecTest {
         assertEquals(history, CloudSyncCodec.decodeDateIntMap(CloudSyncCodec.encodeDateIntMap(history)))
         assertEquals(emptyMap<String, Int>(), CloudSyncCodec.decodeDateIntMap(mapOf("bad" to "not-a-number")))
         assertNull(CloudSyncCodec.decodeDateIntMap(null))
+    }
+
+    @Test
+    fun `activity log round-trips and skips malformed entries`() {
+        val entries = listOf(
+            ActivityLogEntry(1_000L, "pantry_add", "Dodano do spiżarni: cebula"),
+            ActivityLogEntry(2_000L, "shopping_remove", "Usunięto z listy zakupów: Zupa"),
+        )
+        assertEquals(entries, CloudSyncCodec.decodeActivityLog(CloudSyncCodec.encodeActivityLog(entries)))
+        assertEquals(emptyList<ActivityLogEntry>(), CloudSyncCodec.decodeActivityLog(listOf(mapOf("ts" to 1L))))
+        assertNull(CloudSyncCodec.decodeActivityLog(null))
     }
 
     @Test

@@ -31,13 +31,19 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import com.przemas230.dietaapp.data.ActivityLogEntry
 import com.przemas230.dietaapp.data.WeightEntry
+import com.przemas230.dietaapp.logic.ActivityLogOperations
 import com.przemas230.dietaapp.logic.HistoryOperations
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.WaterOperations
 import com.przemas230.dietaapp.logic.WeightOperations
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 /**
  * FR-37/FR-40/FR-41/FR-42/FR-60: the Postęp tab -- previously a bare
@@ -53,9 +59,7 @@ import java.time.ZoneOffset
  * else in this local-only version (see PARITY.md).
  *
  * Deliberately NOT covered yet: FR-38/39 (water reminder notifications --
- * needs Android notification channels/permissions) and the raw activity
- * log half of FR-42 (would need instrumenting dozens of mutation sites
- * across the app, mirroring index.html's scattered `addLog()` calls).
+ * needs Android notification channels/permissions).
  */
 @Composable
 fun PostepScreen(
@@ -63,12 +67,14 @@ fun PostepScreen(
     waterViewModel: WaterViewModel,
     weightViewModel: WeightViewModel,
     eatenViewModel: EatenViewModel,
+    activityLogViewModel: ActivityLogViewModel,
 ) {
     val profile by profileViewModel.profile.collectAsState()
     val waterCount by waterViewModel.count.collectAsState()
     val weightEntries by weightViewModel.entries.collectAsState()
     val kcalHistory by eatenViewModel.kcalHistory.collectAsState()
     val waterHistory by waterViewModel.history.collectAsState()
+    val activityLog by activityLogViewModel.entries.collectAsState()
     val today = remember { LocalDate.now(ZoneOffset.UTC) }
     val dailyTarget = remember(profile) { ProfileCalculations.calcTargets(profile).daily }
 
@@ -149,6 +155,109 @@ fun PostepScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         KcalHistoryCard(kcalHistory = kcalHistory, dailyTarget = dailyTarget, today = today)
+        Spacer(modifier = Modifier.height(12.dp))
+
+        ActivityHistoryCard(entries = activityLog, onClear = activityLogViewModel::clear)
+    }
+}
+
+/** FR-42: raw log of pantry/shopping mutations -- port of index.html's #historyList (Od/Do date filter, 20-entry default cap with "pokaż całą historię" toggle, "Wyczyść" with confirm). */
+@Composable
+private fun ActivityHistoryCard(entries: List<ActivityLogEntry>, onClear: () -> Unit) {
+    var fromDate by remember { mutableStateOf("") }
+    var toDate by remember { mutableStateOf("") }
+    var showAll by remember { mutableStateOf(false) }
+    var showClearConfirm by remember { mutableStateOf(false) }
+    val filtering = fromDate.isNotBlank() || toDate.isNotBlank()
+    val filtered = remember(entries, fromDate, toDate) {
+        ActivityLogOperations.filterByDateRange(entries, fromDate.ifBlank { null }, toDate.ifBlank { null })
+    }
+    val visible = if (!filtering && !showAll) filtered.take(20) else filtered
+    val formatter = remember { DateTimeFormatter.ofPattern("dd.MM.yyyy, HH:mm") }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("📜 Historia aktywności", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                TextButton(onClick = { showClearConfirm = true }) { Text("Wyczyść") }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = fromDate,
+                    onValueChange = { fromDate = it },
+                    label = { Text("Od (RRRR-MM-DD)") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedTextField(
+                    value = toDate,
+                    onValueChange = { toDate = it },
+                    label = { Text("Do (RRRR-MM-DD)") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            if (filtering) {
+                Text(
+                    "Wyczyść filtr, aby zobaczyć 20 ostatnich wpisów.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .padding(top = 6.dp)
+                        .clickable { fromDate = ""; toDate = "" },
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            when {
+                entries.isEmpty() -> Text(
+                    "Historia jest pusta — pojawią się tu dodania/usunięcia z listy zakupów i spiżarni.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                filtered.isEmpty() -> Text(
+                    "Brak wpisów w wybranym zakresie dat.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                else -> {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        visible.forEach { entry ->
+                            val dt = remember(entry.tsEpochMillis) {
+                                Instant.ofEpochMilli(entry.tsEpochMillis).atZone(ZoneOffset.UTC).format(formatter)
+                            }
+                            Column {
+                                Text(dt, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(entry.detail, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                    if (!filtering && filtered.size > 20) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextButton(onClick = { showAll = !showAll }, modifier = Modifier.fillMaxWidth()) {
+                            Text(if (showAll) "Pokaż tylko 20 ostatnich" else "Pokaż całą historię (${filtered.size})")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showClearConfirm) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirm = false },
+            title = { Text("Wyczyścić całą historię aktywności?") },
+            confirmButton = {
+                TextButton(onClick = { onClear(); showClearConfirm = false }) { Text("Wyczyść") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirm = false }) { Text("Anuluj") }
+            },
+        )
     }
 }
 

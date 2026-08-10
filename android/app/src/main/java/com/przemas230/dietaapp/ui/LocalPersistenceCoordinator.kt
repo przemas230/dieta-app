@@ -43,6 +43,7 @@ fun LocalPersistenceCoordinator(
     eatenViewModel: EatenViewModel,
     waterViewModel: WaterViewModel,
     weightViewModel: WeightViewModel,
+    activityLogViewModel: ActivityLogViewModel,
 ) {
     val context = LocalContext.current
 
@@ -65,6 +66,7 @@ fun LocalPersistenceCoordinator(
     val weightEntries by weightViewModel.entries.collectAsState()
     val kcalHistory by eatenViewModel.kcalHistory.collectAsState()
     val waterHistory by waterViewModel.history.collectAsState()
+    val activityLogEntries by activityLogViewModel.entries.collectAsState()
 
     // Guards the save effect below from firing (and clobbering the just-saved
     // file with the ViewModels' empty startup defaults) before the one-time
@@ -101,6 +103,7 @@ fun LocalPersistenceCoordinator(
             CloudSyncCodec.decodeEaten(data["eaten"] as? Map<*, *>)?.let { eatenViewModel.replaceAll(it.entries, it.snacks) }
             CloudSyncCodec.decodeWater(data["water"] as? Map<*, *>)?.let { waterViewModel.setCount(it) }
             CloudSyncCodec.decodeWeights(data["weights"] as? List<*>)?.let { weightViewModel.replaceAll(it) }
+            CloudSyncCodec.decodeActivityLog(data["activityLog"] as? List<*>)?.let { activityLogViewModel.replaceAll(it) }
         }
         initialLoadDone = true
     }
@@ -108,7 +111,7 @@ fun LocalPersistenceCoordinator(
     LaunchedEffect(
         initialLoadDone, profile, displayName, pantryItems, themeId, uiScale, swipeStyle,
         favIngredients, cooked, ratings, reviews, myRecipes, shoppingItems, weekPlan,
-        eatenEntries, snacks, waterCount, weightEntries, kcalHistory, waterHistory,
+        eatenEntries, snacks, waterCount, weightEntries, kcalHistory, waterHistory, activityLogEntries,
     ) {
         if (!initialLoadDone) return@LaunchedEffect
         delay(500)
@@ -133,6 +136,7 @@ fun LocalPersistenceCoordinator(
             "weights" to CloudSyncCodec.encodeWeights(weightEntries),
             "kcalHistory" to CloudSyncCodec.encodeDateIntMap(kcalHistory),
             "waterHistory" to CloudSyncCodec.encodeDateIntMap(waterHistory),
+            "activityLog" to CloudSyncCodec.encodeActivityLog(activityLogEntries),
         )
         withContext(Dispatchers.IO) { LocalStateStore.save(context, data) }
     }

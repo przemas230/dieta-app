@@ -69,7 +69,7 @@ import kotlin.math.roundToInt
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>) {
+fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityLogViewModel: ActivityLogViewModel) {
     val items by viewModel.items.collectAsState()
     var addTileCategory by remember { mutableStateOf<PantryCategory?>(null) }
     var actionTarget by remember { mutableStateOf<Pair<String, PantryCategory>?>(null) }
@@ -116,7 +116,10 @@ fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>) {
                         name = name,
                         emoji = emoji,
                         entry = entry,
-                        onTap = { dir -> viewModel.tileTapDelta(name, category, unitCat, dir) },
+                        onTap = { dir ->
+                            viewModel.tileTapDelta(name, category, unitCat, dir)
+                            activityLogViewModel.log("pantry_add", "Spiżarnia: $name (${if (dir > 0) "+" else "-"}1)")
+                        },
                         onLongPress = { if (entry != null) actionTarget = name to category },
                     )
                 }
@@ -128,7 +131,10 @@ fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>) {
     addTileCategory?.let { category ->
         AddCustomTileDialog(
             category = category,
-            onAdd = { name -> viewModel.tileTapDelta(name, category, unitCats[name] ?: "count", dir = 1) },
+            onAdd = { name ->
+                viewModel.tileTapDelta(name, category, unitCats[name] ?: "count", dir = 1)
+                activityLogViewModel.log("pantry_add", "Dodano własny produkt: $name (${category.label})")
+            },
             onDismiss = { addTileCategory = null },
         )
     }
@@ -136,8 +142,14 @@ fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>) {
         TileActionDialog(
             name = name,
             currentCategory = category,
-            onChangeCategory = { newCategory -> viewModel.changeCategory(name, newCategory) },
-            onRemoveTracking = { viewModel.removeItem(name) },
+            onChangeCategory = { newCategory ->
+                viewModel.changeCategory(name, newCategory)
+                activityLogViewModel.log("pantry_recat", "Zmieniono kategorię „$name” na: ${newCategory.label}")
+            },
+            onRemoveTracking = {
+                viewModel.removeItem(name)
+                activityLogViewModel.log("pantry_delete", "Usunięto ze spiżarni: $name")
+            },
             onDismiss = { actionTarget = null },
         )
     }
