@@ -64,6 +64,7 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         AppUpdateCard(appUpdateViewModel)
+        DisplayNameCard(profileViewModel)
         ProfileCard(profileViewModel)
         UiScaleCard(uiScaleViewModel, effectiveUiScale)
         FirebaseTestCard(firebaseTestViewModel)
@@ -149,6 +150,35 @@ private fun AppUpdateCard(viewModel: AppUpdateViewModel) {
                 )
                 UpdateState.Idle -> {}
             }
+        }
+    }
+}
+
+/**
+ * FR-65: independent of the diet-profile form below (own OutlinedTextField,
+ * own ViewModel field) -- port of index.html's "👤 Konto" card setDisplayName
+ * input, minus the tab grouping (FR-71, not done yet). Saves on every
+ * keystroke, no "Zapisz" button, and untouched by ProfileCard's "Domyślne"
+ * reset.
+ */
+@Composable
+private fun DisplayNameCard(viewModel: ProfileViewModel) {
+    val displayName by viewModel.displayName.collectAsState()
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("👤 Konto", style = MaterialTheme.typography.titleMedium)
+            OutlinedTextField(
+                value = displayName,
+                onValueChange = { viewModel.setDisplayName(it) },
+                label = { Text("Twoja nazwa w aplikacji") },
+                placeholder = { Text("np. Przemek (opcjonalnie)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

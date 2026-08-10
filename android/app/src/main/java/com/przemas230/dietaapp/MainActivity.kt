@@ -96,6 +96,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // otherwise Compose Navigation would hand each destination its own.
     val profileViewModel: ProfileViewModel = viewModel()
     val profile by profileViewModel.profile.collectAsState()
+    val displayName by profileViewModel.displayName.collectAsState()
     // FR-15: shared here (not PantryScreen's default viewModel() param) so
     // marking a recipe "✅ Zrobione" on the Przepisy tab and viewing the
     // resulting stock change on the Spiżarnia tab see the same instance —
@@ -114,11 +115,12 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                 title = {
                     Column {
                         Text("Dieta App")
+                        val namePrefix = if (displayName.isNotBlank()) "$displayName · " else ""
                         val subtitle = if (!profile.configured) {
-                            "👋 Ustaw swój profil w Ustawieniach, aby dopasować dietę do siebie"
+                            "${namePrefix}👋 Ustaw swój profil w Ustawieniach, aby dopasować dietę do siebie"
                         } else {
                             val targets = ProfileCalculations.calcTargets(profile)
-                            "${profile.sex.label}, ${profile.age} lat · ${profile.heightCm} cm · " +
+                            "$namePrefix${profile.sex.label}, ${profile.age} lat · ${profile.heightCm} cm · " +
                                 "${formatWeight(profile.weightKg)} kg → cel ${formatWeight(profile.targetWeightKg)} kg · " +
                                 "${profile.goal.headerLabel} · ~${targets.daily} kcal/dzień"
                         }

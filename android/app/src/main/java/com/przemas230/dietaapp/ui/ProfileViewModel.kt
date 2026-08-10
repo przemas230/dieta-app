@@ -19,6 +19,12 @@ class ProfileViewModel : ViewModel() {
     private val _profile = MutableStateFlow(Profile())
     val profile: StateFlow<Profile> = _profile.asStateFlow()
 
+    // FR-65: independent of Profile on purpose -- resetToDefault() below must
+    // NOT clear it (index.html keeps displayName and profile as separate
+    // top-level state keys for exactly this reason).
+    private val _displayName = MutableStateFlow("")
+    val displayName: StateFlow<String> = _displayName.asStateFlow()
+
     fun targets(): DailyCalorieTargets = ProfileCalculations.calcTargets(_profile.value)
 
     fun save(profile: Profile) {
@@ -27,5 +33,10 @@ class ProfileViewModel : ViewModel() {
 
     fun resetToDefault() {
         _profile.value = Profile(configured = true)
+    }
+
+    /** Saves on every keystroke, same as index.html's setDisplayName input listener -- no separate "Zapisz" button. */
+    fun setDisplayName(name: String) {
+        _displayName.value = name.take(30)
     }
 }
