@@ -126,8 +126,16 @@ fun RecipeListScreen(
     var sortByRating by remember { mutableStateOf(false) }
     val macroTargets = remember(profile) { ProfileCalculations.calcMacroTargets(profile) }
     val kcalTargets = remember(profile) { ProfileCalculations.calcTargets(profile) }
+    // FR-72: the 🎯 badge means nothing before the user has entered real
+    // profile data, so it's withheld entirely (not computed off the
+    // internal placeholder Profile()) until profile.configured -- port of
+    // index.html's `state.profile.configured ? recipeMatchScore(...) : null`.
     val matchScores = remember(recipes, macroTargets, profile) {
-        recipes.associate { it.id to RecipeMatching.matchScore(it, macroTargets.forCategory(it.cat), profile) }
+        if (!profile.configured) {
+            emptyMap()
+        } else {
+            recipes.associate { it.id to RecipeMatching.matchScore(it, macroTargets.forCategory(it.cat), profile) }
+        }
     }
     val displayedRecipes = remember(recipes, sortByMatch, sortByRating, matchScores, ratings) {
         // FR-2/FR-57: independent toggles applied in sequence (matches
