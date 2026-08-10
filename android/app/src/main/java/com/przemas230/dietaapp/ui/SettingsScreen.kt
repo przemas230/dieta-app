@@ -1,5 +1,6 @@
 package com.przemas230.dietaapp.ui
 
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -90,6 +91,11 @@ fun SettingsScreen(
     uiScaleViewModel: UiScaleViewModel = viewModel(),
     swipeRatingStyleViewModel: SwipeRatingStyleViewModel = viewModel(),
     themeViewModel: ThemeViewModel = viewModel(),
+    waterNotificationViewModel: WaterNotificationViewModel = viewModel(),
+    // Read fresh from waterViewModel by MainActivity on every recomposition
+    // -- needed so "Włącz powiadomienie" can seed the notification with
+    // today's actual count instead of always starting it at 0.
+    currentWaterCount: Int = 0,
     effectiveUiScale: Double = 1.0,
     // FR-79: resets every local ViewModel to fresh-install defaults --
     // needs to reach ALL of them, not just what this screen otherwise
@@ -151,10 +157,9 @@ fun SettingsScreen(
                             SwipeRatingStyleCard(swipeRatingStyleViewModel)
                         }
                         SettingsTab.PRZYPOMNIENIA -> {
-                            Text(
-                                "Przypomnienia o piciu wody i diagnostyka powiadomień jeszcze nie działają w aplikacji na Androida (FR-38/FR-39).",
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
+                            WaterNotificationCard(waterNotificationViewModel, currentWaterCount)
+                            WaterReminderCard(waterNotificationViewModel)
+                            WaterNotificationLogCard(waterNotificationViewModel)
                         }
                         SettingsTab.ULUBIONE -> {
                             Text(
@@ -715,5 +720,183 @@ private fun CloudAccountCard(viewModel: AuthViewModel, onClearLocalData: () -> U
                 TextButton(onClick = proceedKeepingData) { Text("Nie czyść") }
             },
         )
+    }
+}
+
+/**
+ * Wraps `RequestPermission()` so both [WaterNotificationCard] and
+ * [WaterReminderCard] can share one launcher instead of each needing their
+ * own -- returns a function that checks the current grant first (skips the
+ * system dialog entirely if already granted, including on API <33 where the
+ * runtime permission doesn't exist at all) and only then launches the
+ * request, invoking [onResult] either way.
+ */
+@Composable
+private fun rememberNotificationPermissionRequester(): ((onResult: (Boolean) -> Unit) -> Unit) {
+    val context = LocalContext.current
+    var pendingResult by remember { mutableStateOf<((Boolean) -> Unit)?>(null) }
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        pendingResult?.invoke(granted)
+        pendingResult = null
+    }
+    return { onResult ->
+        val alreadyGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.POST_NOTIFICATIONS,
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (alreadyGranted) {
+            onResult(true)
+        } else {
+            pendingResult = onResult
+            launcher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+}
+
+/** FR-38: persistent "+1/-1" water tracker notification toggle -- port of index.html's `enableWaterNotifBtn`/`enableWaterNotification`. */
+@Composable
+private fun WaterNotificationCard(viewModel: WaterNotificationViewModel, currentWaterCount: Int) {
+    val enabled by viewModel.trackerEnabled.collectAsState()
+    val requestPermission = rememberNotificationPermissionRequester()
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("💧 Powiadomienie z licznikiem wody", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Stałe powiadomienie z przyciskami „+1 💧” / „-1 ↩️” pozwala liczyć wypite szklanki " +
+                    "bez otwierania aplikacji. Nie znika samo — zostaw je widoczne, dopóki go nie wyłączysz.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Button(onClick = {
+                if (enabled) {
+                    viewModel.setTrackerEnabled(false, currentWaterCount)
+                } else {
+                    requestPermission { granted ->
+                        if (granted) viewModel.setTrackerEnabled(true, currentWaterCount)
+                    }
+                }
+            }) {
+                Text(if (enabled) "🔕 Wyłącz powiadomienie" else "🔔 Włącz powiadomienie")
+            }
+        }
+    }
+}
+
+/** FR-39: recurring "drink water" reminder -- port of index.html's reminder card (`enableReminderBtn`/`setReminderInterval`/`setReminderFrom`/`setReminderTo`). */
+@Composable
+private fun WaterReminderCard(viewModel: WaterNotificationViewModel) {
+    val reminder by viewModel.reminder.collectAsState()
+    val requestPermission = rememberNotificationPermissionRequester()
+
+    var intervalText by rememberSaveable(reminder.intervalMinutes) { mutableStateOf(reminder.intervalMinutes.toString()) }
+    var fromText by rememberSaveable(reminder.activeFrom) { mutableStateOf(reminder.activeFrom) }
+    var toText by rememberSaveable(reminder.activeTo) { mutableStateOf(reminder.activeTo) }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("⏰ Cykliczne przypomnienie o piciu wody", style = MaterialTheme.typography.titleMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = intervalText,
+                    onValueChange = { intervalText = it.filter(Char::isDigit) },
+                    label = { Text("Co ile minut") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedTextField(
+                    value = fromText,
+                    onValueChange = { fromText = it },
+                    label = { Text("Od (GG:MM)") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedTextField(
+                    value = toText,
+                    onValueChange = { toText = it },
+                    label = { Text("Do (GG:MM)") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = {
+                    if (reminder.enabled) {
+                        viewModel.setReminderEnabled(false)
+                    } else {
+                        requestPermission { granted ->
+                            if (granted) {
+                                viewModel.updateReminderConfig(
+                                    intervalText.toIntOrNull() ?: reminder.intervalMinutes,
+                                    fromText,
+                                    toText,
+                                )
+                                viewModel.setReminderEnabled(true)
+                            }
+                        }
+                    }
+                }) {
+                    Text(if (reminder.enabled) "🔕 Wyłącz przypomnienia o piciu wody" else "🔔 Włącz przypomnienia o piciu wody")
+                }
+                if (reminder.enabled) {
+                    TextButton(onClick = {
+                        viewModel.updateReminderConfig(intervalText.toIntOrNull() ?: reminder.intervalMinutes, fromText, toText)
+                    }) {
+                        Text("Zapisz zmiany")
+                    }
+                }
+            }
+            if (reminder.enabled && reminder.nextAt != null) {
+                val d = remember(reminder.nextAt) { java.util.Date(reminder.nextAt!!) }
+                val timeFmt = remember { java.text.SimpleDateFormat("HH:mm", java.util.Locale("pl", "PL")) }
+                val today = remember { java.util.Calendar.getInstance() }
+                val target = remember(reminder.nextAt) { java.util.Calendar.getInstance().apply { timeInMillis = reminder.nextAt!! } }
+                val dayLabel = if (today.get(java.util.Calendar.DAY_OF_YEAR) == target.get(java.util.Calendar.DAY_OF_YEAR)) "dziś" else "jutro"
+                Text("Następne przypomnienie: $dayLabel, ${timeFmt.format(d)}.", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
+/** FR-38 diagnostics: last 20 notification-button dispatches this device actually received -- port of index.html's `renderWaterActionLog`. */
+@Composable
+private fun WaterNotificationLogCard(viewModel: WaterNotificationViewModel) {
+    val log by viewModel.actionLog.collectAsState()
+    val timeFmt = remember { java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale("pl", "PL")) }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Text("🩺 Diagnostyka powiadomień", style = MaterialTheme.typography.titleMedium)
+                TextButton(onClick = { viewModel.refreshActionLog() }) { Text("Odśwież") }
+            }
+            if (log.isEmpty()) {
+                Text(
+                    "Brak zapisanych zdarzeń jeszcze — stuknij +1/-1 w powiadomieniu, potem wróć tu i odśwież.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            } else {
+                log.asReversed().forEach { entry ->
+                    val time = timeFmt.format(java.util.Date(entry.timestamp))
+                    val line = if (entry.result == "swallowed-duplicate") {
+                        "$time  action=${entry.action}  [odrzucono jako duplikat]"
+                    } else {
+                        "$time  action=${entry.action}  ${entry.countBefore} → ${entry.countAfter}"
+                    }
+                    Text(line, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
     }
 }

@@ -119,6 +119,8 @@ import com.przemas230.dietaapp.ui.SwipeRatingStyle
 import com.przemas230.dietaapp.ui.SwipeRatingStyleViewModel
 import com.przemas230.dietaapp.ui.ThemeViewModel
 import com.przemas230.dietaapp.ui.UiScaleViewModel
+import com.przemas230.dietaapp.ui.WaterNotificationCoordinator
+import com.przemas230.dietaapp.ui.WaterNotificationViewModel
 import com.przemas230.dietaapp.ui.WaterViewModel
 import com.przemas230.dietaapp.ui.WeightViewModel
 import com.przemas230.dietaapp.ui.navigation.BOTTOM_NAV_SCREENS
@@ -217,6 +219,9 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // FR-70: shared at the Scaffold level (not per-screen) so the header
     // droplet strip below is the single source of truth, visible on every tab.
     val waterViewModel: WaterViewModel = viewModel()
+    // FR-38/39: hoisted here (not SettingsScreen's default viewModel() param)
+    // so WaterNotificationCoordinator below can wire it to waterViewModel.
+    val waterNotificationViewModel: WaterNotificationViewModel = viewModel()
     // FR-36: shared for the same reason as waterViewModel above.
     val eatenViewModel: EatenViewModel = viewModel()
     // FR-40: hoisted here (not PostepScreen's default viewModel() param) so
@@ -264,6 +269,9 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
         weightViewModel = weightViewModel,
         activityLogViewModel = activityLogViewModel,
     )
+    // FR-38/39: no UI of its own -- keeps the persistent tracker notification
+    // in sync with waterViewModel in both directions. See its own doc comment.
+    WaterNotificationCoordinator(waterViewModel = waterViewModel, notificationViewModel = waterNotificationViewModel)
     val eatenEntries by eatenViewModel.entries.collectAsState()
     val snacks by eatenViewModel.snacks.collectAsState()
     var showQuickAddDialog by remember { mutableStateOf(false) }
@@ -470,6 +478,8 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     effectiveUiScale = effectiveScale,
                     swipeRatingStyleViewModel = swipeRatingStyleViewModel,
                     themeViewModel = themeViewModel,
+                    waterNotificationViewModel = waterNotificationViewModel,
+                    currentWaterCount = waterViewModel.count.collectAsState().value,
                     onClearLocalData = {
                         // FR-79: "wyczyść dane lokalne" -- resets every local
                         // ViewModel to fresh-install defaults. LocalPersistenceCoordinator

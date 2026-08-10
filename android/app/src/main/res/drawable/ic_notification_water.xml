@@ -1,0 +1,15 @@
+<!-- Status bar icon for the water tracker/reminder notifications (FR-38/39).
+     Single-color silhouette (system enforces white-tint rendering in the
+     status bar regardless of fillColor), same mug silhouette as
+     MainActivity.kt's WaterCupIcon Canvas drawing and index.html's
+     cupIconSvg, kept as a separate flat vector since notification icons
+     can't reuse a Composable. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M5,4 L16,4 L16,13 A4,4 0 0 1 12,17 L9,17 A4,4 0 0 1 5,13 Z M16,7.5 L17.3,7.5 A2,2 0 0 1 17.3,11.5 L16,11.5 Z" />
+</vector>

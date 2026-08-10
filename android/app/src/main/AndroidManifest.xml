@@ -9,6 +9,13 @@
          granted it yet — this permission just makes the app eligible for
          that toggle at all, it doesn't skip it. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- FR-38/39: water tracker/reminder notifications. POST_NOTIFICATIONS is
+         also requested at runtime (API 33+ requires the user's explicit
+         grant, this manifest entry alone isn't enough); RECEIVE_BOOT_COMPLETED
+         lets WaterReminderAlarmReceiver re-arm the reminder alarm after a
+         reboot, since AlarmManager alarms don't survive one on their own. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="true"
@@ -26,6 +33,24 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- FR-38: handles the water tracker notification's +1/-1 buttons and
+             the reminder notification's snooze/skip buttons, only ever
+             triggered by this app's own PendingIntents, never exported. -->
+        <receiver
+            android:name=".notifications.WaterActionReceiver"
+            android:exported="false" />
+
+        <!-- FR-39: fires the recurring water reminder and re-arms the next
+             one. Also listens for BOOT_COMPLETED (a system-sent broadcast,
+             so this one must be exported) to reschedule after a reboot. -->
+        <receiver
+            android:name=".notifications.WaterReminderAlarmReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Exposes the downloaded update APK (app cache dir) to the system
              package installer via a content:// URI — required on API 24+,
