@@ -1,5 +1,7 @@
 package com.przemas230.dietaapp.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -49,6 +51,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.przemas230.dietaapp.R
 import com.przemas230.dietaapp.data.ActivityLevel
 import com.przemas230.dietaapp.data.Goal
 import com.przemas230.dietaapp.data.Profile
@@ -532,6 +539,50 @@ private fun CloudAccountCard(viewModel: AuthViewModel) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
 
+    val context = LocalContext.current
+    // FR-69 (Google slice): requestIdToken needs the project's "web" OAuth
+    // client (client_type 3 in google-services.json) -- the google-services
+    // Gradle plugin auto-generates this string resource from that same
+    // entry, so it's always in sync with whatever google-services.json is
+    // currently checked in, no hardcoded client ID to go stale.
+    val googleSignInClient = remember {
+        val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(context.getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+        GoogleSignIn.getClient(context, options)
+    }
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        try {
+            val account = GoogleSignIn.getSignedInAccountFromIntent(result.data).getResult(ApiException::class.java)
+            val idToken = account?.idToken
+            if (idToken != null) {
+                viewModel.signInWithGoogleIdToken(idToken)
+            } else {
+                viewModel.reportError("Google nie zwróciło tokenu logowania.")
+            }
+        } catch (e: ApiException) {
+            when (e.statusCode) {
+                // User closed the account picker / backed out -- not an error, stay silent.
+                com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes.SIGN_IN_CANCELLED -> {}
+                // Most common real-world cause: this build's SHA-1 signing
+                // fingerprint isn't registered against the Firebase project's
+                // Android app yet (Firebase Console → Project settings →
+                // Android app → "Add fingerprint") -- surfaced to the user
+                // instead of a bare status code, since "DEVELOPER_ERROR"
+                // alone means nothing to them.
+                com.google.android.gms.common.api.CommonStatusCodes.DEVELOPER_ERROR ->
+                    viewModel.reportError(
+                        "Logowanie Google nie jest jeszcze skonfigurowane dla tego builda " +
+                            "(brak zarejestrowanego odcisku SHA-1 w konsoli Firebase).",
+                    )
+                else -> viewModel.reportError("Nie udało się zalogować przez Google (${e.statusCode}).")
+            }
+        }
+    }
+
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -560,6 +611,12 @@ private fun CloudAccountCard(viewModel: AuthViewModel) {
                             "albo załóż konto, żeby synchronizować je między urządzeniami.",
                         style = MaterialTheme.typography.bodySmall,
                     )
+                    Button(
+                        onClick = { googleSignInLauncher.launch(googleSignInClient.signInIntent) },
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Zaloguj przez Google") }
+                    Text("— albo e-mailem i hasłem —", style = MaterialTheme.typography.bodySmall)
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },

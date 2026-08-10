@@ -21,8 +21,8 @@ android {
         applicationId = "com.przemas230.dietaapp"
         minSdk = 26
         targetSdk = 34
-        versionCode = 22
-        versionName = "0.1.21"
+        versionCode = 23
+        versionName = "0.1.22"
     }
 
     buildTypes {
@@ -72,8 +72,13 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
     // .await() on Firebase Tasks (anonymous sign-in, Firestore get/set) inside
-    // coroutines — used by SettingsScreen's Firebase connectivity test.
+    // coroutines — used by AuthViewModel/SettingsScreen.
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
+    // FR-69 (Google slice): classic GoogleSignInClient flow -- simpler and
+    // more predictable to wire correctly than the newer Credential Manager
+    // API, which needs extra Digital Asset Links setup this session can't
+    // verify end-to-end anyway.
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

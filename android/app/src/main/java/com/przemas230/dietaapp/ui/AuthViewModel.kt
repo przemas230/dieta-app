@@ -3,6 +3,7 @@ package com.przemas230.dietaapp.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -94,6 +95,37 @@ class AuthViewModel : ViewModel() {
                 _busy.value = false
             }
         }
+    }
+
+    /**
+     * FR-69 (Google slice): exchanges a Google ID token (obtained by the
+     * caller via GoogleSignInClient's own sign-in intent -- Firebase Auth
+     * has no Android UI of its own for this, unlike email/password) for a
+     * Firebase credential. Requires the app's SHA-1 signing fingerprint to
+     * be registered against this Firebase project's Android app (Firebase
+     * Console → Project settings → your Android app → "Add fingerprint")
+     * -- without it, Google's sign-in flow itself fails before ever
+     * reaching this method (surfaced by the caller as a DEVELOPER_ERROR).
+     */
+    fun signInWithGoogleIdToken(idToken: String) {
+        val a = auth ?: return
+        _busy.value = true
+        _error.value = null
+        viewModelScope.launch {
+            try {
+                val credential = GoogleAuthProvider.getCredential(idToken, null)
+                a.signInWithCredential(credential).await()
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Nie udało się zalogować przez Google."
+            } finally {
+                _busy.value = false
+            }
+        }
+    }
+
+    /** Lets Compose-side code (e.g. Google Sign-In's own ActivityResult flow) surface an error through the same channel as signIn/signUp. */
+    fun reportError(message: String) {
+        _error.value = message
     }
 
     /** FR-79: signs out of the real account -- authStateListener above immediately re-signs-in anonymously. */
