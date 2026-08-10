@@ -344,7 +344,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                 )
             }
             composable(Screen.Shopping.route) {
-                ShoppingScreen(viewModel = shoppingViewModel, plannerViewModel = plannerViewModel)
+                ShoppingScreen(viewModel = shoppingViewModel, plannerViewModel = plannerViewModel, pantryViewModel = pantryViewModel)
             }
             composable(Screen.Planner.route) {
                 PlannerScreen(

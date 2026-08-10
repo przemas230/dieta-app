@@ -84,4 +84,20 @@ object RecipePantryMatching {
     /** Reverses subtractForRecipe, e.g. when a cook-history entry is deleted. */
     fun restoreForRecipe(items: Map<String, PantryItem>, recipe: Recipe): Map<String, PantryItem> =
         applyDelta(items, recipe, sign = 1)
+
+    /**
+     * FR-75: how much of a shopping-list quantity is still missing once
+     * matching pantry stock is subtracted -- null means fully covered
+     * ("✓" tile badge). A missing/mismatched-unit-category pantry entry is
+     * treated as zero coverage (the full shopping quantity still shows as
+     * missing) -- same cautious fallback as the FR-16 "🏺 masz" pantry check,
+     * since e.g. a pantry item tracked in "szt." can't safely cover a
+     * shopping-list need expressed in grams.
+     */
+    fun missingAfterPantry(shoppingQty: Double, shoppingUnitCat: String, pantryEntry: PantryItem.Product?): Double? {
+        if (pantryEntry == null || pantryUnitCat(pantryEntry.unit) != shoppingUnitCat) return shoppingQty
+        val pantryQtyInBaseUnits = pantryEntry.quantity * pantryUnitFactor(pantryEntry.unit)
+        val missing = shoppingQty - pantryQtyInBaseUnits
+        return if (missing <= 0.0001) null else missing
+    }
 }

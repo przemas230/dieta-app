@@ -5,6 +5,7 @@ import com.przemas230.dietaapp.data.PantryItem
 import com.przemas230.dietaapp.data.Recipe
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
 private fun recipeWithIngredients(vararg ingredients: String) = Recipe(
@@ -86,5 +87,36 @@ class RecipePantryMatchingTest {
 
         assertEquals(pantry, restored)
         assertFalse(restored === pantry)
+    }
+
+    @Test
+    fun `missingAfterPantry returns the shortfall when pantry stock is insufficient`() {
+        val pantry = PantryItem.Product("mąka", PantryCategory.ZBOZOWE, 300.0, "g")
+        assertEquals(200.0, RecipePantryMatching.missingAfterPantry(500.0, "weight", pantry))
+    }
+
+    @Test
+    fun `missingAfterPantry returns null (fully covered) when pantry stock meets or exceeds the need`() {
+        val exact = PantryItem.Product("mąka", PantryCategory.ZBOZOWE, 500.0, "g")
+        assertNull(RecipePantryMatching.missingAfterPantry(500.0, "weight", exact))
+        val surplus = PantryItem.Product("mąka", PantryCategory.ZBOZOWE, 800.0, "g")
+        assertNull(RecipePantryMatching.missingAfterPantry(500.0, "weight", surplus))
+    }
+
+    @Test
+    fun `missingAfterPantry converts pantry units to the shopping list's base unit`() {
+        val pantry = PantryItem.Product("mąka", PantryCategory.ZBOZOWE, 0.3, "kg")
+        assertEquals(200.0, RecipePantryMatching.missingAfterPantry(500.0, "weight", pantry))
+    }
+
+    @Test
+    fun `missingAfterPantry treats a missing pantry entry as zero coverage`() {
+        assertEquals(500.0, RecipePantryMatching.missingAfterPantry(500.0, "weight", null))
+    }
+
+    @Test
+    fun `missingAfterPantry treats a mismatched unit category as zero coverage`() {
+        val pantry = PantryItem.Product("mąka", PantryCategory.ZBOZOWE, 10.0, "szt.")
+        assertEquals(500.0, RecipePantryMatching.missingAfterPantry(500.0, "weight", pantry))
     }
 }

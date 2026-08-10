@@ -3,6 +3,7 @@ package com.przemas230.dietaapp.ui
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -23,6 +27,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -32,16 +37,24 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.przemas230.dietaapp.data.PantryItem
 import com.przemas230.dietaapp.data.ShoppingItem
 import com.przemas230.dietaapp.logic.DayCardState
+import com.przemas230.dietaapp.logic.IngredientCanon
+import com.przemas230.dietaapp.logic.RecipePantryMatching
 import com.przemas230.dietaapp.logic.ShoppingDayCard
 import com.przemas230.dietaapp.logic.ShoppingDayStrip
 import com.przemas230.dietaapp.logic.ShoppingDisplay
@@ -59,11 +72,16 @@ import java.util.Calendar
  * via ShoppingDisplay.
  */
 @Composable
-fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewModel) {
+fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewModel, pantryViewModel: PantryViewModel) {
     val items by viewModel.items.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
     val allRecipes by plannerViewModel.allRecipes.collectAsState()
+    val pantryItems by pantryViewModel.items.collectAsState()
     val context = LocalContext.current
+    // FR-75: list view (default) vs. tile grid view -- same data either way,
+    // just presentation, per the FR's own "przełącznik widoku nie zmienia
+    // zawartości" criterion.
+    var tileView by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -75,6 +93,14 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
         ) {
             Text("Lista zakupów (${items.size})", style = MaterialTheme.typography.titleMedium)
             TextButton(onClick = { viewModel.clearChecked() }) { Text("Usuń kupione") }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(selected = !tileView, onClick = { tileView = false }, label = { Text("📃 Lista") })
+            FilterChip(selected = tileView, onClick = { tileView = true }, label = { Text("🏺 Kafelki (jak w spiżarni)") })
         }
 
         // FR-58/FR-62: one strip of 7 day cards, each stating its own
@@ -120,6 +146,17 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
                 modifier = Modifier.padding(24.dp),
                 style = MaterialTheme.typography.bodyMedium,
             )
+        } else if (tileView) {
+            val sorted = remember(items) { items.entries.sortedBy { it.value.name } }
+            LazyVerticalGrid(columns = GridCells.Fixed(3), contentPadding = PaddingValues(12.dp)) {
+                gridItems(sorted, key = { it.key }) { (key, item) ->
+                    ShoppingTile(
+                        item = item,
+                        pantryEntry = pantryItems[item.name] as? PantryItem.Product,
+                        onToggle = { viewModel.toggleChecked(key) },
+                    )
+                }
+            }
         } else {
             val sorted = remember(items) { items.entries.sortedBy { it.value.name } }
             LazyColumn(contentPadding = PaddingValues(12.dp)) {
@@ -198,6 +235,58 @@ private fun ShoppingDayCardView(card: ShoppingDayCard, onClick: () -> Unit, onLo
             LinearProgressIndicator(
                 progress = { card.progressPct / 100f },
                 modifier = Modifier.fillMaxWidth().height(4.dp),
+            )
+        }
+    }
+}
+
+/**
+ * FR-75: one tile in the "🏺 Kafelki" grid view -- same visual idea as a
+ * pantry tile (emoji + name + a badge), badge showing the NEGATIVE amount
+ * still missing after subtracting pantry stock (RecipePantryMatching.
+ * missingAfterPantry), or "✓" once pantry stock fully covers it. Tapping
+ * toggles checked, same action as the list view's checkbox -- both views
+ * read/write the same ShoppingViewModel state, so there's never a second
+ * source of truth to keep in sync.
+ */
+@Composable
+private fun ShoppingTile(item: ShoppingItem, pantryEntry: PantryItem.Product?, onToggle: () -> Unit) {
+    val missing = remember(item.name, item.unitCat, item.quantity, pantryEntry) {
+        RecipePantryMatching.missingAfterPantry(item.quantity, item.unitCat, pantryEntry)
+    }
+    val badge = if (missing == null) "✓" else "−${ShoppingDisplay.formatQty(item.unitCat, missing)}"
+    val emoji = IngredientCanon.CANON_INFO[item.name]?.emoji ?: "🛒"
+    val displayName = ShoppingDisplay.displayName(item.name, item.unitCat, item.quantity)
+    val containerColor = if (item.checked) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
+    Card(
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        modifier = Modifier
+            .padding(4.dp)
+            .fillMaxWidth()
+            .clickable(onClick = onToggle),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(emoji, fontSize = 22.sp)
+            Text(
+                displayName,
+                style = MaterialTheme.typography.labelSmall,
+                textAlign = TextAlign.Center,
+                textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                badge,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = if (missing == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
             )
         }
     }
