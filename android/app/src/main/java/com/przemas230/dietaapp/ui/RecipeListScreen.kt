@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -106,6 +107,10 @@ fun RecipeListScreen(
     plannerViewModel: PlannerViewModel,
     swipeRatingStyleViewModel: SwipeRatingStyleViewModel,
     viewModel: RecipeViewModel = viewModel(),
+    // FR-44: hoisted (not the default rememberLazyListState()) so
+    // MainActivity's header can observe scroll direction to auto-hide/show
+    // itself -- see DietaAppRoot's headerExpanded auto-scroll LaunchedEffect.
+    listState: LazyListState = rememberLazyListState(),
 ) {
     val swipeRatingStyle by swipeRatingStyleViewModel.style.collectAsState()
     val recipes by viewModel.visibleRecipes.collectAsState()
@@ -210,6 +215,7 @@ fun RecipeListScreen(
                 shoppingViewModel,
                 plannerViewModel,
                 swipeRatingStyle,
+                listState,
             )
         }
     }
@@ -235,8 +241,8 @@ private fun RecipeListWithScrollToTop(
     shoppingViewModel: ShoppingViewModel,
     plannerViewModel: PlannerViewModel,
     swipeRatingStyle: SwipeRatingStyle,
+    listState: LazyListState,
 ) {
-    val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
     val thresholdPx = with(density) { 400.dp.toPx() }

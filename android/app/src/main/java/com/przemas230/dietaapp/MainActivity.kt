@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -50,6 +51,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -76,6 +78,7 @@ import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.data.Snack
 import com.przemas230.dietaapp.logic.DailyCalorieTargets
 import com.przemas230.dietaapp.logic.EatenOperations
+import com.przemas230.dietaapp.logic.HeaderScrollBehavior
 import com.przemas230.dietaapp.logic.IngredientCanon
 import com.przemas230.dietaapp.logic.PlannerCategory
 import com.przemas230.dietaapp.logic.PlannerOperations
@@ -187,13 +190,36 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     val plannedTodayKcal = remember(weekPlan, recipesById, todayIdx) {
         PlannerOperations.dayTotalKcal(weekPlan, todayIdx, recipesById)
     }
-    // FR-44/45 (auto-hide-on-scroll + manual-override precedence) aren't
-    // ported -- this is just the simpler "starts expanded on Przepisy,
-    // collapsed elsewhere, manually toggleable" base behavior index.html's
-    // switchView already had before those two were layered on top of it.
-    // Keyed on currentRoute so switching tabs resets to that tab's default,
+    // FR-44: starts expanded on Przepisy, collapsed elsewhere -- keyed on
+    // currentRoute so switching tabs always resets to that tab's default,
     // same as index.html's `if(name!=="recipes") headerEl.classList.add("collapsed")`.
     var headerExpanded by remember(currentRoute) { mutableStateOf(currentRoute == Screen.Recipes.route) }
+    // FR-45: a manual collapse freezes the FR-44 auto-show-on-scroll-up
+    // below until the user manually re-expands (or leaves and re-enters
+    // Przepisy, which resets both via the `remember(currentRoute)` above).
+    var headerAutoFrozen by remember(currentRoute) { mutableStateOf(false) }
+    // FR-44: hoisted so this same LazyListState can be observed here for
+    // scroll direction -- see the LaunchedEffect below.
+    val recipeListState = rememberLazyListState()
+    val density = LocalDensity.current
+    LaunchedEffect(recipeListState, currentRoute) {
+        if (currentRoute != Screen.Recipes.route) return@LaunchedEffect
+        val nearTopPx = with(density) { 60.dp.toPx() }.toInt()
+        var prevIndex = recipeListState.firstVisibleItemIndex
+        var prevOffset = recipeListState.firstVisibleItemScrollOffset
+        snapshotFlow { recipeListState.firstVisibleItemIndex to recipeListState.firstVisibleItemScrollOffset }
+            .collect { (index, offset) ->
+                if (!headerAutoFrozen) {
+                    when {
+                        HeaderScrollBehavior.isNearTop(index, offset, nearTopPx) -> headerExpanded = true
+                        HeaderScrollBehavior.scrolledDown(prevIndex, prevOffset, index, offset) -> headerExpanded = false
+                        HeaderScrollBehavior.scrolledUp(prevIndex, prevOffset, index, offset) -> headerExpanded = true
+                    }
+                }
+                prevIndex = index
+                prevOffset = offset
+            }
+    }
 
     Scaffold(
         topBar = {
@@ -208,7 +234,19 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
             Column(modifier = Modifier.background(MaterialTheme.colorScheme.primary)) {
                 TopAppBar(
                     title = {
-                        Column(modifier = Modifier.clickable { headerExpanded = !headerExpanded }) {
+                        Column(
+                            modifier = Modifier.clickable {
+                                // FR-45: collapsing freezes FR-44's auto-show-on-scroll-up;
+                                // expanding hands control back to it.
+                                if (headerExpanded) {
+                                    headerExpanded = false
+                                    headerAutoFrozen = true
+                                } else {
+                                    headerExpanded = true
+                                    headerAutoFrozen = false
+                                }
+                            },
+                        ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("Dieta App")
                                 Text(
@@ -302,6 +340,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     shoppingViewModel = shoppingViewModel,
                     plannerViewModel = plannerViewModel,
                     swipeRatingStyleViewModel = swipeRatingStyleViewModel,
+                    listState = recipeListState,
                 )
             }
             composable(Screen.Shopping.route) {
