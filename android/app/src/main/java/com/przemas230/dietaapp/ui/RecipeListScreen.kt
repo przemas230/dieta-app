@@ -77,6 +77,7 @@ import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.logic.CATEGORIES
 import com.przemas230.dietaapp.logic.DailyCalorieTargets
 import com.przemas230.dietaapp.logic.IngredientCanon
+import com.przemas230.dietaapp.logic.Micronutrients
 import com.przemas230.dietaapp.logic.PantryOperations
 import com.przemas230.dietaapp.logic.PlannerOperations
 import com.przemas230.dietaapp.logic.ProfileCalculations
@@ -869,10 +870,11 @@ private fun formatCookTime(epochMillis: Long): String =
 /**
  * FR-12: per-ingredient kcal/macro breakdown ("📊 Jak policzono: <nazwa>")
  * plus a methodology legend, collapsed by default — port of index.html's
- * openMacroInfoModal + the static #macroInfoOverlay legend text. Micronutrient
- * chips (computeMicronutrients in index.html) aren't ported yet — that's
- * FR-64, separate from this one.
+ * openMacroInfoModal + the static #macroInfoOverlay legend text. Also shows
+ * the FR-64 micronutrient chips (Micronutrients.estimate) when the recipe
+ * has at least one recognized ingredient.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MacroInfoDialog(recipe: Recipe, onDismiss: () -> Unit) {
     var legendExpanded by remember { mutableStateOf(false) }
@@ -929,6 +931,18 @@ private fun MacroInfoDialog(recipe: Recipe, onDismiss: () -> Unit) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(scaleNote, style = MaterialTheme.typography.bodySmall)
 
+                // FR-64: only when at least one ingredient is on the
+                // recognized list -- never a row of zeros.
+                val micro = remember(recipe.id) { Micronutrients.estimate(recipe) }
+                if (micro != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        MicroChip("🦴 Wapń ~${micro.ca} mg")
+                        MicroChip("☀️ Wit. D ~${formatNum(micro.vitD)} µg")
+                        MicroChip("🥩 B12 ~${formatNum(micro.b12)} µg")
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(14.dp))
                 TextButton(onClick = { legendExpanded = !legendExpanded }) {
                     Text("ℹ️ Legenda i metodologia (B/W/T, IG, ŁG) ${if (legendExpanded) "⌃" else "⌄"}")
@@ -973,9 +987,28 @@ private fun MacroInfoDialog(recipe: Recipe, onDismiss: () -> Unit) {
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        // FR-64: the "these are approximate" caveat lives once
+                        // here (general background info), not repeated inline
+                        // every time a recipe's micro chips show above.
+                        Text(
+                            Micronutrients.APPROX_NOTE,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun MicroChip(text: String) {
+    Box(
+        modifier = Modifier
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(50))
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+    ) {
+        Text(text, style = MaterialTheme.typography.labelSmall)
     }
 }
