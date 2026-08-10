@@ -1,0 +1,20 @@
+Wersja v69 (2026-08-10)
+
+1. Wyłączono skanowanie kodu kreskowego produktu (FR-31) w Spiżarni,
+   na wyraźną prośbę użytkownika — funkcja nie jest obecnie potrzebna
+   i nie będzie rozwijana. Przycisk „📷 Skanuj kod kreskowy produktu”
+   jest ukryty; reszta kodu (obsługa kamery, BarcodeDetector, modal)
+   zostaje w plikach nietknięta na wypadek ponownego włączenia
+   w przyszłości.
+
+2. Przebudowano okienko „🔄 Synchronizacja z chmury” (FR-78) — zamiast
+   osobnej, nieczytelnej listy wszystkich dodanych/usuniętych/zmienionych
+   pozycji pogrupowanej po polu, każda zmieniona rzecz pokazuje się teraz
+   jako jedna, czytelna pozycja z prostą różnicą „u mnie” / „w chmurze”
+   (dla spiżarni — jedna linia z konkretną deltą, np. „mleko: 1 l → 0 l
+   (zużyto 1 l)”), z dwoma przyciskami: „✅ Zaakceptuj i zmień” oraz
+   „↩️ Odrzuć i zostaw moje dane”. Sam mechanizm scalania danych się nie
+   zmienił — to wyłącznie czytelniejsza prezentacja tego samego wyniku.
+
+Podbito wersję Service Workera (dieta-app-v43 → v44), żeby zmiany
+w index.html dotarły do już zainstalowanych użytkowników PWA.

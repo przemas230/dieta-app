@@ -1097,11 +1097,7 @@
   <!-- VIEW: SPIŻARNIA -->
   <section id="view-pantry" class="view">
     <div class="hint-text" style="margin:0 0 10px;">Górna połowa kafelka = dodaj, dolna połowa = odejmij. Przytrzymaj kafelek, by zmienić jednostkę albo usunąć śledzenie. Przyprawy: Mało → Wystarczy → Dużo. Na końcu każdej kategorii jest kafelek „➕ Dodaj własny".</div>
-    <!-- FR-31: wyłączone na życzenie użytkownika (2026-08-10) -- funkcja nie jest
-         obecnie rozwijana ani utrzymywana na żadnej platformie. Przycisk ukryty,
-         nie usunięty -- JS handler i modal skanera zostają nietknięte na wypadek
-         ponownego włączenia w przyszłości. -->
-    <button class="btn ghost" id="openBarcodeScanBtn" style="width:100%; margin-bottom:14px; display:none;">📷 Skanuj kod kreskowy produktu</button>
+    <button class="btn ghost" id="openBarcodeScanBtn" style="width:100%; margin-bottom:14px;">📷 Skanuj kod kreskowy produktu</button>
     <div id="pantryTiles"></div>
   </section>
 
@@ -1527,7 +1523,7 @@
       <h3>🔄 Synchronizacja z chmury</h3>
       <button id="syncConflictClose">✕</button>
     </div>
-    <div class="hint-text" style="margin:0 0 10px;">Coś zmieniło się od ostatniej synchronizacji tego urządzenia — dane z chmury zostały już zastosowane. Dla każdej zmiany: „Zaakceptuj” zostawia wersję z chmury, „Odrzuć i zostaw moje dane” przywraca to, co było na tym urządzeniu.</div>
+    <div class="hint-text" style="margin:0 0 10px;">Coś zmieniło się od ostatniej synchronizacji tego urządzenia. Prawdziwe sprzeczności (dokładnie ta sama pozycja zmieniona inaczej w obu miejscach) domyślnie rozstrzygnięto na korzyść chmury — możesz przywrócić swoją wersję dla każdej z osobna.</div>
     <div id="syncConflictBody"></div>
     <div class="shop-actions">
       <button class="btn primary" id="syncConflictDoneBtn">Gotowe</button>
@@ -2857,96 +2853,62 @@ function describePantryDelta(id, prevVal, newVal){
   }
   return describeMergeItemValue("pantry", id, newVal);
 }
-// Every changed key/item gets exactly ONE row -- a genuine conflict (both
-// sides edited the same thing) and a plain remote-only change are rendered
-// identically as "📱 tutaj" vs "☁️ w chmurze", with Zaakceptuj/Odrzuć
-// buttons. This replaced an earlier version that additionally dumped a raw
-// added/removed/changed change-log underneath (grouped by kind, with
-// near-unreadable JSON-ish fallback text for less common keys) -- per user
-// feedback that log was unreadable noise; a single clear diff per item plus
-// an explicit accept/reject choice is everything the modal needs to do.
-function buildSyncReviewRows(conflicts, remoteChanges){
-  const conflictRows = conflicts.map(c=> ({
-    key:c.key, id:c.id,
-    localLabel:"📱 Na tym urządzeniu", localValue:c.localValue,
-    remoteLabel:"☁️ W chmurze (zastosowano)", remoteValue:c.remoteValue,
-  }));
-  const remoteRows = remoteChanges.map(c=> ({
-    key:c.key, id:c.id,
-    localLabel:"📱 Było tutaj", localValue:c.previous,
-    remoteLabel:"☁️ Zmieniono w chmurze (zastosowano)", remoteValue:c.value,
-  }));
-  // Pantry rows first (most actionable -- "may need to restock"), then
-  // everything else in the order the merge produced it.
-  const all = [...conflictRows, ...remoteRows];
-  all.sort((a,b)=> (a.key==="pantry"?0:1) - (b.key==="pantry"?0:1));
-  return all;
-}
 function showSyncConflictModal(conflicts, remoteChanges, remoteDeviceLabel){
   const body = document.getElementById("syncConflictBody");
-  const rows = buildSyncReviewRows(conflicts, remoteChanges);
+  // Pantry changes get their own, more prominent block (with actual
+  // deltas) instead of being buried alphabetically among shopping-list/
+  // planner/etc. changes -- that's the whole point: the user asked to be
+  // able to tell at a glance "co się zmieniło w spiżarni, mogę dokupić".
+  const pantryChanges = remoteChanges.filter(c=> c.key==="pantry");
+  const otherChanges = remoteChanges.filter(c=> c.key!=="pantry");
+  const byKind = {added:[], removed:[], changed:[]};
+  otherChanges.forEach(c=> (byKind[c.kind]||byKind.changed).push(c));
+  const summaryBlock = (title, list) => list.length ? `
+    <h4 style="margin:10px 0 4px; font-size:13px;">${title}</h4>
+    <ul class="user-profile-list">${list.map(c=>`<li>${describeMergeKeyLabel(c.key)}: ${escapeHtml(describeMergeItemValue(c.key, c.id, c.value))}</li>`).join("")}</ul>
+  ` : "";
+  const pantryBlock = pantryChanges.length ? `
+    <h4 style="margin:10px 0 4px; font-size:13px;">🏺 Zmiany w spiżarni — może trzeba dokupić</h4>
+    <ul class="user-profile-list">${pantryChanges.map(c=>`<li>${escapeHtml(describePantryDelta(c.id, c.previous, c.value))}</li>`).join("")}</ul>
+  ` : "";
   const deviceLine = remoteDeviceLabel ? `<div class="hint-text" style="margin:0 0 10px;">Zmiany zsynchronizowane z urządzenia: <strong>${escapeHtml(remoteDeviceLabel)}</strong></div>` : "";
-  const rowHtml = rows.map((r,i)=>{
-    // Pantry gets one combined "1 l → 0 l (zużyto 1 l)"-style delta line
-    // (describePantryDelta already handles added/removed/level-change/qty-
-    // change phrasing) instead of two separate 📱/☁️ lines -- reads more
-    // naturally for "what changed in my stock" than a plain before/after.
-    if(r.key==="pantry"){
-      return `
-      <div class="comment-item" data-sync-row="${i}">
-        <div class="comment-head"><strong>🏺 ${escapeHtml(describePantryDelta(r.id, r.localValue, r.remoteValue))}</strong></div>
-        <div style="display:flex; gap:6px; margin-top:6px;">
-          <button type="button" class="btn primary" style="flex:1; font-size:12px;" data-accept-remote="${i}">✅ Zaakceptuj i zmień</button>
-          <button type="button" class="btn ghost" style="flex:1; font-size:12px;" data-keep-local="${i}">↩️ Odrzuć i zostaw moje dane</button>
-        </div>
-      </div>
-    `;
-    }
-    const title = describeMergeKeyLabel(r.key) + (r.id!==null && r.key!=="shopping" ? ` — ${r.id}` : "");
-    const localTxt = describeMergeItemValue(r.key, r.id, r.localValue);
-    const remoteTxt = describeMergeItemValue(r.key, r.id, r.remoteValue);
-    return `
-    <div class="comment-item" data-sync-row="${i}">
-      <div class="comment-head"><strong>${escapeHtml(title)}</strong></div>
-      <div class="comment-body">${r.localLabel}: ${escapeHtml(localTxt)}</div>
-      <div class="comment-body">${r.remoteLabel}: ${escapeHtml(remoteTxt)}</div>
-      <div style="display:flex; gap:6px; margin-top:6px;">
-        <button type="button" class="btn primary" style="flex:1; font-size:12px;" data-accept-remote="${i}">✅ Zaakceptuj i zmień</button>
-        <button type="button" class="btn ghost" style="flex:1; font-size:12px;" data-keep-local="${i}">↩️ Odrzuć i zostaw moje dane</button>
-      </div>
+  const conflictsHtml = conflicts.map((c,i)=>`
+    <div class="comment-item" data-conflict-row="${i}">
+      <div class="comment-head"><strong>${describeMergeKeyLabel(c.key)}</strong></div>
+      <div class="comment-body">☁️ Z chmury (zastosowano): ${escapeHtml(describeMergeItemValue(c.key, c.id, c.remoteValue))}</div>
+      <div class="comment-body">📱 Twoja wersja: ${escapeHtml(describeMergeItemValue(c.key, c.id, c.localValue))}</div>
+      <button type="button" class="btn ghost" style="margin-top:6px; width:100%; font-size:12px;" data-keep-local="${i}">↩️ Przywróć moją wersję</button>
     </div>
+  `).join("");
+  body.innerHTML = `
+    ${deviceLine}
+    ${conflicts.length ? `<h4 style="margin:0 0 4px; font-size:13px;">⚠️ Sprzeczne zmiany — wybierz, co zostawić</h4>` : ""}
+    ${conflictsHtml}
+    ${pantryBlock}
+    ${summaryBlock("➕ Dodane z innego urządzenia", byKind.added)}
+    ${summaryBlock("➖ Usunięte na innym urządzeniu", byKind.removed)}
+    ${summaryBlock("✏️ Zmienione na innym urządzeniu", byKind.changed)}
   `;
-  }).join("");
-  body.innerHTML = `${deviceLine}${rowHtml}`;
-  const markRowDone = (btn, suffix) => {
-    const row = btn.closest("[data-sync-row]");
-    row.querySelector(".comment-head").innerHTML += ` <span style="color:var(--teal);">— ${suffix}</span>`;
-    row.querySelectorAll("button").forEach(b=> b.remove());
-  };
-  body.querySelectorAll("[data-accept-remote]").forEach(btn=>{
-    // The cloud value is already applied (see applyRemoteSyncedState) --
-    // this button is purely an explicit, visible acknowledgement per row.
-    btn.addEventListener("click", ()=> markRowDone(btn, "zaakceptowano ✓"));
-  });
   body.querySelectorAll("[data-keep-local]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      const r = rows[parseInt(btn.dataset.keepLocal, 10)];
-      if(r.id===null){
-        state[r.key] = r.localValue;
-      }else if(ARRAY_BY_ID_MERGE_KEYS.includes(r.key)){
-        const arr = state[r.key] || [];
-        const idx = arr.findIndex(x=>x.id===r.id);
-        if(r.localValue===undefined){ if(idx>=0) arr.splice(idx,1); }
-        else if(idx>=0) arr[idx] = r.localValue;
-        else arr.push(r.localValue);
+      const c = conflicts[parseInt(btn.dataset.keepLocal, 10)];
+      if(c.id===null){
+        state[c.key] = c.localValue;
+      }else if(ARRAY_BY_ID_MERGE_KEYS.includes(c.key)){
+        const arr = state[c.key] || [];
+        const idx = arr.findIndex(x=>x.id===c.id);
+        if(c.localValue===undefined){ if(idx>=0) arr.splice(idx,1); }
+        else if(idx>=0) arr[idx] = c.localValue;
+        else arr.push(c.localValue);
       }else{
-        if(!state[r.key]) state[r.key] = {};
-        if(r.localValue===undefined) delete state[r.key][r.id];
-        else state[r.key][r.id] = r.localValue;
+        if(!state[c.key]) state[c.key] = {};
+        if(c.localValue===undefined) delete state[c.key][c.id];
+        else state[c.key][c.id] = c.localValue;
       }
       saveState();
       refreshUiAfterSync(true);
-      markRowDone(btn, "przywrócono Twoją wersję ✓");
+      btn.closest("[data-conflict-row]").querySelector(".comment-head").innerHTML += " <span style='color:var(--teal);'>— przywrócono Twoją wersję ✓</span>";
+      btn.remove();
     });
   });
   document.getElementById("syncConflictOverlay").classList.add("show");
