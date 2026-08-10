@@ -71,6 +71,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -82,7 +83,9 @@ import com.przemas230.dietaapp.data.PantryCategory
 import com.przemas230.dietaapp.data.PantryItem
 import com.przemas230.dietaapp.data.ShoppingItem
 import com.przemas230.dietaapp.data.Recipe
+import com.przemas230.dietaapp.data.RecipeReview
 import com.przemas230.dietaapp.logic.CATEGORIES
+import com.przemas230.dietaapp.logic.CustomRecipeOperations
 import com.przemas230.dietaapp.logic.DailyCalorieTargets
 import com.przemas230.dietaapp.logic.DishIdeaGenerator
 import com.przemas230.dietaapp.logic.IngredientCanon
@@ -94,6 +97,7 @@ import com.przemas230.dietaapp.logic.RecipeMatching
 import com.przemas230.dietaapp.logic.RecipePantryMatching
 import com.przemas230.dietaapp.logic.RecipeRating
 import com.przemas230.dietaapp.logic.RecipeRatingOperations
+import com.przemas230.dietaapp.logic.RecipeReviewOperations
 import com.przemas230.dietaapp.logic.ShoppingOperations
 import com.przemas230.dietaapp.logic.WeekPlan
 import com.przemas230.dietaapp.logic.forCategory
@@ -128,6 +132,7 @@ fun RecipeListScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val cookedMap by viewModel.cooked.collectAsState()
     val ratings by viewModel.ratings.collectAsState()
+    val reviews by viewModel.reviews.collectAsState()
     val pantryItems by pantryViewModel.items.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
     val shoppingItems by shoppingViewModel.items.collectAsState()
@@ -140,6 +145,8 @@ fun RecipeListScreen(
 
     var sortByMatch by remember { mutableStateOf(false) }
     var sortByRating by remember { mutableStateOf(false) }
+    var sortByReview by remember { mutableStateOf(false) }
+    var showAddRecipeDialog by remember { mutableStateOf(false) }
     val macroTargets = remember(profile) { ProfileCalculations.calcMacroTargets(profile) }
     val kcalTargets = remember(profile) { ProfileCalculations.calcTargets(profile) }
     // FR-72: the 🎯 badge means nothing before the user has entered real
@@ -153,13 +160,14 @@ fun RecipeListScreen(
             recipes.associate { it.id to RecipeMatching.matchScore(it, macroTargets.forCategory(it.cat), profile) }
         }
     }
-    val displayedRecipes = remember(recipes, sortByMatch, sortByRating, matchScores, ratings) {
-        // FR-2/FR-57: independent toggles applied in sequence (matches
-        // index.html's own if(sortByMatch){...} if(sortByRating){...}), not
-        // combined into one composite key.
+    val displayedRecipes = remember(recipes, sortByMatch, sortByRating, sortByReview, matchScores, ratings, reviews) {
+        // FR-2/FR-57/FR-67: independent toggles applied in sequence (matches
+        // index.html's own if(sortByMatch){...} if(sortByRating){...}
+        // if(sortByReview){...}), not combined into one composite key.
         var result = recipes
         if (sortByMatch) result = result.sortedByDescending { matchScores[it.id] ?: -1 }
         if (sortByRating) result = RecipeRatingOperations.sortByRating(result, ratings)
+        if (sortByReview) result = RecipeReviewOperations.sortByReview(result, reviews)
         result
     }
 
@@ -201,6 +209,14 @@ fun RecipeListScreen(
                     label = { Text("❤️ Ranking") },
                 )
             }
+            item {
+                // FR-67: sorts by the 1-5 star review, descending, unrated last.
+                FilterChip(
+                    selected = sortByReview,
+                    onClick = { sortByReview = !sortByReview },
+                    label = { Text("🏆 Ocena") },
+                )
+            }
         }
 
         // FR-32: dish-name inspiration generated from the user's starred
@@ -212,6 +228,17 @@ fun RecipeListScreen(
                 .padding(horizontal = 12.dp, vertical = 4.dp),
         ) {
             Text("💡 Pomysł na danie z ulubionych składników")
+        }
+
+        // FR-66: opens a form to add a fully-custom recipe (own ingredients,
+        // method, kcal) -- port of index.html's "➕ Dodaj swój przepis".
+        OutlinedButton(
+            onClick = { showAddRecipeDialog = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+        ) {
+            Text("➕ Dodaj swój przepis")
         }
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -239,6 +266,7 @@ fun RecipeListScreen(
                 swipeRatingStyle,
                 favIngredients,
                 favoriteIngredientsViewModel::toggle,
+                reviews,
                 listState,
             )
         }
@@ -250,6 +278,162 @@ fun RecipeListScreen(
             favorites = favIngredients,
             onDismiss = { showIdeaDialog = false },
         )
+    }
+    if (showAddRecipeDialog) {
+        AddCustomRecipeDialog(
+            initialCat = selectedCategory,
+            onAdd = { input -> viewModel.addCustomRecipe(input) },
+            onDismiss = { showAddRecipeDialog = false },
+        )
+    }
+}
+
+/**
+ * FR-66: name/category/time/ingredients(one per line)/method/kcal(required)
+ * + optional protein/carbs/fat -- port of index.html's "➕ Dodaj swój
+ * przepis" form, minus the automatic macro estimation from ingredient text
+ * (see CustomRecipeOperations' doc comment for why that's deferred).
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AddCustomRecipeDialog(
+    initialCat: String,
+    onAdd: (CustomRecipeOperations.Input) -> CustomRecipeOperations.ValidationError?,
+    onDismiss: () -> Unit,
+) {
+    var name by remember { mutableStateOf("") }
+    var cat by remember { mutableStateOf(PlannerOperations.PLANNER_CATEGORIES.find { it.id == initialCat }?.id ?: PlannerOperations.PLANNER_CATEGORIES.first().id) }
+    var time by remember { mutableStateOf("") }
+    var ingredientsText by remember { mutableStateOf("") }
+    var method by remember { mutableStateOf("") }
+    var kcalText by remember { mutableStateOf("") }
+    var proteinText by remember { mutableStateOf("") }
+    var carbsText by remember { mutableStateOf("") }
+    var fatText by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<CustomRecipeOperations.ValidationError?>(null) }
+
+    fun errorText(e: CustomRecipeOperations.ValidationError) = when (e) {
+        CustomRecipeOperations.ValidationError.MissingName -> "Podaj nazwę przepisu."
+        CustomRecipeOperations.ValidationError.MissingIngredients -> "Dodaj przynajmniej jeden składnik (jeden na linię)."
+        CustomRecipeOperations.ValidationError.InvalidKcal -> "Podaj dodatnią liczbę kalorii."
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.widthIn(max = 480.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .heightIn(max = 560.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "➕ Dodaj swój przepis",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onDismiss) { Text("✕") }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Nazwa przepisu") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Kategoria", style = MaterialTheme.typography.labelMedium)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
+                    PlannerOperations.PLANNER_CATEGORIES.forEach { category ->
+                        FilterChip(
+                            selected = category.id == cat,
+                            onClick = { cat = category.id },
+                            label = { Text("${category.emoji} ${category.label}") },
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = time,
+                    onValueChange = { time = it },
+                    label = { Text("Czas przygotowania (np. 15 min)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = ingredientsText,
+                    onValueChange = { ingredientsText = it },
+                    label = { Text("Składniki (jeden na linię)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 6,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = method,
+                    onValueChange = { method = it },
+                    label = { Text("Sposób przygotowania") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2,
+                    maxLines = 5,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = kcalText,
+                    onValueChange = { kcalText = it },
+                    label = { Text("Kalorie (kcal)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Makroskładniki (opcjonalnie, w gramach)", style = MaterialTheme.typography.labelMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+                    OutlinedTextField(
+                        value = proteinText,
+                        onValueChange = { proteinText = it },
+                        label = { Text("Białko") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = carbsText,
+                        onValueChange = { carbsText = it },
+                        label = { Text("Węgle") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = fatText,
+                        onValueChange = { fatText = it },
+                        label = { Text("Tłuszcz") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (error != null) {
+                    Text(
+                        errorText(error!!),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = onDismiss) { Text("Anuluj") }
+                    Button(onClick = {
+                        val input = CustomRecipeOperations.Input(
+                            name, cat, time, ingredientsText, method, kcalText, proteinText, carbsText, fatText,
+                        )
+                        val result = onAdd(input)
+                        if (result == null) onDismiss() else error = result
+                    }) { Text("Dodaj") }
+                }
+            }
+        }
     }
 }
 
@@ -329,6 +513,7 @@ private fun RecipeListWithScrollToTop(
     swipeRatingStyle: SwipeRatingStyle,
     favIngredients: Set<String>,
     onToggleFavIngredient: (canonName: String) -> Unit,
+    reviews: Map<String, RecipeReview>,
     listState: LazyListState,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -393,6 +578,10 @@ private fun RecipeListWithScrollToTop(
                     onSwipeRate = { rating -> viewModel.setRating(recipe.id, rating) },
                     onClearSwipeRating = { viewModel.clearRating(recipe.id) },
                     swipeRatingStyle = swipeRatingStyle,
+                    review = reviews[recipe.id],
+                    onSaveReview = { stars, comment -> viewModel.setReview(recipe.id, stars, comment) },
+                    onClearReview = { viewModel.clearReview(recipe.id) },
+                    onDeleteCustomRecipe = { viewModel.removeCustomRecipe(recipe.id) },
                 )
             }
         }
@@ -435,12 +624,18 @@ private fun RecipeCard(
     onSwipeRate: (RecipeRating) -> Unit,
     onClearSwipeRating: () -> Unit,
     swipeRatingStyle: SwipeRatingStyle,
+    review: RecipeReview?,
+    onSaveReview: (stars: Int, comment: String?) -> Boolean,
+    onClearReview: () -> Unit,
+    onDeleteCustomRecipe: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
     var showCookHistory by remember { mutableStateOf(false) }
     var showPantryCheck by remember { mutableStateOf(false) }
     var showPlanPicker by remember { mutableStateOf(false) }
+    var showReviewDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     // FR-4: deterministic emoji thumbnail from the recipe's own biggest
     // ingredient — no network round-trip, same icon set as pantry tiles.
     val thumbEmoji = remember(recipe.id) { IngredientCanon.mainIngredientInfo(recipe)?.emoji ?: "🍽️" }
@@ -545,6 +740,9 @@ private fun RecipeCard(
                         pantryItems = pantryItems,
                         favIngredients = favIngredients,
                         onToggleFavIngredient = onToggleFavIngredient,
+                        review = review,
+                        onOpenReview = { showReviewDialog = true },
+                        onDeleteCustomRecipe = { showDeleteConfirm = true },
                     )
                 }
             }
@@ -649,6 +847,101 @@ private fun RecipeCard(
             onDismiss = { showPlanPicker = false },
         )
     }
+    if (showReviewDialog) {
+        RecipeReviewDialog(
+            recipeName = recipe.name,
+            existing = review,
+            onSave = { stars, comment -> onSaveReview(stars, comment) },
+            onDelete = { onClearReview(); showReviewDialog = false },
+            onDismiss = { showReviewDialog = false },
+        )
+    }
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Usunąć przepis?") },
+            text = { Text("„${recipe.name}” zostanie trwale usunięty. Wcześniejsze wpisy historii gotowania i pozycje na liście zakupów pochodzące z tego przepisu nie zostaną naruszone.") },
+            confirmButton = {
+                TextButton(onClick = { onDeleteCustomRecipe(); showDeleteConfirm = false }) { Text("Usuń") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Anuluj") }
+            },
+        )
+    }
+}
+
+/**
+ * FR-67: 5 large stars (StarRatingRow, same widget as FR-17's cook-history
+ * rating) + an optional up-to-300-char comment. Re-opening for an already
+ * reviewed recipe pre-fills both, ready to edit -- port of
+ * index.html's openRecipeReviewModal/renderRecipeReviewStars.
+ */
+@Composable
+private fun RecipeReviewDialog(
+    recipeName: String,
+    existing: RecipeReview?,
+    onSave: (stars: Int, comment: String?) -> Boolean,
+    onDelete: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var stars by remember { mutableStateOf(existing?.stars ?: 0) }
+    var comment by remember { mutableStateOf(existing?.comment ?: "") }
+    var showStarsRequiredHint by remember { mutableStateOf(false) }
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.widthIn(max = 480.dp)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "⭐ Oceń: $recipeName",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onDismiss) { Text("✕") }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+                StarRatingRow(rating = stars, onRate = { n -> stars = if (stars == n) 0 else n; showStarsRequiredHint = false })
+                if (showStarsRequiredHint) {
+                    Text(
+                        "Wybierz od 1 do 5 gwiazdek",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = comment,
+                    onValueChange = { if (it.length <= 300) comment = it },
+                    label = { Text("Komentarz (opcjonalnie)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2,
+                    maxLines = 4,
+                )
+                Text(
+                    "${comment.length}/300",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.End,
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                    if (existing != null) {
+                        TextButton(onClick = onDelete) { Text("Usuń ocenę") }
+                    }
+                    Button(onClick = {
+                        if (stars == 0) {
+                            showStarsRequiredHint = true
+                        } else if (onSave(stars, comment)) {
+                            onDismiss()
+                        }
+                    }) { Text("Zapisz") }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -661,9 +954,25 @@ private fun RecipeCardBody(
     pantryItems: Map<String, PantryItem>,
     favIngredients: Set<String>,
     onToggleFavIngredient: (canonName: String) -> Unit,
+    review: RecipeReview?,
+    onOpenReview: () -> Unit,
+    onDeleteCustomRecipe: () -> Unit,
 ) {
     Column {
-        Text(recipe.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(recipe.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            // FR-66: distinguishes a user-added recipe from the 229 built-in ones.
+            if (recipe.source == "custom") {
+                Text(
+                    "✍️ Twój przepis",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(4.dp))
         val matchSuffix = matchScore?.let { "   🎯 $it%" } ?: ""
         Text("⏱ ${recipe.time}   🔥 ${recipe.kcal} kcal$matchSuffix", style = MaterialTheme.typography.bodySmall)
@@ -730,6 +1039,38 @@ private fun RecipeCardBody(
             Spacer(modifier = Modifier.height(8.dp))
             Text("Przygotowanie", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
             Text(recipe.method, style = MaterialTheme.typography.bodySmall)
+            if (review?.comment != null) {
+                Text(
+                    "💬 Twój komentarz: „${review.comment}”",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            // FR-67: deliberate 1-5 star review + optional comment, distinct
+            // from the FR-55/57 swipe like/dislike badge shown elsewhere on
+            // this card -- port of index.html's reviewLabel/recipeReviewBtn,
+            // placed at the very bottom of the expanded card per FR-67/FR-77.
+            OutlinedButton(
+                onClick = onOpenReview,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 38.dp),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            ) {
+                Text(if (review != null) "⭐ Oceń i skomentuj (Twoja ocena: ${review.stars}/5)" else "⭐ Oceń i skomentuj")
+            }
+            // FR-66: only a custom (user-added) recipe can be deleted this way.
+            if (recipe.source == "custom") {
+                Spacer(modifier = Modifier.height(6.dp))
+                TextButton(
+                    onClick = onDeleteCustomRecipe,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) {
+                    Text("🗑️ Usuń ten przepis")
+                }
+            }
         }
     }
 }

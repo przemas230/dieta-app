@@ -94,9 +94,9 @@ import com.przemas230.dietaapp.ui.EatenViewModel
 import com.przemas230.dietaapp.ui.FavoriteIngredientsViewModel
 import com.przemas230.dietaapp.ui.PantryScreen
 import com.przemas230.dietaapp.ui.PantryViewModel
-import com.przemas230.dietaapp.ui.PlaceholderScreen
 import com.przemas230.dietaapp.ui.PlannerScreen
 import com.przemas230.dietaapp.ui.PlannerViewModel
+import com.przemas230.dietaapp.ui.PostepScreen
 import com.przemas230.dietaapp.ui.ProfileViewModel
 import com.przemas230.dietaapp.ui.RecipeListScreen
 import com.przemas230.dietaapp.ui.RecipeViewModel
@@ -107,6 +107,7 @@ import com.przemas230.dietaapp.ui.SwipeRatingStyleViewModel
 import com.przemas230.dietaapp.ui.ThemeViewModel
 import com.przemas230.dietaapp.ui.UiScaleViewModel
 import com.przemas230.dietaapp.ui.WaterViewModel
+import com.przemas230.dietaapp.ui.WeightViewModel
 import com.przemas230.dietaapp.ui.navigation.BOTTOM_NAV_SCREENS
 import com.przemas230.dietaapp.ui.navigation.Screen
 import com.przemas230.dietaapp.ui.theme.DietaAppTheme
@@ -158,8 +159,8 @@ class MainActivity : ComponentActivity() {
  * App-level shell: one top bar (title + Ustawienia action, matching the web
  * app's header gear icon — see FR list in android/PARITY.md), one bottom
  * nav row mirroring index.html's `nav.bottom`, and a NavHost swapping the
- * screen content underneath both. Every tab besides Przepisy is currently
- * a PlaceholderScreen — see android/README.md "Co dalej" for the build order.
+ * screen content underneath both. See android/README.md "Co dalej" for the
+ * build order and android/PARITY.md for what's still ⏳/⬜ per tab.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -400,7 +401,13 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     shoppingViewModel = shoppingViewModel,
                 )
             }
-            composable(Screen.Progress.route) { PlaceholderScreen(Screen.Progress.label) }
+            composable(Screen.Progress.route) {
+                PostepScreen(
+                    profileViewModel = profileViewModel,
+                    waterViewModel = waterViewModel,
+                    weightViewModel = viewModel(),
+                )
+            }
             composable(Screen.Pantry.route) { PantryScreen(viewModel = pantryViewModel, allRecipes = allRecipes) }
             composable(Screen.Settings.route) {
                 SettingsScreen(

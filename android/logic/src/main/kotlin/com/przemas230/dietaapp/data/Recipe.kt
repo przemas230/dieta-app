@@ -44,4 +44,8 @@ data class Recipe(
     val gi: Double?,
     val gl: Double?,
     val calc: List<RecipeCalcItem> = emptyList(),
+    // FR-66: "builtin" (loaded from recipes.json) or "custom" (added by the
+    // user on this device, index.html's state.myRecipes) -- drives the
+    // "✍️ Twój przepis" badge and the delete button on the recipe card.
+    val source: String = "builtin",
 )

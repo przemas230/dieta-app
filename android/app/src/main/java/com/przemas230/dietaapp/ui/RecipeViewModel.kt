@@ -6,11 +6,14 @@ import androidx.lifecycle.viewModelScope
 import com.przemas230.dietaapp.data.CookEntry
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.data.RecipeRepository
+import com.przemas230.dietaapp.data.RecipeReview
 import com.przemas230.dietaapp.logic.CATEGORIES
 import com.przemas230.dietaapp.logic.CookHistoryOperations
+import com.przemas230.dietaapp.logic.CustomRecipeOperations
 import com.przemas230.dietaapp.logic.RecipeBrowsing
 import com.przemas230.dietaapp.logic.RecipeRating
 import com.przemas230.dietaapp.logic.RecipeRatingOperations
+import com.przemas230.dietaapp.logic.RecipeReviewOperations
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,7 +28,13 @@ import kotlinx.coroutines.withContext
  * but the actual filtering rules it delegates to are genuinely covered.
  */
 class RecipeViewModel(application: Application) : AndroidViewModel(application) {
-    private val allRecipes = MutableStateFlow<List<Recipe>>(emptyList())
+    private var builtInRecipes: List<Recipe> = emptyList()
+
+    // FR-66: user-added recipes (index.html's state.myRecipes) -- folded
+    // into the same visible/filtered list as the 229 built-in recipes via
+    // recombineAllRecipes(), same as index.html's allRecipes().
+    private val _myRecipes = MutableStateFlow<List<Recipe>>(emptyList())
+    val myRecipes: StateFlow<List<Recipe>> = _myRecipes.asStateFlow()
 
     private val _selectedCategory = MutableStateFlow(CATEGORIES.first().id)
     val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()
@@ -50,10 +59,14 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     private val _ratings = MutableStateFlow<Map<String, RecipeRating>>(emptyMap())
     val ratings: StateFlow<Map<String, RecipeRating>> = _ratings.asStateFlow()
 
+    // FR-67: recipeId -> deliberate 1-5 star review + optional comment.
+    private val _reviews = MutableStateFlow<Map<String, RecipeReview>>(emptyMap())
+    val reviews: StateFlow<Map<String, RecipeReview>> = _reviews.asStateFlow()
+
     init {
         viewModelScope.launch {
             val loaded = withContext(Dispatchers.IO) { RecipeRepository.loadRecipes(application) }
-            allRecipes.value = loaded
+            builtInRecipes = loaded
             _isLoading.value = false
             recompute()
         }
@@ -98,6 +111,34 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         _ratings.value = RecipeRatingOperations.clearRating(_ratings.value, recipeId)
     }
 
+    /** FR-67: returns false (caller shows "Wybierz od 1 do 5 gwiazdek") if stars is out of range. */
+    fun setReview(recipeId: String, stars: Int, comment: String?): Boolean {
+        val result = RecipeReviewOperations.setReview(_reviews.value, recipeId, stars, comment, System.currentTimeMillis())
+        if (result == null) return false
+        _reviews.value = result
+        return true
+    }
+
+    fun clearReview(recipeId: String) {
+        _reviews.value = RecipeReviewOperations.clearReview(_reviews.value, recipeId)
+    }
+
+    /** FR-66: returns null (caller shows a validation message) if [input] doesn't pass CustomRecipeOperations.validate. */
+    fun addCustomRecipe(input: CustomRecipeOperations.Input): CustomRecipeOperations.ValidationError? {
+        val error = CustomRecipeOperations.validate(input)
+        if (error != null) return error
+        val recipe = CustomRecipeOperations.build(input, "custom-" + System.currentTimeMillis())!!
+        _myRecipes.value = _myRecipes.value + recipe
+        recompute()
+        return null
+    }
+
+    /** FR-66: "🗑️ Usuń" on a custom recipe's card -- doesn't touch cook history/shopping entries already derived from it, same as index.html. */
+    fun removeCustomRecipe(recipeId: String) {
+        _myRecipes.value = _myRecipes.value.filterNot { it.id == recipeId }
+        recompute()
+    }
+
     /** FR-73: applies an incoming cloud snapshot wholesale (last-cloud-write-wins), replacing local state. */
     fun replaceCooked(cooked: Map<String, List<CookEntry>>) {
         _cooked.value = cooked
@@ -109,7 +150,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun recompute() {
         _visibleRecipes.value = RecipeBrowsing.visibleRecipes(
-            allRecipes.value,
+            builtInRecipes + _myRecipes.value,
             _selectedCategory.value,
             _searchTerm.value,
             glutenFree,
