@@ -53,6 +53,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,6 +77,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -86,6 +88,7 @@ import com.przemas230.dietaapp.data.EatenEntry
 import com.przemas230.dietaapp.data.PlannedMeal
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.data.Snack
+import com.przemas230.dietaapp.logic.AppThemes
 import com.przemas230.dietaapp.logic.DailyCalorieTargets
 import com.przemas230.dietaapp.logic.EatenOperations
 import com.przemas230.dietaapp.logic.HeaderScrollBehavior
@@ -152,6 +155,30 @@ class MainActivity : ComponentActivity() {
             // profileViewModel/pantryViewModel etc. in DietaAppRoot below.
             val themeViewModel: ThemeViewModel = viewModel()
             val themeId by themeViewModel.themeId.collectAsState()
+            // FR-48 (second of its two original blockers): index.html sets
+            // <meta name="theme-color"> per theme (AppThemeDef.metaColor is
+            // this app's port of that same value, computed since the initial
+            // FR-48 port but never wired up). enableEdgeToEdge() already
+            // leaves the status bar transparent, so the header's own
+            // background paints through it for free -- the one thing that
+            // still needed doing was the status bar ICONS' light/dark
+            // contrast, which by default follows the system's day/night
+            // setting rather than the app's own chosen theme (a mismatch
+            // whenever those two disagree, e.g. "Ciemny" theme picked while
+            // the phone itself is in light mode). Deliberately keyed off
+            // metaColor's own brightness, NOT AppThemeDef.isDark -- isDark
+            // describes the theme's overall background/text mode, but every
+            // theme's metaColor (what's actually behind the status bar) is a
+            // saturated header color, e.g. "Jasny"/isDark=false still has a
+            // solid blue metaColor that needs light icons, not dark ones.
+            SideEffect {
+                val meta = AppThemes.byId(themeId).metaColor
+                val r = (meta shr 16) and 0xFF
+                val g = (meta shr 8) and 0xFF
+                val b = meta and 0xFF
+                val luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
+                WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = luminance > 0.6
+            }
             CompositionLocalProvider(
                 LocalDensity provides Density(
                     density = baseDensity.density * effectiveScale.toFloat(),
