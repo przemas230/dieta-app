@@ -14,4 +14,9 @@ class WaterViewModel : ViewModel() {
     fun tapDroplet(index: Int) {
         _count.value = WaterOperations.tapDroplet(_count.value, index)
     }
+
+    /** FR-73: applies an incoming cloud snapshot (only ever for today -- see CloudSyncCodec.decodeWater). */
+    fun setCount(count: Int) {
+        _count.value = count
+    }
 }

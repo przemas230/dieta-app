@@ -60,4 +60,9 @@ class ShoppingViewModel : ViewModel() {
     fun clearChecked() {
         _items.value = ShoppingOperations.clearChecked(_items.value)
     }
+
+    /** FR-73: applies an incoming cloud snapshot wholesale (last-cloud-write-wins), replacing local state. */
+    fun replaceAll(items: Map<String, ShoppingItem>) {
+        _items.value = items
+    }
 }

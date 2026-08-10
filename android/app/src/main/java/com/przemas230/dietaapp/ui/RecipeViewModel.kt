@@ -98,6 +98,15 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         _ratings.value = RecipeRatingOperations.clearRating(_ratings.value, recipeId)
     }
 
+    /** FR-73: applies an incoming cloud snapshot wholesale (last-cloud-write-wins), replacing local state. */
+    fun replaceCooked(cooked: Map<String, List<CookEntry>>) {
+        _cooked.value = cooked
+    }
+
+    fun replaceRatings(ratings: Map<String, RecipeRating>) {
+        _ratings.value = ratings
+    }
+
     private fun recompute() {
         _visibleRecipes.value = RecipeBrowsing.visibleRecipes(
             allRecipes.value,

@@ -62,7 +62,7 @@ class CloudSyncCodecTest {
     @Test
     fun `decodePantry skips an entry with an unrecognized type and keeps the rest`() {
         val map = mapOf(
-            "dobry" to mapOf("type" to "product", "category" to "WARZYWA", "quantity" to 1.0, "unit" to "szt."),
+            "dobry" to mapOf("type" to "product", "cat" to "Warzywa", "qty" to 1.0, "unitCat" to "count"),
             "zly" to mapOf("type" to "cos-innego"),
         )
         val decoded = CloudSyncCodec.decodePantry(map)
@@ -76,6 +76,88 @@ class CloudSyncCodecTest {
     }
 
     @Test
+    fun `encodePantry uses web-compatible field names (cat label, qty, unitCat) not Android-internal ones`() {
+        val pantry = mapOf("mleko" to PantryItem.Product("mleko", PantryCategory.NABIAL, 500.0, "ml"))
+        val encoded = CloudSyncCodec.encodePantry(pantry)
+        val entry = encoded["mleko"] as Map<*, *>
+        assertEquals("Nabiał", entry["cat"])
+        assertEquals(500.0, entry["qty"])
+        assertEquals("volume", entry["unitCat"])
+        assertEquals(null, entry["category"])
+        assertEquals(null, entry["quantity"])
+        assertEquals(null, entry["unit"])
+    }
+
+    @Test
+    fun `favIngredients round-trips through encode-decode, dropping false values on decode`() {
+        val favs = setOf("cebula", "pomidor")
+        val decoded = CloudSyncCodec.decodeFavIngredients(CloudSyncCodec.encodeFavIngredients(favs))
+        assertEquals(favs, decoded)
+        assertEquals(setOf("a"), CloudSyncCodec.decodeFavIngredients(mapOf("a" to true, "b" to false)))
+    }
+
+    @Test
+    fun `recipeRating round-trips through encode-decode using lowercase web strings`() {
+        val ratings = mapOf("r1" to RecipeRating.LIKE, "r2" to RecipeRating.DISLIKE)
+        val encoded = CloudSyncCodec.encodeRecipeRating(ratings)
+        assertEquals("like", encoded["r1"])
+        assertEquals("dislike", encoded["r2"])
+        assertEquals(ratings, CloudSyncCodec.decodeRecipeRating(encoded))
+    }
+
+    @Test
+    fun `cooked round-trips through encode-decode with ISO date strings`() {
+        val cooked = mapOf(
+            "r1" to listOf(com.przemas230.dietaapp.data.CookEntry(1_700_000_000_000L, 4), com.przemas230.dietaapp.data.CookEntry(1_700_100_000_000L, null)),
+        )
+        val encoded = CloudSyncCodec.encodeCooked(cooked)
+        val firstEntry = (encoded["r1"] as List<*>)[0] as Map<*, *>
+        assertEquals(true, (firstEntry["date"] as String).startsWith("20"))
+        assertEquals(cooked, CloudSyncCodec.decodeCooked(encoded))
+    }
+
+    @Test
+    fun `shopping round-trips through encode-decode renaming quantity to qty`() {
+        val items = mapOf(
+            "cebula|count" to com.przemas230.dietaapp.data.ShoppingItem("cebula", "count", 3.0, checked = true, contributions = mapOf("r1" to 3.0)),
+        )
+        val encoded = CloudSyncCodec.encodeShopping(items)
+        val entry = encoded["cebula|count"] as Map<*, *>
+        assertEquals(3.0, entry["qty"])
+        assertEquals(items, CloudSyncCodec.decodeShopping(encoded))
+    }
+
+    @Test
+    fun `weekPlan fans out into three parallel maps and re-merges on decode`() {
+        val plan: WeekPlan = mapOf(0 to mapOf("obiady" to com.przemas230.dietaapp.data.PlannedMeal("r1", 1.5, isLeftover = true)))
+        val planner = CloudSyncCodec.encodePlanner(plan)
+        val scale = CloudSyncCodec.encodePlannerScale(plan)
+        val leftover = CloudSyncCodec.encodePlannerLeftover(plan)
+        assertEquals("r1", (planner["0"] as Map<*, *>)["obiady"])
+        assertEquals(1.5, (scale["0"] as Map<*, *>)["obiady"])
+        assertEquals(true, (leftover["0"] as Map<*, *>)["obiady"])
+        assertEquals(plan, CloudSyncCodec.decodeWeekPlan(planner, scale, leftover))
+    }
+
+    @Test
+    fun `eaten nests under today's UTC date and ignores a different date on decode`() {
+        val entries = mapOf("obiady" to com.przemas230.dietaapp.data.EatenEntry(true, 400, "Kotlet"))
+        val snacks = listOf(com.przemas230.dietaapp.data.Snack("s1", "banan", 105))
+        val encoded = CloudSyncCodec.encodeEaten(entries, snacks)
+        val decoded = CloudSyncCodec.decodeEaten(encoded)
+        assertEquals(entries, decoded?.entries)
+        assertEquals(snacks, decoded?.snacks)
+        assertNull(CloudSyncCodec.decodeEaten(mapOf("2000-01-01" to mapOf<String, Any?>())))
+    }
+
+    @Test
+    fun `water only decodes when the remote date matches today (UTC)`() {
+        val encoded = CloudSyncCodec.encodeWater(5)
+        assertEquals(5, CloudSyncCodec.decodeWater(encoded))
+        assertNull(CloudSyncCodec.decodeWater(mapOf("date" to "2000-01-01", "count" to 3)))
+    }
+
+    @Test
     fun `encodeAll produces the expected top-level keys`() {
         val data = CloudSyncCodec.encodeAll(
             displayName = "Przemek",
@@ -84,8 +166,23 @@ class CloudSyncCodecTest {
             themeId = "metro",
             uiScale = 1.1,
             swipeRatingStyle = "GLOW",
+            favIngredients = emptySet(),
+            recipeRating = emptyMap(),
+            cooked = emptyMap(),
+            shopping = emptyMap(),
+            weekPlan = emptyMap(),
+            eatenEntries = emptyMap(),
+            snacks = emptyList(),
+            waterCount = 0,
         )
-        assertEquals(setOf("displayName", "profile", "pantry", "theme", "uiScale", "swipeRatingStyle"), data.keys)
+        assertEquals(
+            setOf(
+                "displayName", "profile", "pantry", "theme", "uiScale", "swipeRatingStyle",
+                "favIngredients", "recipeRating", "cooked", "shopping", "planner", "plannerScale",
+                "plannerLeftover", "eaten", "water",
+            ),
+            data.keys,
+        )
         assertEquals("Przemek", data["displayName"])
         assertEquals("metro", data["theme"])
         assertEquals(1.1, data["uiScale"])

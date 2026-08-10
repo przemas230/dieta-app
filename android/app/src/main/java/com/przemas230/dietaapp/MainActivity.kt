@@ -99,6 +99,7 @@ import com.przemas230.dietaapp.ui.PlannerScreen
 import com.przemas230.dietaapp.ui.PlannerViewModel
 import com.przemas230.dietaapp.ui.ProfileViewModel
 import com.przemas230.dietaapp.ui.RecipeListScreen
+import com.przemas230.dietaapp.ui.RecipeViewModel
 import com.przemas230.dietaapp.ui.SettingsScreen
 import com.przemas230.dietaapp.ui.ShoppingScreen
 import com.przemas230.dietaapp.ui.ShoppingViewModel
@@ -194,9 +195,20 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // FR-32: shared so an ingredient starred from a recipe card's ingredient
     // list is remembered app-wide (drives "💡 Pomysł na danie" too).
     val favoriteIngredientsViewModel: FavoriteIngredientsViewModel = viewModel()
+    // FR-73: hoisted here (not RecipeListScreen's default viewModel() param,
+    // which is scoped to the NavBackStackEntry) so cook history and swipe
+    // like/dislike ratings survive navigating away from Przepisy and back,
+    // and so CloudSyncCoordinator below can read/write them.
+    val recipeViewModel: RecipeViewModel = viewModel()
+    // FR-70: shared at the Scaffold level (not per-screen) so the header
+    // droplet strip below is the single source of truth, visible on every tab.
+    val waterViewModel: WaterViewModel = viewModel()
+    // FR-36: shared for the same reason as waterViewModel above.
+    val eatenViewModel: EatenViewModel = viewModel()
     // FR-73: no UI of its own -- pushes/pulls the syncable subset of state
     // above to/from Firestore while authViewModel reports a real (non-
-    // anonymous) signed-in user, no-ops otherwise.
+    // anonymous) signed-in user, no-ops otherwise. Declared after every
+    // ViewModel it reads so they all already exist.
     CloudSyncCoordinator(
         authViewModel = authViewModel,
         profileViewModel = profileViewModel,
@@ -204,12 +216,13 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
         themeViewModel = themeViewModel,
         uiScaleViewModel = uiScaleViewModel,
         swipeRatingStyleViewModel = swipeRatingStyleViewModel,
+        favoriteIngredientsViewModel = favoriteIngredientsViewModel,
+        recipeViewModel = recipeViewModel,
+        shoppingViewModel = shoppingViewModel,
+        plannerViewModel = plannerViewModel,
+        eatenViewModel = eatenViewModel,
+        waterViewModel = waterViewModel,
     )
-    // FR-70: shared at the Scaffold level (not per-screen) so the header
-    // droplet strip below is the single source of truth, visible on every tab.
-    val waterViewModel: WaterViewModel = viewModel()
-    // FR-36: shared for the same reason as waterViewModel above.
-    val eatenViewModel: EatenViewModel = viewModel()
     val eatenEntries by eatenViewModel.entries.collectAsState()
     val snacks by eatenViewModel.snacks.collectAsState()
     var showQuickAddDialog by remember { mutableStateOf(false) }
@@ -373,6 +386,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     plannerViewModel = plannerViewModel,
                     swipeRatingStyleViewModel = swipeRatingStyleViewModel,
                     favoriteIngredientsViewModel = favoriteIngredientsViewModel,
+                    viewModel = recipeViewModel,
                     listState = recipeListState,
                 )
             }

@@ -81,4 +81,9 @@ class PlannerViewModel(application: Application) : AndroidViewModel(application)
     fun planLeftover(day: Int, cat: String, recipeId: String) {
         _weekPlan.value = PlannerOperations.planLeftover(_weekPlan.value, day, cat, recipeId)
     }
+
+    /** FR-73: applies an incoming cloud snapshot wholesale (last-cloud-write-wins), replacing local state. */
+    fun replaceAll(plan: WeekPlan) {
+        _weekPlan.value = plan
+    }
 }

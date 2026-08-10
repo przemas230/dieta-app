@@ -31,4 +31,10 @@ class EatenViewModel : ViewModel() {
     fun removeSnack(id: String) {
         _snacks.value = _snacks.value.filterNot { it.id == id }
     }
+
+    /** FR-73: applies an incoming cloud snapshot wholesale (last-cloud-write-wins), replacing local state. */
+    fun replaceAll(entries: Map<String, EatenEntry>, snacks: List<Snack>) {
+        _entries.value = entries
+        _snacks.value = snacks
+    }
 }

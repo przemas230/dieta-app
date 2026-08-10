@@ -23,4 +23,9 @@ class FavoriteIngredientsViewModel : ViewModel() {
             _favorites.value + canonName
         }
     }
+
+    /** FR-73: applies an incoming cloud snapshot wholesale (last-cloud-write-wins), replacing local state. */
+    fun replaceAll(favorites: Set<String>) {
+        _favorites.value = favorites
+    }
 }

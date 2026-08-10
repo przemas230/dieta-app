@@ -15,14 +15,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
 
 /**
- * FR-73: pushes the currently-syncable Android state (profile, display
- * name, pantry, theme, UI scale, swipe-rating style -- see CloudSyncCodec's
- * doc comment for why this subset) to `users/{uid}` in Firestore whenever
- * it changes, debounced 1.5s like index.html's scheduleCloudPush(), and
- * applies incoming remote changes back onto the same ViewModels the rest of
- * the app already reads from. Only active while signed in to a real
- * (non-anonymous) account -- AuthViewModel's Anonymous/Unavailable states
- * leave this a no-op, matching FR-73's "anonymous never syncs" criterion.
+ * FR-73: pushes the currently-syncable Android state to `users/{uid}` in
+ * Firestore whenever it changes, debounced 1.5s like index.html's
+ * scheduleCloudPush(), and applies incoming remote changes back onto the
+ * same ViewModels the rest of the app already reads from. Only active while
+ * signed in to a real (non-anonymous) account -- AuthViewModel's
+ * Anonymous/Unavailable states leave this a no-op, matching FR-73's
+ * "anonymous never syncs" criterion.
+ *
+ * Field shapes MUST match index.html's Firestore writes exactly (see
+ * CloudSyncCodec's doc comment) -- pantry silently failed to round-trip
+ * with the web app before 2026-08-10 despite this coordinator itself
+ * working correctly, because the codec used Android-internal field names.
  *
  * Semantics are FR-73's ORIGINAL "last cloud write wins the whole document"
  * (an incoming snapshot replaces local state field-by-field, no per-item
@@ -30,7 +34,7 @@ import kotlinx.coroutines.tasks.await
  * follow-up port, not attempted here.
  *
  * Renders nothing; called once from DietaAppRoot alongside the other
- * shared-ViewModel wiring.
+ * shared-ViewModel wiring, after every ViewModel it reads already exists.
  */
 @Composable
 fun CloudSyncCoordinator(
@@ -40,6 +44,12 @@ fun CloudSyncCoordinator(
     themeViewModel: ThemeViewModel,
     uiScaleViewModel: UiScaleViewModel,
     swipeRatingStyleViewModel: SwipeRatingStyleViewModel,
+    favoriteIngredientsViewModel: FavoriteIngredientsViewModel,
+    recipeViewModel: RecipeViewModel,
+    shoppingViewModel: ShoppingViewModel,
+    plannerViewModel: PlannerViewModel,
+    eatenViewModel: EatenViewModel,
+    waterViewModel: WaterViewModel,
 ) {
     val authState by authViewModel.state.collectAsState()
     val profile by profileViewModel.profile.collectAsState()
@@ -48,6 +58,14 @@ fun CloudSyncCoordinator(
     val themeId by themeViewModel.themeId.collectAsState()
     val uiScale by uiScaleViewModel.uiScale.collectAsState()
     val swipeStyle by swipeRatingStyleViewModel.style.collectAsState()
+    val favIngredients by favoriteIngredientsViewModel.favorites.collectAsState()
+    val cooked by recipeViewModel.cooked.collectAsState()
+    val ratings by recipeViewModel.ratings.collectAsState()
+    val shoppingItems by shoppingViewModel.items.collectAsState()
+    val weekPlan by plannerViewModel.weekPlan.collectAsState()
+    val eatenEntries by eatenViewModel.entries.collectAsState()
+    val snacks by eatenViewModel.snacks.collectAsState()
+    val waterCount by waterViewModel.count.collectAsState()
 
     val uid = (authState as? AuthState.SignedIn)?.uid
 
@@ -57,14 +75,32 @@ fun CloudSyncCoordinator(
     // Firestore. Cleared again once consumed.
     var suppressNextPush by remember { mutableStateOf(false) }
 
-    LaunchedEffect(uid, profile, displayName, pantryItems, themeId, uiScale, swipeStyle) {
+    LaunchedEffect(
+        uid, profile, displayName, pantryItems, themeId, uiScale, swipeStyle,
+        favIngredients, cooked, ratings, shoppingItems, weekPlan, eatenEntries, snacks, waterCount,
+    ) {
         if (uid == null) return@LaunchedEffect
         if (suppressNextPush) {
             suppressNextPush = false
             return@LaunchedEffect
         }
         delay(1500)
-        val data = CloudSyncCodec.encodeAll(displayName, profile, pantryItems, themeId, uiScale, swipeStyle.name)
+        val data = CloudSyncCodec.encodeAll(
+            displayName = displayName,
+            profile = profile,
+            pantry = pantryItems,
+            themeId = themeId,
+            uiScale = uiScale,
+            swipeRatingStyle = swipeStyle.name,
+            favIngredients = favIngredients,
+            recipeRating = ratings,
+            cooked = cooked,
+            shopping = shoppingItems,
+            weekPlan = weekPlan,
+            eatenEntries = eatenEntries,
+            snacks = snacks,
+            waterCount = waterCount,
+        )
         try {
             FirebaseFirestore.getInstance().collection("users").document(uid)
                 .set(data, SetOptions.merge())
@@ -107,6 +143,34 @@ fun CloudSyncCoordinator(
                 (data["swipeRatingStyle"] as? String)?.let { raw ->
                     val style = SwipeRatingStyle.entries.find { it.name == raw }
                     if (style != null && style != swipeStyle) { swipeRatingStyleViewModel.setStyle(style); appliedAnything = true }
+                }
+                CloudSyncCodec.decodeFavIngredients(data["favIngredients"] as? Map<*, *>)?.let {
+                    if (it != favIngredients) { favoriteIngredientsViewModel.replaceAll(it); appliedAnything = true }
+                }
+                CloudSyncCodec.decodeRecipeRating(data["recipeRating"] as? Map<*, *>)?.let {
+                    if (it != ratings) { recipeViewModel.replaceRatings(it); appliedAnything = true }
+                }
+                CloudSyncCodec.decodeCooked(data["cooked"] as? Map<*, *>)?.let {
+                    if (it != cooked) { recipeViewModel.replaceCooked(it); appliedAnything = true }
+                }
+                CloudSyncCodec.decodeShopping(data["shopping"] as? Map<*, *>)?.let {
+                    if (it != shoppingItems) { shoppingViewModel.replaceAll(it); appliedAnything = true }
+                }
+                CloudSyncCodec.decodeWeekPlan(
+                    data["planner"] as? Map<*, *>,
+                    data["plannerScale"] as? Map<*, *>,
+                    data["plannerLeftover"] as? Map<*, *>,
+                )?.let {
+                    if (it != weekPlan) { plannerViewModel.replaceAll(it); appliedAnything = true }
+                }
+                CloudSyncCodec.decodeEaten(data["eaten"] as? Map<*, *>)?.let {
+                    if (it.entries != eatenEntries || it.snacks != snacks) {
+                        eatenViewModel.replaceAll(it.entries, it.snacks)
+                        appliedAnything = true
+                    }
+                }
+                CloudSyncCodec.decodeWater(data["water"] as? Map<*, *>)?.let {
+                    if (it != waterCount) { waterViewModel.setCount(it); appliedAnything = true }
                 }
                 if (appliedAnything) suppressNextPush = true
             }
