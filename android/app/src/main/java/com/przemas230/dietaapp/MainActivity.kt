@@ -365,7 +365,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                 )
             }
             composable(Screen.Progress.route) { PlaceholderScreen(Screen.Progress.label) }
-            composable(Screen.Pantry.route) { PantryScreen(viewModel = pantryViewModel) }
+            composable(Screen.Pantry.route) { PantryScreen(viewModel = pantryViewModel, allRecipes = allRecipes) }
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     profileViewModel = profileViewModel,

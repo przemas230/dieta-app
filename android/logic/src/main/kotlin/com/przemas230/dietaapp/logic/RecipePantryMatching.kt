@@ -57,7 +57,8 @@ object RecipePantryMatching {
         return ParsedIngredient(canonName, baseQty, unitCat)
     }
 
-    private fun pantryUnitCat(unit: String): String = UNIT_DEFS[unit.trim().lowercase()]?.cat ?: "count"
+    /** weight/volume/count for a concrete pantry unit string ("g", "l", "szt.", ...) -- also used by PantryScreen's badge formatting. */
+    fun pantryUnitCat(unit: String): String = UNIT_DEFS[unit.trim().lowercase()]?.cat ?: "count"
     private fun pantryUnitFactor(unit: String): Double = UNIT_DEFS[unit.trim().lowercase()]?.factor ?: 1.0
 
     private fun applyDelta(

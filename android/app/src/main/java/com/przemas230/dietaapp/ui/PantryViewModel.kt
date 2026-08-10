@@ -6,7 +6,6 @@ import com.przemas230.dietaapp.data.PantryCategory
 import com.przemas230.dietaapp.data.PantryItem
 import com.przemas230.dietaapp.data.PantryStore
 import com.przemas230.dietaapp.data.Recipe
-import com.przemas230.dietaapp.data.SpiceLevel
 import com.przemas230.dietaapp.logic.PantryOperations
 import com.przemas230.dietaapp.logic.RecipePantryMatching
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,20 +29,13 @@ class PantryViewModel(application: Application) : AndroidViewModel(application) 
         PantryStore.save(getApplication(), next)
     }
 
-    fun addProduct(name: String, category: PantryCategory, quantity: Double, unit: String) {
-        update(PantryOperations.addProduct(_items.value, name, category, quantity, unit))
-    }
-
-    fun addSpice(name: String, category: PantryCategory, level: SpiceLevel) {
-        update(PantryOperations.addSpice(_items.value, name, category, level))
-    }
-
-    fun adjustProductQuantity(name: String, delta: Double) {
-        update(PantryOperations.adjustProductQuantity(_items.value, name, delta))
-    }
-
-    fun cycleSpiceLevel(name: String) {
-        update(PantryOperations.cycleSpiceLevel(_items.value, name))
+    /**
+     * FR-28: tap the upper half of a tile (dir=+1) to add, the lower half
+     * (dir=-1) to subtract -- also how "➕ Dodaj własny" creates a brand-new
+     * custom tile (a plain dir=+1 tap on a name that doesn't exist yet).
+     */
+    fun tileTapDelta(name: String, category: PantryCategory, unitCat: String, dir: Int) {
+        update(PantryOperations.tileTapDelta(_items.value, name, category, unitCat, dir))
     }
 
     fun removeItem(name: String) {

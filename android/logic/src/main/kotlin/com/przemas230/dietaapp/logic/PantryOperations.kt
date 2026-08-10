@@ -11,40 +11,49 @@ import com.przemas230.dietaapp.data.SpiceLevel
  * PantryViewModel becomes a thin StateFlow wrapper around these.
  */
 object PantryOperations {
-    fun addProduct(
+    /**
+     * FR-28: the single tap-delta function driving both tile halves — a
+     * one-to-one port of index.html's tileTapDelta(). `dir=+1` (tap upper
+     * half) increases; `dir=-1` (tap lower half) decreases. An untracked
+     * tile only reacts to `dir=+1` (creates the entry — a product at
+     * `PantryTiles.tileStep(unitCat)`, or a spice at the lowest level,
+     * "Mało"); `dir=-1` on an untracked tile is a no-op, exactly like the
+     * web source — there's no "going negative" before ever tapping a tile.
+     * A product clamps at quantity 0 but stays tracked/"active" (only the
+     * long-press "remove tracking" action deletes the entry) — same for a
+     * spice clamped at "Mało"/"Dużo" (no wrap, no auto-delete). Both are
+     * deliberate, faithfully-ported quirks of the web source, not bugs.
+     */
+    fun tileTapDelta(
         items: Map<String, PantryItem>,
         name: String,
         category: PantryCategory,
-        quantity: Double,
-        unit: String,
+        unitCat: String,
+        dir: Int,
     ): Map<String, PantryItem> {
-        if (name.isBlank() || quantity <= 0) return items
-        return items + (name to PantryItem.Product(name, category, quantity, unit))
-    }
-
-    fun addSpice(items: Map<String, PantryItem>, name: String, category: PantryCategory, level: SpiceLevel): Map<String, PantryItem> {
-        if (name.isBlank()) return items
-        return items + (name to PantryItem.Spice(name, category, level))
-    }
-
-    fun adjustProductQuantity(items: Map<String, PantryItem>, name: String, delta: Double): Map<String, PantryItem> {
-        val item = items[name] as? PantryItem.Product ?: return items
-        val newQty = item.quantity + delta
-        return if (newQty <= 0.0001) {
-            items - name
+        val current = items[name]
+        return if (category == PantryCategory.PRZYPRAWY) {
+            if (current == null) {
+                if (dir < 0) return items
+                items + (name to PantryItem.Spice(name, category, SpiceLevel.MALO))
+            } else {
+                val spice = current as? PantryItem.Spice ?: return items
+                val nextIndex = SpiceLevel.entries.indexOf(spice.level) + dir
+                if (nextIndex < 0) return items
+                val clamped = SpiceLevel.entries[nextIndex.coerceAtMost(SpiceLevel.entries.size - 1)]
+                items + (name to spice.copy(level = clamped))
+            }
         } else {
-            items + (name to item.copy(quantity = newQty))
+            val step = PantryTiles.tileStep(unitCat)
+            if (current == null) {
+                if (dir < 0) return items
+                items + (name to PantryItem.Product(name, category, step, PantryTiles.unitCatToUnit(unitCat)))
+            } else {
+                val product = current as? PantryItem.Product ?: return items
+                val newQty = maxOf(0.0, Math.round((product.quantity + dir * step) * 100) / 100.0)
+                items + (name to product.copy(quantity = newQty))
+            }
         }
-    }
-
-    fun cycleSpiceLevel(items: Map<String, PantryItem>, name: String): Map<String, PantryItem> {
-        val item = items[name] as? PantryItem.Spice ?: return items
-        val next = when (item.level) {
-            SpiceLevel.BRAK -> SpiceLevel.MALO
-            SpiceLevel.MALO -> SpiceLevel.WYSTARCZY
-            SpiceLevel.WYSTARCZY -> SpiceLevel.BRAK
-        }
-        return items + (name to item.copy(level = next))
     }
 
     fun removeItem(items: Map<String, PantryItem>, name: String): Map<String, PantryItem> = items - name
@@ -59,16 +68,7 @@ object PantryOperations {
         return items + (name to updated)
     }
 
-    /** IngredientCanon.CANON_INFO's cat labels don't have a "Strączki i orzechy" bucket here -- falls back to INNE, like an unrecognized ingredient would. */
-    fun categoryForCanon(label: String): PantryCategory = when (label) {
-        "Nabiał" -> PantryCategory.NABIAL
-        "Warzywa" -> PantryCategory.WARZYWA
-        "Owoce" -> PantryCategory.OWOCE
-        "Mięso, ryby, jajka" -> PantryCategory.MIESO
-        "Pieczywo i zboża" -> PantryCategory.ZBOZOWE
-        "Przyprawy" -> PantryCategory.PRZYPRAWY
-        else -> PantryCategory.INNE
-    }
+    fun categoryForCanon(label: String): PantryCategory = PantryCategory.byLabel(label)
 
     /**
      * FR-16: "Mam to" toggle in the per-recipe pantry-check window -- port of
