@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -90,6 +91,11 @@ fun SettingsScreen(
     swipeRatingStyleViewModel: SwipeRatingStyleViewModel = viewModel(),
     themeViewModel: ThemeViewModel = viewModel(),
     effectiveUiScale: Double = 1.0,
+    // FR-79: resets every local ViewModel to fresh-install defaults --
+    // needs to reach ALL of them, not just what this screen otherwise
+    // touches, so MainActivity (which already hoists every ViewModel)
+    // supplies this rather than SettingsScreen collecting them all itself.
+    onClearLocalData: () -> Unit = {},
 ) {
     // FR-71: always starts on Konto -- plain remember (no key/ViewModel
     // backing), so leaving and re-entering the Ustawienia screen discards it,
@@ -137,7 +143,7 @@ fun SettingsScreen(
                             // the top of ProfileCard itself now, not a separate card
                             // above it (that was the pre-FR-71 layout).
                             ProfileCard(profileViewModel)
-                            CloudAccountCard(authViewModel)
+                            CloudAccountCard(authViewModel, onClearLocalData)
                         }
                         SettingsTab.WYGLAD -> {
                             ThemeCard(themeViewModel)
@@ -532,12 +538,17 @@ private fun ProfileCard(viewModel: ProfileViewModel) {
  * stanie niezalogowany całkowicie".
  */
 @Composable
-private fun CloudAccountCard(viewModel: AuthViewModel) {
+private fun CloudAccountCard(viewModel: AuthViewModel, onClearLocalData: () -> Unit) {
     val authState by viewModel.state.collectAsState()
     val busy by viewModel.busy.collectAsState()
     val error by viewModel.error.collectAsState()
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
+    // FR-79: two SEPARATE questions -- "log out?" then (only if confirmed)
+    // "also clear local data?" -- not one combined dialog, per the FR's
+    // own description of the flow.
+    var showSignOutConfirm by rememberSaveable { mutableStateOf(false) }
+    var showClearDataChoice by rememberSaveable { mutableStateOf(false) }
 
     val context = LocalContext.current
     // FR-69 (Google slice): requestIdToken needs the project's "web" OAuth
@@ -603,7 +614,7 @@ private fun CloudAccountCard(viewModel: AuthViewModel) {
                             "synchronizują się automatycznie między urządzeniami zalogowanymi tym kontem.",
                         style = MaterialTheme.typography.bodySmall,
                     )
-                    TextButton(onClick = { viewModel.signOut() }) { Text("🚪 Wyloguj się z tego urządzenia") }
+                    TextButton(onClick = { showSignOutConfirm = true }) { Text("🚪 Wyloguj się z tego urządzenia") }
                 }
                 is AuthState.Anonymous -> {
                     Text(
@@ -657,5 +668,52 @@ private fun CloudAccountCard(viewModel: AuthViewModel) {
                 }
             }
         }
+    }
+
+    if (showSignOutConfirm) {
+        AlertDialog(
+            onDismissRequest = { showSignOutConfirm = false },
+            title = { Text("Wylogować się z tego urządzenia?") },
+            text = { Text("Synchronizacja z chmurą zostanie zatrzymana, dopóki nie zalogujesz się ponownie.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showSignOutConfirm = false
+                    showClearDataChoice = true
+                }) { Text("Wyloguj") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSignOutConfirm = false }) { Text("Anuluj") }
+            },
+        )
+    }
+    if (showClearDataChoice) {
+        // FR-79: "nie czyść" is the documented default -- both the dedicated
+        // button AND dismissing the dialog any other way (back/outside tap)
+        // take that path, always still signing out either way.
+        val proceedKeepingData = {
+            showClearDataChoice = false
+            viewModel.signOut()
+        }
+        AlertDialog(
+            onDismissRequest = proceedKeepingData,
+            title = { Text("Wyczyścić też dane lokalne?") },
+            text = {
+                Text(
+                    "Oprócz wylogowania możesz też wyczyścić dane zapisane na tym urządzeniu " +
+                        "(spiżarnię, listę zakupów, planer, ulubione itd.) — przydatne na wspólnym " +
+                        "urządzeniu, żeby kolejna osoba nie widziała Twoich danych.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showClearDataChoice = false
+                    viewModel.signOut()
+                    onClearLocalData()
+                }) { Text("Wyczyść") }
+            },
+            dismissButton = {
+                TextButton(onClick = proceedKeepingData) { Text("Nie czyść") }
+            },
+        )
     }
 }

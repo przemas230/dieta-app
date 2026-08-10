@@ -17,4 +17,9 @@ class UiScaleViewModel : ViewModel() {
     fun setScale(scale: Double) {
         _uiScale.value = scale
     }
+
+    /** FR-79: "wyczyść dane lokalne" restores auto-detection, same as a fresh install. */
+    fun resetToAuto() {
+        _uiScale.value = null
+    }
 }

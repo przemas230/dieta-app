@@ -104,6 +104,7 @@ import com.przemas230.dietaapp.ui.RecipeViewModel
 import com.przemas230.dietaapp.ui.SettingsScreen
 import com.przemas230.dietaapp.ui.ShoppingScreen
 import com.przemas230.dietaapp.ui.ShoppingViewModel
+import com.przemas230.dietaapp.ui.SwipeRatingStyle
 import com.przemas230.dietaapp.ui.SwipeRatingStyleViewModel
 import com.przemas230.dietaapp.ui.ThemeViewModel
 import com.przemas230.dietaapp.ui.UiScaleViewModel
@@ -439,6 +440,28 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     effectiveUiScale = effectiveScale,
                     swipeRatingStyleViewModel = swipeRatingStyleViewModel,
                     themeViewModel = themeViewModel,
+                    onClearLocalData = {
+                        // FR-79: "wyczyść dane lokalne" -- resets every local
+                        // ViewModel to fresh-install defaults. LocalPersistenceCoordinator
+                        // picks up each of these changes and re-saves the (now
+                        // empty) state on its own, so no separate file-delete needed.
+                        profileViewModel.resetToDefault()
+                        profileViewModel.setDisplayName("")
+                        pantryViewModel.replaceAll(emptyMap())
+                        shoppingViewModel.replaceAll(emptyMap())
+                        plannerViewModel.replaceAll(emptyMap())
+                        recipeViewModel.replaceCooked(emptyMap())
+                        recipeViewModel.replaceRatings(emptyMap())
+                        recipeViewModel.replaceReviews(emptyMap())
+                        recipeViewModel.replaceMyRecipes(emptyList())
+                        favoriteIngredientsViewModel.replaceAll(emptySet())
+                        eatenViewModel.replaceAll(emptyMap(), emptyList())
+                        waterViewModel.setCount(0)
+                        weightViewModel.replaceAll(emptyList())
+                        themeViewModel.setTheme(com.przemas230.dietaapp.logic.AppThemes.DEFAULT_ID)
+                        uiScaleViewModel.resetToAuto()
+                        swipeRatingStyleViewModel.setStyle(SwipeRatingStyle.BALLOON)
+                    },
                 )
             }
         }
