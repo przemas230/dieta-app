@@ -20,6 +20,14 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -27,12 +35,15 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +63,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -61,12 +73,14 @@ import androidx.navigation.compose.rememberNavController
 import com.przemas230.dietaapp.data.EatenEntry
 import com.przemas230.dietaapp.data.PlannedMeal
 import com.przemas230.dietaapp.data.Recipe
+import com.przemas230.dietaapp.data.Snack
 import com.przemas230.dietaapp.logic.DailyCalorieTargets
 import com.przemas230.dietaapp.logic.EatenOperations
 import com.przemas230.dietaapp.logic.PlannerCategory
 import com.przemas230.dietaapp.logic.PlannerOperations
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.ShoppingDayStrip
+import com.przemas230.dietaapp.logic.SnackNutritionDb
 import com.przemas230.dietaapp.logic.UiScale
 import com.przemas230.dietaapp.logic.WaterOperations
 import com.przemas230.dietaapp.logic.forCategory
@@ -161,6 +175,8 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // FR-36: shared for the same reason as waterViewModel above.
     val eatenViewModel: EatenViewModel = viewModel()
     val eatenEntries by eatenViewModel.entries.collectAsState()
+    val snacks by eatenViewModel.snacks.collectAsState()
+    var showQuickAddDialog by remember { mutableStateOf(false) }
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
     val allRecipes by plannerViewModel.allRecipes.collectAsState()
     val recipesById = remember(allRecipes) { allRecipes.associateBy { it.id } }
@@ -222,6 +238,13 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                         actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
                     ),
                     actions = {
+                        // FR-33: global quick-add, visible on every tab (matches
+                        // index.html's header "➕" button) -- the Postęp tab's
+                        // OWN floating-button entry point to this same dialog
+                        // isn't ported, since that tab is still a placeholder.
+                        IconButton(onClick = { showQuickAddDialog = true }) {
+                            Icon(Icons.Filled.Add, contentDescription = "Dodaj przekąskę lub dodatkowe danie")
+                        }
                         IconButton(onClick = {
                             navController.navigate(Screen.Settings.route) { launchSingleTop = true }
                         }) {
@@ -239,7 +262,9 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                             todayMeals = todayMeals,
                             recipesById = recipesById,
                             eatenEntries = eatenEntries,
+                            snacks = snacks,
                             onToggleEaten = { cat, kcal, name -> eatenViewModel.toggle(cat, kcal, name) },
+                            onRemoveSnack = { id -> eatenViewModel.removeSnack(id) },
                         )
                     }
                 }
@@ -300,6 +325,16 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
             }
         }
     }
+
+    if (showQuickAddDialog) {
+        QuickAddSnackDialog(
+            onDismiss = { showQuickAddDialog = false },
+            onAdd = { name, kcal ->
+                eatenViewModel.addSnack(name, kcal)
+                showQuickAddDialog = false
+            },
+        )
+    }
 }
 
 /** "67.0" -> "67", "67.5" -> "67.5" — matches how JS template literals print numbers. */
@@ -353,7 +388,9 @@ private fun HeaderKcalPanel(
     todayMeals: Map<String, PlannedMeal>,
     recipesById: Map<String, Recipe>,
     eatenEntries: Map<String, EatenEntry>,
+    snacks: List<Snack>,
     onToggleEaten: (cat: String, plannedKcal: Int?, plannedName: String?) -> Unit,
+    onRemoveSnack: (id: String) -> Unit,
 ) {
     val pct = if (targetKcal > 0) (plannedKcal.toFloat() / targetKcal).coerceIn(0f, 1f) else 0f
     Column(modifier = Modifier.padding(top = 8.dp)) {
@@ -386,8 +423,31 @@ private fun HeaderKcalPanel(
                 }
             }
         }
+        // FR-33/34: ad-hoc snacks, each removable -- port of index.html's
+        // per-snack "×" delete in the "co zjadłaś/eś" list.
+        snacks.forEach { snack ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "🍿 ${snack.name} · ${snack.kcal} kcal",
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    "✕",
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = 10.sp,
+                    modifier = Modifier.clickable { onRemoveSnack(snack.id) }.padding(start = 4.dp),
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(6.dp))
-        val eatenKcal = EatenOperations.dailyEatenKcal(eatenEntries)
+        val eatenKcal = EatenOperations.dailyEatenKcal(eatenEntries) + EatenOperations.snacksKcal(snacks)
         val remaining = max(0, targetKcal - eatenKcal)
         Text(
             "🍽️ Zjedzone: $eatenKcal kcal · Zostało: $remaining kcal",
@@ -463,6 +523,118 @@ private fun KcalMealRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+            }
+        }
+    }
+}
+
+/**
+ * FR-33/34: the "➕" quick-add dialog -- free-text name (auto-filled kcal via
+ * SnackNutritionDb.estimate, editable, with a startsWith-then-contains
+ * suggestion list from 2 typed characters, matching index.html's
+ * buildSnackAddForm/renderSuggestions) plus a manual kcal field.
+ */
+@Composable
+private fun QuickAddSnackDialog(onDismiss: () -> Unit, onAdd: (name: String, kcal: Int) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var kcalText by remember { mutableStateOf("") }
+    var kcalWasAutoFilled by remember { mutableStateOf(false) }
+
+    val estimate = remember(name) { SnackNutritionDb.estimate(name) }
+    LaunchedEffect(estimate) {
+        if (estimate != null) {
+            kcalText = estimate.kcal.toString()
+            kcalWasAutoFilled = true
+        } else if (kcalWasAutoFilled) {
+            kcalText = ""
+            kcalWasAutoFilled = false
+        }
+    }
+    val suggestions = remember(name) {
+        val q = name.trim().lowercase()
+        if (q.length < 2) {
+            emptyList()
+        } else {
+            val names = SnackNutritionDb.TABLE.keys
+            val starts = names.filter { it.startsWith(q) }
+            val includes = names.filter { !it.startsWith(q) && it.contains(q) }
+            (starts + includes).take(8)
+        }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.widthIn(max = 480.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .heightIn(max = 560.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "➕ Dodaj przekąskę lub dodatkowe danie",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onDismiss) { Text("✕") }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Co zjadłaś/eś?") },
+                    placeholder = { Text("np. 1 banan, 150g ryżu, jogurt 200g") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (suggestions.isNotEmpty()) {
+                    Column {
+                        suggestions.forEach { suggestion ->
+                            Text(
+                                suggestion,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { name = suggestion }
+                                    .padding(vertical = 6.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    }
+                } else if (name.trim().length >= 2) {
+                    Text(
+                        if (estimate != null) {
+                            "≈ ${estimate.kcal} kcal (${estimate.basis}) — możesz poprawić ręcznie"
+                        } else {
+                            "Nie rozpoznano produktu — podaj kcal ręcznie"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = kcalText,
+                        onValueChange = { kcalText = it; kcalWasAutoFilled = false },
+                        label = { Text("kcal") },
+                        singleLine = true,
+                        modifier = Modifier.width(110.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            val kcal = kcalText.toIntOrNull()
+                            if (name.isNotBlank() && kcal != null && kcal > 0) {
+                                onAdd(name.trim(), kcal)
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text("+ Dodaj")
+                    }
+                }
             }
         }
     }

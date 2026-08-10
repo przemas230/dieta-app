@@ -1,6 +1,7 @@
 package com.przemas230.dietaapp.logic
 
 import com.przemas230.dietaapp.data.EatenEntry
+import com.przemas230.dietaapp.data.Snack
 
 /**
  * FR-36: pure port of index.html's setEaten/isEaten/dailyEatenKcal, scoped
@@ -32,4 +33,7 @@ object EatenOperations {
 
     fun dailyEatenKcal(entries: Map<String, EatenEntry>): Int =
         entries.values.filter { it.done }.sumOf { it.kcal ?: 0 }
+
+    /** FR-33/34: ad-hoc snacks add on top of the 5 Planer slots -- port of index.html's `(day.snacks||[]).forEach(s=> total += s.kcal)`. */
+    fun snacksKcal(snacks: List<Snack>): Int = snacks.sumOf { it.kcal }
 }

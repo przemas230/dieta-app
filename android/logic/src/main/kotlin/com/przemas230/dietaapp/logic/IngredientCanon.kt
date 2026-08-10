@@ -380,6 +380,11 @@ object IngredientCanon {
         "nasiona chia" to "siemię lniane / chia",
         "kurczak" to "kurczak (pierś)",
         "daktyle" to "daktyle suszone",
+        "borówki" to "borówki / jagody",
+        "jagody" to "borówki / jagody",
+        "sałata" to "sałata / mix sałat",
+        "pestki dyni" to "pestki (dyni/słonecznika)",
+        "pestki słonecznika" to "pestki (dyni/słonecznika)",
     )
 
     val CANON_INFO: Map<String, CanonInfo> = mapOf(

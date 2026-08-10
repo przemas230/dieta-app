@@ -1,6 +1,7 @@
 package com.przemas230.dietaapp.logic
 
 import com.przemas230.dietaapp.data.EatenEntry
+import com.przemas230.dietaapp.data.Snack
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -48,5 +49,16 @@ class EatenOperationsTest {
     @Test
     fun `dailyEatenKcal is zero for no entries`() {
         assertEquals(0, EatenOperations.dailyEatenKcal(emptyMap()))
+    }
+
+    @Test
+    fun `snacksKcal sums every logged snack`() {
+        val snacks = listOf(Snack("1", "banan", 105), Snack("2", "prince polo", 180))
+        assertEquals(285, EatenOperations.snacksKcal(snacks))
+    }
+
+    @Test
+    fun `snacksKcal is zero for no snacks`() {
+        assertEquals(0, EatenOperations.snacksKcal(emptyList()))
     }
 }
