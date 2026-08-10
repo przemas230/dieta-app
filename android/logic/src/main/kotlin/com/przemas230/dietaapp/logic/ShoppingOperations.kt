@@ -1,5 +1,6 @@
 package com.przemas230.dietaapp.logic
 
+import com.przemas230.dietaapp.data.PantryCategory
 import com.przemas230.dietaapp.data.PlannedMeal
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.data.ShoppingItem
@@ -137,4 +138,32 @@ object ShoppingOperations {
     fun removeItem(items: Map<String, ShoppingItem>, key: String): Map<String, ShoppingItem> = items - key
 
     fun clearChecked(items: Map<String, ShoppingItem>): Map<String, ShoppingItem> = items.filterValues { !it.checked }
+
+    /** FR-26: "Wyczyść całą listę" -- unlike clearChecked, drops EVERY item regardless of checked state. index.html also resets a separate `recipeAdded` map, but Android's isRecipeAdded is derived straight from `items`, so clearing items alone already un-marks every recipe. */
+    fun clearAll(items: Map<String, ShoppingItem>): Map<String, ShoppingItem> = emptyMap()
+
+    /**
+     * FR-26: plain-text summary for Android's share sheet -- port of
+     * index.html's buildListText(), grouped by category and sorted by name
+     * within each group, unchecked items only. Reuses Android's own 8-
+     * category IngredientCanon/PantryTiles grouping (already used by the
+     * Spiżarnia tile grid) rather than index.html's separate keyword-based
+     * `classify()`, which exists only for this one text — same information,
+     * one fewer categorization scheme to maintain.
+     */
+    fun buildShareText(items: Map<String, ShoppingItem>): String {
+        val unchecked = items.values.filter { !it.checked }
+        if (unchecked.isEmpty()) return "Lista zakupów jest pusta \uD83C\uDF89"
+        val byCategoryLabel = unchecked.groupBy { IngredientCanon.CANON_INFO[it.name]?.cat ?: PantryCategory.INNE.label }
+        val sb = StringBuilder("\uD83D\uDED2 Lista zakupów:\n")
+        PantryTiles.CATEGORY_ORDER.forEach { cat ->
+            val group = byCategoryLabel[cat.label] ?: return@forEach
+            sb.append('\n').append(cat.label).append(":\n")
+            group.sortedBy { it.name }.forEach { item ->
+                val displayName = ShoppingDisplay.displayName(item.name, item.unitCat, item.quantity)
+                sb.append("- ").append(ShoppingDisplay.formatQty(item.unitCat, item.quantity)).append(' ').append(displayName).append('\n')
+            }
+        }
+        return sb.toString().trim()
+    }
 }

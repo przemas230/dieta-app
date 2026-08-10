@@ -168,4 +168,35 @@ class ShoppingOperationsTest {
 
         assertEquals(setOf("jajka|count"), items.keys)
     }
+
+    @Test
+    fun `clearAll drops every item regardless of checked state`() {
+        var items = ShoppingOperations.addRecipe(emptyMap(), recipe("r1", "1 l mleka", "6 jajka"))
+        items = ShoppingOperations.toggleChecked(items, "mleko|volume")
+
+        items = ShoppingOperations.clearAll(items)
+
+        assertTrue(items.isEmpty())
+    }
+
+    @Test
+    fun `buildShareText reports an empty list when there is nothing unchecked`() {
+        assertEquals("Lista zakupów jest pusta 🎉", ShoppingOperations.buildShareText(emptyMap()))
+
+        var items = ShoppingOperations.addRecipe(emptyMap(), recipe("r1", "6 jajka"))
+        items = ShoppingOperations.toggleChecked(items, "jajka|count")
+        assertEquals("Lista zakupów jest pusta 🎉", ShoppingOperations.buildShareText(items))
+    }
+
+    @Test
+    fun `buildShareText lists unchecked items and skips checked ones`() {
+        var items = ShoppingOperations.addRecipe(emptyMap(), recipe("r1", "1 l mleka", "6 jajka"))
+        items = ShoppingOperations.toggleChecked(items, "mleko|volume")
+
+        val text = ShoppingOperations.buildShareText(items)
+
+        assertTrue(text.startsWith("🛒 Lista zakupów:"))
+        assertTrue(text.contains("jaj"))
+        assertFalse(text.contains("mlek"))
+    }
 }

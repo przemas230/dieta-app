@@ -1,5 +1,6 @@
 package com.przemas230.dietaapp.ui
 
+import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
@@ -23,6 +24,7 @@ import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -82,6 +84,7 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
     // just presentation, per the FR's own "przełącznik widoku nie zmienia
     // zawartości" criterion.
     var tileView by remember { mutableStateOf(false) }
+    var showClearAllConfirm by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -101,6 +104,31 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
         ) {
             FilterChip(selected = !tileView, onClick = { tileView = false }, label = { Text("📃 Lista") })
             FilterChip(selected = tileView, onClick = { tileView = true }, label = { Text("🏺 Kafelki (jak w spiżarni)") })
+        }
+
+        // FR-26: share the (unchecked) list as plain text through Android's
+        // own share sheet -- the native equivalent of index.html's
+        // navigator.share()/SMS/WhatsApp/copy buttons, all of which just
+        // hand the same buildListText()-equivalent string to whatever the
+        // user picks; "Wyczyść całą listę" was the other still-missing
+        // piece of FR-26 (only "Usuń kupione"/clearChecked existed before).
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Button(
+                onClick = {
+                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, ShoppingOperations.buildShareText(items))
+                    }
+                    context.startActivity(Intent.createChooser(sendIntent, null))
+                },
+                modifier = Modifier.weight(1f),
+            ) {
+                Text("📤 Udostępnij")
+            }
+            TextButton(onClick = { showClearAllConfirm = true }) { Text("Wyczyść całą listę") }
         }
 
         // FR-58/FR-62: one strip of 7 day cards, each stating its own
@@ -169,6 +197,20 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
                 }
             }
         }
+    }
+
+    if (showClearAllConfirm) {
+        AlertDialog(
+            onDismissRequest = { showClearAllConfirm = false },
+            title = { Text("Wyczyścić całą listę zakupów?") },
+            text = { Text("Usunie wszystkie pozycje, także te jeszcze nieodhaczone.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearAll(); showClearAllConfirm = false }) { Text("Wyczyść") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearAllConfirm = false }) { Text("Anuluj") }
+            },
+        )
     }
 }
 

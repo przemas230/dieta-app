@@ -61,6 +61,11 @@ class ShoppingViewModel : ViewModel() {
         _items.value = ShoppingOperations.clearChecked(_items.value)
     }
 
+    /** FR-26: "Wyczyść całą listę" -- drops every item, checked or not. */
+    fun clearAll() {
+        _items.value = ShoppingOperations.clearAll(_items.value)
+    }
+
     /** FR-73: applies an incoming cloud snapshot wholesale (last-cloud-write-wins), replacing local state. */
     fun replaceAll(items: Map<String, ShoppingItem>) {
         _items.value = items
