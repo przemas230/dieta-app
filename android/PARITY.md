@@ -6,89 +6,91 @@ Android (`android/`). Aktualizowana przy każdej zmianie po obu stronach — je�
 coś tu jest oznaczone ✅, a w Kotlinie realnie nie działa (bo np. nie zdążyłeś
 jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 
-**Legenda:** ✅ zaimplementowane i (na ile się dało) zweryfikowane · ⏳ zaimplementowane, czeka na sprawdzenie w Android Studio · ⬜ jeszcze nie rozpoczęte · N/D nie dotyczy natywnej aplikacji (mechanizm specyficzny dla PWA/Service Workera)
+**Legenda „Status w Android":** ✅ zaimplementowane i (na ile się dało) zweryfikowane · ⏳ zaimplementowane, czeka na sprawdzenie w Android Studio · ⬜ jeszcze nie rozpoczęte · N/D nie dotyczy natywnej aplikacji (mechanizm specyficzny dla PWA/Service Workera)
 
-| FR | Wymaganie | Status w Android |
-|---|---|---|
-| FR-1 | Baza przepisów podzielona na 5 kategorii posiłków | ⏳ częściowo (patrz uwagi niżej) |
-| FR-2 | Wyszukiwanie i filtrowanie przepisów | ⏳ częściowo (patrz uwagi niżej) |
-| FR-3 | Karta przepisu — widok skrócony i rozwinięty | ⏳ zaimplementowane w ekranie listy przepisów, do sprawdzenia w Android Studio |
-| FR-4 | Miniatura przepisu jako emoji głównego składnika | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-5 | Przycisk powrotu do góry listy przepisów | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-6 | Profil użytkownika i wyliczanie zapotrzebowania kalorycznego | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-7 | Podział dziennego celu kalorycznego na 5 posiłków | ✅ zaimplementowane jako część FR-6 (ProfileCalculations.calcTargets) |
-| FR-8 | Filtr bez glutenu / bez laktozy | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-9 | Przełącznik rygoru niskiego indeksu glikemicznego | ⏳ częściowo (patrz uwagi niżej) |
-| FR-10 | Docelowe proporcje makroskładników zależne od celu | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-11 | Wynik dopasowania przepisu do profilu (🎯) | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-12 | Modal wyjaśniający wyliczenia makro/IG/ŁG | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (bez mikroskładników, patrz uwagi) |
-| FR-13 | Piąta kategoria posiłku: Deser/Przekąska | ⏳ częściowo (patrz uwagi niżej) |
-| FR-14 | Skalowanie rozmiaru interfejsu (UI scale) | ⏳ częściowo (patrz uwagi niżej) |
-| FR-15 | Oznaczanie dania jako ugotowane, z historią i ocenami | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-16 | Sprawdzenie stanu spiżarni dla konkretnego przepisu | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-17 | Ocena dania po ugotowaniu (gwiazdki) | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (jako część FR-15) |
-| FR-18 | Planer tygodniowy z 5 slotami posiłków dziennie | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-19 | Wybór innego slotu posiłkowego z poziomu karty przepisu | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-20 | Skalowanie wielkości porcji w planerze | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-21 | Losowe generowanie planu — cały tydzień lub pojedynczy dzień | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-22 | Czyszczenie planu — cały tydzień lub pojedynczy dzień | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (per dzień — patrz uwagi) |
-| FR-23 | „Ugotuj na 2 dni” — planowanie resztek po zwiększeniu porcji | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-24 | Proaktywna podpowiedź gotowania na kolejny dzień | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-25 | Budowanie listy zakupów ze składników przepisów | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-26 | Odhaczanie, udostępnianie i czyszczenie listy zakupów | ⏳ częściowo (patrz uwagi niżej) |
-| FR-27 | Dodanie składników z całego tygodnia z Planera | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-28 | Śledzenie stanu spiżarni w kafelkach pogrupowanych kategoriami | ✅ przebudowane od zera 2026-08-10 na pełną siatkę kafelków (patrz uwagi niżej) |
-| FR-29 | Odmiana gramatyczna nazw produktów w spiżarni | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-30 | Zmiana kategorii i usuwanie śledzenia kafelka spiżarni | ✅ przebudowane 2026-08-10 razem z FR-28 (patrz uwagi niżej) |
-| FR-31 | Skanowanie kodu kreskowego produktu | ⬜ nie rozpoczęte |
-| FR-32 | Podpowiedź „🏺 masz w spiżarni” i „Pomysł na danie z ulubionych składników” | ⬜ nie rozpoczęte |
-| FR-33 | Globalny przycisk szybkiego dodania przekąski/dania z każdego miejsca | ⏳ częściowo (patrz uwagi niżej) |
-| FR-34 | Automatyczne szacowanie kalorii przekąski z bazy 336 produktów | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
-| FR-35 | Emotikonki przy rozpoznanych składnikach/przekąskach | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
-| FR-36 | Dzienny pierścień kalorii w nagłówku ze zjadanymi posiłkami | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
-| FR-37 | Śledzenie nawodnienia — pełny widok i kompaktowy pasek w nagłówku | ⬜ nie rozpoczęte |
-| FR-38 | Powiadomienia z szybkimi akcjami do liczenia wody | ⬜ nie rozpoczęte |
-| FR-39 | Cykliczne przypomnienie o piciu wody | ⬜ nie rozpoczęte |
-| FR-40 | Śledzenie wagi z wykresem | ⬜ nie rozpoczęte |
-| FR-41 | Historia kalorii z bilansem tygodniowym | ⬜ nie rozpoczęte |
-| FR-42 | Serie (streaks) i historia aktywności | ⬜ nie rozpoczęte |
-| FR-43 | Pasek filtrów i kategorii przyklejony pod nagłówkiem | ✅ już spełnione przez architekturę Compose, zweryfikowane na emulatorze (patrz uwagi) |
-| FR-44 | Automatyczne chowanie/pokazywanie nagłówka na przewijanie (tylko Przepisy) | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
-| FR-45 | Ręczne zwijanie/rozwijanie nagłówka ma pierwszeństwo nad automatyką | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
-| FR-46 | Zabezpieczenie przed przypadkowym zamknięciem aplikacji (Android „Wstecz”) | ✅ już spełnione przez istniejącą architekturę, zweryfikowane na emulatorze (patrz uwagi) |
-| FR-47 | Brak migotania (FOUC) domyślnych danych profilu przy odświeżeniu | ✅ strukturalnie niemożliwe do naruszenia w tej architekturze (patrz uwagi) |
-| FR-48 | Wybór motywu kolorystycznego aplikacji | ⏳ częściowo (patrz uwagi niżej) |
-| FR-49 | Motyw „Polaroid” z kartami w stylu odbitek natychmiastowych | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi FR-48) |
-| FR-50 | Redukcja animacji (prefers-reduced-motion) | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-51 | Instalowalna aplikacja PWA z ikoną i manifestem | N/D — mechanizm specyficzny dla PWA (instalacja/Service Worker/cache), nie dotyczy natywnej appki |
-| FR-52 | Cache offline przez Service Worker ze strategią stale-while-revalidate | N/D — mechanizm specyficzny dla PWA (instalacja/Service Worker/cache), nie dotyczy natywnej appki |
-| FR-53 | Ręczne wymuszenie aktualizacji i diagnostyka powiadomień | N/D — mechanizm specyficzny dla PWA (instalacja/Service Worker/cache), nie dotyczy natywnej appki |
-| FR-54 | Kopie zapasowe wersji plików aplikacji w repozytorium | N/D — mechanizm specyficzny dla PWA (instalacja/Service Worker/cache), nie dotyczy natywnej appki |
-| FR-55 | Ocenianie przepisów przesunięciem karty (lubię / nie lubię) | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-56 | Duży, balonowy napis podczas oceniania przesunięciem | ⏳ zaimplementowane, wizualnie niezweryfikowane (patrz uwagi) |
-| FR-57 | Trwałe oznaczenie oceny i ranking sort | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-58 | Dodawanie składników z konkretnego dnia na liście zakupów | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-59 | Wyśrodkowane okienka modalne, na pełną dostępną szerokość | ✅ w większości już spełnione przez architekturę Compose, dociągnięte i zweryfikowane na emulatorze (patrz uwagi) |
-| FR-60 | Warunkowe wyświetlanie „Złotych zasad przy Hashimoto i insulinooporności” | ⬜ nie rozpoczęte |
-| FR-61 | Wybór stylu oceniania kart przesunięciem w Ustawieniach | ⏳ zaimplementowane, gest przesunięcia wizualnie niezweryfikowany (patrz uwagi) |
-| FR-62 | Mini kalendarzyk bieżącego tygodnia na liście zakupów | ✅ scalone z FR-58 w jeden widżet (patrz uwagi FR-58/FR-62) — to samo źródło prawdy co web po rewizji v2 |
-| FR-63 | Motywy „Fluent” i „Kafelki” inspirowane Windows 11 / Metro | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi FR-48) |
-| FR-64 | Orientacyjne wartości mikroskładników (wapń, wit. D, B12) w okienku wyliczeń | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-65 | Własna, opcjonalna nazwa użytkownika w aplikacji | ⏳ częściowo (patrz uwagi niżej) |
-| FR-66 | Dodawanie własnych przepisów przez użytkownika | ⬜ nie rozpoczęte |
-| FR-67 | Ocena gwiazdkowa i komentarz przy przepisie | ⬜ nie rozpoczęte |
-| FR-68 | Ustawienia gospodarstwa domowego i przepisów społeczności (stan przejściowy) | ⬜ nie rozpoczęte |
-| FR-69 | Logowanie w chmurze (anonimowe, Google, e-mail i hasło) | ⬜ nie rozpoczęte |
-| FR-70 | Licznik nawodnienia w nagłówku — pojedyncze klikalne kropelki | ⏳ częściowo (patrz uwagi niżej) |
-| FR-71 | Zakładki w Ustawieniach — Konto, Wygląd, Przypomnienia, Ulubione | ⏳ częściowo (patrz uwagi niżej) |
-| FR-72 | Wymuszenie ustawienia profilu przy pierwszym uruchomieniu | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
-| FR-73 | Synchronizacja danych osobistych w chmurze między urządzeniami | ⬜ nie rozpoczęte |
-| FR-74 | Wspólna zakładka „Śniadania” na liście przepisów, osobne sloty w Planerze | ⏳ zaimplementowane w ekranie listy przepisów, do sprawdzenia w Android Studio |
-| FR-75 | Widok kafelkowy listy zakupów z brakującymi ilościami | ⏳ zaimplementowane, do wizualnego sprawdzenia w Android Studio (patrz uwagi) |
-| FR-76 | Przepisy społeczności oraz przeglądana lista użytkowników i profili | ⬜ nie rozpoczęte |
-| FR-77 | Komentarze wielu użytkowników pod przepisem, z paginacją | ⬜ nie rozpoczęte |
-| FR-78 | Pełna synchronizacja stanu z prawdziwym scalaniem zmian (3-way merge) | ⬜ nie rozpoczęte |
-| FR-79 | Wylogowanie z urządzenia | ⬜ nie rozpoczęte |
+**Legenda „Status w web":** ✅ zaimplementowane w `index.html` (jeśli nieoczywiste — z zastrzeżeniem w nawiasie, np. wymaganymi regułami Firestore) · ⏳ częściowe/świadomie niepełne w web samym w sobie · 🔗 scalone z innym FR, funkcja nadal istnieje pod innym numerem · ❌ wyłączone/wycofane w web (na razie nie dotyczy — kolumna istnieje żeby to było łatwe do zaznaczenia w przyszłości). Źródło: pole `**Status:**` w nagłówku każdego `Functional requirements/FR-N.md` — jeśli je tam zmienisz (np. świadomie wyłączysz jakąś funkcję w web), zaktualizuj też tę kolumnę, żeby oba pliki się zgadzały.
+
+| FR | Wymaganie | Status w web | Status w Android |
+|---|---|---|---|
+| FR-1 | Baza przepisów podzielona na 5 kategorii posiłków | ✅ | ⏳ częściowo (patrz uwagi niżej) |
+| FR-2 | Wyszukiwanie i filtrowanie przepisów | ✅ | ⏳ częściowo (patrz uwagi niżej) |
+| FR-3 | Karta przepisu — widok skrócony i rozwinięty | ✅ | ⏳ zaimplementowane w ekranie listy przepisów, do sprawdzenia w Android Studio |
+| FR-4 | Miniatura przepisu jako emoji głównego składnika | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-5 | Przycisk powrotu do góry listy przepisów | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-6 | Profil użytkownika i wyliczanie zapotrzebowania kalorycznego | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-7 | Podział dziennego celu kalorycznego na 5 posiłków | ✅ | ✅ zaimplementowane jako część FR-6 (ProfileCalculations.calcTargets) |
+| FR-8 | Filtr bez glutenu / bez laktozy | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-9 | Przełącznik rygoru niskiego indeksu glikemicznego | ✅ | ⏳ częściowo (patrz uwagi niżej) |
+| FR-10 | Docelowe proporcje makroskładników zależne od celu | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-11 | Wynik dopasowania przepisu do profilu (🎯) | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-12 | Modal wyjaśniający wyliczenia makro/IG/ŁG | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (bez mikroskładników, patrz uwagi) |
+| FR-13 | Piąta kategoria posiłku: Deser/Przekąska | ✅ | ⏳ częściowo (patrz uwagi niżej) |
+| FR-14 | Skalowanie rozmiaru interfejsu (UI scale) | ✅ | ⏳ częściowo (patrz uwagi niżej) |
+| FR-15 | Oznaczanie dania jako ugotowane, z historią i ocenami | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-16 | Sprawdzenie stanu spiżarni dla konkretnego przepisu | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-17 | Ocena dania po ugotowaniu (gwiazdki) | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (jako część FR-15) |
+| FR-18 | Planer tygodniowy z 5 slotami posiłków dziennie | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-19 | Wybór innego slotu posiłkowego z poziomu karty przepisu | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-20 | Skalowanie wielkości porcji w planerze | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-21 | Losowe generowanie planu — cały tydzień lub pojedynczy dzień | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-22 | Czyszczenie planu — cały tydzień lub pojedynczy dzień | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (per dzień — patrz uwagi) |
+| FR-23 | „Ugotuj na 2 dni” — planowanie resztek po zwiększeniu porcji | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-24 | Proaktywna podpowiedź gotowania na kolejny dzień | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-25 | Budowanie listy zakupów ze składników przepisów | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-26 | Odhaczanie, udostępnianie i czyszczenie listy zakupów | ✅ | ⏳ częściowo (patrz uwagi niżej) |
+| FR-27 | Dodanie składników z całego tygodnia z Planera | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-28 | Śledzenie stanu spiżarni w kafelkach pogrupowanych kategoriami | ✅ | ✅ przebudowane od zera 2026-08-10 na pełną siatkę kafelków (patrz uwagi niżej) |
+| FR-29 | Odmiana gramatyczna nazw produktów w spiżarni | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-30 | Zmiana kategorii i usuwanie śledzenia kafelka spiżarni | ✅ | ✅ przebudowane 2026-08-10 razem z FR-28 (patrz uwagi niżej) |
+| FR-31 | Skanowanie kodu kreskowego produktu | ✅ | ⬜ nie rozpoczęte |
+| FR-32 | Podpowiedź „🏺 masz w spiżarni” i „Pomysł na danie z ulubionych składników” | ✅ | ⬜ nie rozpoczęte |
+| FR-33 | Globalny przycisk szybkiego dodania przekąski/dania z każdego miejsca | ✅ | ⏳ częściowo (patrz uwagi niżej) |
+| FR-34 | Automatyczne szacowanie kalorii przekąski z bazy 336 produktów | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
+| FR-35 | Emotikonki przy rozpoznanych składnikach/przekąskach | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
+| FR-36 | Dzienny pierścień kalorii w nagłówku ze zjadanymi posiłkami | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
+| FR-37 | Śledzenie nawodnienia — pełny widok i kompaktowy pasek w nagłówku | ✅ | ⬜ nie rozpoczęte |
+| FR-38 | Powiadomienia z szybkimi akcjami do liczenia wody | ✅ | ⬜ nie rozpoczęte |
+| FR-39 | Cykliczne przypomnienie o piciu wody | ✅ | ⬜ nie rozpoczęte |
+| FR-40 | Śledzenie wagi z wykresem | ✅ | ⬜ nie rozpoczęte |
+| FR-41 | Historia kalorii z bilansem tygodniowym | ✅ | ⬜ nie rozpoczęte |
+| FR-42 | Serie (streaks) i historia aktywności | ✅ | ⬜ nie rozpoczęte |
+| FR-43 | Pasek filtrów i kategorii przyklejony pod nagłówkiem | ✅ | ✅ już spełnione przez architekturę Compose, zweryfikowane na emulatorze (patrz uwagi) |
+| FR-44 | Automatyczne chowanie/pokazywanie nagłówka na przewijanie (tylko Przepisy) | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
+| FR-45 | Ręczne zwijanie/rozwijanie nagłówka ma pierwszeństwo nad automatyką | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
+| FR-46 | Zabezpieczenie przed przypadkowym zamknięciem aplikacji (Android „Wstecz”) | ✅ | ✅ już spełnione przez istniejącą architekturę, zweryfikowane na emulatorze (patrz uwagi) |
+| FR-47 | Brak migotania (FOUC) domyślnych danych profilu przy odświeżeniu | ✅ | ✅ strukturalnie niemożliwe do naruszenia w tej architekturze (patrz uwagi) |
+| FR-48 | Wybór motywu kolorystycznego aplikacji | ✅ | ⏳ częściowo (patrz uwagi niżej) |
+| FR-49 | Motyw „Polaroid” z kartami w stylu odbitek natychmiastowych | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi FR-48) |
+| FR-50 | Redukcja animacji (prefers-reduced-motion) | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-51 | Instalowalna aplikacja PWA z ikoną i manifestem | ✅ | N/D — mechanizm specyficzny dla PWA (instalacja/Service Worker/cache), nie dotyczy natywnej appki |
+| FR-52 | Cache offline przez Service Worker ze strategią stale-while-revalidate | ✅ | N/D — mechanizm specyficzny dla PWA (instalacja/Service Worker/cache), nie dotyczy natywnej appki |
+| FR-53 | Ręczne wymuszenie aktualizacji i diagnostyka powiadomień | ✅ | N/D — mechanizm specyficzny dla PWA (instalacja/Service Worker/cache), nie dotyczy natywnej appki |
+| FR-54 | Kopie zapasowe wersji plików aplikacji w repozytorium | ✅ | N/D — mechanizm specyficzny dla PWA (instalacja/Service Worker/cache), nie dotyczy natywnej appki |
+| FR-55 | Ocenianie przepisów przesunięciem karty (lubię / nie lubię) | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-56 | Duży, balonowy napis podczas oceniania przesunięciem | ✅ | ⏳ zaimplementowane, wizualnie niezweryfikowane (patrz uwagi) |
+| FR-57 | Trwałe oznaczenie oceny i ranking sort | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-58 | Dodawanie składników z konkretnego dnia na liście zakupów | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-59 | Wyśrodkowane okienka modalne, na pełną dostępną szerokość | ✅ | ✅ w większości już spełnione przez architekturę Compose, dociągnięte i zweryfikowane na emulatorze (patrz uwagi) |
+| FR-60 | Warunkowe wyświetlanie „Złotych zasad przy Hashimoto i insulinooporności” | ✅ | ⬜ nie rozpoczęte |
+| FR-61 | Wybór stylu oceniania kart przesunięciem w Ustawieniach | ✅ | ⏳ zaimplementowane, gest przesunięcia wizualnie niezweryfikowany (patrz uwagi) |
+| FR-62 | Mini kalendarzyk bieżącego tygodnia na liście zakupów | 🔗 połączone z FR-58 | ✅ scalone z FR-58 w jeden widżet (patrz uwagi FR-58/FR-62) — to samo źródło prawdy co web po rewizji v2 |
+| FR-63 | Motywy „Fluent” i „Kafelki” inspirowane Windows 11 / Metro | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi FR-48) |
+| FR-64 | Orientacyjne wartości mikroskładników (wapń, wit. D, B12) w okienku wyliczeń | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-65 | Własna, opcjonalna nazwa użytkownika w aplikacji | ✅ | ⏳ częściowo (patrz uwagi niżej) |
+| FR-66 | Dodawanie własnych przepisów przez użytkownika | ✅ | ⬜ nie rozpoczęte |
+| FR-67 | Ocena gwiazdkowa i komentarz przy przepisie | ✅ | ⬜ nie rozpoczęte |
+| FR-68 | Ustawienia gospodarstwa domowego i przepisów społeczności (stan przejściowy) | ⏳ świadomie częściowe (przejściowy stan przed `households/*`) | ⬜ nie rozpoczęte |
+| FR-69 | Logowanie w chmurze (anonimowe, Google, e-mail i hasło) | ⏳ logowanie ✅, synchronizacja danych jeszcze nie (patrz FR-73) | ⬜ nie rozpoczęte |
+| FR-70 | Licznik nawodnienia w nagłówku — pojedyncze klikalne kropelki | ✅ | ⏳ częściowo (patrz uwagi niżej) |
+| FR-71 | Zakładki w Ustawieniach — Konto, Wygląd, Przypomnienia, Ulubione | ✅ | ⏳ częściowo (patrz uwagi niżej) |
+| FR-72 | Wymuszenie ustawienia profilu przy pierwszym uruchomieniu | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
+| FR-73 | Synchronizacja danych osobistych w chmurze między urządzeniami | ✅ | ⬜ nie rozpoczęte |
+| FR-74 | Wspólna zakładka „Śniadania” na liście przepisów, osobne sloty w Planerze | ✅ | ⏳ zaimplementowane w ekranie listy przepisów, do sprawdzenia w Android Studio |
+| FR-75 | Widok kafelkowy listy zakupów z brakującymi ilościami | ✅ | ⏳ zaimplementowane, do wizualnego sprawdzenia w Android Studio (patrz uwagi) |
+| FR-76 | Przepisy społeczności oraz przeglądana lista użytkowników i profili | ✅ (wymaga reguł Firestore w konsoli) | ⬜ nie rozpoczęte |
+| FR-77 | Komentarze wielu użytkowników pod przepisem, z paginacją | ✅ (wymaga reguł Firestore w konsoli) | ⬜ nie rozpoczęte |
+| FR-78 | Pełna synchronizacja stanu z prawdziwym scalaniem zmian (3-way merge) | ✅ (wymaga reguł Firestore w konsoli) | ⬜ nie rozpoczęte |
+| FR-79 | Wylogowanie z urządzenia | ✅ | ⬜ nie rozpoczęte |
 
 ## Uwagi do częściowych wpisów
 
@@ -155,4 +157,5 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 3. Jeśli sprawdzisz coś w Android Studio i działa — zmień ⏳ na ✅ (albo daj mi znać, zrobię to sam).
 4. Jeśli sprawdzisz i NIE działa — zostaw jako ⏳ i opisz błąd, poprawię.
 5. Jeśli nowa logika biznesowa da się wydzielić bez Androida (jak `PantryOperations`/`ShoppingOperations`/`RecipeBrowsing` w `android/logic/`) — dostaje testy JUnit w tej samej turze, żeby faktycznie zweryfikowane pozostawało zweryfikowane przy kolejnych zmianach (regresja), zamiast znów zgadywać. Patrz `android/README.md`, sekcja "Testy automatyczne".
+6. **Zmiana w web i Kotlinie idzie równolegle, w tej samej turze pracy** (na życzenie użytkownika, 2026-08-10) — jeśli coś zmienia się w `index.html`, ta sama zmiana ma iść od razu do `android/`, chyba że jest do tego świadomy powód (patrz p. 2). Kolumna „Status w web" istnieje właśnie po to, żeby dało się na pierwszy rzut oka zobaczyć, gdzie obie wersje się rozjeżdżają — pilnuj żeby ona i realny stan `Functional requirements/FR-N.md` (`**Status:**` w nagłówku) się zgadzały, zwłaszcza jeśli użytkownik kiedyś świadomie wyłączy jakąś funkcję tylko w jednej z wersji (wtedy status w tej kolumnie zmienia się na ❌, nie kasuje się wiersza).
 
