@@ -76,6 +76,7 @@ import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.data.Snack
 import com.przemas230.dietaapp.logic.DailyCalorieTargets
 import com.przemas230.dietaapp.logic.EatenOperations
+import com.przemas230.dietaapp.logic.IngredientCanon
 import com.przemas230.dietaapp.logic.PlannerCategory
 import com.przemas230.dietaapp.logic.PlannerOperations
 import com.przemas230.dietaapp.logic.ProfileCalculations
@@ -591,8 +592,9 @@ private fun QuickAddSnackDialog(onDismiss: () -> Unit, onAdd: (name: String, kca
                 if (suggestions.isNotEmpty()) {
                     Column {
                         suggestions.forEach { suggestion ->
+                            // FR-35: emoji suffix in the suggestion, matching index.html's renderSuggestions.
                             Text(
-                                suggestion,
+                                IngredientCanon.withEmoji(suggestion, suggestion),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { name = suggestion }
@@ -627,7 +629,9 @@ private fun QuickAddSnackDialog(onDismiss: () -> Unit, onAdd: (name: String, kca
                         onClick = {
                             val kcal = kcalText.toIntOrNull()
                             if (name.isNotBlank() && kcal != null && kcal > 0) {
-                                onAdd(name.trim(), kcal)
+                                // FR-35: emoji suffix baked into the saved snack name, matching index.html's withEmoji(rawName, est.canon).
+                                val savedName = estimate?.let { IngredientCanon.withEmoji(name.trim(), it.canonName) } ?: name.trim()
+                                onAdd(savedName, kcal)
                             }
                         },
                         modifier = Modifier.weight(1f),

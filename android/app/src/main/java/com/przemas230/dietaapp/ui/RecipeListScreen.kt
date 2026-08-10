@@ -570,7 +570,9 @@ private fun RecipeCardBody(
             Spacer(modifier = Modifier.height(6.dp))
             Text("Składniki", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
             recipe.ingredients.forEach { ingredient ->
-                Text("• $ingredient", style = MaterialTheme.typography.bodySmall)
+                // FR-35: emoji suffix when the ingredient resolves to a known canon -- port of index.html's withEmoji.
+                val canon = remember(ingredient) { RecipePantryMatching.parseIngredient(ingredient).canonName }
+                Text("• ${IngredientCanon.withEmoji(ingredient, canon)}", style = MaterialTheme.typography.bodySmall)
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text("Przygotowanie", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
@@ -748,7 +750,7 @@ private fun PantryCheckDialog(
                     }
                     val entry = pantryItems[parsed.canonName]
                     Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                        Text(ingredient, style = MaterialTheme.typography.bodyMedium)
+                        Text(IngredientCanon.withEmoji(ingredient, parsed.canonName), style = MaterialTheme.typography.bodyMedium)
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),

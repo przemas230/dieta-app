@@ -673,6 +673,12 @@ object IngredientCanon {
         return THUMB_CANON_ALIASES[canon] ?: canon
     }
 
+    /** FR-35: "$text 🥚" when canon has a known emoji, else text unchanged -- port of index.html's canonEmoji/withEmoji. */
+    fun withEmoji(text: String, canon: String): String {
+        val emoji = CANON_INFO[canon]?.emoji ?: return text
+        return "$text $emoji"
+    }
+
     /**
      * FR-4: the recipe's own biggest (by kcal) ingredient that maps to a known
      * pantry icon, skipping seasonings/condiments unless nothing else qualifies.

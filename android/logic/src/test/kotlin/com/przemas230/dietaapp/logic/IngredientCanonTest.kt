@@ -69,6 +69,12 @@ class IngredientCanonTest {
     }
 
     @Test
+    fun `withEmoji appends the canon's emoji, or leaves text unchanged when there is none`() {
+        assertEquals("2 jajka 🥚", IngredientCanon.withEmoji("2 jajka", "jajka"))
+        assertEquals("coś nieznanego", IngredientCanon.withEmoji("coś nieznanego", "nieznany-canon-xyz"))
+    }
+
+    @Test
     fun `mainIngredientInfo picks the highest-kcal non-seasoning ingredient`() {
         // Mirrors recipe S1 "Szakszuka ze szpinakiem i pomidorami" from recipes.json:
         // Jajko (156 kcal) should win over Chleb żytni na zakwasie (80 kcal) and the rest.
