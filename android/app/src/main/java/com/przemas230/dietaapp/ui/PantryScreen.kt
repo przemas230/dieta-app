@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -175,18 +176,15 @@ private fun PantryTile(
         null -> ""
     }
 
+    // The badge below is deliberately positioned half-outside this tile's
+    // corner (mirroring the web version's `position:absolute; top:-7px;
+    // right:-7px`), so the clip/background/border must live on an INNER
+    // layer (sized via matchParentSize) rather than on this outer Box --
+    // otherwise Compose's .clip() on the outer Box would also clip the
+    // overflowing badge, cutting its text off.
     Box(
         modifier = Modifier
             .heightIn(min = 76.dp)
-            .clip(shape)
-            .background(background, shape)
-            .then(
-                if (!metro) {
-                    Modifier.border(1.5.dp, if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, shape)
-                } else {
-                    Modifier
-                },
-            )
             .pointerInput(name) {
                 detectTapGestures(
                     onLongPress = { onLongPress() },
@@ -195,6 +193,20 @@ private fun PantryTile(
             },
         contentAlignment = Alignment.Center,
     ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .shadow(if (active) 3.dp else 1.dp, shape, clip = false)
+                .clip(shape)
+                .background(background, shape)
+                .then(
+                    if (!metro) {
+                        Modifier.border(1.5.dp, if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, shape)
+                    } else {
+                        Modifier
+                    },
+                ),
+        )
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(3.dp),
@@ -214,6 +226,7 @@ private fun PantryTile(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .offset(x = 6.dp, y = (-6).dp)
+                    .shadow(2.dp, RoundedCornerShape(50), clip = false)
                     .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(50))
                     .padding(horizontal = 6.dp, vertical = 2.dp),
             ) {
