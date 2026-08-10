@@ -1,8 +1,12 @@
 package com.przemas230.dietaapp.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -40,10 +44,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import com.przemas230.dietaapp.data.ActivityLevel
 import com.przemas230.dietaapp.data.Goal
 import com.przemas230.dietaapp.data.Profile
 import com.przemas230.dietaapp.data.Sex
+import com.przemas230.dietaapp.logic.AppThemes
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.UiScale
 import kotlin.math.roundToInt
@@ -71,6 +80,7 @@ fun SettingsScreen(
     appUpdateViewModel: AppUpdateViewModel = viewModel(),
     uiScaleViewModel: UiScaleViewModel = viewModel(),
     swipeRatingStyleViewModel: SwipeRatingStyleViewModel = viewModel(),
+    themeViewModel: ThemeViewModel = viewModel(),
     effectiveUiScale: Double = 1.0,
 ) {
     // FR-71: always starts on Konto -- plain remember (no key/ViewModel
@@ -122,6 +132,7 @@ fun SettingsScreen(
                             FirebaseTestCard(firebaseTestViewModel)
                         }
                         SettingsTab.WYGLAD -> {
+                            ThemeCard(themeViewModel)
                             UiScaleCard(uiScaleViewModel, effectiveUiScale)
                             SwipeRatingStyleCard(swipeRatingStyleViewModel)
                         }
@@ -140,6 +151,67 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * FR-48: one-to-one port of index.html's `renderThemePicker` -- a grid of
+ * pill buttons, each with the theme's own swatch color as a small dot plus
+ * its label, same 11 themes/order/labels as `THEMES` there. Tapping applies
+ * immediately (no separate "Zapisz"), matching "Zmiana motywu jest
+ * natychmiastowa" (FR-48's first acceptance criterion) -- the second
+ * criterion ("wszystkie zaokrąglone przyciski mają promień 16px") is already
+ * satisfied for free by Material3's default filled/outlined Button shape
+ * (a full pill at this button height, i.e. >16dp corner radius), so nothing
+ * extra was needed there. FR-49/FR-63's structural, non-palette differences
+ * (Polaroid card tilt+sharp corners, Kafelki accent stripe) live in
+ * RecipeListScreen.kt's RecipeCard, reading LocalDietaThemeId.
+ */
+@Composable
+private fun ThemeCard(viewModel: ThemeViewModel) {
+    val themeId by viewModel.themeId.collectAsState()
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("🎨 Motyw kolorystyczny", style = MaterialTheme.typography.titleMedium)
+            ThemeGrid(selectedId = themeId, onSelect = { viewModel.setTheme(it) })
+            Text(
+                "Motywy „Polaroid” i „Kafelki” zauważalnie zmieniają też kształt kart przepisów, nie tylko kolory.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ThemeGrid(selectedId: String, onSelect: (String) -> Unit) {
+    // FlowRow (not a plain Row+chunked) -- same fix as PlanPickerDialog in
+    // RecipeListScreen.kt (FR-18/19/20): 11 pill buttons never fit one row,
+    // and a non-wrapping Row would squash the overflowing ones instead of
+    // flowing to a new line.
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        AppThemes.ALL.forEach { theme ->
+            FilterChip(
+                selected = theme.id == selectedId,
+                onClick = { onSelect(theme.id) },
+                label = { Text(theme.label) },
+                leadingIcon = {
+                    Box(
+                        modifier = Modifier
+                            .size(14.dp)
+                            .clip(CircleShape)
+                            .background(Color(theme.swatch)),
+                    )
+                },
+            )
         }
     }
 }

@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -15,9 +16,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,6 +33,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -39,6 +43,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -60,6 +65,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -68,6 +74,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.przemas230.dietaapp.ui.theme.LocalDietaThemeId
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.przemas230.dietaapp.data.CookEntry
@@ -262,8 +269,9 @@ private fun RecipeListWithScrollToTop(
             contentPadding = PaddingValues(12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            items(recipes, key = { it.id }) { recipe ->
+            itemsIndexed(recipes, key = { _, recipe -> recipe.id }) { index, recipe ->
                 RecipeCard(
+                    index = index,
                     recipe = recipe,
                     matchScore = matchScores[recipe.id],
                     cookEntries = cookedMap[recipe.id].orEmpty(),
@@ -324,6 +332,7 @@ private fun RecipeListWithScrollToTop(
 
 @Composable
 private fun RecipeCard(
+    index: Int,
     recipe: Recipe,
     matchScore: Int?,
     cookEntries: List<CookEntry>,
@@ -378,12 +387,34 @@ private fun RecipeCard(
         restBorderColor
     }
 
+    // FR-49/FR-63: Polaroid/Kafelki structurally reshape the recipe card
+    // (not just its palette) -- one-to-one port of index.html's
+    // [data-theme="polaroid"]/[data-theme="metro"] .card.recipe-card rules.
+    // Every other theme keeps the plain rounded Material3 default.
+    val themeId = LocalDietaThemeId.current
+    val cardShape = when (themeId) {
+        "polaroid" -> RoundedCornerShape(3.dp)
+        "metro" -> RoundedCornerShape(2.dp)
+        else -> MaterialTheme.shapes.medium
+    }
+    // Polaroid: a slight scattered tilt (nth-child(even) alternation, 0-indexed
+    // odd index here since CSS nth-child is 1-indexed), straightened while expanded.
+    val restRotation = if (themeId == "polaroid") (if (index % 2 == 0) -0.6f else 0.6f) else 0f
+    val rotation by animateFloatAsState(if (expanded) 0f else restRotation, label = "polaroidTilt")
+    // Metro: colored left accent bar standing in for the whole-card color
+    // wash other themes use, teal at rest / honey once expanded.
+    val metroAccent = if (expanded) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+    val metroElevation = if (expanded) 4.dp else 0.dp
+
     Box {
         Card(
+            shape = cardShape,
+            elevation = if (themeId == "metro") CardDefaults.cardElevation(defaultElevation = metroElevation) else CardDefaults.cardElevation(),
             modifier = Modifier
                 .fillMaxWidth()
+                .rotate(rotation)
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                .border(2.dp, dragBorderColor, MaterialTheme.shapes.medium)
+                .border(2.dp, dragBorderColor, cardShape)
                 .pointerInput(recipe.id) {
                     detectHorizontalDragGestures(
                         onDragEnd = {
@@ -404,7 +435,11 @@ private fun RecipeCard(
                 }
                 .clickable { expanded = !expanded },
         ) {
-        Column {
+        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+            if (themeId == "metro") {
+                Box(modifier = Modifier.fillMaxHeight().width(5.dp).background(metroAccent))
+            }
+        Column(modifier = Modifier.weight(1f).padding(bottom = if (themeId == "polaroid") 18.dp else 0.dp)) {
             Row(modifier = Modifier.padding(14.dp)) {
                 Box(
                     modifier = Modifier
@@ -459,6 +494,7 @@ private fun RecipeCard(
                     Text("📅 Zaplanuj")
                 }
             }
+        }
         }
         }
         // FR-57: persistent 👍/👎 badge on a rated card -- tap to clear the rating.

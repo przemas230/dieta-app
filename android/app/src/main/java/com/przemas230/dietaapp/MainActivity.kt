@@ -100,6 +100,7 @@ import com.przemas230.dietaapp.ui.SettingsScreen
 import com.przemas230.dietaapp.ui.ShoppingScreen
 import com.przemas230.dietaapp.ui.ShoppingViewModel
 import com.przemas230.dietaapp.ui.SwipeRatingStyleViewModel
+import com.przemas230.dietaapp.ui.ThemeViewModel
 import com.przemas230.dietaapp.ui.UiScaleViewModel
 import com.przemas230.dietaapp.ui.WaterViewModel
 import com.przemas230.dietaapp.ui.navigation.BOTTOM_NAV_SCREENS
@@ -125,14 +126,24 @@ class MainActivity : ComponentActivity() {
             val screenWidthDp = LocalConfiguration.current.screenWidthDp
             val effectiveScale = customScale ?: UiScale.detectDefault(screenWidthDp)
             val baseDensity = LocalDensity.current
+            // FR-48: created at the Activity root (not SettingsScreen's default
+            // viewModel() param) so the whole app -- not just the Ustawienia
+            // screen -- repaints under the chosen palette, same reasoning as
+            // profileViewModel/pantryViewModel etc. in DietaAppRoot below.
+            val themeViewModel: ThemeViewModel = viewModel()
+            val themeId by themeViewModel.themeId.collectAsState()
             CompositionLocalProvider(
                 LocalDensity provides Density(
                     density = baseDensity.density * effectiveScale.toFloat(),
                     fontScale = baseDensity.fontScale,
                 ),
             ) {
-                DietaAppTheme {
-                    DietaAppRoot(uiScaleViewModel = uiScaleViewModel, effectiveScale = effectiveScale)
+                DietaAppTheme(themeId = themeId) {
+                    DietaAppRoot(
+                        uiScaleViewModel = uiScaleViewModel,
+                        effectiveScale = effectiveScale,
+                        themeViewModel = themeViewModel,
+                    )
                 }
             }
         }
@@ -148,7 +159,7 @@ class MainActivity : ComponentActivity() {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Double) {
+private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Double, themeViewModel: ThemeViewModel) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -361,6 +372,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     uiScaleViewModel = uiScaleViewModel,
                     effectiveUiScale = effectiveScale,
                     swipeRatingStyleViewModel = swipeRatingStyleViewModel,
+                    themeViewModel = themeViewModel,
                 )
             }
         }
