@@ -36,18 +36,29 @@ import java.time.ZoneOffset
  * platforms despite the sync mechanism itself working -- fixed together
  * with widening coverage to the other fields Android now has state for.
  *
- * Scope is still FR-73's ORIGINAL field list intersected with what Android
- * actually has built: displayName, profile, pantry, favIngredients,
- * recipeRating, cooked, shopping, planner/plannerScale/plannerLeftover,
- * eaten (+ snacks, today only), water (today only), theme, uiScale,
- * swipeRatingStyle. Fields FR-73 also lists that don't exist as Android
- * state yet (myRecipes, recipeReviews, customTiles, pantryUnitOverride,
- * pantryCategoryOverride, communityRecipesEnabled, household, waterHistory,
- * weights, history, waterNotifEnabled, waterReminder, plain `favorites`
+ * Scope is FR-73's field list intersected with what Android actually has
+ * built: displayName, profile, pantry, favIngredients, recipeRating,
+ * cooked, shopping, planner/plannerScale/plannerLeftover, eaten (+ snacks,
+ * today only), water (today only), waterHistory (today's entry only --
+ * see CloudSyncCoordinator's nested-merge push for why), weights, history
+ * (the activity log, FR-42 -- index.html's field name, NOT "activityLog"),
+ * theme, uiScale, swipeRatingStyle. Fields FR-73/FR-78 also list that don't
+ * exist as Android state yet (myRecipes, recipeReviews, customTiles,
+ * pantryUnitOverride, pantryCategoryOverride, communityRecipesEnabled,
+ * household, waterNotifEnabled, waterReminder, plain `favorites`
  * star-toggle) are simply not encoded -- nothing to sync for a feature
  * that isn't ported. Semantics are FR-73's original "last cloud write wins
  * the whole document" (decode replaces local state wholesale) -- NOT
- * FR-78's later per-item 3-way merge, which is a separate, bigger port.
+ * FR-78's later per-item 3-way merge, which is a separate, bigger port
+ * (Android just does whole-field replace on every touched top-level key,
+ * same as web's OWN semantics for the fields web itself doesn't put in
+ * MAP_MERGE_KEYS, e.g. weights/history/profile). The one exception is
+ * `eaten`/`waterHistory`: both are per-DATE maps in web that accumulate
+ * over months, but Android only ever knows "today" locally -- pushing a
+ * plain top-level replace for either would silently wipe out every other
+ * date web has stored (a real, confirmed bug fixed 2026-08-10, see
+ * CloudSyncCoordinator's nested SetOptions.mergeFields push for
+ * "eaten.$today"/"waterHistory.$today").
  */
 object CloudSyncCodec {
     fun encodeProfile(profile: Profile): Map<String, Any?> = mapOf(
@@ -437,7 +448,8 @@ object CloudSyncCodec {
         }
     }
 
-    private fun todayUtcDateString(): String = LocalDate.now(ZoneOffset.UTC).toString()
+    /** Public so CloudSyncCoordinator can target today's nested Firestore field path (e.g. "eaten.$today") without duplicating this calculation. */
+    fun todayUtcDateString(): String = LocalDate.now(ZoneOffset.UTC).toString()
 
     /** The full syncable-state document -- what gets pushed to `users/{uid}` with SetOptions.merge(). */
     fun encodeAll(

@@ -1854,7 +1854,7 @@ Ponieważ te pola (zwłaszcza lista zakupów i planer) mogą być edytowane niez
 - Dla pól skalarnych (np. cały obiekt profilu, motyw) porównanie jest całościowe — sprzeczność zgłasza się tylko, gdy oba urządzenia rzeczywiście zmieniły dokładnie to samo pole na różne wartości.
 - Porównanie „czy coś się zmieniło" jest prawdziwie strukturalne (rekurencyjne, niezależne od kolejności kluczy w obiekcie) — NIE porównaniem tekstu `JSON.stringify()`. Prawdziwy Firestore (w odróżnieniu od uproszczonego zamiennika używanego w testach) nie gwarantuje zachowania kolejności kluczy przy odczycie dokumentu, więc porównanie tekstowe dawało fałszywe różnice dla niemal każdej pozycji mapy (np. całej spiżarni) nawet gdy nic naprawdę się nie zmieniło.
 - Okienko „🔄 Synchronizacja z chmury" pokazuje jedną, czytelną pozycję na KAŻDĄ zmienioną rzecz — zarówno prawdziwą sprzeczność, jak i zwykłą zmianę wyłącznie z chmury — jako prostą różnicę „📱 u mnie" / „☁️ w chmurze" (albo, dla spiżarni, jedną linię z deltą, np. „mleko: 1 l → 0 l (zużyto 1 l)"), z dwoma przyciskami: „✅ Zaakceptuj i zmień" (zostawia już zastosowaną wersję z chmury) i „↩️ Odrzuć i zostaw moje dane" (przywraca to, co było na tym urządzeniu). Okienko pokazuje też, z jakiego urządzenia pochodzi zmiana z chmury (krótka, autogenerowana etykieta typu „Windows • Chrome", zapisywana tylko lokalnie na danym urządzeniu, nigdy synchronizowana). Świadomie NIE pokazuje surowej listy „dodano/usunięto/zmieniono" pogrupowanej po polu — pierwsza wersja tego pokazu była na tyle nieczytelna (m.in. `JSON.stringify()`-podobny zrzut dla mniej typowych pól), że użytkownik poprosił o jej usunięcie na rzecz samej różnicy per pozycja (patrz Historia rewizji, v3).
-- Okienko pojawia się dla zmian w spiżarni NAWET gdy nie ma prawdziwej sprzeczności (samo zamknięcie okienka przyciskiem „Gotowe" — bez klikania żadnego z dwóch przycisków per pozycja — jest równoważne pozostawieniu już zastosowanej wersji z chmury, więc użytkownik i tak wie, że stan spiżarni się zmienił i może dokupić brakujące produkty).
+- Okienko pojawia się WYŁĄCZNIE dla prawdziwych sprzeczności (obie strony zmieniły dokładnie to samo). Zwykła zmiana z chmury bez sprzeczności (np. stan spiżarni zmieniony na innym urządzeniu, wpis wagi dodany gdzie indziej) scala się automatycznie i po cichu — bez okienka, tylko z krótkim toastem „☁️ Zsynchronizowano dane z chmury". Wcześniej (do 2026-08-10) okienko pojawiało się też dla KAŻDEJ, nawet bezkonfliktowej zmiany w spiżarni — przy regularnym używaniu dwóch urządzeń naraz (np. telefon + komputer) oznaczało to, że okienko wyskakiwało niemal za każdym dotknięciem drugiego urządzenia, co się okazało na tyle męczące, że użytkownik poprosił o zawężenie go do rzeczywistych sprzeczności (patrz Historia rewizji, v4).
 
 **Wyjątek — pierwsza synchronizacja nowego urządzenia.** Jeśli urządzenie nigdy wcześniej nie synchronizowało się z danym kontem (`_lastSyncedSnapshot === null`, np. świeża instalacja albo pierwsze logowanie na już istniejące konto), nie ma żadnej wspólnej historii do porównania — w tym jednym przypadku dane z chmury po prostu ZASTĘPUJĄ dane lokalne w całości, bez okienka sprzeczności (bo nic tu naprawdę nie jest „sprzeczne", tylko urządzenie nie miało jeszcze żadnych danych tego konta).
 
@@ -1867,6 +1867,7 @@ Ponieważ te pola (zwłaszcza lista zakupów i planer) mogą być edytowane niez
 - Zmiana ilości/poziomu jednej pozycji spiżarni na innym urządzeniu (bez sprzeczności z lokalną wersją) pokazuje w okienku synchronizacji pozycję z opisaną deltą (ubyło/przybyło ile), a nie tylko nową wartość — i wskazuje, z jakiego urządzenia pochodzi zmiana.
 - Okienko synchronizacji NIE zawiera osobnej, surowej listy wszystkich dodanych/usuniętych/zmienionych pozycji pogrupowanej po polu — każda zmieniona rzecz to dokładnie jedna czytelna pozycja z różnicą „u mnie” vs „w chmurze”.
 - Po zastosowaniu scalenia (z ewentualnymi ręcznymi poprawkami z okienka sprzeczności) urządzenie odsyła scalony wynik do chmury, żeby oba urządzenia zgadzały się co do finalnego stanu.
+- Zmiana z chmury bez prawdziwej sprzeczności (żadna lokalna edycja tej samej pozycji) NIE otwiera okienka „🔄 Synchronizacja z chmury" — scala się automatycznie, z samym toastem „☁️ Zsynchronizowano dane z chmury" jako feedbackiem. Okienko otwiera się WYŁĄCZNIE gdy `conflicts.length>0`.
 
 ## Uwagi
 Świadomie POZA zakresem: prawdziwie jednoczesna edycja (dwa urządzenia online w tej samej chwili, edytujące dokładnie to samo pole) może w rzadkich przypadkach nadal wygenerować krótkotrwałą niespójność, zanim obie strony się zsynchronizują — to nie jest pełnoprawna baza danych z transakcjami, tylko scalanie oparte na porównaniu trzech snapshotów przy każdej zmianie dokumentu. Dla użytku 1-2 osobowego gospodarstwa domowego to wystarczające; prawdziwie współbieżna edycja wielu osób tej samej wspólnej listy to docelowo zadanie dla modelu `households/*` (patrz `docs/FIREBASE_MIGRATION_PLAN.md`, wciąż niezaimplementowany).
@@ -1910,6 +1911,22 @@ Rzeczywiste działanie między dwoma prawdziwymi urządzeniami wymaga weryfikacj
   sprzeczności). Sam mechanizm scalania (kolejność `merged`/`conflicts`/
   `remoteChanges`, moment zapisu do `state`) nie zmienił się — to wyłącznie
   przebudowa warstwy prezentacji tego samego wyniku.
+- **v4** (2026-08-10): Na wyraźną prośbę użytkownika, po tym jak zaczął
+  równolegle testować wersję Android ("to potwierdzanie zostaw tylko w
+  przypadku bycia offline i potem połączenia bo to jest męczące tak co
+  chwila patrzeć") — okienko przestało pojawiać się automatycznie dla
+  bezkonfliktowych zmian w spiżarni (dawny warunek `conflicts.length ||
+  pantryRemoteChanges.length` zmieniony na wyłącznie `conflicts.length`).
+  Przy używaniu dwóch urządzeń naraz (np. telefon Android + przeglądarka)
+  praktycznie KAŻDA zmiana w spiżarni z telefonu wcześniej otwierała
+  okienko na drugim urządzeniu, mimo że nie było czego rozstrzygać — merge
+  i tak zastosował się bezkolizyjnie. Teraz taka zmiana scala się po cichu,
+  z samym toastem „☁️ Zsynchronizowano dane z chmury"; okienko zostaje
+  zarezerwowane dla sytuacji, gdy oba urządzenia naprawdę zmieniły to samo
+  (typowo: jedno było offline i oba zdążyły dotknąć tej samej pozycji przed
+  ponownym połączeniem). Sam algorytm scalania (`computeMergedSyncState`)
+  nie zmienił się — to wyłącznie zawężenie tego, kiedy wynik scalania
+  wymaga decyzji użytkownika, a kiedy stosuje się automatycznie.
 
 ---
 

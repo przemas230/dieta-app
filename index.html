@@ -2775,15 +2775,21 @@ function applyRemoteSyncedState(data){
   // in the user's favor below) need to reach the cloud too, so both
   // sides converge instead of one silently reverting on the next sync.
   scheduleCloudPush();
-  // Show the review modal for genuine conflicts (as before), AND whenever
-  // the pantry changed remotely with no conflict -- e.g. someone on another
-  // device used up milk or eggs. That's not a "sprzeczność" (nothing to
-  // resolve, the merge already applied cleanly), but the user still wants
-  // to be told their stock changed so they know to restock, and the modal
-  // itself IS the "zaakceptuj" step -- dismissing it ("Gotowe") is the
-  // acknowledgement, no separate accept button needed.
-  const pantryRemoteChanges = remoteChanges.filter(c=> c.key==="pantry");
-  if(conflicts.length || pantryRemoteChanges.length) showSyncConflictModal(conflicts, remoteChanges, data.lastEditedByDevice);
+  // Show the review modal ONLY for genuine conflicts (both sides changed
+  // the same thing) -- a routine remote-only change (someone on another
+  // device used up milk, updated their weight, ticked a shopping item...)
+  // already merged in cleanly above and needs no decision from the user;
+  // the toast from refreshUiAfterSync() is feedback enough. This used to
+  // ALSO auto-open the modal for any non-conflicting pantry change, which
+  // meant it popped up almost every time a second device (e.g. the Android
+  // app) was touched at all -- annoying enough on top of routine, expected
+  // use that the user asked for this to be scoped down to real conflicts
+  // only (2026-08-10). Since normally only one device is actively in use
+  // at a time, genuine conflicts are rare in practice -- they mostly arise
+  // after one side was offline and both devices changed the same thing
+  // before reconnecting, which is exactly the case this modal should be
+  // reserved for.
+  if(conflicts.length) showSyncConflictModal(conflicts, remoteChanges, data.lastEditedByDevice);
 }
 function refreshUiAfterSync(silent){
   document.documentElement.setAttribute("data-theme", state.theme || "teal");

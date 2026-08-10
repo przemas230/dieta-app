@@ -251,6 +251,8 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
         plannerViewModel = plannerViewModel,
         eatenViewModel = eatenViewModel,
         waterViewModel = waterViewModel,
+        weightViewModel = weightViewModel,
+        activityLogViewModel = activityLogViewModel,
     )
     val eatenEntries by eatenViewModel.entries.collectAsState()
     val snacks by eatenViewModel.snacks.collectAsState()

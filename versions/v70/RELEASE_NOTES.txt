@@ -1,0 +1,13 @@
+Wersja v70 (2026-08-10)
+
+1. Okienko "Synchronizacja z chmury" (FR-78) nie pojawia się już
+   automatycznie przy każdej rutynowej, bezkonfliktowej zmianie z drugiego
+   urządzenia (np. dodanie/odjęcie produktu w Spiżarni z telefonu) - pokazuje
+   się teraz WYŁĄCZNIE gdy oba urządzenia naprawdę zmieniły to samo
+   (prawdziwa sprzeczność do rozstrzygnięcia). Zwykłe zmiany scalają się
+   po cichu, z samym dyskretnym "☁️ Zsynchronizowano dane z chmury" -
+   wcześniej okienko wyskakiwało praktycznie za każdym dotknięciem
+   telefonu, co przy używaniu obu wersji na raz było męczące.
+
+Podbito wersję Service Workera (dieta-app-v44 -> v45), żeby zmiana
+w index.html dotarła do już zainstalowanych użytkowników PWA.

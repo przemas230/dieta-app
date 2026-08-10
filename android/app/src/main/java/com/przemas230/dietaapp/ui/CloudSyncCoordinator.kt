@@ -11,11 +11,13 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import com.przemas230.dietaapp.data.ActivityLogEntry
 import com.przemas230.dietaapp.data.EatenEntry
 import com.przemas230.dietaapp.data.PantryItem
 import com.przemas230.dietaapp.data.Profile
 import com.przemas230.dietaapp.data.ShoppingItem
 import com.przemas230.dietaapp.data.Snack
+import com.przemas230.dietaapp.data.WeightEntry
 import com.przemas230.dietaapp.logic.CloudSyncCodec
 import com.przemas230.dietaapp.logic.RecipeRating
 import com.przemas230.dietaapp.logic.WeekPlan
@@ -43,6 +45,8 @@ private data class PushedSnapshot(
     val eatenEntries: Map<String, EatenEntry>,
     val snacks: List<Snack>,
     val waterCount: Int,
+    val weights: List<WeightEntry>,
+    val activityLog: List<ActivityLogEntry>,
 )
 
 /**
@@ -83,6 +87,40 @@ private data class PushedSnapshot(
  * merge (which sidesteps this whole class of bug structurally, at the cost
  * of considerably more complexity) -- ⬜ in Android, see PARITY.md.
  *
+ * **Second bug fixed 2026-08-10** ("wypita woda tu swoje a tu swoje",
+ * "historia też ma być wspólna"): `eaten` and `waterHistory` are per-DATE
+ * maps in web (`state.eaten[date]`/`state.waterHistory[date]`) that
+ * accumulate for MONTHS, but Android only ever tracks "today" locally (no
+ * UI for past days). Pushing Android's narrow `{today: ...}` object as a
+ * plain top-level field via `SetOptions.merge()` doesn't deep-merge nested
+ * map VALUES -- it REPLACES the entire top-level field, so every other
+ * date web had stored for that key was silently destroyed on the very
+ * first Android push. Fixed by pushing those two fields through
+ * `SetOptions.mergeFields("eaten.$today", "waterHistory.$today")` instead
+ * of a blanket `SetOptions.merge()` -- Firestore's dotted mergeFields path
+ * targets exactly that one nested key, leaving every other date's entry in
+ * the document completely untouched. All other synced fields (profile,
+ * pantry, shopping, weights, the activity log/"history"...) are simple
+ * "current state" values, not accumulating per-date maps, so a plain
+ * top-level replace for THOSE is correct and matches how web itself treats
+ * them (none of them are in web's MAP_MERGE_KEYS either). On the PULL
+ * side, `waterHistory` is merged (union) into Android's local map instead
+ * of replacing it outright, so historical dates from web survive even
+ * though Android only ever pushes today's.
+ *
+ * **Third change 2026-08-10**: pushing is now gated on having processed at
+ * least one snapshot from Firestore first (`hasReceivedFirstSnapshot`),
+ * mirroring `LocalPersistenceCoordinator`'s `initialLoadDone` guard. Before
+ * this, a fresh sign-in could push this device's still-default/stale local
+ * state (e.g. an unconfigured profile) to Firestore before the real
+ * snapshot for that account had even arrived over the network, briefly (or
+ * permanently, if nothing triggered another push afterwards) clobbering
+ * the account's real data with Android's own defaults -- a plausible cause
+ * of "parametry diety nie synchronizują się" reported by the user. The
+ * gate clears on the FIRST listener callback regardless of outcome
+ * (including "document doesn't exist yet", which correctly means "nothing
+ * to lose, safe to push now").
+ *
  * Renders nothing; called once from DietaAppRoot alongside the other
  * shared-ViewModel wiring, after every ViewModel it reads already exists.
  */
@@ -100,6 +138,8 @@ fun CloudSyncCoordinator(
     plannerViewModel: PlannerViewModel,
     eatenViewModel: EatenViewModel,
     waterViewModel: WaterViewModel,
+    weightViewModel: WeightViewModel,
+    activityLogViewModel: ActivityLogViewModel,
 ) {
     val authState by authViewModel.state.collectAsState()
     val profile by profileViewModel.profile.collectAsState()
@@ -116,6 +156,9 @@ fun CloudSyncCoordinator(
     val eatenEntries by eatenViewModel.entries.collectAsState()
     val snacks by eatenViewModel.snacks.collectAsState()
     val waterCount by waterViewModel.count.collectAsState()
+    val waterHistory by waterViewModel.history.collectAsState()
+    val weightEntries by weightViewModel.entries.collectAsState()
+    val activityLogEntries by activityLogViewModel.entries.collectAsState()
 
     val uid = (authState as? AuthState.SignedIn)?.uid
 
@@ -139,6 +182,9 @@ fun CloudSyncCoordinator(
     val currentEatenEntries = rememberUpdatedState(eatenEntries)
     val currentSnacks = rememberUpdatedState(snacks)
     val currentWaterCount = rememberUpdatedState(waterCount)
+    val currentWaterHistory = rememberUpdatedState(waterHistory)
+    val currentWeightEntries = rememberUpdatedState(weightEntries)
+    val currentActivityLog = rememberUpdatedState(activityLogEntries)
 
     // Set right after CloudSyncCoordinator itself applies an incoming
     // remote snapshot, so that recomposition's own PUSH effect (below)
@@ -146,17 +192,24 @@ fun CloudSyncCoordinator(
     // Firestore. Cleared again once consumed.
     var suppressNextPush by remember { mutableStateOf(false) }
     var lastPushed by remember { mutableStateOf<PushedSnapshot?>(null) }
+    // See class doc, "Third change" -- blocks pushing until this device has
+    // processed at least one snapshot for the signed-in account, so it never
+    // races ahead and clobbers real cloud data with its own stale/default
+    // local state. Keyed on uid so signing into a DIFFERENT account resets it.
+    var hasReceivedFirstSnapshot by remember(uid) { mutableStateOf(false) }
 
     LaunchedEffect(
-        uid, profile, displayName, pantryItems, themeId, uiScale, swipeStyle,
+        uid, hasReceivedFirstSnapshot, profile, displayName, pantryItems, themeId, uiScale, swipeStyle,
         favIngredients, cooked, ratings, shoppingItems, weekPlan, eatenEntries, snacks, waterCount,
+        waterHistory, weightEntries, activityLogEntries,
     ) {
-        if (uid == null) return@LaunchedEffect
+        if (uid == null || !hasReceivedFirstSnapshot) return@LaunchedEffect
         if (suppressNextPush) {
             suppressNextPush = false
             return@LaunchedEffect
         }
         delay(1500)
+        val today = CloudSyncCodec.todayUtcDateString()
         val data = CloudSyncCodec.encodeAll(
             displayName = displayName,
             profile = profile,
@@ -172,6 +225,19 @@ fun CloudSyncCoordinator(
             eatenEntries = eatenEntries,
             snacks = snacks,
             waterCount = waterCount,
+        ) + mapOf(
+            // Nested on purpose -- only "eaten.$today"/"waterHistory.$today"
+            // are listed in mergeFields below, so this never touches any
+            // OTHER date web has stored for either field (see class doc).
+            "waterHistory" to mapOf(today to (waterHistory[today] ?: waterCount)),
+            "weights" to CloudSyncCodec.encodeWeights(weightEntries),
+            "history" to CloudSyncCodec.encodeActivityLog(activityLogEntries),
+        )
+        val mergeFields = listOf(
+            "displayName", "profile", "pantry", "theme", "uiScale", "swipeRatingStyle",
+            "favIngredients", "recipeRating", "cooked", "shopping",
+            "planner", "plannerScale", "plannerLeftover",
+            "eaten.$today", "water", "waterHistory.$today", "weights", "history",
         )
         // Recorded BEFORE the network round-trip (not in a .then()-style
         // callback on ack) -- what matters is "what did we tell Firestore",
@@ -180,10 +246,11 @@ fun CloudSyncCoordinator(
         lastPushed = PushedSnapshot(
             displayName, profile, pantryItems, themeId, uiScale, swipeStyle,
             favIngredients, ratings, cooked, shoppingItems, weekPlan, eatenEntries, snacks, waterCount,
+            weightEntries, activityLogEntries,
         )
         try {
             FirebaseFirestore.getInstance().collection("users").document(uid)
-                .set(data, SetOptions.merge())
+                .set(data, SetOptions.mergeFields(mergeFields))
                 .await()
         } catch (e: Exception) {
             // Offline or transient failure -- Firestore's own offline cache
@@ -196,6 +263,10 @@ fun CloudSyncCoordinator(
         if (uid == null) return@DisposableEffect onDispose {}
         val registration = FirebaseFirestore.getInstance().collection("users").document(uid)
             .addSnapshotListener { snapshot, _ ->
+                // Unblocks the push effect above regardless of what this
+                // callback finds -- even "doc doesn't exist" is a definite
+                // answer ("nothing to lose"), so it counts too.
+                hasReceivedFirstSnapshot = true
                 if (snapshot == null || !snapshot.exists()) return@addSnapshotListener
                 // Fast path for the SDK's own optimistic local-cache echo of
                 // a write we just made -- doesn't catch every self-echo (see
@@ -276,6 +347,30 @@ fun CloudSyncCoordinator(
                 CloudSyncCodec.decodeWater(data["water"] as? Map<*, *>)?.let {
                     if (it != pushed?.waterCount && it != currentWaterCount.value) {
                         waterViewModel.setCount(it); appliedAnything = true
+                    }
+                }
+                // waterHistory is a per-date map that accumulates for months
+                // on web, but Android only ever PUSHES today's entry (see
+                // class doc) -- so pulling must MERGE the remote map in
+                // (keeping every date Android doesn't know about) rather
+                // than replace, and must let the LOCAL entry win for any
+                // overlapping date (in practice just "today") since that's
+                // this device's own live, authoritative count, synced
+                // separately via the plain "water" field above.
+                CloudSyncCodec.decodeDateIntMap(data["waterHistory"] as? Map<*, *>)?.let { remote ->
+                    val merged = remote + currentWaterHistory.value
+                    if (merged != currentWaterHistory.value) {
+                        waterViewModel.replaceHistory(merged); appliedAnything = true
+                    }
+                }
+                CloudSyncCodec.decodeWeights(data["weights"] as? List<*>)?.let {
+                    if (it != pushed?.weights && it != currentWeightEntries.value) {
+                        weightViewModel.replaceAll(it); appliedAnything = true
+                    }
+                }
+                CloudSyncCodec.decodeActivityLog(data["history"] as? List<*>)?.let {
+                    if (it != pushed?.activityLog && it != currentActivityLog.value) {
+                        activityLogViewModel.replaceAll(it); appliedAnything = true
                     }
                 }
                 if (appliedAnything) suppressNextPush = true
