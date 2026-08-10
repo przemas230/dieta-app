@@ -185,6 +185,14 @@ class CloudSyncCodecTest {
     }
 
     @Test
+    fun `date-int map round-trips and skips malformed entries`() {
+        val history = mapOf("2026-08-09" to 1480, "2026-08-10" to 1500)
+        assertEquals(history, CloudSyncCodec.decodeDateIntMap(CloudSyncCodec.encodeDateIntMap(history)))
+        assertEquals(emptyMap<String, Int>(), CloudSyncCodec.decodeDateIntMap(mapOf("bad" to "not-a-number")))
+        assertNull(CloudSyncCodec.decodeDateIntMap(null))
+    }
+
+    @Test
     fun `encodeAll produces the expected top-level keys`() {
         val data = CloudSyncCodec.encodeAll(
             displayName = "Przemek",

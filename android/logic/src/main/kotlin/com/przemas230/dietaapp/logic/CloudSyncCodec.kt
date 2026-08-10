@@ -407,6 +407,20 @@ object CloudSyncCodec {
         }
     }
 
+    /** FR-41/42: date-string -> Int maps (EatenViewModel.kcalHistory / WaterViewModel.history) -- local-persistence only, not cloud-synced yet. */
+    fun encodeDateIntMap(map: Map<String, Int>): Map<String, Any?> = map
+
+    fun decodeDateIntMap(map: Map<*, *>?): Map<String, Int>? {
+        if (map == null) return null
+        val result = LinkedHashMap<String, Int>()
+        map.forEach { (k, v) ->
+            val date = k as? String ?: return@forEach
+            val value = numberFrom(v)?.toInt() ?: return@forEach
+            result[date] = value
+        }
+        return result
+    }
+
     private fun todayUtcDateString(): String = LocalDate.now(ZoneOffset.UTC).toString()
 
     /** The full syncable-state document -- what gets pushed to `users/{uid}` with SetOptions.merge(). */

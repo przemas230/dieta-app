@@ -63,6 +63,8 @@ fun LocalPersistenceCoordinator(
     val snacks by eatenViewModel.snacks.collectAsState()
     val waterCount by waterViewModel.count.collectAsState()
     val weightEntries by weightViewModel.entries.collectAsState()
+    val kcalHistory by eatenViewModel.kcalHistory.collectAsState()
+    val waterHistory by waterViewModel.history.collectAsState()
 
     // Guards the save effect below from firing (and clobbering the just-saved
     // file with the ViewModels' empty startup defaults) before the one-time
@@ -91,6 +93,11 @@ fun LocalPersistenceCoordinator(
                 data["plannerScale"] as? Map<*, *>,
                 data["plannerLeftover"] as? Map<*, *>,
             )?.let { plannerViewModel.replaceAll(it) }
+            // History restored BEFORE replaceAll/setCount below, since those
+            // internally re-derive TODAY's entry on top of whatever history
+            // is already there -- restoring it first means past days survive.
+            CloudSyncCodec.decodeDateIntMap(data["kcalHistory"] as? Map<*, *>)?.let { eatenViewModel.replaceHistory(it) }
+            CloudSyncCodec.decodeDateIntMap(data["waterHistory"] as? Map<*, *>)?.let { waterViewModel.replaceHistory(it) }
             CloudSyncCodec.decodeEaten(data["eaten"] as? Map<*, *>)?.let { eatenViewModel.replaceAll(it.entries, it.snacks) }
             CloudSyncCodec.decodeWater(data["water"] as? Map<*, *>)?.let { waterViewModel.setCount(it) }
             CloudSyncCodec.decodeWeights(data["weights"] as? List<*>)?.let { weightViewModel.replaceAll(it) }
@@ -101,7 +108,7 @@ fun LocalPersistenceCoordinator(
     LaunchedEffect(
         initialLoadDone, profile, displayName, pantryItems, themeId, uiScale, swipeStyle,
         favIngredients, cooked, ratings, reviews, myRecipes, shoppingItems, weekPlan,
-        eatenEntries, snacks, waterCount, weightEntries,
+        eatenEntries, snacks, waterCount, weightEntries, kcalHistory, waterHistory,
     ) {
         if (!initialLoadDone) return@LaunchedEffect
         delay(500)
@@ -124,6 +131,8 @@ fun LocalPersistenceCoordinator(
             "recipeReviews" to CloudSyncCodec.encodeReviews(reviews),
             "myRecipes" to CloudSyncCodec.encodeMyRecipes(myRecipes),
             "weights" to CloudSyncCodec.encodeWeights(weightEntries),
+            "kcalHistory" to CloudSyncCodec.encodeDateIntMap(kcalHistory),
+            "waterHistory" to CloudSyncCodec.encodeDateIntMap(waterHistory),
         )
         withContext(Dispatchers.IO) { LocalStateStore.save(context, data) }
     }

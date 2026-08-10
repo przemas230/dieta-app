@@ -429,6 +429,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     profileViewModel = profileViewModel,
                     waterViewModel = waterViewModel,
                     weightViewModel = weightViewModel,
+                    eatenViewModel = eatenViewModel,
                 )
             }
             composable(Screen.Pantry.route) { PantryScreen(viewModel = pantryViewModel, allRecipes = allRecipes) }
@@ -456,7 +457,9 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                         recipeViewModel.replaceMyRecipes(emptyList())
                         favoriteIngredientsViewModel.replaceAll(emptySet())
                         eatenViewModel.replaceAll(emptyMap(), emptyList())
+                        eatenViewModel.replaceHistory(emptyMap())
                         waterViewModel.setCount(0)
+                        waterViewModel.replaceHistory(emptyMap())
                         weightViewModel.replaceAll(emptyList())
                         themeViewModel.setTheme(com.przemas230.dietaapp.logic.AppThemes.DEFAULT_ID)
                         uiScaleViewModel.resetToAuto()

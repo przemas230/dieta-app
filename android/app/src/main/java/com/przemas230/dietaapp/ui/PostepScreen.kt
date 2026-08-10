@@ -32,31 +32,45 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.przemas230.dietaapp.data.WeightEntry
+import com.przemas230.dietaapp.logic.HistoryOperations
+import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.WaterOperations
 import com.przemas230.dietaapp.logic.WeightOperations
+import java.time.LocalDate
+import java.time.ZoneOffset
 
 /**
- * FR-37/FR-40/FR-60: the Postęp tab -- previously a bare PlaceholderScreen.
- * Covers the golden-rules card, a full-size water view (mirrors the header
- * strip, FR-70), and weight tracking with a simple line chart.
+ * FR-37/FR-40/FR-41/FR-42/FR-60: the Postęp tab -- previously a bare
+ * PlaceholderScreen. Covers the golden-rules card, streaks, a full-size
+ * water view (mirrors the header strip, FR-70), weight tracking with a
+ * simple line chart, and calorie history with a weekly balance.
  *
- * Deliberately NOT covered yet (see android/PARITY.md for why each is a
- * separate, bigger piece of work): FR-38/39 (water reminder notifications --
- * needs Android notification channels/permissions), FR-41 (calorie history
- * chart + weekly balance -- needs a per-date eaten history Android doesn't
- * persist yet, only "today"), FR-42 (streaks + activity log -- same
- * per-date history gap, plus the web version's `addLog()` call is sprinkled
- * across dozens of mutation sites that would all need instrumenting).
+ * FR-41/42's history (kcal per day, water per day) only starts
+ * accumulating from whenever this shipped -- EatenViewModel/WaterViewModel
+ * record TODAY's totals into a date-keyed map on every change, but Android
+ * never tracked earlier dates, so there's no retroactive data to show for
+ * days before this feature existed. Same honest limitation as everything
+ * else in this local-only version (see PARITY.md).
+ *
+ * Deliberately NOT covered yet: FR-38/39 (water reminder notifications --
+ * needs Android notification channels/permissions) and the raw activity
+ * log half of FR-42 (would need instrumenting dozens of mutation sites
+ * across the app, mirroring index.html's scattered `addLog()` calls).
  */
 @Composable
 fun PostepScreen(
     profileViewModel: ProfileViewModel,
     waterViewModel: WaterViewModel,
     weightViewModel: WeightViewModel,
+    eatenViewModel: EatenViewModel,
 ) {
     val profile by profileViewModel.profile.collectAsState()
     val waterCount by waterViewModel.count.collectAsState()
     val weightEntries by weightViewModel.entries.collectAsState()
+    val kcalHistory by eatenViewModel.kcalHistory.collectAsState()
+    val waterHistory by waterViewModel.history.collectAsState()
+    val today = remember { LocalDate.now(ZoneOffset.UTC) }
+    val dailyTarget = remember(profile) { ProfileCalculations.calcTargets(profile).daily }
 
     Column(
         modifier = Modifier
@@ -89,6 +103,25 @@ fun PostepScreen(
             Spacer(modifier = Modifier.height(12.dp))
         }
 
+        // FR-42: consecutive-day streaks -- port of index.html's calcKcalStreak/calcWaterStreak.
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text("🔥 Serie", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
+                    val kcalStreak = remember(kcalHistory, dailyTarget, today) {
+                        HistoryOperations.calcKcalStreak(kcalHistory, dailyTarget, today)
+                    }
+                    val waterStreak = remember(waterHistory, today) {
+                        HistoryOperations.calcWaterStreak(waterHistory, today)
+                    }
+                    StreakTile(kcalStreak, "🔥 dni w celu kalorycznym", Modifier.weight(1f))
+                    StreakTile(waterStreak, "💧 dni z pełnym nawodnieniem", Modifier.weight(1f))
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(14.dp)) {
                 Text("💧 Nawodnienie dzisiaj", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
@@ -113,6 +146,71 @@ fun PostepScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         WeightCard(entries = weightEntries, targetKg = profile.targetWeightKg, onAddWeight = weightViewModel::addWeight)
+        Spacer(modifier = Modifier.height(12.dp))
+
+        KcalHistoryCard(kcalHistory = kcalHistory, dailyTarget = dailyTarget, today = today)
+    }
+}
+
+@Composable
+private fun StreakTile(days: Int, label: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(days.toString(), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** FR-41: last 14 days of recorded kcal as a simple bar chart, plus the last-7-days-vs-target balance -- port of index.html's kcalHistoryChartCanvas/kcalWeeklyBalance. */
+@Composable
+private fun KcalHistoryCard(kcalHistory: Map<String, Int>, dailyTarget: Int, today: LocalDate) {
+    val days = remember(kcalHistory, today) { HistoryOperations.lastNDays(kcalHistory, today, 14) }
+    val balance = remember(kcalHistory, dailyTarget, today) { HistoryOperations.weeklyBalance(kcalHistory, dailyTarget, today) }
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Text("📈 Historia kalorii", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+            Spacer(modifier = Modifier.height(10.dp))
+            KcalHistoryChart(days, dailyTarget)
+            Spacer(modifier = Modifier.height(8.dp))
+            val sign = if (balance.diff > 0) "+" else ""
+            Text(
+                "Bilans ostatnich 7 dni: ${balance.totalKcal} / ${balance.targetKcal} kcal ($sign${balance.diff} kcal). " +
+                    "Przerywana linia na wykresie to Twój dzienny cel.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** Simple bar chart (Canvas, same "no charting library" approach as WeightChart) plus a dashed line marking the daily target. */
+@Composable
+private fun KcalHistoryChart(days: List<Pair<String, Int>>, dailyTarget: Int) {
+    val barColor = MaterialTheme.colorScheme.primary
+    val targetLineColor = MaterialTheme.colorScheme.error
+    Canvas(modifier = Modifier.fillMaxWidth().height(140.dp)) {
+        if (days.isEmpty()) return@Canvas
+        val paddingPx = 8.dp.toPx()
+        val plotWidth = size.width - 2 * paddingPx
+        val plotHeight = size.height - 2 * paddingPx
+        val maxKcal = maxOf(days.maxOf { it.second }, dailyTarget, 1)
+        val barWidth = plotWidth / days.size
+        days.forEachIndexed { index, (_, kcal) ->
+            val barHeight = (kcal.toFloat() / maxKcal) * plotHeight
+            val x = paddingPx + index * barWidth
+            drawRect(
+                barColor,
+                topLeft = Offset(x + barWidth * 0.15f, paddingPx + plotHeight - barHeight),
+                size = androidx.compose.ui.geometry.Size(barWidth * 0.7f, barHeight),
+            )
+        }
+        val targetY = paddingPx + plotHeight - (dailyTarget.toFloat() / maxKcal) * plotHeight
+        drawLine(
+            targetLineColor,
+            Offset(paddingPx, targetY),
+            Offset(size.width - paddingPx, targetY),
+            strokeWidth = 2.dp.toPx(),
+            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 8f)),
+        )
     }
 }
 
