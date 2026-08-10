@@ -90,7 +90,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-76 | Przepisy społeczności oraz przeglądana lista użytkowników i profili | ✅ (wymaga reguł Firestore w konsoli) | ⬜ nie rozpoczęte |
 | FR-77 | Komentarze wielu użytkowników pod przepisem, z paginacją | ✅ (wymaga reguł Firestore w konsoli) | ⬜ nie rozpoczęte |
 | FR-78 | Pełna synchronizacja stanu z prawdziwym scalaniem zmian (3-way merge) | ✅ (wymaga reguł Firestore w konsoli) | ⬜ nie rozpoczęte |
-| FR-79 | Wylogowanie z urządzenia | ✅ | ⬜ nie rozpoczęte |
+| FR-79 | Wylogowanie z urządzenia | ✅ | ⏳ mechanizm działa (przycisk w `CloudAccountCard`), bez okienek potwierdzenia/wyczyszczenia danych lokalnych |
 
 ## Uwagi do częściowych wpisów
 
