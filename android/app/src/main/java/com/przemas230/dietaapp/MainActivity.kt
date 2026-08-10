@@ -91,6 +91,7 @@ import com.przemas230.dietaapp.logic.forCategory
 import com.przemas230.dietaapp.ui.AuthViewModel
 import com.przemas230.dietaapp.ui.CloudSyncCoordinator
 import com.przemas230.dietaapp.ui.EatenViewModel
+import com.przemas230.dietaapp.ui.FavoriteIngredientsViewModel
 import com.przemas230.dietaapp.ui.PantryScreen
 import com.przemas230.dietaapp.ui.PantryViewModel
 import com.przemas230.dietaapp.ui.PlaceholderScreen
@@ -190,6 +191,9 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // FR-61: shared so a change on the Ustawienia screen is reflected
     // immediately by the swipe-drag card on the Przepisy tab.
     val swipeRatingStyleViewModel: SwipeRatingStyleViewModel = viewModel()
+    // FR-32: shared so an ingredient starred from a recipe card's ingredient
+    // list is remembered app-wide (drives "💡 Pomysł na danie" too).
+    val favoriteIngredientsViewModel: FavoriteIngredientsViewModel = viewModel()
     // FR-73: no UI of its own -- pushes/pulls the syncable subset of state
     // above to/from Firestore while authViewModel reports a real (non-
     // anonymous) signed-in user, no-ops otherwise.
@@ -368,6 +372,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     shoppingViewModel = shoppingViewModel,
                     plannerViewModel = plannerViewModel,
                     swipeRatingStyleViewModel = swipeRatingStyleViewModel,
+                    favoriteIngredientsViewModel = favoriteIngredientsViewModel,
                     listState = recipeListState,
                 )
             }

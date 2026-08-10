@@ -84,6 +84,7 @@ import com.przemas230.dietaapp.data.ShoppingItem
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.logic.CATEGORIES
 import com.przemas230.dietaapp.logic.DailyCalorieTargets
+import com.przemas230.dietaapp.logic.DishIdeaGenerator
 import com.przemas230.dietaapp.logic.IngredientCanon
 import com.przemas230.dietaapp.logic.Micronutrients
 import com.przemas230.dietaapp.logic.PantryOperations
@@ -113,6 +114,7 @@ fun RecipeListScreen(
     shoppingViewModel: ShoppingViewModel,
     plannerViewModel: PlannerViewModel,
     swipeRatingStyleViewModel: SwipeRatingStyleViewModel,
+    favoriteIngredientsViewModel: FavoriteIngredientsViewModel,
     viewModel: RecipeViewModel = viewModel(),
     // FR-44: hoisted (not the default rememberLazyListState()) so
     // MainActivity's header can observe scroll direction to auto-hide/show
@@ -130,6 +132,8 @@ fun RecipeListScreen(
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
     val shoppingItems by shoppingViewModel.items.collectAsState()
     val profile by profileViewModel.profile.collectAsState()
+    val favIngredients by favoriteIngredientsViewModel.favorites.collectAsState()
+    var showIdeaDialog by remember { mutableStateOf(false) }
     LaunchedEffect(profile.glutenFree, profile.lactoseFree) {
         viewModel.setDietaryFilters(profile.glutenFree, profile.lactoseFree)
     }
@@ -199,6 +203,17 @@ fun RecipeListScreen(
             }
         }
 
+        // FR-32: dish-name inspiration generated from the user's starred
+        // ("have it" ☆/★) ingredients -- port of index.html's ideaBtn.
+        OutlinedButton(
+            onClick = { showIdeaDialog = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+        ) {
+            Text("💡 Pomysł na danie z ulubionych składników")
+        }
+
         Spacer(modifier = Modifier.height(4.dp))
 
         when {
@@ -222,8 +237,72 @@ fun RecipeListScreen(
                 shoppingViewModel,
                 plannerViewModel,
                 swipeRatingStyle,
+                favIngredients,
+                favoriteIngredientsViewModel::toggle,
                 listState,
             )
+        }
+    }
+
+    if (showIdeaDialog) {
+        DishIdeaDialog(
+            initialCat = selectedCategory,
+            favorites = favIngredients,
+            onDismiss = { showIdeaDialog = false },
+        )
+    }
+}
+
+/**
+ * FR-32: "💡 Pomysł na danie z ulubionych składników" -- port of
+ * index.html's ideaModalOverlay/renderIdea. Re-rolls a new random idea
+ * (same category) on "🔄 Losuj inny pomysł" without closing the dialog.
+ */
+@Composable
+private fun DishIdeaDialog(initialCat: String, favorites: Set<String>, onDismiss: () -> Unit) {
+    var idea by remember(favorites) { mutableStateOf(DishIdeaGenerator.generate(initialCat, favorites)) }
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.widthIn(max = 480.dp)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "💡 Pomysł na danie",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onDismiss) { Text("✕") }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                val currentIdea = idea
+                if (currentIdea == null) {
+                    Text(
+                        "Potrzeba co najmniej 2 ulubionych składników — zaznacz gwiazdką ☆ przy składnikach w przepisach.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                } else {
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(currentIdea.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(currentIdea.method, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Button(
+                        onClick = { idea = DishIdeaGenerator.generate(initialCat, favorites) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("🔄 Losuj inny pomysł")
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        "Wygenerowane z Twoich ulubionych składników: ${currentIdea.aClean}, ${currentIdea.bClean}.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
     }
 }
@@ -248,6 +327,8 @@ private fun RecipeListWithScrollToTop(
     shoppingViewModel: ShoppingViewModel,
     plannerViewModel: PlannerViewModel,
     swipeRatingStyle: SwipeRatingStyle,
+    favIngredients: Set<String>,
+    onToggleFavIngredient: (canonName: String) -> Unit,
     listState: LazyListState,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -293,6 +374,8 @@ private fun RecipeListWithScrollToTop(
                         val sourceKey = "single:${recipe.id}:${parsed.canonName}"
                         shoppingViewModel.addSingleIngredient(ingredientText, sourceKey)
                     },
+                    favIngredients = favIngredients,
+                    onToggleFavIngredient = onToggleFavIngredient,
                     weekPlan = weekPlan,
                     onPlanRecipe = { day, cat ->
                         val scale = PlannerOperations.idealScaleFor(recipe, kcalTargets.forCategory(cat))
@@ -342,6 +425,8 @@ private fun RecipeCard(
     onRemoveEntry: (index: Int) -> Unit,
     onToggleHaveIngredient: (canonName: String, category: PantryCategory, unitCat: String) -> Unit,
     onAddIngredientToShopping: (ingredientText: String) -> Unit,
+    favIngredients: Set<String>,
+    onToggleFavIngredient: (canonName: String) -> Unit,
     weekPlan: WeekPlan,
     onPlanRecipe: (day: Int, cat: String) -> Unit,
     isAddedToShopping: Boolean,
@@ -457,6 +542,9 @@ private fun RecipeCard(
                         expanded,
                         onInfoClick = { showInfoDialog = true },
                         onPantryCheckClick = { showPantryCheck = true },
+                        pantryItems = pantryItems,
+                        favIngredients = favIngredients,
+                        onToggleFavIngredient = onToggleFavIngredient,
                     )
                 }
             }
@@ -570,6 +658,9 @@ private fun RecipeCardBody(
     expanded: Boolean,
     onInfoClick: () -> Unit,
     onPantryCheckClick: () -> Unit,
+    pantryItems: Map<String, PantryItem>,
+    favIngredients: Set<String>,
+    onToggleFavIngredient: (canonName: String) -> Unit,
 ) {
     Column {
         Text(recipe.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -614,7 +705,27 @@ private fun RecipeCardBody(
             recipe.ingredients.forEach { ingredient ->
                 // FR-35: emoji suffix when the ingredient resolves to a known canon -- port of index.html's withEmoji.
                 val canon = remember(ingredient) { RecipePantryMatching.parseIngredient(ingredient).canonName }
-                Text("• ${IngredientCanon.withEmoji(ingredient, canon)}", style = MaterialTheme.typography.bodySmall)
+                // FR-32: star toggles this ingredient as a favorite (fuels the
+                // dish-idea generator below); "have it" highlight (bold) fires
+                // when the ingredient is either favorited OR already tracked in
+                // the pantry -- port of index.html's `(have||f)?'have-it'` class.
+                val isFav = canon in favIngredients
+                val haveIt = isFav || pantryItems.containsKey(canon)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(
+                        onClick = { onToggleFavIngredient(canon) },
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                        modifier = Modifier.widthIn(min = 32.dp),
+                    ) {
+                        Text(if (isFav) "★" else "☆", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Text(
+                        IngredientCanon.withEmoji(ingredient, canon),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = if (haveIt) FontWeight.Bold else FontWeight.Normal,
+                        color = if (haveIt) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text("Przygotowanie", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
