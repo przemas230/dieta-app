@@ -8,6 +8,7 @@ import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.data.RecipeRepository
 import com.przemas230.dietaapp.data.RecipeReview
 import com.przemas230.dietaapp.logic.CATEGORIES
+import com.przemas230.dietaapp.logic.CommunityRecipeOperations
 import com.przemas230.dietaapp.logic.CookHistoryOperations
 import com.przemas230.dietaapp.logic.CustomRecipeOperations
 import com.przemas230.dietaapp.logic.RecipeBrowsing
@@ -81,6 +82,29 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     /** Used by LocalPersistenceCoordinator on app startup to restore favorites saved on a previous run. */
     fun replaceFavoriteRecipes(favorites: Set<String>) {
         _favoriteRecipes.value = favorites
+    }
+
+    // FR-68/76: "🌍 Pokazuj przepisy dodane przez innych użytkowników" --
+    // a plain persisted/synced preference (CommunityCoordinator only
+    // subscribes to Firestore while this is true AND the user is signed
+    // into a real account), independent of the recipes it gates.
+    private val _communityRecipesEnabled = MutableStateFlow(false)
+    val communityRecipesEnabled: StateFlow<Boolean> = _communityRecipesEnabled.asStateFlow()
+
+    fun setCommunityRecipesEnabled(enabled: Boolean) {
+        _communityRecipesEnabled.value = enabled
+    }
+
+    // FR-76: mirrors index.html's communityRecipesCache -- the current
+    // "status == approved" set from Firestore's recipes collection, kept
+    // empty whenever CommunityCoordinator isn't actively subscribed.
+    private val _communityRecipes = MutableStateFlow<List<Recipe>>(emptyList())
+    val communityRecipes: StateFlow<List<Recipe>> = _communityRecipes.asStateFlow()
+
+    /** Called by CommunityCoordinator's Firestore listener; emptyList() when signed out, anonymous, or the toggle is off. */
+    fun replaceCommunityRecipes(recipes: List<Recipe>) {
+        _communityRecipes.value = recipes
+        recompute()
     }
 
     init {
@@ -179,8 +203,9 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun recompute() {
+        val community = CommunityRecipeOperations.dedupeCommunityRecipes(_myRecipes.value, _communityRecipes.value)
         _visibleRecipes.value = RecipeBrowsing.visibleRecipes(
-            builtInRecipes + _myRecipes.value,
+            builtInRecipes + _myRecipes.value + community,
             _selectedCategory.value,
             _searchTerm.value,
             glutenFree,

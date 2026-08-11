@@ -129,6 +129,9 @@ fun RecipeListScreen(
     // MainActivity's header can observe scroll direction to auto-hide/show
     // itself -- see DietaAppRoot's headerExpanded auto-scroll LaunchedEffect.
     listState: LazyListState = rememberLazyListState(),
+    // FR-77: hoisted (not a default viewModel() param) so CommunityCoordinator
+    // can invalidate() an expanded comment thread from outside this screen.
+    commentsViewModel: RecipeCommentsViewModel = viewModel(),
 ) {
     val swipeRatingStyle by swipeRatingStyleViewModel.style.collectAsState()
     val recipes by viewModel.visibleRecipes.collectAsState()
@@ -189,11 +192,9 @@ fun RecipeListScreen(
             r.ingredients.any { RecipePantryMatching.parseIngredient(it).canonName in favIngredients }
         }
         if (onlyPantryReady) result = result.filter { RecipePantryMatching.pantryCoverageRatio(it, pantryItems) >= 0.6 }
-        // Community recipes (source == "community") aren't ported yet (FR-76,
-        // still ⬜ in android/PARITY.md) -- this only ever shows own recipes
-        // (source == "custom") until that lands, a narrower but correct
-        // subset of index.html's "own + community" criterion.
-        if (onlyUserRecipes) result = result.filter { it.source == "custom" }
+        // FR-76: "user recipes" now covers own recipes AND approved
+        // community recipes from other users, same as index.html's criterion.
+        if (onlyUserRecipes) result = result.filter { it.source == "custom" || it.source == "community" }
         if (minRatingFilter > 0) result = result.filter { (reviews[it.id]?.stars ?: 0) >= minRatingFilter }
         if (sortByMatch) result = result.sortedByDescending { matchScores[it.id] ?: -1 }
         if (sortByRating) result = RecipeRatingOperations.sortByRating(result, ratings)
@@ -272,7 +273,7 @@ fun RecipeListScreen(
                 )
             }
             item {
-                // FR-2/FR-66: own recipes only (community recipes not ported yet, see FR-76).
+                // FR-2/FR-66/FR-76: own recipes + approved community recipes.
                 FilterChip(
                     selected = onlyUserRecipes,
                     onClick = { onlyUserRecipes = !onlyUserRecipes },
@@ -351,6 +352,7 @@ fun RecipeListScreen(
                 listState,
                 favoriteRecipeIds,
                 viewModel::toggleFavoriteRecipe,
+                commentsViewModel,
             )
         }
     }
@@ -633,6 +635,7 @@ private fun RecipeListWithScrollToTop(
     listState: LazyListState,
     favoriteRecipeIds: Set<String>,
     onToggleFavoriteRecipe: (recipeId: String) -> Unit,
+    commentsViewModel: RecipeCommentsViewModel,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -744,6 +747,7 @@ private fun RecipeListWithScrollToTop(
                     onToggleExpanded = {
                         expandedRecipeId = if (expandedRecipeId == recipe.id) null else recipe.id
                     },
+                    commentsViewModel = commentsViewModel,
                 )
             }
         }
@@ -794,6 +798,7 @@ private fun RecipeCard(
     onToggleFavorite: () -> Unit,
     isExpanded: Boolean,
     onToggleExpanded: () -> Unit,
+    commentsViewModel: RecipeCommentsViewModel,
 ) {
     val expanded = isExpanded
     var showInfoDialog by remember { mutableStateOf(false) }
@@ -911,6 +916,7 @@ private fun RecipeCard(
                         onDeleteCustomRecipe = { showDeleteConfirm = true },
                         isFavorite = isFavorite,
                         onToggleFavorite = onToggleFavorite,
+                        commentsViewModel = commentsViewModel,
                     )
                 }
             }
@@ -1127,14 +1133,16 @@ private fun RecipeCardBody(
     onDeleteCustomRecipe: () -> Unit,
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
+    commentsViewModel: RecipeCommentsViewModel,
 ) {
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(recipe.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            // FR-66: distinguishes a user-added recipe from the 229 built-in ones.
-            if (recipe.source == "custom") {
+            // FR-66/FR-76: distinguishes a user-added recipe (own, or another
+            // user's approved community recipe) from the 229 built-in ones.
+            if (recipe.source == "custom" || recipe.source == "community") {
                 Text(
-                    "✍️ Twój przepis",
+                    if (recipe.source == "custom") "✍️ Twój przepis" else "🌍 ${recipe.authorDisplayName ?: "Anonimowy użytkownik"}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
@@ -1239,6 +1247,8 @@ private fun RecipeCardBody(
             ) {
                 Text(if (review != null) "⭐ Oceń i skomentuj (Twoja ocena: ${review.stars}/5)" else "⭐ Oceń i skomentuj")
             }
+            Spacer(modifier = Modifier.height(6.dp))
+            RecipeCommentsSection(recipeId = recipe.id, viewModel = commentsViewModel)
             // FR-66: only a custom (user-added) recipe can be deleted this way.
             if (recipe.source == "custom") {
                 Spacer(modifier = Modifier.height(6.dp))
@@ -1248,6 +1258,74 @@ private fun RecipeCardBody(
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                 ) {
                     Text("🗑️ Usuń ten przepis")
+                }
+            }
+        }
+    }
+}
+
+/**
+ * FR-77: "💬 Komentarze innych użytkowników" -- collapsed by default,
+ * fetches the first page (3) on first expand, "Pokaż więcej" fetches 10 more
+ * at a time until Firestore returns fewer than requested. Port of
+ * index.html's comments-toggle-btn/comments-body (index.html:4202-4211,
+ * 4254-4264).
+ */
+@Composable
+private fun RecipeCommentsSection(recipeId: String, viewModel: RecipeCommentsViewModel) {
+    var expanded by remember { mutableStateOf(false) }
+    val pages by viewModel.pages.collectAsState()
+    val page = pages[recipeId]
+
+    TextButton(
+        onClick = {
+            expanded = !expanded
+            if (expanded) viewModel.loadFirstPage(recipeId)
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(if (expanded) "💬 Komentarze innych użytkowników ▲" else "💬 Komentarze innych użytkowników ▼")
+    }
+    if (expanded) {
+        Column(modifier = Modifier.padding(top = 4.dp)) {
+            when {
+                page == null || (page.loading && page.comments.isEmpty()) -> {
+                    Text("Wczytywanie komentarzy…", style = MaterialTheme.typography.bodySmall)
+                }
+                page.unavailable -> {
+                    Text(
+                        "Komentarze są teraz niedostępne (brak połączenia z chmurą).",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                page.comments.isEmpty() -> {
+                    Text(
+                        "Bądź pierwszą osobą, która oceni to danie.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                else -> {
+                    page.comments.forEach { comment ->
+                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                            Text(
+                                "${"★".repeat(comment.stars)}${"☆".repeat(5 - comment.stars)}  ${comment.displayName}",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            val commentText = comment.comment
+                            if (commentText != null) {
+                                Text(commentText, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                    if (!page.exhausted) {
+                        TextButton(
+                            onClick = { viewModel.loadMore(recipeId) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(if (page.loading) "Wczytywanie…" else "Pokaż więcej")
+                        }
+                    }
                 }
             }
         }

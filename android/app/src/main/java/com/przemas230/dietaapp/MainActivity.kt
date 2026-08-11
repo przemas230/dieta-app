@@ -80,10 +80,12 @@ import androidx.compose.ui.window.Dialog
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.przemas230.dietaapp.data.EatenEntry
 import com.przemas230.dietaapp.data.PlannedMeal
 import com.przemas230.dietaapp.data.Recipe
@@ -104,6 +106,7 @@ import com.przemas230.dietaapp.logic.forCategory
 import com.przemas230.dietaapp.ui.ActivityLogViewModel
 import com.przemas230.dietaapp.ui.AuthViewModel
 import com.przemas230.dietaapp.ui.CloudSyncCoordinator
+import com.przemas230.dietaapp.ui.CommunityCoordinator
 import com.przemas230.dietaapp.ui.EatenViewModel
 import com.przemas230.dietaapp.ui.FavoriteIngredientsViewModel
 import com.przemas230.dietaapp.ui.PantryScreen
@@ -113,12 +116,15 @@ import com.przemas230.dietaapp.ui.LocalPersistenceCoordinator
 import com.przemas230.dietaapp.ui.PlannerViewModel
 import com.przemas230.dietaapp.ui.PostepScreen
 import com.przemas230.dietaapp.ui.ProfileViewModel
+import com.przemas230.dietaapp.ui.RecipeCommentsViewModel
 import com.przemas230.dietaapp.ui.RecipeListScreen
 import com.przemas230.dietaapp.ui.RecipeViewModel
 import com.przemas230.dietaapp.ui.SettingsScreen
 import com.przemas230.dietaapp.ui.ShoppingScreen
 import com.przemas230.dietaapp.ui.ShoppingViewModel
 import com.przemas230.dietaapp.ui.SwipeRatingStyle
+import com.przemas230.dietaapp.ui.UserListScreen
+import com.przemas230.dietaapp.ui.UserProfileScreen
 import com.przemas230.dietaapp.ui.SwipeRatingStyleViewModel
 import com.przemas230.dietaapp.ui.ThemeViewModel
 import com.przemas230.dietaapp.ui.UiScaleViewModel
@@ -243,6 +249,10 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // like/dislike ratings survive navigating away from Przepisy and back,
     // and so CloudSyncCoordinator below can read/write them.
     val recipeViewModel: RecipeViewModel = viewModel()
+    // FR-77: shared here (not RecipeListScreen's default viewModel() param)
+    // so CommunityCoordinator below can invalidate an expanded comment
+    // thread the instant this device's own review is saved/deleted.
+    val recipeCommentsViewModel: RecipeCommentsViewModel = viewModel()
     // FR-70: shared at the Scaffold level (not per-screen) so the header
     // droplet strip below is the single source of truth, visible on every tab.
     val waterViewModel: WaterViewModel = viewModel()
@@ -295,6 +305,16 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
         waterViewModel = waterViewModel,
         weightViewModel = weightViewModel,
         activityLogViewModel = activityLogViewModel,
+    )
+    // FR-68/76/77: no UI of its own -- syncs the PUBLIC recipes/publicProfiles
+    // Firestore collections (own recipe publishing, community subscription,
+    // rating publishing), independent of CloudSyncCoordinator's private
+    // users/{uid} doc above.
+    CommunityCoordinator(
+        authViewModel = authViewModel,
+        profileViewModel = profileViewModel,
+        recipeViewModel = recipeViewModel,
+        commentsViewModel = recipeCommentsViewModel,
     )
     // FR-38/39: no UI of its own -- keeps the persistent tracker notification
     // in sync with waterViewModel in both directions. See its own doc comment.
@@ -473,6 +493,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     viewModel = recipeViewModel,
                     activityLogViewModel = activityLogViewModel,
                     listState = recipeListState,
+                    commentsViewModel = recipeCommentsViewModel,
                 )
             }
             composable(Screen.Shopping.route) {
@@ -533,8 +554,25 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                         themeViewModel.setTheme(com.przemas230.dietaapp.logic.AppThemes.DEFAULT_ID)
                         uiScaleViewModel.resetToAuto()
                         swipeRatingStyleViewModel.setStyle(SwipeRatingStyle.BALLOON)
+                        recipeViewModel.setCommunityRecipesEnabled(false)
                     },
+                    onBrowseUsers = { navController.navigate(Screen.UserList.route) },
                 )
+            }
+            // FR-76: reached from Ustawienia's "🌍 Przepisy społeczności" card,
+            // not the bottom nav.
+            composable(Screen.UserList.route) {
+                UserListScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenProfile = { uid, _ -> navController.navigate(Screen.UserProfile.routeFor(uid)) },
+                )
+            }
+            composable(
+                route = Screen.UserProfile.route,
+                arguments = listOf(navArgument("uid") { type = NavType.StringType }),
+            ) { backStackEntry ->
+                val uid = backStackEntry.arguments?.getString("uid") ?: return@composable
+                UserProfileScreen(uid = uid, fallbackDisplayName = null, onBack = { navController.popBackStack() })
             }
         }
     }

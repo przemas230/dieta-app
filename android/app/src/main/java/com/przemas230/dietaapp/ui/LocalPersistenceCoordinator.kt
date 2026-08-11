@@ -59,6 +59,7 @@ fun LocalPersistenceCoordinator(
     val reviews by recipeViewModel.reviews.collectAsState()
     val myRecipes by recipeViewModel.myRecipes.collectAsState()
     val favoriteRecipes by recipeViewModel.favoriteRecipes.collectAsState()
+    val communityRecipesEnabled by recipeViewModel.communityRecipesEnabled.collectAsState()
     val shoppingItems by shoppingViewModel.items.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
     val eatenEntries by eatenViewModel.entries.collectAsState()
@@ -91,6 +92,7 @@ fun LocalPersistenceCoordinator(
             CloudSyncCodec.decodeReviews(data["recipeReviews"] as? Map<*, *>)?.let { recipeViewModel.replaceReviews(it) }
             CloudSyncCodec.decodeMyRecipes(data["myRecipes"] as? List<*>)?.let { recipeViewModel.replaceMyRecipes(it) }
             CloudSyncCodec.decodeFavIngredients(data["favorites"] as? Map<*, *>)?.let { recipeViewModel.replaceFavoriteRecipes(it) }
+            (data["communityRecipesEnabled"] as? Boolean)?.let { recipeViewModel.setCommunityRecipesEnabled(it) }
             CloudSyncCodec.decodeShopping(data["shopping"] as? Map<*, *>)?.let { shoppingViewModel.replaceAll(it) }
             CloudSyncCodec.decodeWeekPlan(
                 data["planner"] as? Map<*, *>,
@@ -114,6 +116,7 @@ fun LocalPersistenceCoordinator(
         initialLoadDone, profile, displayName, pantryItems, themeId, uiScale, swipeStyle,
         favIngredients, cooked, ratings, reviews, myRecipes, favoriteRecipes, shoppingItems, weekPlan,
         eatenEntries, snacks, waterCount, weightEntries, kcalHistory, waterHistory, activityLogEntries,
+        communityRecipesEnabled,
     ) {
         if (!initialLoadDone) return@LaunchedEffect
         delay(500)
@@ -144,6 +147,7 @@ fun LocalPersistenceCoordinator(
             "kcalHistory" to CloudSyncCodec.encodeDateIntMap(kcalHistory),
             "waterHistory" to CloudSyncCodec.encodeDateIntMap(waterHistory),
             "activityLog" to CloudSyncCodec.encodeActivityLog(activityLogEntries),
+            "communityRecipesEnabled" to communityRecipesEnabled,
         )
         withContext(Dispatchers.IO) { LocalStateStore.save(context, data) }
     }

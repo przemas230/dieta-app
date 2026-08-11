@@ -47,6 +47,7 @@ private data class PushedSnapshot(
     val waterCount: Int,
     val weights: List<WeightEntry>,
     val activityLog: List<ActivityLogEntry>,
+    val communityRecipesEnabled: Boolean,
 )
 
 /**
@@ -159,6 +160,7 @@ fun CloudSyncCoordinator(
     val waterHistory by waterViewModel.history.collectAsState()
     val weightEntries by weightViewModel.entries.collectAsState()
     val activityLogEntries by activityLogViewModel.entries.collectAsState()
+    val communityRecipesEnabled by recipeViewModel.communityRecipesEnabled.collectAsState()
 
     val uid = (authState as? AuthState.SignedIn)?.uid
 
@@ -185,6 +187,7 @@ fun CloudSyncCoordinator(
     val currentWaterHistory = rememberUpdatedState(waterHistory)
     val currentWeightEntries = rememberUpdatedState(weightEntries)
     val currentActivityLog = rememberUpdatedState(activityLogEntries)
+    val currentCommunityRecipesEnabled = rememberUpdatedState(communityRecipesEnabled)
 
     // Set right after CloudSyncCoordinator itself applies an incoming
     // remote snapshot, so that recomposition's own PUSH effect (below)
@@ -201,7 +204,7 @@ fun CloudSyncCoordinator(
     LaunchedEffect(
         uid, hasReceivedFirstSnapshot, profile, displayName, pantryItems, themeId, uiScale, swipeStyle,
         favIngredients, cooked, ratings, shoppingItems, weekPlan, eatenEntries, snacks, waterCount,
-        waterHistory, weightEntries, activityLogEntries,
+        waterHistory, weightEntries, activityLogEntries, communityRecipesEnabled,
     ) {
         if (uid == null || !hasReceivedFirstSnapshot) return@LaunchedEffect
         if (suppressNextPush) {
@@ -232,12 +235,14 @@ fun CloudSyncCoordinator(
             "waterHistory" to mapOf(today to (waterHistory[today] ?: waterCount)),
             "weights" to CloudSyncCodec.encodeWeights(weightEntries),
             "history" to CloudSyncCodec.encodeActivityLog(activityLogEntries),
+            "communityRecipesEnabled" to communityRecipesEnabled,
         )
         val mergeFields = listOf(
             "displayName", "profile", "pantry", "theme", "uiScale", "swipeRatingStyle",
             "favIngredients", "recipeRating", "cooked", "shopping",
             "planner", "plannerScale", "plannerLeftover",
             "eaten.$today", "water", "waterHistory.$today", "weights", "history",
+            "communityRecipesEnabled",
         )
         // Recorded BEFORE the network round-trip (not in a .then()-style
         // callback on ack) -- what matters is "what did we tell Firestore",
@@ -246,7 +251,7 @@ fun CloudSyncCoordinator(
         lastPushed = PushedSnapshot(
             displayName, profile, pantryItems, themeId, uiScale, swipeStyle,
             favIngredients, ratings, cooked, shoppingItems, weekPlan, eatenEntries, snacks, waterCount,
-            weightEntries, activityLogEntries,
+            weightEntries, activityLogEntries, communityRecipesEnabled,
         )
         try {
             FirebaseFirestore.getInstance().collection("users").document(uid)
@@ -371,6 +376,11 @@ fun CloudSyncCoordinator(
                 CloudSyncCodec.decodeActivityLog(data["history"] as? List<*>)?.let {
                     if (it != pushed?.activityLog && it != currentActivityLog.value) {
                         activityLogViewModel.replaceAll(it); appliedAnything = true
+                    }
+                }
+                (data["communityRecipesEnabled"] as? Boolean)?.let {
+                    if (it != pushed?.communityRecipesEnabled && it != currentCommunityRecipesEnabled.value) {
+                        recipeViewModel.setCommunityRecipesEnabled(it); appliedAnything = true
                     }
                 }
                 if (appliedAnything) suppressNextPush = true

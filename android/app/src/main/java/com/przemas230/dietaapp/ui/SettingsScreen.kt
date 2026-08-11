@@ -31,6 +31,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -108,6 +109,11 @@ fun SettingsScreen(
     // touches, so MainActivity (which already hoists every ViewModel)
     // supplies this rather than SettingsScreen collecting them all itself.
     onClearLocalData: () -> Unit = {},
+    // FR-68/76: hoisted (not a default viewModel() param) so this screen
+    // shares the same instance MainActivity/CommunityCoordinator use --
+    // toggling here must be visible to the recipe list immediately.
+    recipeViewModel: RecipeViewModel = viewModel(),
+    onBrowseUsers: () -> Unit = {},
 ) {
     // FR-71: always starts on Konto -- plain remember (no key/ViewModel
     // backing), so leaving and re-entering the Ustawienia screen discards it,
@@ -156,6 +162,7 @@ fun SettingsScreen(
                             // above it (that was the pre-FR-71 layout).
                             ProfileCard(profileViewModel)
                             CloudAccountCard(authViewModel, onClearLocalData)
+                            CommunityRecipesCard(recipeViewModel, onBrowseUsers)
                         }
                         SettingsTab.WYGLAD -> {
                             ThemeCard(themeViewModel)
@@ -531,6 +538,40 @@ private fun ProfileCard(viewModel: ProfileViewModel) {
                     "👋 Uzupełnij swoje dane powyżej i zapisz, żeby dopasować dietę do siebie.",
                     style = MaterialTheme.typography.bodySmall,
                 )
+            }
+        }
+    }
+}
+
+/**
+ * FR-68/76: "🌍 Przepisy społeczności" -- a working, persisted/synced toggle
+ * (functional regardless of whether the effect is visible yet) plus
+ * "👥 Przeglądaj użytkowników". Port of index.html's community-recipes
+ * settings card. Deliberately does NOT offer any "dołącz do gospodarstwa"/
+ * "udostępnij spiżarnię" form -- that's FR-78's still-unported territory
+ * (see FR-68's own acceptance criteria on not promising more than works).
+ */
+@Composable
+private fun CommunityRecipesCard(viewModel: RecipeViewModel, onBrowseUsers: () -> Unit) {
+    val enabled by viewModel.communityRecipesEnabled.collectAsState()
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("🌍 Przepisy społeczności", style = MaterialTheme.typography.titleMedium)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { viewModel.setCommunityRecipesEnabled(!enabled) },
+            ) {
+                Checkbox(checked = enabled, onCheckedChange = { viewModel.setCommunityRecipesEnabled(it) })
+                Text(
+                    "Pokazuj przepisy dodane przez innych użytkowników",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            OutlinedButton(onClick = onBrowseUsers, modifier = Modifier.fillMaxWidth()) {
+                Text("👥 Przeglądaj użytkowników")
             }
         }
     }

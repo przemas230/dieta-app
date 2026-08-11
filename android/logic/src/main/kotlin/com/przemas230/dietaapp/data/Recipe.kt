@@ -44,8 +44,15 @@ data class Recipe(
     val gi: Double?,
     val gl: Double?,
     val calc: List<RecipeCalcItem> = emptyList(),
-    // FR-66: "builtin" (loaded from recipes.json) or "custom" (added by the
-    // user on this device, index.html's state.myRecipes) -- drives the
-    // "✍️ Twój przepis" badge and the delete button on the recipe card.
+    // FR-66/FR-76: "builtin" (loaded from recipes.json), "custom" (added by
+    // the user on this device, index.html's state.myRecipes) or "community"
+    // (another user's approved recipe, mirrored locally from Firestore
+    // recipes/{id}) -- drives the "✍️ Twój przepis"/"🌍 {author}" badge and
+    // the delete button on the recipe card.
     val source: String = "builtin",
+    // FR-76: only set for source == "community" -- who published it and
+    // under what display name, for the "🌍 {authorDisplayName}" badge and
+    // linking to their public profile.
+    val authorUid: String? = null,
+    val authorDisplayName: String? = null,
 )
