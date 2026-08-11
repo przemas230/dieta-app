@@ -1,0 +1,31 @@
+Wersja v83 (2026-08-11)
+
+Zmiany:
+- Naprawiono realne "wieszanie się" aplikacji webowej zaraz po zalogowaniu:
+  pierwszy odebrany snapshot z Firestore po zalogowaniu czekał na to samo
+  3-sekundowe opóźnienie co zwykłe synchronizacje w tle, a każdy kolejny
+  snapshot (typowo przychodzą dwa z rzędu tuż po zalogowaniu - jeden z
+  lokalnego cache, drugi po potwierdzeniu z serwera) resetował to
+  opóźnienie od nowa, więc realnie można było czekać 5-6+ sekund na
+  pokazanie prawdziwych danych. Teraz pierwszy snapshot dla danego konta
+  stosuje się natychmiast, bez opóźnienia - kolejne (żeby nie migało przy
+  aktywnym drugim urządzeniu) nadal czekają 3 sekundy jak dotychczas.
+- Naprawiono poważniejszy, realny błąd utraty danych: wysyłanie zmian do
+  chmury (scheduleCloudPush/pushStateToCloud) nie miało żadnej blokady na
+  to, czy urządzenie w ogóle zdążyło już odebrać dane konta z Firestore.
+  Jeśli cokolwiek wywołało zapis stanu tuż po zalogowaniu (przed odebraniem
+  pierwszego snapshotu), mogło to realnie NADPISAĆ prawdziwe dane konta w
+  chmurze wciąż-domyślnym, lokalnym stanem urządzenia - dokładnie ten sam
+  rodzaj błędu, jaki naprawiono wcześniej w wersji na Androida (ten sam
+  dzień, FR-78/v12-v13). Teraz wysyłanie jest zablokowane, dopóki
+  urządzenie faktycznie nie usłyszy od Firestore (prawdziwy snapshot albo
+  potwierdzenie że dokumentu jeszcze nie ma).
+- Dodano przycisk "🔄 Synchronizuj teraz" w Ustawieniach -> Konto w
+  chmurze, obok przycisku wylogowania - wymusza prawdziwe połączenie z
+  serwerem Firestore (nie z lokalnego cache) i ręczne odświeżenie danych,
+  na wypadek gdyby automatyczna synchronizacja w tle kiedykolwiek
+  sprawiała wrażenie zawieszonej.
+
+Wszystkie zmiany dotyczą wyłącznie index.html (mechanizm synchronizacji
+chmury) - Service Worker zaktualizowany tylko po to, by wymusić pobranie
+nowej wersji index.html (v56 -> v57).

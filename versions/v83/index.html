@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
@@ -1223,7 +1223,6 @@
         <div class="hint-text" id="authStatusLine" style="margin:0 0 10px;">Sprawdzanie stanu połączenia…</div>
         <div id="authLinkedSection" style="display:none;">
           <div class="hint-text" style="margin:0 0 10px;">✅ Twoje konto jest zabezpieczone i WSZYSTKIE dane — profil, spiżarnia, lista zakupów, planer, ulubione, własne przepisy, oceny, historia gotowania i ustawienia — synchronizują się automatycznie między wszystkimi urządzeniami zalogowanymi tym samym kontem. Jeśli jakieś urządzenie było offline i w międzyczasie coś zmieniło się też na innym, po powrocie do sieci aplikacja sama scala obie zmiany; jeśli dokładnie ta sama rzecz zmieniła się inaczej na obu urządzeniach naraz, pokaże Ci to do ręcznej decyzji zamiast czegokolwiek cicho nadpisywać. Wspólne gospodarstwo domowe (kilka OSÓB edytujących wspólnie tę samą listę zakupów w tym samym czasie) to osobna, jeszcze niegotowa funkcja (patrz <code>docs/FIREBASE_MIGRATION_PLAN.md</code>).</div>
-          <button class="btn ghost" id="manualSyncBtn" style="width:100%; margin-bottom:8px;">🔄 Synchronizuj teraz</button>
           <button class="btn ghost" id="signOutBtn" style="width:100%;">🚪 Wyloguj się z tego urządzenia</button>
         </div>
         <div id="authUnlinkedSection">
@@ -2837,12 +2836,6 @@ let recentPushAttempts = [];
 let syncCircuitBroken = false;
 function scheduleCloudPush(){
   if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous) return;
-  // See canPushToCloud's own doc comment -- refuses to push until this
-  // device has actually heard from Firestore for this account (real
-  // snapshot applied, or confirmed no document exists yet), so a stray
-  // saveState() firing during the first moments after sign-in can't
-  // overwrite the account's real cloud data with still-default local state.
-  if(!canPushToCloud) return;
   if(syncCircuitBroken) return;
   const now = Date.now();
   recentPushAttempts.push(now);
@@ -2960,33 +2953,6 @@ function applyRemoteSyncedState(data){
   // reserved for.
   if(conflicts.length) showSyncConflictModal(conflicts, remoteChanges, data.lastEditedByDevice);
 }
-// 2026-08-11 (user request, "dodaj może przycisk synch żeby ręcznie
-// synchronizować i już"): forces a real round-trip to Firestore's SERVER
-// (not the SDK's local cache, which `onSnapshot` can otherwise serve from
-// first) and applies it through the exact same `applyRemoteSyncedState`
-// merge logic as the live listener, then re-checks whether anything local
-// still needs pushing. A manual escape hatch for whenever the automatic
-// 3s-debounced listener feels stuck or the user just wants certainty right
-// now, independent of whatever the actual root cause of a given hang is.
-function manualSyncNow(){
-  if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous){ toast("Zaloguj się, żeby synchronizować"); return; }
-  setSyncIndicatorState("pending");
-  fbDb.collection("users").doc(currentFbUser.uid).get({source:"server"}).then(snap=>{
-    if(snap.exists){
-      canPushToCloud = true;
-      hasAppliedFirstSnapshotForCurrentUid = true;
-      applyRemoteSyncedState(snap.data());
-    }else{
-      canPushToCloud = true;
-    }
-    scheduleCloudPush();
-    toast("🔄 Zsynchronizowano ręcznie");
-  }).catch(e=>{
-    console.warn("Ręczna synchronizacja nie powiodła się.", e);
-    setSyncIndicatorState("error");
-    toast("⚠️ Synchronizacja nie powiodła się — sprawdź połączenie");
-  });
-}
 // changedKeys is optional -- omitted (e.g. the first-ever sync in
 // applyRemoteSyncedState above) means "don't know, assume everything",
 // so renderRecipes() still runs; passed explicitly, it's used to skip that
@@ -3012,31 +2978,9 @@ function refreshUiAfterSync(silent, changedKeys){
 }
 let userDocUnsubscribe = null;
 let userDocListenerUid = null;
-// 2026-08-11: tracks whether THIS listener attachment has applied its first
-// snapshot yet -- see attachUserDocListener's own comment for why the first
-// one is applied immediately instead of going through the 3s debounce.
-let hasAppliedFirstSnapshotForCurrentUid = false;
-// Bug fixed 2026-08-11 (real data loss, reported as "po wyczyszczeniu
-// danych i ponownym zalogowaniu dalej nie pokazuje prawdziwych danych"):
-// scheduleCloudPush()/pushStateToCloud() had NO gate on whether this
-// device had actually heard from Firestore for the current account yet.
-// saveState() (called on essentially every state mutation, including ones
-// that can fire during normal render/init right after sign-in, before the
-// first `onSnapshot` callback has even run) unconditionally called
-// scheduleCloudPush() -- so a push could genuinely reach Firestore and
-// OVERWRITE the account's real data with this device's still-default,
-// pre-sync local state, moments after signing in. This is the exact same
-// class of bug the Android port already guards against
-// (CloudSyncCoordinator.kt's `hasReceivedFirstSnapshot`, "Third change" in
-// its doc comment) -- ported here now. `false` until the first snapshot
-// for the current uid is either applied or confirmed not to exist yet (see
-// attachUserDocListener), `false` again on sign-out/account-switch.
-let canPushToCloud = false;
 function detachUserDocListener(){
   if(userDocUnsubscribe){ userDocUnsubscribe(); userDocUnsubscribe = null; }
   userDocListenerUid = null;
-  hasAppliedFirstSnapshotForCurrentUid = false;
-  canPushToCloud = false;
   clearTimeout(applyRemoteSyncedStateTimer);
   pendingRemoteSnapshotData = null;
 }
@@ -3054,36 +2998,7 @@ function attachUserDocListener(uid){
     // schedule another push, which echoed again, forever. Same guard the
     // Android port (CloudSyncCoordinator.kt) already had from the start.
     if(snap.metadata.hasPendingWrites) return;
-    if(!snap.exists){
-      // No document yet for this account (genuinely first-ever sync) --
-      // there's nothing to lose, so pushing this device's local state now
-      // is correct AND is what establishes canPushToCloud going forward.
-      canPushToCloud = true;
-      pushStateToCloud();
-      return;
-    }
-    // Bug fixed 2026-08-11 ("dalej się wiesza aplikacja webowa po
-    // zalogowaniu" -- reported again even after the fixes below): the very
-    // FIRST snapshot after attaching this listener (i.e. right after
-    // sign-in) used to go through the SAME 3s debounce as every later one.
-    // On a fresh sign-in Firestore commonly delivers TWO snapshots back to
-    // back -- one served instantly from its local cache, then a second once
-    // the server round-trip confirms it -- and each one RESETS the 3s
-    // timer via clearTimeout+setTimeout below, so the user could easily
-    // wait 5-6+ seconds (or longer, if a third snapshot arrived) staring at
-    // stale/default data right after logging in, which reads as "the app
-    // hung." The debounce exists to stop an ACTIVELY used second device
-    // from causing constant re-renders (see the comment above this one,
-    // still accurate for every snapshot AFTER the first) -- it was never
-    // meant to delay the very first paint of a fresh session. Fixed by
-    // applying the first snapshot for this uid immediately, with no delay
-    // at all; only the second and later snapshots still debounce.
-    if(!hasAppliedFirstSnapshotForCurrentUid){
-      hasAppliedFirstSnapshotForCurrentUid = true;
-      canPushToCloud = true;
-      applyRemoteSyncedState(snap.data());
-      return;
-    }
+    if(!snap.exists){ pushStateToCloud(); return; }
     // 2026-08-11: debounced the same way pushStateToCloud() already is --
     // when another device is actively being used (each of ITS edits
     // syncing here every ~1-2s), onSnapshot can fire in quick succession,
@@ -4144,7 +4059,6 @@ document.getElementById("connectEmailBtn").addEventListener("click", ()=>{
     if(msg) toast(msg);
   });
 });
-document.getElementById("manualSyncBtn").addEventListener("click", manualSyncNow);
 document.getElementById("signOutBtn").addEventListener("click", ()=>{
   if(!firebaseReady || !currentFbUser){ toast("Chmura niedostępna"); return; }
   if(!confirm("Wylogować się z tego urządzenia? Synchronizacja z chmurą zatrzyma się i zacznie się nowa, lokalna sesja (możesz zalogować się z powrotem w każdej chwili).")) return;
