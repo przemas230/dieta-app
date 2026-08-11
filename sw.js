@@ -1,4 +1,4 @@
-const CACHE_NAME = "dieta-app-v52";
+const CACHE_NAME = "dieta-app-v53";
 const ASSETS = ["./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (event) => {

@@ -81,26 +81,35 @@ object ShoppingOperations {
     data class DayPlanAddResult(val items: Map<String, ShoppingItem>, val added: Int, val already: Int)
 
     /**
-     * FR-27 / the Planer's own per-day add button / FR-58's shopping-day-strip
-     * card: adds every planned meal's (scaled, FR-20) ingredients, skipping
-     * any recipe id already on the list -- same "if(state.recipeAdded[r.id])
-     * return" dedup index.html's day/week-add loops use, so a dish planned
-     * twice in the same day/week is still only ever added once. Also reports
-     * how many recipes were newly added vs. already present, for callers that
-     * need to tell the user what happened (index.html's addDayToShoppingList
-     * toast).
+     * Shared by [addDayPlanWithSummary] and [addWeekPlan] -- adds every given
+     * planned-meal OCCURRENCE's (scaled, FR-20) ingredients, skipping only
+     * recipes that were already on the list BEFORE this call started
+     * (`alreadyOnListBefore`, snapshotted once up front). **2026-08-11 fix**:
+     * this used to re-check the live, mutating `items` map after each
+     * addition (`isRecipeAdded(result, recipe.id)`), so if the SAME recipe
+     * appeared more than once among the given occurrences (e.g. planned for
+     * both Tuesday and Friday), only the FIRST occurrence's ingredients were
+     * ever added -- a real bug the user caught ("jak masz banana na liście
+     * we wtorek i w piątek to musisz wziąć pod uwagę że... potrzebne są dwa
+     * banany"). Snapshotting the "already on the list" set ONCE before the
+     * loop means every occurrence in THIS call contributes independently
+     * (so two plannings of the same recipe correctly double its ingredient
+     * quantities), while a recipe genuinely already on the list from an
+     * EARLIER, separate call is still skipped -- re-running "Dodaj tydzień"
+     * twice in a row stays idempotent.
      */
-    fun addDayPlanWithSummary(
+    private fun addOccurrences(
         items: Map<String, ShoppingItem>,
-        dayMeals: Map<String, PlannedMeal>,
+        occurrences: List<PlannedMeal>,
         recipesById: Map<String, Recipe>,
     ): DayPlanAddResult {
+        val alreadyOnListBefore = items.values.flatMap { it.contributions.keys }.toSet()
         var result = items
         var added = 0
         var already = 0
-        dayMeals.values.forEach { meal ->
+        occurrences.forEach { meal ->
             val recipe = recipesById[meal.recipeId] ?: return@forEach
-            if (isRecipeAdded(result, recipe.id)) {
+            if (recipe.id in alreadyOnListBefore) {
                 already++
                 return@forEach
             }
@@ -111,23 +120,36 @@ object ShoppingOperations {
         return DayPlanAddResult(result, added, already)
     }
 
+    /** FR-27 / the Planer's own per-day add button / FR-58's shopping-day-strip card. */
+    fun addDayPlanWithSummary(
+        items: Map<String, ShoppingItem>,
+        dayMeals: Map<String, PlannedMeal>,
+        recipesById: Map<String, Recipe>,
+    ): DayPlanAddResult = addOccurrences(items, dayMeals.values.toList(), recipesById)
+
     fun addDayPlan(
         items: Map<String, ShoppingItem>,
         dayMeals: Map<String, PlannedMeal>,
         recipesById: Map<String, Recipe>,
     ): Map<String, ShoppingItem> = addDayPlanWithSummary(items, dayMeals, recipesById).items
 
-    /** FR-27: "add the whole week's ingredients" button on the Zakupy tab. */
+    /**
+     * FR-27: "add the whole week's ingredients" button on the Zakupy tab.
+     * Flattens every day's planned meals into one occurrence list BEFORE
+     * calling [addOccurrences], so the "already on the list" snapshot covers
+     * the WHOLE week at once -- calling [addDayPlan] once per day in a loop
+     * would instead re-derive that snapshot after each day, making a recipe
+     * planned on day 1 look "already added" by the time day 3 is processed,
+     * silently dropping day 3's contribution (the same class of bug as the
+     * fix in [addOccurrences]'s doc comment, just one level up).
+     */
     fun addWeekPlan(
         items: Map<String, ShoppingItem>,
         weekPlan: WeekPlan,
         recipesById: Map<String, Recipe>,
     ): Map<String, ShoppingItem> {
-        var result = items
-        weekPlan.keys.sorted().forEach { day ->
-            result = addDayPlan(result, weekPlan[day].orEmpty(), recipesById)
-        }
-        return result
+        val occurrences = weekPlan.keys.sorted().flatMap { day -> weekPlan[day].orEmpty().values }
+        return addOccurrences(items, occurrences, recipesById).items
     }
 
     fun toggleChecked(items: Map<String, ShoppingItem>, key: String): Map<String, ShoppingItem> {

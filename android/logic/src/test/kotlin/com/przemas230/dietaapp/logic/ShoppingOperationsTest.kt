@@ -146,7 +146,7 @@ class ShoppingOperationsTest {
     }
 
     @Test
-    fun `addWeekPlan adds across every day and still dedups a repeated recipe id`() {
+    fun `addWeekPlan sums quantities when the same recipe is planned on multiple days`() {
         val recipesById = mapOf("r1" to recipe("r1", "2 jajka"), "r2" to recipe("r2", "500 g mąki"))
         val plan = mapOf(
             0 to mapOf("sniadania" to PlannedMeal("r1", scale = 1.0)),
@@ -155,8 +155,22 @@ class ShoppingOperationsTest {
 
         val items = ShoppingOperations.addWeekPlan(emptyMap(), plan, recipesById)
 
-        assertEquals(2.0, items["jajka|count"]?.quantity) // r1 only added once across the week
+        // r1 planned on BOTH day 0 and day 1 -- each occurrence must contribute
+        // its own ingredients, so 2 jajka x 2 occurrences = 4, not 2 (2026-08-11
+        // fix: previously the second occurrence was silently dropped).
+        assertEquals(4.0, items["jajka|count"]?.quantity)
         assertEquals(500.0, items["mąka|weight"]?.quantity)
+    }
+
+    @Test
+    fun `addWeekPlan still skips a recipe already on the list from before the call`() {
+        var items = ShoppingOperations.addRecipe(emptyMap(), recipe("r1", "2 jajka"))
+        val recipesById = mapOf("r1" to recipe("r1", "2 jajka"))
+        val plan = mapOf(0 to mapOf("sniadania" to PlannedMeal("r1", scale = 1.0)))
+
+        items = ShoppingOperations.addWeekPlan(items, plan, recipesById)
+
+        assertEquals(2.0, items["jajka|count"]?.quantity) // unchanged, not doubled -- stays idempotent across separate calls
     }
 
     @Test

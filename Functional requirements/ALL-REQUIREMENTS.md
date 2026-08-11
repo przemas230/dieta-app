@@ -644,11 +644,29 @@ Pozycje na liście można odhaczyć jako kupione. Listę można udostępnić prz
 ## Opis
 Przycisk w zakładce Zakupy zbiorczo dodaje do listy wszystkie składniki wszystkich dań zaplanowanych na bieżący tydzień w Planerze, z uwzględnieniem ustawionej skali porcji każdego dania.
 
+Jeśli TO SAMO danie jest zaplanowane więcej niż raz w tym samym tygodniu (np. ten sam przepis na śniadanie we wtorek i w piątek), każde takie zaplanowanie liczy się OSOBNO — składniki sumują się (2 jajka na danie × 2 zaplanowania = 4 jajka na liście), a nie tylko raz. Dopiero danie, które było już na liście PRZED tym dodawaniem (np. dodane wcześniej ręcznie z karty przepisu, albo z poprzedniego uruchomienia tego samego przycisku), jest pomijane — to zapobiega podwajaniu przy powtórnym kliknięciu tego samego przycisku, nie przy powtórzeniu dania w tym samym tygodniu.
+
 ## Kryteria akceptacji
-- Dania już wcześniej dodane do listy nie są duplikowane.
+- Dania już wcześniej dodane do listy (z osobnej, wcześniejszej akcji) nie są duplikowane przy ponownym kliknięciu przycisku.
+- To samo danie zaplanowane na WIĘCEJ NIŻ JEDEN dzień w tym samym tygodniu dodaje swoje składniki tyle razy, ile razy jest zaplanowane w tym tygodniu — ilości się sumują, druga (i kolejna) obecność tego samego dania NIE jest traktowana jak duplikat do pominięcia.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-11): Naprawiono realny błąd zgłoszony przez użytkownika
+  ("w zakładce zakupy jak masz na liscie banana np. we wtorek i w piątek
+  to musisz wziąć pod uwagę ze to do każdego dania potrzebny jest banan
+  wiec jeśli na liscie zakupów znajduja się zakupy na te dwa dni to
+  potrzebne są dwa banany"). Poprzednia implementacja (na obu platformach)
+  sprawdzała "czy to danie jest już na liście" NA BIEŻĄCO w trakcie
+  przechodzenia po dniach tygodnia — więc gdy to samo danie pojawiało się
+  drugi raz w tym samym tygodniu, było traktowane jak duplikat i całkowicie
+  pomijane, mimo że powinno dodać swoje składniki po raz drugi. Naprawione
+  robieniem jednego zrzutu "co już jest na liście" PRZED rozpoczęciem
+  całego dodawania (dnia lub tygodnia), zamiast sprawdzania na bieżąco —
+  każde zaplanowanie w BIEŻĄCEJ operacji liczy się osobno, a stan sprzed
+  operacji nadal poprawnie zapobiega duplikatom przy powtórnym kliknięciu.
+  Dotyczyło też przycisku "Dodaj składniki z tego dnia" (jeśli to samo
+  danie zajmuje dwa sloty posiłków tego samego dnia) i przepływu FR-81.
 
 ---
 

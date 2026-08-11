@@ -4101,18 +4101,9 @@ document.getElementById("saveSettingsBtn").addEventListener("click", ()=>{
     toast("Wygenerowano nowy plan na cały tydzień i wyczyszczono listę zakupów");
 
     if(confirm("Dodać składniki nowego planu do listy zakupów?")){
-      let added = 0;
-      DAYS.forEach((day,di)=>{
-        const dayMeals = state.planner[di] || {};
-        CATS.forEach(c=>{
-          const rid = dayMeals[c.id];
-          if(!rid) return;
-          const r = findRecipeById(rid);
-          if(!r || state.recipeAdded[r.id]) return;
-          addRecipeToShoppingList(scaleRecipe(r, getPlannerScale(di, c.id)));
-          added++;
-        });
-      });
+      const occurrences = [];
+      DAYS.forEach((day,di)=> CATS.forEach(c=> occurrences.push({di, catId:c.id})));
+      const {added} = addPlannedOccurrencesToShopping(occurrences);
       saveState(); renderShop(); renderRecipes();
       toast(`Dodano składniki z ${added} dań do listy zakupów`);
     }
@@ -4277,6 +4268,34 @@ function addRecipeToShoppingList(r){
   });
   state.recipeAdded[r.id] = true;
   addLog("shopping_add", `Dodano do listy zakupów: ${r.name}`);
+}
+// Shared by addDayToShoppingList/addWeekBtn/the FR-81 post-regenerate flow.
+// `occurrences` is a list of {di, catId} planner slots to add. **2026-08-11
+// fix**: this used to be duplicated inline in each caller, checking
+// `state.recipeAdded[r.id]` freshly on every iteration -- so if the SAME
+// recipe was planned on two different days (e.g. banana smoothie Tuesday
+// AND Friday), the FIRST occurrence set state.recipeAdded[r.id]=true, which
+// made the loop skip the SECOND occurrence entirely, silently dropping half
+// the needed quantity ("jak masz banana na liście we wtorek i w piątek...
+// potrzebne są dwa banany" -- the user's exact bug report). Snapshotting
+// which recipes were ALREADY on the list BEFORE this call started (once, up
+// front) means every occurrence passed to THIS call contributes its own
+// ingredients independently, while a recipe genuinely already on the list
+// from an earlier, separate call is still correctly skipped -- re-running
+// "Dodaj tydzień" twice in a row stays idempotent.
+function addPlannedOccurrencesToShopping(occurrences){
+  const alreadyOnListBefore = new Set(Object.keys(state.recipeAdded).filter(id=>state.recipeAdded[id]));
+  let added = 0, already = 0, empty = 0;
+  occurrences.forEach(({di, catId})=>{
+    const rid = (state.planner[di]||{})[catId];
+    if(!rid){ empty++; return; }
+    const base = findRecipeById(rid);
+    if(!base) return;
+    if(alreadyOnListBefore.has(rid)){ already++; return; }
+    addRecipeToShoppingList(scaleRecipe(base, getPlannerScale(di, catId)));
+    added++;
+  });
+  return {added, already, empty};
 }
 function removeRecipeFromShoppingList(r){
   r.ingredients.forEach(ing=>{
@@ -5353,36 +5372,16 @@ function renderShopDayStrip(){
   });
 }
 function addDayToShoppingList(di, dayLabel){
-  const dayMeals = state.planner[di] || {};
-  let added = 0, already = 0, empty = 0;
-  CATS.forEach(c=>{
-    const rid = dayMeals[c.id];
-    if(!rid){ empty++; return; }
-    const base = findRecipeById(rid);
-    if(!base) return;
-    const r = scaleRecipe(base, getPlannerScale(di, c.id));
-    if(state.recipeAdded[r.id]){ already++; return; }
-    addRecipeToShoppingList(r);
-    added++;
-  });
+  const occurrences = CATS.map(c=>({di, catId:c.id}));
+  const {added, already} = addPlannedOccurrencesToShopping(occurrences);
   saveState(); renderShop(); renderRecipes();
   if(added===0) toast(already ? `Dania na ${dayLabel.toLowerCase()} są już na liście` : `Brak zaplanowanych dań na ${dayLabel.toLowerCase()} w Planerze`);
   else toast(`Dodano składniki z ${added} dań na ${dayLabel.toLowerCase()}${already?` (${already} już było na liście)`:""}`);
 }
 document.getElementById("addWeekBtn").addEventListener("click", ()=>{
-  let added = 0, already = 0, empty = 0;
-  DAYS.forEach((day,di)=>{
-    const dayMeals = state.planner[di] || {};
-    CATS.forEach(c=>{
-      const rid = dayMeals[c.id];
-      if(!rid){ empty++; return; }
-      const r = findRecipeById(rid);
-      if(!r) return;
-      if(state.recipeAdded[r.id]){ already++; return; }
-      addRecipeToShoppingList(r);
-      added++;
-    });
-  });
+  const occurrences = [];
+  DAYS.forEach((day,di)=> CATS.forEach(c=> occurrences.push({di, catId:c.id})));
+  const {added, already} = addPlannedOccurrencesToShopping(occurrences);
   saveState(); renderShop(); renderRecipes();
   if(added===0) toast(already ? "Wszystkie dania z Planera są już na liście" : "Planer jest jeszcze pusty — dodaj dania w zakładce Planer");
   else toast(`Dodano składniki z ${added} dań z całego tygodnia${already?` (${already} już było na liście)`:""}`);
