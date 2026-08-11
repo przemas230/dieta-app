@@ -52,6 +52,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -174,6 +175,8 @@ fun RecipeListScreen(
     // auto-collapsed. Mirrors the header's own tap-to-toggle/chevron pattern
     // (MainActivity.kt's TopAppBar title).
     var categoryPanelExpanded by remember { mutableStateOf(false) }
+    // 2026-08-11: compact "🔍" search dropdown, see IngredientSearchDialog.
+    var showSearchDropdown by remember { mutableStateOf(false) }
     var sortByMatch by remember { mutableStateOf(false) }
     var sortByReview by remember { mutableStateOf(false) }
     // FR-2: independent filter toggles, applied before the three sorts above
@@ -259,15 +262,43 @@ fun RecipeListScreen(
         }
         AnimatedVisibility(visible = headerExpanded) {
         Column {
-        OutlinedTextField(
-            value = searchTerm,
-            onValueChange = { viewModel.setSearchTerm(it) },
-            label = { Text("Szukaj przepisu lub składnika…") },
-            singleLine = true,
+        // 2026-08-11 (user request): compact search -- was a full-width
+        // always-open OutlinedTextField, now just the "🔍" icon (matching
+        // "zostaw samą lupkę") plus, only while a search is actually active,
+        // the current term with a "✕" to clear it (otherwise an active
+        // filter would be invisible/impossible to undo without reopening
+        // the dropdown). Tapping either opens IngredientSearchDialog.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-        )
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+        ) {
+            IconButton(onClick = { showSearchDropdown = true }) {
+                Text("🔍", style = MaterialTheme.typography.titleMedium)
+            }
+            if (searchTerm.isNotBlank()) {
+                Text(
+                    searchTerm,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { showSearchDropdown = true },
+                )
+                TextButton(onClick = { viewModel.setSearchTerm("") }) { Text("✕") }
+            }
+        }
+        if (showSearchDropdown) {
+            IngredientSearchDialog(
+                currentTerm = searchTerm,
+                ingredientNames = remember { viewModel.uniqueIngredientNames() },
+                onSelect = { term ->
+                    viewModel.setSearchTerm(term)
+                    showSearchDropdown = false
+                },
+                onDismiss = { showSearchDropdown = false },
+            )
+        }
 
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -386,6 +417,82 @@ fun RecipeListScreen(
             onAdd = { input -> viewModel.addCustomRecipe(input) },
             onDismiss = onAddRecipeDialogDismiss,
         )
+    }
+}
+
+/**
+ * 2026-08-11 (compact search, user request): opened by the "🔍" icon --
+ * free-text field at top (still searches recipe name OR ingredient text,
+ * same as before via [onSelect]/`viewModel.setSearchTerm`, RecipeBrowsing's
+ * existing substring match) plus a scrollable list of every distinct
+ * ingredient name across all known recipes ([RecipeViewModel.uniqueIngredientNames]),
+ * filtered live by whatever's typed, tap-to-select. Confirming via typed
+ * text and tapping a list entry both go through the same [onSelect].
+ */
+@Composable
+private fun IngredientSearchDialog(
+    currentTerm: String,
+    ingredientNames: List<String>,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var draft by remember { mutableStateOf(currentTerm) }
+    val filtered = remember(draft, ingredientNames) {
+        val query = draft.trim().lowercase()
+        if (query.isBlank()) ingredientNames else ingredientNames.filter { it.lowercase().contains(query) }
+    }
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "🔍 Szukaj przepisu lub składnika",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onDismiss) { Text("✕") }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    label = { Text("Nazwa przepisu lub składnika…") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = { onSelect(draft.trim()) },
+                    enabled = draft.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Szukaj „${draft.trim()}”") }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("…albo wybierz składnik z listy:", style = MaterialTheme.typography.labelMedium)
+                LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
+                    if (filtered.isEmpty()) {
+                        item {
+                            Text(
+                                "Brak pasujących składników.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 10.dp),
+                            )
+                        }
+                    }
+                    items(filtered) { name ->
+                        Text(
+                            name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelect(name) }
+                                .padding(vertical = 10.dp),
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -15,8 +15,26 @@ Filtr progu oceny pokazuje wyłącznie przepisy, których ocena gwiazdkowa (⭐ 
 - Przełączniki są niezależne i można je łączyć (np. tylko ulubione + sortowanie wg dopasowania, albo tylko przepisy użytkowników + próg oceny — łączenie tych dwóch pokaże pustą listę, jeśli własny przepis nie ma jeszcze żadnej oceny).
 - Pasek filtrów jest przyklejony (sticky) pod nagłówkiem i zawsze widoczny podczas przewijania (patrz FR-43).
 - Wybranie progu oceny „Dowolna ocena” wyłącza ten filtr całkowicie.
+- **Android (od 2026-08-11, v4):** pole wyszukiwania jest domyślnie
+  kompaktowe — sama ikona „🔍” (plus aktualny termin wyszukiwania i „✕” do
+  wyczyszczenia, TYLKO gdy wyszukiwanie jest aktywne). Dotknięcie ikony
+  (lub aktywnego terminu) otwiera okno z polem tekstowym u góry (te same
+  kryteria dopasowania co dotychczas — nazwa dania LUB dowolny fragment
+  tekstu składnika) oraz przewijalną listą WSZYSTKICH unikalnych nazw
+  składników występujących w znanych przepisach, filtrowaną na bieżąco
+  wpisywanym tekstem — dotknięcie pozycji na liście od razu wyszukuje po
+  tym dokładnym składniku. Web bez zmian (pełnowymiarowe pole zawsze
+  widoczne) — świadoma rozbieżność, patrz `android/PARITY.md`.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-08): Dodano przełącznik „tylko przepisy użytkowników” (🧑‍🍳) i filtr progu oceny gwiazdkowej, na życzenie użytkownika ("rozbuduj funkcję filtrowania, dodaj opcje żeby wyświetlać tylko przepisy dodane przez użytkowników albo tylko z określoną oceną dania ustaloną na podstawie ocen od różnych użytkowników").
 - **v3** (2026-08-08): Przełącznik „tylko przepisy użytkowników” objął też zatwierdzone przepisy społeczności dodane przez INNYCH użytkowników, po wdrożeniu FR-76 (wcześniej pokazywał tylko własne przepisy).
+- **v4** (2026-08-11, Android): Na życzenie użytkownika, pole wyszukiwania
+  zastąpione kompaktową ikoną „🔍” + oknem dropdown z listą składników —
+  patrz zaktualizowane kryteria akceptacji. Nowe
+  `RecipePantryMatching.uniqueIngredientNames()` (logic, z testami JUnit)
+  + `RecipeViewModel.uniqueIngredientNames()` + `IngredientSearchDialog`
+  w `RecipeListScreen.kt`. `./gradlew :app:assembleDebug
+  :app:testDebugUnitTest :logic:test` przechodzi. **Nie zweryfikowane na
+  żywo** — wymaga sprawdzenia w Android Studio.

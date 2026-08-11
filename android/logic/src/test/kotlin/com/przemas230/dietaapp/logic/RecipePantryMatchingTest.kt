@@ -140,4 +140,18 @@ class RecipePantryMatchingTest {
         val pantry = mapOf("mąka" to PantryItem.Product("mąka", PantryCategory.ZBOZOWE, 500.0, "g"))
         assertEquals(1.0, RecipePantryMatching.pantryCoverageRatio(recipeWithIngredients("500 g mąki"), pantry))
     }
+
+    @Test
+    fun `uniqueIngredientNames dedupes canon names across recipes`() {
+        val recipes = listOf(
+            recipeWithIngredients("500 g mąki", "2 jajka"),
+            recipeWithIngredients("300 g mąki", "1 cebula"),
+        )
+        assertEquals(listOf("cebula", "jajka", "mąka"), RecipePantryMatching.uniqueIngredientNames(recipes))
+    }
+
+    @Test
+    fun `uniqueIngredientNames is empty for no recipes`() {
+        assertEquals(emptyList<String>(), RecipePantryMatching.uniqueIngredientNames(emptyList()))
+    }
 }

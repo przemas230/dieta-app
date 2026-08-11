@@ -12,6 +12,7 @@ import com.przemas230.dietaapp.logic.CommunityRecipeOperations
 import com.przemas230.dietaapp.logic.CookHistoryOperations
 import com.przemas230.dietaapp.logic.CustomRecipeOperations
 import com.przemas230.dietaapp.logic.RecipeBrowsing
+import com.przemas230.dietaapp.logic.RecipePantryMatching
 import com.przemas230.dietaapp.logic.RecipeRating
 import com.przemas230.dietaapp.logic.RecipeRatingOperations
 import com.przemas230.dietaapp.logic.RecipeReviewOperations
@@ -219,6 +220,19 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         _myRecipes.value = recipes
         recompute()
     }
+
+    /**
+     * 2026-08-11 (compact "🔍" search dropdown, user request): full
+     * ingredient vocabulary across every recipe this device currently
+     * knows about (builtin + own + community) -- deliberately NOT
+     * `visibleRecipes` (already narrowed by category/search/dietary
+     * filters), so the dropdown always offers the complete list regardless
+     * of whatever filter happens to be active when it's opened. Not a
+     * StateFlow -- computed once when the dropdown opens, not kept
+     * continuously in sync, since the recipe set rarely changes mid-session.
+     */
+    fun uniqueIngredientNames(): List<String> =
+        RecipePantryMatching.uniqueIngredientNames(builtInRecipes + _myRecipes.value + _communityRecipes.value)
 
     private fun recompute() {
         val community = CommunityRecipeOperations.dedupeCommunityRecipes(_myRecipes.value, _communityRecipes.value)

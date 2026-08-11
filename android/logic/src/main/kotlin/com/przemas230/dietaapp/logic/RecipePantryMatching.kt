@@ -116,4 +116,22 @@ object RecipePantryMatching {
         val have = recipe.ingredients.count { ingredient -> parseIngredient(ingredient).canonName in pantryItems }
         return have.toDouble() / recipe.ingredients.size
     }
+
+    /**
+     * 2026-08-11 (compact search dropdown, user request): every distinct
+     * canon ingredient name that appears in at least one of [recipes],
+     * alphabetically sorted (Polish collation) -- feeds the "🔍" search
+     * dropdown's ingredient picker so tapping an entry there searches for
+     * exactly the same canon name the recipe's own ingredient line would
+     * parse to (same [parseIngredient] this file already uses for pantry
+     * matching), not raw, differently-worded ingredient text.
+     */
+    fun uniqueIngredientNames(recipes: List<Recipe>): List<String> =
+        recipes.asSequence()
+            .flatMap { it.ingredients.asSequence() }
+            .map { parseIngredient(it).canonName }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .sortedWith(java.text.Collator.getInstance(java.util.Locale("pl", "PL")))
+            .toList()
 }
