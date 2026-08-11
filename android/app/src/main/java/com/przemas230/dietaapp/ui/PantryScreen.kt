@@ -35,6 +35,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -189,6 +190,25 @@ private fun PantryTile(
     onLongPress: () -> Unit,
 ) {
     val active = entry != null
+    // Bug fixed 2026-08-11 ("zepsuło się w spiżarni menu po przytrzymaniu
+    // produktu, nic się nie dzieje"): `pointerInput(name)` below is keyed
+    // ONLY on `name`, so its gesture-detection coroutine does NOT restart
+    // when `entry`/`category` change for that same tile -- it keeps running
+    // the closures captured whenever this tile FIRST composed. Concretely:
+    // a tile starts untracked (`entry == null`), its `onLongPress` closure
+    // captures that (`if (entry != null) ...`, evaluates to a no-op) — the
+    // moment the user taps to start tracking it, `entry` becomes non-null
+    // and a NEW `onLongPress` closure is created by the caller, but since
+    // `name` hasn't changed, the ALREADY-RUNNING coroutine never picks it
+    // up and keeps calling the ORIGINAL (permanently no-op) one -- so
+    // long-pressing a tile added earlier in the same session silently does
+    // nothing, forever, until the grid is torn down and rebuilt (e.g.
+    // leaving and re-entering Spiżarnia) coincidentally gives it a fresh
+    // start. `rememberUpdatedState` gives the gesture coroutine a stable
+    // indirection that always reads the CURRENT callback on each new
+    // gesture, without needing `pointerInput` to restart at all.
+    val currentOnTap = rememberUpdatedState(onTap)
+    val currentOnLongPress = rememberUpdatedState(onLongPress)
     val themeId = LocalDietaThemeId.current
     val metro = themeId == "metro"
     val shape = if (metro) RoundedCornerShape(2.dp) else RoundedCornerShape(14.dp)
@@ -224,8 +244,8 @@ private fun PantryTile(
             .heightIn(min = 76.dp)
             .pointerInput(name) {
                 detectTapGestures(
-                    onLongPress = { onLongPress() },
-                    onTap = { offset -> onTap(if (offset.y < size.height / 2f) 1 else -1) },
+                    onLongPress = { currentOnLongPress.value() },
+                    onTap = { offset -> currentOnTap.value(if (offset.y < size.height / 2f) 1 else -1) },
                 )
             },
         contentAlignment = Alignment.Center,

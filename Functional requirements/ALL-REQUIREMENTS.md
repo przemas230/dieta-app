@@ -844,6 +844,30 @@ Przytrzymanie kafelka otwiera wyśrodkowane okienko z opcjami: zmiana jednostki,
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-11, Android): Użytkownik zgłosił "zepsuło się w spiżarni
+  menu po przytrzymaniu produktu, nic się nie dzieje". Rzeczywista
+  przyczyna: `PantryTile`'s `Modifier.pointerInput(name)` w
+  `PantryScreen.kt` był kluczowany WYŁĄCZNIE po `name`, więc jego
+  korutyna wykrywania gestów nie restartowała się, gdy `entry`/`category`
+  zmieniały się dla tego samego kafelka — trzymała się domknięcia
+  (closure) `onLongPress`/`onTap` przechwyconego przy PIERWSZYM złożeniu
+  tego kafelka. Konkretnie: kafelek zaczyna niewidoczny/nieśledzony
+  (`entry == null`), jego `onLongPress` przechwytuje to (`if (entry !=
+  null) ...` — no-op); w momencie gdy użytkownik dotyka górnej połowy, by
+  zacząć śledzenie (`entry` staje się nie-`null`), wywołujący przekazuje
+  NOWE domknięcie z aktualnym `entry` — ale ponieważ `name` się nie
+  zmienił, JUŻ DZIAŁAJĄCA korutyna nigdy go nie przechwytuje i wciąż woła
+  ORYGINALNE (trwale no-op) domknięcie — więc przytrzymanie kafelka
+  dodanego wcześniej w tej samej sesji nic nie robiło, aż do zniszczenia i
+  odbudowania siatki (np. wyjście i powrót na Spiżarnię) dawało mu
+  przypadkowo świeży start. Naprawione `rememberUpdatedState` dla
+  `onTap`/`onLongPress` — korutyna gestów zawsze czyta AKTUALNE domknięcie
+  przy każdym nowym geście, bez potrzeby restartu `pointerInput`.
+  Odtworzone i potwierdzone naprawione na żywo na emulatorze (dodanie
+  kafelka + natychmiastowe przytrzymanie tego samego kafelka w tej samej
+  sesji, przed poprawką menu się nie pojawiało, po poprawce pojawia się
+  poprawnie). `./gradlew :app:assembleDebug :app:testDebugUnitTest
+  :logic:test` przechodzi.
 
 ---
 
