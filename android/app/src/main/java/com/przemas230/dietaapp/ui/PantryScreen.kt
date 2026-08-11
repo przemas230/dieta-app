@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -73,6 +74,7 @@ fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityL
     val items by viewModel.items.collectAsState()
     var addTileCategory by remember { mutableStateOf<PantryCategory?>(null) }
     var actionTarget by remember { mutableStateOf<Pair<String, PantryCategory>?>(null) }
+    var showClearAllConfirm by remember { mutableStateOf(false) }
 
     val recipeTileNames = remember(allRecipes) { PantryTiles.buildTileNames(allRecipes) }
     val unitCats = remember(allRecipes) { PantryTiles.computeTileUnitCats(allRecipes) }
@@ -88,9 +90,15 @@ fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityL
         Text(
             "Górna połowa kafelka = dodaj, dolna połowa = odejmij. Przytrzymaj śledzony kafelek, by zmienić " +
                 "kategorię albo usunąć śledzenie. Przyprawy: Mało → Wystarczy → Dużo.",
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             style = MaterialTheme.typography.bodySmall,
         )
+        TextButton(
+            onClick = { showClearAllConfirm = true },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        ) {
+            Text("🗑️ Wyczyść całą spiżarnię")
+        }
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 78.dp),
             contentPadding = PaddingValues(12.dp),
@@ -151,6 +159,23 @@ fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityL
                 activityLogViewModel.log("pantry_delete", "Usunięto ze spiżarni: $name")
             },
             onDismiss = { actionTarget = null },
+        )
+    }
+    if (showClearAllConfirm) {
+        AlertDialog(
+            onDismissRequest = { showClearAllConfirm = false },
+            title = { Text("Wyczyścić całą spiżarnię?") },
+            text = { Text("Usunie śledzenie wszystkich produktów i przypraw. Własne kafelki i zmienione kategorie/jednostki zostają.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.replaceAll(emptyMap())
+                    activityLogViewModel.log("pantry_delete", "Wyczyszczono całą spiżarnię")
+                    showClearAllConfirm = false
+                }) { Text("Wyczyść") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearAllConfirm = false }) { Text("Anuluj") }
+            },
         )
     }
 }

@@ -1,5 +1,7 @@
 package com.przemas230.dietaapp.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -75,6 +77,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -1135,9 +1138,24 @@ private fun RecipeCardBody(
     onToggleFavorite: () -> Unit,
     commentsViewModel: RecipeCommentsViewModel,
 ) {
+    val context = LocalContext.current
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(recipe.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            // Port of index.html's ".recipe-title" click handler -- opens a
+            // Google search for the dish instead of toggling the card (the
+            // click is consumed here, same as the web's e.stopPropagation()).
+            Text(
+                recipe.name,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textDecoration = TextDecoration.Underline,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                        val query = Uri.encode("${recipe.name} przepis")
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=$query")))
+                    },
+            )
             // FR-66/FR-76: distinguishes a user-added recipe (own, or another
             // user's approved community recipe) from the 229 built-in ones.
             if (recipe.source == "custom" || recipe.source == "community") {

@@ -661,6 +661,7 @@ Zakładka Spiżarnia pokazuje kafelki produktów pogrupowane w kategorie (Nabia�
 - Każda kategoria kończy się kafelkiem „➕ Dodaj własny” do ręcznego dodania produktu spoza bazy przepisów.
 - Siatka kafelków wypełnia całą dostępną szerokość ekranu, bez dużej pustej przestrzeni po prawej stronie ostatniego kafelka w wierszu.
 - Kafelki w tym samym wierszu mają równą szerokość niezależnie od liczby kolumn wynikającej z szerokości ekranu.
+- Przycisk „🗑️ Wyczyść całą spiżarnię” (na obu platformach) usuwa śledzenie WSZYSTKICH produktów i przypraw na raz, po potwierdzeniu — jak pojedyncze „Usuń śledzenie”, ale dla całej spiżarni jednocześnie. Nie kasuje własnych kafelków (`customTiles`) ani zmienionych kategorii/jednostek (`pantryCategoryOverride`/`pantryUnitOverride`) — te wracają do stanu nieśledzonego, tak samo jak każdy inny kafelek po usunięciu śledzenia, ale pozostają zdefiniowane/widoczne.
 
 ## Uwagi
 Zgłoszony 2026-08-11: użytkownik zgłosił, że aplikacja "zacina się" po dodaniu kilku produktów do spiżarni z rzędu — pierwsze dotknięcia działały, kolejne przestawały reagować na chwilę. Przyczyna: dotknięcie kafelka spiżarni odświeżało (renderPantry/renderShop/renderRecipes) TRZY pełne widoki na raz, w tym listę 229+ przepisów i listę zakupów, nawet gdy użytkownik wcale na nie akurat nie patrzył — kilka szybkich dotknięć kumulowało ten koszt i blokowało główny wątek na chwilę. Naprawione: dotknięcie kafelka odświeża teraz tylko faktycznie widoczne widoki; pozostałe (Przepisy, Zakupy) odświeżają się same przy najbliższym wejściu na tę zakładkę zamiast na każde dotknięcie kafelka. Zweryfikowane bezpośrednio w przeglądarce (podmiana funkcji renderujących w celu policzenia wywołań) — jedno dotknięcie kafelka spiżarni: 0 wywołań renderRecipes/renderShop (wcześniej: po 1 każde, na KAŻDE dotknięcie).
@@ -669,6 +670,7 @@ Zgłoszony 2026-08-11: użytkownik zgłosił, że aplikacja "zacina się" po dod
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-03): Doprecyzowano układ siatki kafelków na pełną szerokość ekranu (zamiast luźnego zawijania o stałej szerokości) — patrz Opis i Kryteria akceptacji.
 - **v3** (2026-08-11): Naprawiono realny błąd wydajności powodujący zacinanie się aplikacji przy kilku szybkich dotknięciach kafelków z rzędu — patrz sekcja "Uwagi" powyżej. Brak zmiany zachowania funkcjonalnego, wyłącznie poprawka wydajności.
+- **v4** (2026-08-11): Dodano przycisk „🗑️ Wyczyść całą spiżarnię” na obu platformach (web i Android, w tej samej turze), na wyraźną prośbę użytkownika ("dodaj opcji czyszczenia całej spiżarni w obydwu wersjach kotlin i html").
 
 ---
 
@@ -1816,6 +1818,10 @@ Rozszerzenie synchronizacji z chmury (FR-73) o dane WSPÓLNE/publiczne, widoczne
 - Nieprawidłowe/niekompletne dane w dokumencie przepisu społeczności (zła kategoria, brakujące liczby) nie psują aplikacji — `sanitizeCommunityRecipeDoc()` podstawia bezpieczne wartości domyślne zamiast pozwolić na `NaN`/nieistniejącą kategorię.
 - Bez wdrożonych reguł bezpieczeństwa w konsoli Firebase te funkcje nie pokazują ani nie zapisują niczego (Firestore w trybie produkcyjnym domyślnie odrzuca dostęp) — nie jest to błąd aplikacji, tylko oczekiwany, bezpieczny stan „jeszcze nie skonfigurowane”.
 - Rzeczywiste działanie (widoczność między dwoma kontami, aktualizacja daty logowania) wymaga weryfikacji na urządzeniu z dostępem do internetu, po wdrożeniu reguł — środowisko deweloperskie nie ma dostępu do serwerów Firebase.
+- Zapytanie o listę użytkowników/profil, które nie zdąży się rozstrzygnąć (np. brak sieci) w rozsądnym czasie, pokazuje czytelny komunikat błędu zamiast wisieć na „Wczytywanie…” bez końca.
+
+## Uwagi
+Zgłoszony 2026-08-11 (web): użytkownik zgłosił, że przeglądanie listy użytkowników zawiesza się na „Wczytywanie…” bez końca (podczas gdy natywna aplikacja Android — zaimplementowana kilka godzin wcześniej tego samego dnia — poprawnie pokazuje pusty/błędny stan). Przyczyna: zapytanie Firestore w stanie faktycznie offline (bez pasującego zbuforowanego wyniku) może wisieć w nieskończoność, nie rozstrzygając się ani powodzeniem, ani błędem — `.catch()` istniał już wcześniej, ale nigdy się nie uruchamiał, bo obietnica po prostu nigdy się nie rozstrzygała. Naprawione dodaniem twardego limitu czasu (12 sekund) na oba zapytania (lista i profil) — po przekroczeniu limitu pokazuje się czytelny komunikat błędu zamiast nieskończonego "Wczytywanie…".
 
 ## Historia rewizji
 - **v1** (2026-08-08): Pierwsza wersja wymagania, na życzenie użytkownika
@@ -1824,6 +1830,7 @@ Rozszerzenie synchronizacji z chmury (FR-73) o dane WSPÓLNE/publiczne, widoczne
   w jego profilu będzie można podejrzeć tylko login, oraz datę ostatniego
   logowania, ewentualnie ulubione przepisy bądź oceniane komentowane
   przepisy").
+- **v2** (2026-08-11): Naprawiono nieskończone „Wczytywanie…” przy braku szybkiej odpowiedzi z Firestore — patrz sekcja "Uwagi" powyżej.
 
 ---
 

@@ -1152,6 +1152,7 @@
          nie usunięty -- JS handler i modal skanera zostają nietknięte na wypadek
          ponownego włączenia w przyszłości. -->
     <button class="btn ghost" id="openBarcodeScanBtn" style="width:100%; margin-bottom:14px; display:none;">📷 Skanuj kod kreskowy produktu</button>
+    <button class="btn ghost" id="clearPantryBtn" style="width:100%; color:var(--danger); border-color:var(--danger); margin-bottom:14px;">🗑️ Wyczyść całą spiżarnię</button>
     <div id="pantryTiles"></div>
   </section>
 
@@ -3179,6 +3180,19 @@ function formatLastLogin(ts){
   if(!ts || typeof ts.toDate !== "function") return "brak danych";
   return ts.toDate().toLocaleDateString("pl-PL", {year:"numeric", month:"long", day:"numeric"});
 }
+// A Firestore `.get()` while genuinely offline (with no matching cached
+// data) can sit pending indefinitely -- neither resolving nor rejecting --
+// rather than failing fast like a denied/erroring request normally would.
+// Without this, openUserListModal/openUserProfileModal below could get
+// stuck on "Wczytywanie…" forever instead of showing a clear error
+// (reported 2026-08-11: "aplikacja webowa zacina się przy próbie
+// przeglądania użytkowników, wyświetla wczytywanie...").
+function withTimeout(promise, ms){
+  return Promise.race([
+    promise,
+    new Promise((_, reject)=> setTimeout(()=> reject(new Error("Przekroczono czas oczekiwania")), ms)),
+  ]);
+}
 function openUserListModal(){
   const body = document.getElementById("userListBody");
   document.getElementById("userListOverlay").classList.add("show");
@@ -3187,7 +3201,7 @@ function openUserListModal(){
     return;
   }
   body.innerHTML = `<div class="empty">Wczytywanie…</div>`;
-  fbDb.collection("publicProfiles").orderBy("lastLoginAt","desc").limit(50).get().then(snap=>{
+  withTimeout(fbDb.collection("publicProfiles").orderBy("lastLoginAt","desc").limit(50).get(), 12000).then(snap=>{
     if(snap.empty){ body.innerHTML = `<div class="empty">Brak zalogowanych użytkowników.</div>`; return; }
     body.innerHTML = "";
     snap.docs.forEach(d=>{
@@ -3201,7 +3215,7 @@ function openUserListModal(){
       body.appendChild(row);
     });
   }).catch(err=>{
-    body.innerHTML = `<div class="empty">Nie udało się wczytać listy użytkowników.</div>`;
+    body.innerHTML = `<div class="empty">Nie udało się wczytać listy użytkowników (brak połączenia albo reguły Firestore nie zostały jeszcze skonfigurowane w konsoli).</div>`;
     console.warn("Błąd wczytywania listy użytkowników", err);
   });
 }
@@ -3210,11 +3224,11 @@ function openUserProfileModal(uid, displayName){
   const body = document.getElementById("userProfileBody");
   body.innerHTML = `<div class="empty">Wczytywanie…</div>`;
   document.getElementById("userProfileOverlay").classList.add("show");
-  Promise.all([
+  withTimeout(Promise.all([
     fbDb.collection("publicProfiles").doc(uid).get(),
     fbDb.collection("recipes").where("authorUid","==",uid).where("status","==","approved").get(),
     fbDb.collection("publicProfiles").doc(uid).collection("reviewedRecipes").orderBy("createdAt","desc").limit(20).get(),
-  ]).then(([profileSnap, recipesSnap, reviewsSnap])=>{
+  ]), 12000).then(([profileSnap, recipesSnap, reviewsSnap])=>{
     const profile = profileSnap.exists ? profileSnap.data() : {};
     const recipesHtml = recipesSnap.empty
       ? `<div class="hint-text" style="margin:0;">Brak zatwierdzonych przepisów.</div>`
@@ -3238,7 +3252,7 @@ function openUserProfileModal(uid, displayName){
       ${reviewsHtml}
     `;
   }).catch(err=>{
-    body.innerHTML = `<div class="empty">Nie udało się wczytać profilu.</div>`;
+    body.innerHTML = `<div class="empty">Nie udało się wczytać profilu (brak połączenia albo reguły Firestore nie zostały jeszcze skonfigurowane w konsoli).</div>`;
     console.warn("Błąd wczytywania profilu użytkownika", err);
   });
 }
@@ -5626,6 +5640,15 @@ function showCategoryPicker(canonName){
     body.appendChild(b);
   });
 }
+document.getElementById("clearPantryBtn").addEventListener("click", ()=>{
+  if(!confirm("Na pewno wyczyścić całą spiżarnię? Wszystkie śledzone produkty i przyprawy zostaną usunięte.")) return;
+  addLog("pantry_delete", "Wyczyszczono całą spiżarnię");
+  state.pantry = {};
+  saveState();
+  renderPantry();
+  if(document.getElementById("view-shop").classList.contains("active")) renderShop();
+  toast("Wyczyszczono spiżarnię");
+});
 function changeTileCategory(canonName, newCat){
   if(state.customTiles[canonName]){
     // Custom tiles own their category directly — no need for an override.

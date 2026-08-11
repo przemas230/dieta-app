@@ -332,30 +332,27 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // currentRoute so switching tabs always resets to that tab's default,
     // same as index.html's `if(name!=="recipes") headerEl.classList.add("collapsed")`.
     var headerExpanded by remember(currentRoute) { mutableStateOf(currentRoute == Screen.Recipes.route) }
-    // FR-45: a manual collapse freezes the FR-44 auto-show-on-scroll-up
-    // below until the user manually re-expands (or leaves and re-enters
-    // Przepisy, which resets both via the `remember(currentRoute)` above).
+    // FR-45: a manual toggle (either direction) freezes the FR-44 auto
+    // show/hide below until the user manually toggles it again (or leaves
+    // and re-enters Przepisy, which resets both via the `remember(currentRoute)`
+    // above).
     var headerAutoFrozen by remember(currentRoute) { mutableStateOf(false) }
     // FR-44: hoisted so this same LazyListState can be observed here for
-    // scroll direction -- see the LaunchedEffect below.
+    // scroll position -- see the LaunchedEffect below.
     val recipeListState = rememberLazyListState()
     val density = LocalDensity.current
     LaunchedEffect(recipeListState, currentRoute) {
         if (currentRoute != Screen.Recipes.route) return@LaunchedEffect
         val nearTopPx = with(density) { 60.dp.toPx() }.toInt()
-        var prevIndex = recipeListState.firstVisibleItemIndex
-        var prevOffset = recipeListState.firstVisibleItemScrollOffset
         snapshotFlow { recipeListState.firstVisibleItemIndex to recipeListState.firstVisibleItemScrollOffset }
             .collect { (index, offset) ->
+                // FR-44/v2 (2026-08-11): near-top-only, no longer direction-based
+                // -- anywhere below the top of the list the header stays
+                // collapsed regardless of scroll direction, matching
+                // index.html's `if(y<NEAR_TOP){show}else{hide}`.
                 if (!headerAutoFrozen) {
-                    when {
-                        HeaderScrollBehavior.isNearTop(index, offset, nearTopPx) -> headerExpanded = true
-                        HeaderScrollBehavior.scrolledDown(prevIndex, prevOffset, index, offset) -> headerExpanded = false
-                        HeaderScrollBehavior.scrolledUp(prevIndex, prevOffset, index, offset) -> headerExpanded = true
-                    }
+                    headerExpanded = HeaderScrollBehavior.isNearTop(index, offset, nearTopPx)
                 }
-                prevIndex = index
-                prevOffset = offset
             }
     }
 
@@ -374,15 +371,15 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     title = {
                         Column(
                             modifier = Modifier.clickable {
-                                // FR-45: collapsing freezes FR-44's auto-show-on-scroll-up;
-                                // expanding hands control back to it.
-                                if (headerExpanded) {
-                                    headerExpanded = false
-                                    headerAutoFrozen = true
-                                } else {
-                                    headerExpanded = true
-                                    headerAutoFrozen = false
-                                }
+                                // FR-45/v4 (2026-08-11): EITHER manual toggle now freezes
+                                // FR-44's near-top-only auto behavior -- with auto-show
+                                // scoped to "only near the very top", an unfrozen manual
+                                // expand while scrolled down would just get silently
+                                // undone by the next scroll event, making "force it open"
+                                // pointless. Auto resumes fresh next time Przepisy is
+                                // (re)entered (the `remember(currentRoute)` above).
+                                headerExpanded = !headerExpanded
+                                headerAutoFrozen = true
                             },
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
