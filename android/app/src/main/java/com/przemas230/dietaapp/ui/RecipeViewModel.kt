@@ -138,21 +138,23 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         _cooked.value = CookHistoryOperations.addToday(_cooked.value, recipeId, System.currentTimeMillis())
     }
 
-    fun setCookRating(recipeId: String, index: Int, rating: Int) {
-        _cooked.value = CookHistoryOperations.setRating(_cooked.value, recipeId, index, rating)
-    }
-
     fun removeCookEntry(recipeId: String, index: Int) {
         _cooked.value = CookHistoryOperations.removeEntry(_cooked.value, recipeId, index)
     }
 
-    /** FR-55: swipe right (or tap the rating badge again to toggle) sets/clears like; swipe left sets dislike. */
-    fun setRating(recipeId: String, rating: RecipeRating) {
-        _ratings.value = RecipeRatingOperations.setRating(_ratings.value, recipeId, rating)
-    }
-
-    fun clearRating(recipeId: String) {
-        _ratings.value = RecipeRatingOperations.clearRating(_ratings.value, recipeId)
+    /**
+     * 2026-08-11, on explicit user request ("scal w jedno system gwiazdek,
+     * oceny po zrobieniu dania oraz ocene i komentarz ktory mozna dodać pod
+     * przepisem, to jedno i to samo"): swiping a card is now just a fast
+     * shortcut into the SAME review store [setReview]/the review dialog/the
+     * card badge all read and write -- right = 5★, left = 1★, keeping any
+     * existing comment untouched. Replaces the old separate like/dislike
+     * flag ([RecipeRatingOperations], no longer written to -- see
+     * [replaceRatings] for the one-time migration of old data) and the old
+     * per-cook-occurrence star ([CookHistoryOperations.setRating], removed).
+     */
+    fun setRatingQuick(recipeId: String, stars: Int) {
+        setReview(recipeId, stars, _reviews.value[recipeId]?.comment)
     }
 
     /** FR-67: returns false (caller shows "Wybierz od 1 do 5 gwiazdek") if stars is out of range. */
@@ -188,8 +190,24 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         _cooked.value = cooked
     }
 
+    /**
+     * FR-73/local persistence: applies an incoming snapshot of the old
+     * like/dislike map. 2026-08-11 one-time migration: any entry here
+     * without an existing review becomes one (5★ for a like, 1★ for a
+     * dislike) so the old signal isn't just discarded now that rating is
+     * unified into [_reviews] -- never overwrites an existing real review.
+     * Runs on every call (both the initial local-disk load and every cloud
+     * pull), which is fine -- it only ever fills gaps, never re-migrates
+     * something already reviewed.
+     */
     fun replaceRatings(ratings: Map<String, RecipeRating>) {
         _ratings.value = ratings
+        val missing = ratings.filterKeys { it !in _reviews.value }
+        if (missing.isNotEmpty()) {
+            _reviews.value = _reviews.value + missing.mapValues { (_, rating) ->
+                RecipeReview(if (rating == RecipeRating.LIKE) 5 else 1, null, System.currentTimeMillis())
+            }
+        }
     }
 
     fun replaceReviews(reviews: Map<String, RecipeReview>) {

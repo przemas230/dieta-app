@@ -102,8 +102,6 @@ import com.przemas230.dietaapp.logic.PlannerOperations
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.RecipeMatching
 import com.przemas230.dietaapp.logic.RecipePantryMatching
-import com.przemas230.dietaapp.logic.RecipeRating
-import com.przemas230.dietaapp.logic.RecipeRatingOperations
 import com.przemas230.dietaapp.logic.RecipeReviewOperations
 import com.przemas230.dietaapp.logic.ShoppingOperations
 import com.przemas230.dietaapp.logic.WeekPlan
@@ -147,7 +145,6 @@ fun RecipeListScreen(
     val searchTerm by viewModel.searchTerm.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val cookedMap by viewModel.cooked.collectAsState()
-    val ratings by viewModel.ratings.collectAsState()
     val reviews by viewModel.reviews.collectAsState()
     val pantryItems by pantryViewModel.items.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
@@ -161,7 +158,6 @@ fun RecipeListScreen(
     }
 
     var sortByMatch by remember { mutableStateOf(false) }
-    var sortByRating by remember { mutableStateOf(false) }
     var sortByReview by remember { mutableStateOf(false) }
     // FR-2: independent filter toggles, applied before the three sorts above
     // -- same order as index.html's renderRecipes() (favorites -> ingredient
@@ -187,13 +183,13 @@ fun RecipeListScreen(
     }
     val displayedRecipes = remember(
         recipes, onlyFavorites, onlyIngFav, onlyPantryReady, onlyUserRecipes, minRatingFilter,
-        sortByMatch, sortByRating, sortByReview, matchScores, ratings, reviews,
+        sortByMatch, sortByReview, matchScores, reviews,
         favoriteRecipeIds, favIngredients, pantryItems,
     ) {
-        // FR-2/FR-57/FR-67: independent toggles applied in sequence (matches
+        // FR-2/FR-67: independent toggles applied in sequence (matches
         // index.html's own if(onlyFav){...} if(onlyIngFav){...} ...
-        // if(sortByMatch){...} if(sortByRating){...} if(sortByReview){...}),
-        // not combined into one composite key.
+        // if(sortByMatch){...} if(sortByReview){...}), not combined into one
+        // composite key.
         var result = recipes
         if (onlyFavorites) result = result.filter { it.id in favoriteRecipeIds }
         if (onlyIngFav) result = result.filter { r ->
@@ -205,7 +201,6 @@ fun RecipeListScreen(
         if (onlyUserRecipes) result = result.filter { it.source == "custom" || it.source == "community" }
         if (minRatingFilter > 0) result = result.filter { (reviews[it.id]?.stars ?: 0) >= minRatingFilter }
         if (sortByMatch) result = result.sortedByDescending { matchScores[it.id] ?: -1 }
-        if (sortByRating) result = RecipeRatingOperations.sortByRating(result, ratings)
         if (sortByReview) result = RecipeReviewOperations.sortByReview(result, reviews)
         result
     }
@@ -243,15 +238,12 @@ fun RecipeListScreen(
                 )
             }
             item {
-                // FR-57: liked first, then unrated, then disliked.
-                FilterChip(
-                    selected = sortByRating,
-                    onClick = { sortByRating = !sortByRating },
-                    label = { Text("❤️ Ranking") },
-                )
-            }
-            item {
-                // FR-67: sorts by the 1-5 star review, descending, unrated last.
+                // FR-67: sorts by the 1-5 star review, descending, unrated
+                // last. 2026-08-11: this now also covers what the separate
+                // "❤️ Ranking" chip used to do (swipe like/dislike sort) --
+                // both read the same unified rating now, so having two
+                // chips for the same thing was redundant. See
+                // RecipeViewModel.setRatingQuick.
                 FilterChip(
                     selected = sortByReview,
                     onClick = { sortByReview = !sortByReview },
@@ -347,7 +339,6 @@ fun RecipeListScreen(
                 displayedRecipes,
                 matchScores,
                 cookedMap,
-                ratings,
                 pantryItems,
                 weekPlan,
                 shoppingItems,
@@ -630,7 +621,6 @@ private fun RecipeListWithScrollToTop(
     recipes: List<Recipe>,
     matchScores: Map<String, Int?>,
     cookedMap: Map<String, List<CookEntry>>,
-    ratings: Map<String, RecipeRating>,
     pantryItems: Map<String, PantryItem>,
     weekPlan: WeekPlan,
     shoppingItems: Map<String, ShoppingItem>,
@@ -707,7 +697,6 @@ private fun RecipeListWithScrollToTop(
                         pantryViewModel.subtractForRecipe(recipe)
                         activityLogViewModel.log("cook_subtract", "Ugotowano „${recipe.name}” — odjęto składniki ze spiżarni")
                     },
-                    onSetRating = { index, rating -> viewModel.setCookRating(recipe.id, index, rating) },
                     onRemoveEntry = { index ->
                         pantryViewModel.restoreForRecipe(recipe)
                         viewModel.removeCookEntry(recipe.id, index)
@@ -745,9 +734,7 @@ private fun RecipeListWithScrollToTop(
                             activityLogViewModel.log("shopping_add", "Dodano do listy zakupów: ${recipe.name}")
                         }
                     },
-                    rating = ratings[recipe.id],
-                    onSwipeRate = { rating -> viewModel.setRating(recipe.id, rating) },
-                    onClearSwipeRating = { viewModel.clearRating(recipe.id) },
+                    onSwipeRate = { stars -> viewModel.setRatingQuick(recipe.id, stars) },
                     swipeRatingStyle = swipeRatingStyle,
                     review = reviews[recipe.id],
                     onSaveReview = { stars, comment -> viewModel.setReview(recipe.id, stars, comment) },
@@ -788,7 +775,6 @@ private fun RecipeCard(
     cookEntries: List<CookEntry>,
     pantryItems: Map<String, PantryItem>,
     onMarkDoneToday: () -> Unit,
-    onSetRating: (index: Int, rating: Int) -> Unit,
     onRemoveEntry: (index: Int) -> Unit,
     onToggleHaveIngredient: (canonName: String, category: PantryCategory, unitCat: String) -> Unit,
     onAddIngredientToShopping: (ingredientText: String) -> Unit,
@@ -798,9 +784,7 @@ private fun RecipeCard(
     onPlanRecipe: (day: Int, cat: String) -> Unit,
     isAddedToShopping: Boolean,
     onToggleAddToShopping: () -> Unit,
-    rating: RecipeRating?,
-    onSwipeRate: (RecipeRating) -> Unit,
-    onClearSwipeRating: () -> Unit,
+    onSwipeRate: (Int) -> Unit,
     swipeRatingStyle: SwipeRatingStyle,
     review: RecipeReview?,
     onSaveReview: (stars: Int, comment: String?) -> Boolean,
@@ -831,10 +815,13 @@ private fun RecipeCard(
     val offsetX = remember { Animatable(0f) }
     val swipeCoroutineScope = rememberCoroutineScope()
     val swipeThresholdPx = with(LocalDensity.current) { 90.dp.toPx() }
-    val restBorderColor = when (rating) {
-        RecipeRating.LIKE -> Color(0xFF43A047)
-        RecipeRating.DISLIKE -> Color(0xFFE53935)
-        null -> Color.Transparent
+    // 2026-08-11: the persistent border tint now reflects the unified
+    // review's stars (>=4 "liked", <=2 "disliked", 3 or unrated neutral)
+    // instead of the old separate like/dislike flag -- see setRatingQuick.
+    val restBorderColor = when {
+        (review?.stars ?: 0) >= 4 -> Color(0xFF43A047)
+        (review?.stars ?: 0) in 1..2 -> Color(0xFFE53935)
+        else -> Color.Transparent
     }
     // FR-61: "glow" style tints the whole border while dragging (classic
     // pre-FR-56 look), scaling from a still-visible 0.3 alpha up to 0.9 right
@@ -884,8 +871,8 @@ private fun RecipeCard(
                             val committed = offsetX.value
                             swipeCoroutineScope.launch {
                                 when {
-                                    committed > swipeThresholdPx -> onSwipeRate(RecipeRating.LIKE)
-                                    committed < -swipeThresholdPx -> onSwipeRate(RecipeRating.DISLIKE)
+                                    committed > swipeThresholdPx -> onSwipeRate(5)
+                                    committed < -swipeThresholdPx -> onSwipeRate(1)
                                 }
                                 offsetX.animateTo(0f)
                             }
@@ -969,18 +956,22 @@ private fun RecipeCard(
         }
         }
         }
-        // FR-57: persistent 👍/👎 badge on a rated card -- tap to clear the rating.
-        if (rating != null) {
+        // 2026-08-11: persistent ★N badge showing the unified rating (see
+        // setRatingQuick) -- tap opens the exact same review dialog as the
+        // "⭐ Oceń i skomentuj" button and the post-cook prompt, instead of
+        // just clearing it, so rating behaves identically everywhere it's
+        // reachable from.
+        if (review != null && review.stars > 0) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(10.dp)
                     .size(30.dp)
                     .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(15.dp))
-                    .clickable { onClearSwipeRating() },
+                    .clickable { showReviewDialog = true },
                 contentAlignment = Alignment.Center,
             ) {
-                Text(if (rating == RecipeRating.LIKE) "👍" else "👎", fontSize = 16.sp)
+                Text("★${review.stars}", fontSize = 14.sp)
             }
         }
         // FR-56: balloon feedback that fades in as the drag approaches the
@@ -1009,8 +1000,9 @@ private fun RecipeCard(
         CookHistoryDialog(
             recipe = recipe,
             entries = cookEntries,
+            review = review,
             onMarkDoneToday = onMarkDoneToday,
-            onSetRating = onSetRating,
+            onRateRecipe = { showCookHistory = false; showReviewDialog = true },
             onRemoveEntry = onRemoveEntry,
             onDismiss = { showCookHistory = false },
         )
@@ -1376,8 +1368,9 @@ private fun formatNum(value: Double): String =
 private fun CookHistoryDialog(
     recipe: Recipe,
     entries: List<CookEntry>,
+    review: RecipeReview?,
     onMarkDoneToday: () -> Unit,
-    onSetRating: (index: Int, rating: Int) -> Unit,
+    onRateRecipe: () -> Unit,
     onRemoveEntry: (index: Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -1406,31 +1399,34 @@ private fun CookHistoryDialog(
                 Button(onClick = onMarkDoneToday, modifier = Modifier.fillMaxWidth()) {
                     Text("✅ Zrobione dzisiaj")
                 }
+                Spacer(modifier = Modifier.height(8.dp))
+                // 2026-08-11: this is now a pure log of WHEN the dish was
+                // made -- no per-occurrence rating of its own anymore (see
+                // RecipeCard's setRatingQuick doc). Opens the exact same
+                // review dialog as the card's badge and its own "Oceń i
+                // skomentuj" button.
+                OutlinedButton(onClick = onRateRecipe, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (review != null) "⭐ Twoja ocena: ${review.stars}/5 (zmień)" else "⭐ Oceń to danie")
+                }
                 Spacer(modifier = Modifier.height(12.dp))
 
                 if (entries.isEmpty()) {
                     Text("Jeszcze nie oznaczone jako zrobione.", style = MaterialTheme.typography.bodyMedium)
                 } else {
-                    val rated = entries.filter { it.rating != null }
-                    val avg = if (rated.isNotEmpty()) rated.sumOf { it.rating!! }.toDouble() / rated.size else null
-                    val summary = "Zrobione ${entries.size}×" + (avg?.let { " · średnia ocena ${formatNum(roundTo(it, 1))}★" } ?: "")
-                    Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Zrobione ${entries.size}×", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(10.dp))
 
                     entries.forEachIndexed { index, entry ->
-                        Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    "${formatCookDate(entry.dateEpochMillis)} ${formatCookTime(entry.dateEpochMillis)}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                                TextButton(onClick = { pendingDeleteIndex = index }) { Text("✕") }
-                            }
-                            StarRatingRow(rating = entry.rating, onRate = { n -> onSetRating(index, n) })
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                "${formatCookDate(entry.dateEpochMillis)} ${formatCookTime(entry.dateEpochMillis)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            TextButton(onClick = { pendingDeleteIndex = index }) { Text("✕") }
                         }
                         HorizontalDivider()
                     }
@@ -1642,11 +1638,6 @@ private fun PlanPickerDialog(
             }
         }
     }
-}
-
-private fun roundTo(value: Double, decimals: Int): Double {
-    val factor = Math.pow(10.0, decimals.toDouble())
-    return Math.round(value * factor) / factor
 }
 
 /** "09.08.2026" — matches index.html's toLocaleDateString('pl-PL', {day/month/year: '2-digit'/'numeric'}). */

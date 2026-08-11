@@ -1,0 +1,28 @@
+Wersja 82 (2026-08-11)
+
+Nowa funkcja na wyraźną prośbę użytkownika (FR-84): trzy dotychczas
+osobne systemy oceniania dania — przesunięcie karty (lubię/nie lubię),
+gwiazdka za każde pojedyncze "✅ Zrobione", oraz ocena+komentarz
+"⭐ Oceń i skomentuj" — stały się JEDNYM mechanizmem.
+
+- Przesunięcie karty nadal wygląda tak samo (napis "Podoba się to dla
+  mnie!"/"Nie podoba się to dla mnie!" bez zmian), ale teraz jest
+  szybkim skrótem do tej samej oceny gwiazdkowej: w prawo = 5★,
+  w lewo = 1★, z zachowaniem istniejącego komentarza.
+- Historia gotowania jest teraz czystym logiem dat, bez własnej oceny
+  za każdy wpis — zamiast tego pokazuje przycisk "⭐ Oceń to danie"
+  otwierający dokładnie to samo okienko oceny.
+- Plakietka w prawym górnym rogu karty pokazuje "★N" (zamiast dawnego
+  👍/👎) — dotknięcie otwiera okienko oceny zamiast je kasować.
+- Osobny przełącznik sortowania "❤️ Ranking" usunięty jako redundantny
+  z "🏆 Ocena" (po scaleniu robiły dokładnie to samo).
+- Stare oceny lubię/nie lubię migrują jednorazowo do systemu gwiazdek
+  (lubię→5★, nie lubię→1★), nigdy nie nadpisując istniejącej prawdziwej
+  recenzji.
+
+Zaimplementowane jednocześnie na web i w Kotlinie, zweryfikowane
+bezpośrednio: web przez javascript_tool w przeglądarce, Android na żywo
+na emulatorze (ocena 5★ poprawnie pokazała plakietkę i zieloną obwódkę
+karty). Zero crashy.
+
+Service Worker: v55 → v56.

@@ -97,6 +97,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-56: Duży, balonowy napis podczas oceniania przesunięciem](#fr-56-duży-balonowy-napis-podczas-oceniania-przesunięciem)
 - [FR-57: Trwałe oznaczenie oceny i ranking sort](#fr-57-trwałe-oznaczenie-oceny-i-ranking-sort)
 - [FR-67: Ocena gwiazdkowa i komentarz przy przepisie](#fr-67-ocena-gwiazdkowa-i-komentarz-przy-przepisie)
+- [FR-84: Scalenie oceniania przepisu w jeden mechanizm](#fr-84-scalenie-oceniania-przepisu-w-jeden-mechanizm)
 - [FR-77: Komentarze wielu użytkowników pod przepisem, z paginacją](#fr-77-komentarze-wielu-użytkowników-pod-przepisem-z-paginacją)
 
 ### Konto i współdzielenie
@@ -461,11 +462,13 @@ Zrewidowane ponownie 2026-08-03: sam przycisk-wyzwalacz na karcie przepisu był 
 **Status:** Zaimplementowane
 
 ## Opis
-W historii gotowania (FR-15) każdy wpis można ocenić w skali gwiazdkowej, niezależnie od globalnej oceny lubię/nie lubię (FR-55). Pięć gwiazdek jest rozłożonych równo na całą dostępną szerokość wiersza wpisu (nie stłoczonych po jednej stronie), każda z wystarczająco dużym obszarem dotykowym.
+**Od FR-84 (2026-08-11), ta funkcja w opisanej poniżej formie już NIE ISTNIEJE** — była jedną z trzech osobnych ocen scalonych w jedną (FR-67). Historia gotowania (FR-15) jest teraz czystym logiem DAT „✅ Zrobione”, bez własnej oceny za każdy wpis. Zamiast tego pokazuje przycisk „⭐ Oceń to danie” (albo „⭐ Twoja ocena: X/5 (zmień)”), otwierający dokładnie to samo okienko oceny co przycisk pod przepisem (FR-67) i plakietka na karcie (FR-57). Reszta tego dokumentu (poniżej) opisuje ORYGINALNE, już nieaktualne zachowanie — zachowane dla historii, patrz FR-84 po aktualny opis.
 
-## Kryteria akceptacji
-- Ocena gwiazdkowa jest przypisana do konkretnego wpisu historii (daty ugotowania), nie do przepisu jako całości.
-- 5 gwiazdek rozciąga się na pełną szerokość wiersza (odstępy równe, nie zbite razem po lewej), każda z minimalną wysokością dotykową ok. 34px.
+~~W historii gotowania (FR-15) każdy wpis można ocenić w skali gwiazdkowej, niezależnie od globalnej oceny lubię/nie lubię (FR-55). Pięć gwiazdek jest rozłożonych równo na całą dostępną szerokość wiersza wpisu (nie stłoczonych po jednej stronie), każda z wystarczająco dużym obszarem dotykowym.~~
+
+## Kryteria akceptacji (nieaktualne, patrz FR-84)
+- ~~Ocena gwiazdkowa jest przypisana do konkretnego wpisu historii (daty ugotowania), nie do przepisu jako całości.~~
+- ~~5 gwiazdek rozciąga się na pełną szerokość wiersza (odstępy równe, nie zbite razem po lewej), każda z minimalną wysokością dotykową ok. 34px.~~
 
 ## Uwagi
 Zrewidowane 2026-08-07: gwiazdki były wcześniej stłoczone po lewej stronie wiersza (mały, ciasny obszar klikania) — data i przycisk usuwania wpisu przeniesiono do osobnej górnej linijki, a gwiazdki dostały całą szerokość wiersza dla siebie.
@@ -473,6 +476,7 @@ Zrewidowane 2026-08-07: gwiazdki były wcześniej stłoczone po lewej stronie wi
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-07): Gwiazdki rozciągnięte na pełną szerokość wiersza dla łatwiejszego trafienia — patrz sekcja "Uwagi".
+- **v3** (2026-08-11): Scalone z FR-55/FR-57/FR-67 w jeden mechanizm oceniania — per-wpisowa ocena gwiazdkowa opisana wyżej PRZESTAŁA ISTNIEĆ, historia gotowania jest teraz czystym logiem dat z linkiem do jedynego, wspólnego okienka oceny. Patrz FR-84.
 
 ---
 
@@ -1161,14 +1165,18 @@ Przed każdą zmianą plików aplikacji (index.html, manifest.json, sw.js, ikony
 **Status:** Zaimplementowane
 
 ## Opis
-Na liście przepisów kartę można przesunąć w prawo (❤️ „lubię”) lub w lewo (👎 „nie lubię”). Gest wykorzystuje blokadę osi: dopiero przekroczenie progu ruchu w jednym kierunku „zamyka” gest na oś poziomą (ocena) albo pionową (zwykłe przewijanie listy) — więc przewijanie strony nigdy nie jest przechwytywane jako próba oceny.
+Na liście przepisów kartę można przesunąć w prawo (❤️ „podoba się”) lub w lewo („nie podoba się”). Gest wykorzystuje blokadę osi: dopiero przekroczenie progu ruchu w jednym kierunku „zamyka” gest na oś poziomą (ocena) albo pionową (zwykłe przewijanie listy) — więc przewijanie strony nigdy nie jest przechwytywane jako próba oceny.
+
+**Od FR-84 (2026-08-11)**: przesunięcie nie ustawia już osobnej binarnej flagi lubię/nie lubię — jest skrótem do TEJ SAMEJ oceny gwiazdkowej co FR-67: w prawo = 5★, w lewo = 1★, z zachowaniem ewentualnego istniejącego komentarza. Zobacz FR-84 po pełny opis scalenia.
 
 ## Kryteria akceptacji
 - Przesunięcie poniżej progu zatwierdzenia (90px) wraca do pozycji wyjściowej bez zapisania oceny.
 - Sam gest oceniania nigdy nie blokuje zwykłego przewijania listy w pionie.
+- Przesunięcie w prawo/lewo ustawia gwiazdki (5★/1★) w tym samym miejscu, które czyta/pokazuje okienko „⭐ Oceń i skomentuj” (FR-67) — patrz FR-84.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-11): Scalone z FR-17/FR-57/FR-67 w jeden mechanizm oceniania — patrz FR-84.
 
 ---
 
@@ -1210,13 +1218,18 @@ Zrewidowane 2026-08-03 (v5): napis był dotąd elementem potomnym karty i dziedz
 **Status:** Zaimplementowane
 
 ## Opis
-Oceniona karta zachowuje kolorowe obramowanie z boku i małą plakietkę (👍/👎), którą można dotknąć, by skasować ocenę. Osobny przełącznik „❤️” sortuje listę: najpierw lubiane, potem nieocenione („nowe”), na końcu nielubiane.
+Oceniona karta zachowuje kolorowe obramowanie z boku i małą plakietkę.
+
+**Od FR-84 (2026-08-11)**: plakietka pokazuje teraz „★N” (liczbę gwiazdek z FR-67) zamiast dawnego 👍/👎, a dotknięcie jej otwiera okienko oceny zamiast kasować ocenę jednym dotknięciem — spójnie z tym, że to już jeden, wspólny mechanizm oceniania (usuwanie oceny nadal jest możliwe, przyciskiem „Usuń ocenę” w tym okienku). Kolor obramowania: 4-5★ zielone, 1-2★ czerwone, 3★/brak neutralne. Osobny przełącznik sortowania „❤️ Ranking” został USUNIĘTY jako redundantny z „🏆 Ocena” (FR-67) — po scaleniu obie robiłyby dokładnie to samo. Zobacz FR-84 po pełny opis.
 
 ## Kryteria akceptacji
 - Ocenione karty NIE znikają z listy (świadoma różnica względem klasycznego 'Tindera' z pojedynczym stosem kart) — Przepisy to przewijalna lista wielu dań, nie stos pojedynczych kart.
+- Plakietka pokazuje aktualną liczbę gwiazdek i jest widoczna tylko, gdy przepis ma jakąkolwiek ocenę.
+- Dotknięcie plakietki otwiera okienko oceny — nie kasuje oceny bez potwierdzenia.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-11): Scalone z FR-17/FR-55/FR-67 w jeden mechanizm oceniania (plakietka ★N, osobny przełącznik sortowania usunięty jako redundantny) — patrz FR-84.
 
 ---
 
@@ -1431,14 +1444,14 @@ Zrewidowane 2026-08-08: dodano automatyczne obliczanie kalorii/makroskładników
 ## Opis
 Każda karta przepisu (wbudowanego lub własnego, FR-66) ma przycisk „⭐ Oceń i skomentuj”, umieszczony na samym dole rozwiniętej karty (pod składnikami i sposobem przygotowania — patrz FR-77), otwierający okienko z 5 dużymi gwiazdkami (ta sama, pełnoszerokia stylistyka co ocena w historii gotowania, FR-17) i opcjonalnym polem komentarza tekstowego (do 300 znaków). Zapisana ocena i komentarz pokazują się bezpośrednio na karcie przepisu: liczba gwiazdek w etykiecie przycisku oraz treść komentarza pod opisem przygotowania. Osobny przycisk sortowania (🏆) w pasku narzędzi zakładki Przepisy sortuje listę wg tej oceny, malejąco. Bezpośrednio pod przyciskiem oceny znajduje się rozwijana sekcja komentarzy od innych użytkowników, opisana osobno w FR-77.
 
-To mechanizm inny niż istniejący ranking podoba/nie podoba mi się (FR-55/57, gest przesunięcia karty) — tamten jest szybkim, binarnym gestem bez komentarza; ten jest świadomą oceną 1-5 gwiazdek z możliwością opisania, co konkretnie się podobało lub co poprawić, myślaną pod przyszłe współdzielenie ocen z innymi użytkownikami.
+**Od FR-84 (2026-08-11)**: to już NIE jest osobny mechanizm od gestu przesunięcia karty (FR-55/57) ani od oceny po ugotowaniu (FR-17) — to JEDYNY mechanizm oceniania w aplikacji. Przesunięcie karty w prawo/lewo to teraz tylko szybki skrót ustawiający tę samą ocenę (5★/1★), a „⭐ Oceń to danie” w historii gotowania otwiera dokładnie to samo okienko. Zobacz FR-84 po pełny opis scalenia.
 
 ## Kryteria akceptacji
 - Ocena wymaga wybrania od 1 do 5 gwiazdek; próba zapisu bez wybrania gwiazdek pokazuje komunikat i nie zapisuje niczego.
 - Komentarz jest w pełni opcjonalny.
 - Ponowne otwarcie okienka dla już ocenionego przepisu pokazuje wcześniej wybraną liczbę gwiazdek i treść komentarza, gotowe do edycji.
 - Przycisk „Usuń ocenę” czyści zarówno gwiazdki, jak i komentarz dla danego przepisu.
-- Sortowanie 🏆 działa niezależnie od sortowania wg dopasowania (🎯, FR-7) i rankingu polubień (❤️, FR-57) — użytkownik może mieć włączone dowolne z nich, ostatnio kliknięte ma pierwszeństwo (ta sama zasada co między pozostałymi przełącznikami sortowania).
+- Sortowanie 🏆 działa niezależnie od sortowania wg dopasowania (🎯, FR-7) — użytkownik może mieć włączone dowolne z nich, ostatnio kliknięte ma pierwszeństwo (ta sama zasada co między pozostałymi przełącznikami sortowania). Osobny przełącznik rankingu polubień (❤️, dawny FR-57) został usunięty jako redundantny po scaleniu — patrz FR-84.
 
 ## Uwagi
 Spisane 2026-08-07: dane zapisywane lokalnie w `state.recipeReviews[recipeId] = {stars, comment, at}`, w kształcie odpowiadającym dokumentowi `recipes/{id}/ratings/{uid}` z planu Firebase (`docs/FIREBASE_MIGRATION_PLAN.md`) — jeden dokument na oceniającego na przepis. Przy jednym lokalnym użytkowniku „Twoja ocena” i „średnia ocena” to dziś ten sam numer; po podłączeniu chmury stanie się to prawdziwą, wieloosobową średnią bez zmiany kształtu danych.
@@ -1450,6 +1463,7 @@ Zrewidowane 2026-08-08: `recipes/{id}/ratings/{uid}` z powyższego akapitu przes
 ## Historia rewizji
 - **v1** (2026-08-07): Pierwsza wersja wymagania na podstawie polecenia użytkownika.
 - **v2** (2026-08-08): Przeniesiono przycisk na dół karty i dodano pod nim wielo-użytkownikowy wątek komentarzy — patrz FR-77 i sekcja "Uwagi".
+- **v3** (2026-08-11): Stało się JEDYNYM mechanizmem oceniania w aplikacji — scalone z FR-55/FR-57 (przesunięcie karty) i FR-17 (ocena po ugotowaniu). Patrz FR-84.
 
 ---
 
@@ -2256,5 +2270,33 @@ Android ma dziś tylko WAGĘ w pełni zaportowaną. Historia kalorii na Androidz
   w karcie trackera), zweryfikowana bezpośrednio w przeglądarce (dodanie
   przekąski do 2026-08-09 poprawnie odizolowane od stanu dzisiejszego dnia)
   — Android świadomie odłożony, patrz Uwagi.
+
+---
+
+# FR-84: Scalenie oceniania przepisu w jeden mechanizm
+
+**Obszar:** Ocenianie i ranking przepisów
+**Status:** Zaimplementowane (web + Android)
+
+## Opis
+Do tej pory istniały TRZY osobne sposoby oceniania dania: przesunięcie karty w prawo/lewo (FR-55/57, binarne „lubię”/„nie lubię”), osobna gwiazdka za KAŻDE pojedyncze „✅ Zrobione” w historii gotowania (FR-17), oraz jedna deliberatywna ocena gwiazdkowa 1-5 + komentarz pod przepisem (FR-67, już wcześniej synchronizowana ze społecznością — FR-77). Na wyraźną prośbę użytkownika ("scal w jedno system gwiazdek, oceny po zrobieniu dania oraz ocene i komentarz ktory mozna dodać pod przepisem, to jedno i to samo") wszystkie trzy są teraz JEDNYM mechanizmem: oceną z FR-67 (`recipeReviews[recipeId] = {stars, comment, at}`).
+
+- **Przesunięcie karty** nadal działa dokładnie tak samo wizualnie (napis „Podoba się to dla mnie!”/„Nie podoba się to dla mnie!”, FR-56, bez zmian — użytkownik wprost poprosił, żeby to zostało) — ale teraz jest szybkim skrótem do tej samej oceny: w prawo ustawia 5★, w lewo 1★, zachowując ewentualny istniejący komentarz.
+- **Historia gotowania** (✅ Zrobione) jest teraz czystym logiem DAT — bez własnej oceny za każdy wpis. Zamiast tego pokazuje przycisk „⭐ Oceń to danie” (albo „⭐ Twoja ocena: X/5 (zmień)”, jeśli już ocenione), który otwiera DOKŁADNIE to samo okienko co przycisk „⭐ Oceń i skomentuj” pod przepisem.
+- **Plakietka w prawym górnym rogu karty** pokazuje Twoją ocenę jako „★N” (zamiast dawnego 👍/👎) — kliknięcie otwiera to samo okienko oceny (zamiast dawnego czyszczenia oceny jednym dotknięciem).
+- Kolorowe obramowanie karty (zielone/czerwone) nadal się pojawia, teraz na podstawie gwiazdek: 4-5★ = zielone (odpowiednik dawnego „lubię”), 1-2★ = czerwone (dawne „nie lubię”), 3★ lub brak oceny = neutralne.
+- Osobny przełącznik sortowania „❤️ Ranking” (dawny FR-57) został USUNIĘTY jako redundantny — po scaleniu robił dokładnie to samo co „🏆 Ocena” (sortowanie po gwiazdkach malejąco).
+
+## Kryteria akceptacji
+- Ocena ustawiona przesunięciem karty jest natychmiast widoczna w okienku „⭐ Oceń i skomentuj” tego samego przepisu (i odwrotnie) — to jeden, wspólny stan, nie dwa oddzielne.
+- Oznaczenie dania jako zrobione (✅ Zrobione) NIE tworzy własnej, osobnej oceny — jedynym miejscem ustawienia gwiazdek jest teraz ujednolicone okienko oceny, niezależnie skąd zostało otwarte (plakietka, przycisk pod przepisem, historia gotowania).
+- Kliknięcie plakietki ★N w rogu karty otwiera okienko oceny (nie kasuje oceny bez potwierdzenia).
+- Istniejące dane sprzed tej zmiany nie giną po cichu: stare oceny lubię/nie lubię bez odpowiadającej im pełnej recenzji migrują jednorazowo do systemu gwiazdek (lubię → 5★, nie lubię → 1★) przy pierwszym wczytaniu po aktualizacji — nadpisanie NIGDY nie dotyczy przepisu, który ma już prawdziwą recenzję.
+
+## Uwagi
+Świadomie POZA zakresem tej zmiany: stare, indywidualne oceny gwiazdkowe przypisane do POSZCZEGÓLNYCH wpisów historii gotowania (FR-17, sprzed tej zmiany) NIE są migrowane do jednej łącznej oceny — nie ma jednoznacznego sposobu wybrania, który z wielu wpisów powinien "wygrać" jako nowa jedyna ocena, a to była funkcja rzadko używana. Dane w istniejących wpisach historii po prostu przestają być czytane/wyświetlane, nic nie ginie z samego pliku/dokumentu.
+
+## Historia rewizji
+- **v1** (2026-08-11): Pierwsza wersja wymagania, na życzenie użytkownika. Zaimplementowane jednocześnie na web (`state.recipeReviews`, `setRecipeStarsQuick`, migracja w `loadState()`) i Android (`RecipeViewModel.setRatingQuick`, migracja w `replaceRatings`) — zweryfikowane bezpośrednio: web przez `javascript_tool` w przeglądarce (przesunięcie ustawiło 5★, plakietka poprawnie pokazała „★5”, historia gotowania bez pola oceny, okienko oceny pokazało zapisaną wartość), Android na żywo na emulatorze (ten sam przebieg: „⭐ Oceń to danie” w historii otworzyło okienko, zapisanie 5★ pokazało plakietkę „★5” z zieloną obwódką karty). Zero crashy.
 
 ---

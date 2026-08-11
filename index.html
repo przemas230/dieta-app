@@ -1096,8 +1096,7 @@
         <button class="fav-toggle" id="ingFavToggle" title="Tylko z ulubionymi składnikami">🌟</button>
         <button class="fav-toggle" id="pantryFilterToggle" title="Dania z tego, co mam w spiżarni">🏺</button>
         <button class="fav-toggle" id="matchSortToggle" title="Sortuj wg dopasowania do Twojego profilu (białko/węgle/tłuszcz + indeks glikemiczny)">🎯</button>
-        <button class="fav-toggle" id="rankSortToggle" title="Ranking: polubione najpierw, potem nieocenione, potem nielubiane (przesuń kartę w lewo/prawo, aby ocenić)">❤️</button>
-        <button class="fav-toggle" id="reviewSortToggle" title="Sortuj wg oceny gwiazdkowej (⭐ Oceń i skomentuj)">🏆</button>
+        <button class="fav-toggle" id="reviewSortToggle" title="Sortuj wg oceny gwiazdkowej — przesuń kartę w lewo/prawo, aby szybko ocenić">🏆</button>
         <button class="fav-toggle" id="userRecipesToggle" title="Tylko przepisy dodane przez użytkowników">🧑‍🍳</button>
         <select class="rating-filter-select" id="ratingFilterSelect" title="Pokaż tylko przepisy z oceną (⭐ Oceń i skomentuj) co najmniej tyle gwiazdek — dziś to Twoja własna ocena, po dokończeniu synchronizacji będzie to średnia od wszystkich użytkowników">
           <option value="0">Dowolna ocena</option>
@@ -2618,6 +2617,23 @@ function loadState(){
       if(s.displayName===undefined) s.displayName = "";
       if(!s.myRecipes) s.myRecipes = [];
       if(!s.recipeReviews) s.recipeReviews = {};
+      // 2026-08-11: on explicit user request, the old swipe like/dislike
+      // flag, the per-cook-occurrence star, and the star+comment review are
+      // now ONE mechanism -- the review (see attachSwipeRating/
+      // renderCookHistoryBody/updateRatingBadge below, all of which now
+      // read/write state.recipeReviews instead of state.recipeRating). This
+      // one-time migration preserves whatever signal existing swipe ratings
+      // already carried instead of just discarding it: a recipe with an old
+      // "like" and no existing review becomes a 5★ review, "dislike"
+      // becomes 1★ -- only for recipes that don't already have a real
+      // review (a genuine star rating/comment always wins over the coarser
+      // migrated guess). state.recipeRating itself is left initialized
+      // (for any code that hasn't reloaded yet) but is no longer written to
+      // or synced going forward -- a frozen fossil, not an active field.
+      Object.keys(s.recipeRating||{}).forEach(id=>{
+        if(s.recipeReviews[id]) return;
+        s.recipeReviews[id] = {stars: s.recipeRating[id]==="like" ? 5 : 1, comment:"", at:new Date().toISOString()};
+      });
       if(s.communityRecipesEnabled===undefined) s.communityRecipesEnabled = false;
       if(!s.household) s.household = {id:null, name:"", inviteCode:null, members:[]};
       if(s._lastSyncedSnapshot===undefined) s._lastSyncedSnapshot = null;
@@ -4147,7 +4163,6 @@ let onlyFav = false;
 let onlyIngFav = false;
 let onlyPantryReady = false;
 let sortByMatch = false;
-let sortByRating = false;
 let sortByReview = false;
 let onlyUserRecipes = false;
 let minRatingFilter = 0;
@@ -4336,23 +4351,32 @@ function removeRecipeFromShoppingList(r){
   addLog("shopping_remove", `Usunięto z listy zakupów: ${r.name}`);
 }
 
-// ---------- SWIPE-TO-RATE (Recipes view only) ----------
-// A "new" recipe has no entry at all; "like"/"dislike" are set by swiping
-// a card right/left. Kept as a simple two-value rating (not a 1-5 score)
-// since the whole point is a fast, low-effort signal while browsing.
-function getRecipeRating(id){ return state.recipeRating[id] || null; }
-function setRecipeRating(id, rating){
-  if(rating) state.recipeRating[id] = rating;
-  else delete state.recipeRating[id];
+// ---------- RATING (unified: swipe, cook-history, and "⭐ Oceń i skomentuj" all write here) ----------
+// 2026-08-11, on explicit user request ("scal w jedno system gwiazdek,
+// oceny po zrobieniu dania oraz ocene i komentarz ktory mozna dodać pod
+// przepisem, to jedno i to samo"): what used to be three separate signals
+// (swipe like/dislike, a star per individual "Zrobione" occurrence, and the
+// single star+comment review) are now all just the review
+// (state.recipeReviews[id] = {stars, comment, at}) -- the richest of the
+// three, and the one already synced to the community (FR-77). The top-right
+// badge shows YOUR stars (or the community average once merged in), and
+// clicking it opens the exact same dialog as the "⭐ Oceń i skomentuj"
+// button and the post-cook prompt, so rating behaves identically no matter
+// where it's triggered from. See loadState()'s one-time migration of old
+// state.recipeRating entries into reviews.
+function setRecipeStarsQuick(id, stars){
+  const existing = state.recipeReviews[id];
+  state.recipeReviews[id] = {stars, comment: existing ? existing.comment : "", at:new Date().toISOString()};
+  pushRecipeRating(id, stars, state.recipeReviews[id].comment);
+  invalidateRecipeComments(id);
 }
 function updateRatingBadge(card, id){
   const badge = card.querySelector("[data-rating-badge]");
   if(!badge) return;
-  const rating = getRecipeRating(id);
-  card.classList.toggle("rated-like", rating==="like");
-  card.classList.toggle("rated-dislike", rating==="dislike");
-  badge.textContent = rating==="like" ? "👍" : rating==="dislike" ? "👎" : "";
-  badge.style.display = rating ? "block" : "none";
+  const review = state.recipeReviews[id];
+  const stars = review ? review.stars : 0;
+  badge.textContent = stars ? `★${stars}` : "";
+  badge.style.display = stars ? "block" : "none";
 }
 // Attaches the Tinder-style drag gesture to a card: horizontal drag tints
 // the card green (right/like) or red (left/dislike) and commits past a
@@ -4434,7 +4458,7 @@ function attachSwipeRating(card, r, refreshBadge){
     if(label) label.style.transition = "opacity .2s ease";
     setLabel("", "", 0);
     if(committed){
-      setRecipeRating(r.id, dx > 0 ? "like" : "dislike");
+      setRecipeStarsQuick(r.id, dx > 0 ? 5 : 1);
       saveState();
       if(refreshBadge) refreshBadge();
     }else if(wasTap){
@@ -4491,7 +4515,7 @@ function recipeCard(r, onChange, opts={}){
     <div class="card-head">
       <h3 class="recipe-title" data-search="${r.name}">${r.name}</h3>
       <div class="card-head-side">
-        <button type="button" class="rating-badge" data-rating-badge title="Kliknij, aby wyczyścić ocenę" style="display:none;"></button>
+        <button type="button" class="rating-badge" data-rating-badge title="Kliknij, aby ocenić i skomentować" style="display:none;"></button>
         <button class="star-btn ${fav?'active':''}" data-fav="${r.id}">${fav?'★':'☆'}</button>
         <div class="thumb"><span class="thumb-ph">🍽️</span></div>
       </div>
@@ -4542,11 +4566,13 @@ function recipeCard(r, onChange, opts={}){
   }
   const ratingBadge = card.querySelector("[data-rating-badge]");
   if(ratingBadge){
+    // 2026-08-11: opens the SAME "⭐ Oceń i skomentuj" dialog as the button
+    // further down the card and the post-cook prompt -- one rating
+    // mechanism, one place to change or clear it, reachable from anywhere
+    // it's shown (see class doc at setRecipeStarsQuick).
     ratingBadge.addEventListener("click", (e)=>{
       e.stopPropagation();
-      setRecipeRating(r.id, null);
-      saveState();
-      updateRatingBadge(card, r.id);
+      openRecipeReviewModal(r, refreshAll);
     });
   }
   card.querySelector("[data-pantry-check]").addEventListener("click", (e)=>{
@@ -4639,7 +4665,7 @@ function formatDatePl(iso){
 function markRecipeCookedToday(r, onChange){
   subtractRecipeFromPantry(r);
   state.cooked[r.id] = state.cooked[r.id] || [];
-  state.cooked[r.id].push({date:new Date().toISOString(), rating:null});
+  state.cooked[r.id].push({date:new Date().toISOString()});
   saveState(); renderPantry();
   if(onChange) onChange();
   toast("Odjęto składniki ze spiżarni");
@@ -4653,41 +4679,45 @@ function openCookHistoryModal(r, onChange){
   renderCookHistoryBody(r, onChange);
   document.getElementById("cookHistoryOverlay").classList.add("show");
 }
+// 2026-08-11: on explicit user request, this is now a pure log of WHEN the
+// dish was made -- no per-occurrence rating of its own anymore (see class
+// doc at setRecipeStarsQuick). The "⭐ Oceń" row opens the exact same
+// review dialog as the card's badge and its own "Oceń i skomentuj" button.
 function renderCookHistoryBody(r, onChange){
   const entries = state.cooked[r.id] || [];
   const body = document.getElementById("cookHistoryBody");
   body.innerHTML = "";
+  const review = state.recipeReviews[r.id];
+  const rateRow = document.createElement("button");
+  rateRow.type = "button";
+  rateRow.className = "pantry-check-btn";
+  rateRow.style.margin = "0 0 10px";
+  rateRow.textContent = review ? `⭐ Twoja ocena: ${review.stars}/5 (zmień)` : "⭐ Oceń to danie";
+  rateRow.addEventListener("click", ()=>{
+    openRecipeReviewModal(r, ()=>{ renderCookHistoryBody(r, onChange); if(onChange) onChange(); });
+  });
+  body.appendChild(rateRow);
   if(entries.length===0){
-    body.innerHTML = `<div class="empty">Jeszcze nie oznaczone jako zrobione.</div>`;
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "Jeszcze nie oznaczone jako zrobione.";
+    body.appendChild(empty);
     return;
   }
-  const rated = entries.filter(e=>e.rating);
-  const avg = rated.length ? (rated.reduce((s,e)=>s+e.rating,0)/rated.length).toFixed(1) : null;
   const summary = document.createElement("div");
   summary.className = "hint-text";
   summary.style.margin = "0 0 10px";
-  summary.textContent = `Zrobione ${entries.length}×` + (avg ? ` · średnia ocena ${avg}★` : "");
+  summary.textContent = `Zrobione ${entries.length}×`;
   body.appendChild(summary);
   entries.forEach((entry, idx)=>{
     const row = document.createElement("div");
     row.className = "cook-history-row";
-    const stars = [1,2,3,4,5].map(n=>`<span class="star-pick" data-n="${n}">${(entry.rating||0)>=n?'★':'☆'}</span>`).join("");
     row.innerHTML = `
       <div class="ch-top-line">
         <div class="ch-date">${formatDatePl(entry.date)} <span class="ch-time">${new Date(entry.date).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})}</span></div>
         <button class="ch-del" title="Usuń wpis">✕</button>
       </div>
-      <div class="ch-stars">${stars}</div>
     `;
-    row.querySelectorAll(".star-pick").forEach(starEl=>{
-      starEl.addEventListener("click", ()=>{
-        const n = parseInt(starEl.dataset.n, 10);
-        entry.rating = (entry.rating === n) ? null : n;
-        saveState();
-        renderCookHistoryBody(r, onChange);
-        if(onChange) onChange();
-      });
-    });
     row.querySelector(".ch-del").addEventListener("click", ()=>{
       if(!confirm("Usunąć ten wpis o zrobieniu dania? Odjęte wcześniej składniki wrócą do spiżarni.")) return;
       restoreRecipeToPantry(r);
@@ -4859,10 +4889,6 @@ function renderRecipes(){
       return sb - sa;
     });
   }
-  if(sortByRating){
-    const rank = rating => rating==="like" ? 2 : rating==="dislike" ? 0 : 1;
-    items = [...items].sort((a,b)=> rank(getRecipeRating(b.id)) - rank(getRecipeRating(a.id)));
-  }
   if(sortByReview){
     const stars = id => (state.recipeReviews[id] && state.recipeReviews[id].stars) || 0;
     items = [...items].sort((a,b)=> stars(b.id) - stars(a.id));
@@ -4892,12 +4918,6 @@ document.getElementById("matchSortToggle").addEventListener("click", e=>{
   sortByMatch = !sortByMatch;
   e.target.classList.toggle("active", sortByMatch);
   toast(sortByMatch ? "Sortowanie wg dopasowania do Twojego profilu i celu diety" : "Sortowanie wyłączone");
-  renderRecipes();
-});
-document.getElementById("rankSortToggle").addEventListener("click", e=>{
-  sortByRating = !sortByRating;
-  e.target.classList.toggle("active", sortByRating);
-  toast(sortByRating ? "Ranking: polubione na górze" : "Ranking wyłączony");
   renderRecipes();
 });
 document.getElementById("userRecipesToggle").addEventListener("click", e=>{
