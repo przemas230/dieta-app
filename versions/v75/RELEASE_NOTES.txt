@@ -1,0 +1,36 @@
+Wersja 75 (2026-08-11)
+
+Pilna poprawka po zgłoszeniu, że aplikacja webowa nadal się zacina/zawiesza
+("cały czas się kręci ikonka synchronizacji... nie da się nic zrobić bo
+apka wisi, najgorzej jest w spiżarni") pomimo poprawki z wersji 73:
+
+- Zweryfikowano, że produkcyjna wersja na przemas230.github.io FAKTYCZNIE
+  już serwuje poprawkę z wersji 73/74 (sprawdzone bezpośrednio przez
+  pobranie plików) — najbardziej prawdopodobna przyczyna dalszych
+  problemów to długo otwarta karta przeglądarki, która nie zdążyła jeszcze
+  wykryć nowej wersji Service Workera.
+- Dodano twardy "wyłącznik bezpieczeństwa" na synchronizację z chmurą:
+  jeśli w ciągu 25 sekund nastąpi więcej niż 12 prób synchronizacji (co by
+  się stało tylko przy realnym zapętleniu, nie przy normalnym korzystaniu
+  z aplikacji), synchronizacja zatrzymuje się CAŁKOWICIE na resztę sesji
+  (do odświeżenia strony) zamiast kręcić się i zużywać zasoby w
+  nieskończoność — ikonka w nagłówku pokazuje wtedy błąd, a w konsoli i na
+  ekranie pojawia się czytelny komunikat z instrukcją odświeżenia strony.
+  To zabezpieczenie działa niezależnie od tego, czy poprzednia poprawka
+  (wersja 73) w pełni usunęła pierwotną przyczynę — jest to twardy limit,
+  a nie kolejna próba naprawienia dokładnie tego samego mechanizmu.
+- Dodano też limit czasu (15 sekund) na pojedynczy zapis do chmury — jeśli
+  zapis nie zakończy się w tym czasie (np. z powodu braku sieci), ikonka
+  synchronizacji przestaje się kręcić i pokazuje błąd zamiast wisieć bez
+  końca; jeśli zapis mimo to później faktycznie się powiedzie, ikonka
+  poprawnie wraca do stanu "zsynchronizowano".
+- Wzmocniono mechanizm wykrywania aktualizacji: oprócz sprawdzania nowej
+  wersji przy wczytaniu strony i powrocie do karty, aplikacja teraz
+  sprawdza też co 10 minut w tle — długo otwarta karta, która nigdy nie
+  została schowana/przywrócona, też sama wykryje i zainstaluje nową wersję.
+
+Zweryfikowane bezpośrednio w przeglądarce: symulacja 20 szybkich prób
+synchronizacji z rzędu poprawnie zatrzymuje mechanizm po 13. próbie i
+pokazuje błąd zamiast kontynuować w nieskończoność; kolejne próby po
+zatrzymaniu są całkowicie ignorowane (licznik przestaje rosnąć). Service
+Worker v48→v49.

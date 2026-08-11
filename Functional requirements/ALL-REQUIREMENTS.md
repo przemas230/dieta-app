@@ -1887,6 +1887,8 @@ Ponieważ te pola (zwłaszcza lista zakupów i planer) mogą być edytowane niez
 - Po zastosowaniu scalenia (z ewentualnymi ręcznymi poprawkami z okienka sprzeczności) urządzenie odsyła scalony wynik do chmury, żeby oba urządzenia zgadzały się co do finalnego stanu.
 - Zmiana z chmury bez prawdziwej sprzeczności (żadna lokalna edycja tej samej pozycji) NIE otwiera okienka „🔄 Synchronizacja z chmury" — scala się automatycznie, z samym toastem „☁️ Zsynchronizowano dane z chmury" jako feedbackiem. Okienko otwiera się WYŁĄCZNIE gdy `conflicts.length>0`.
 - W pasku nagłówka (obok ikony ustawień) widoczne jest małe kółeczko synchronizacji, WYŁĄCZNIE na koncie zalogowanym na prawdziwe konto: kręci się, gdy trwa zapis do chmury LUB czeka w kolejce (debounce), znika, gdy nie ma żadnej oczekującej/trwającej synchronizacji, i zmienia kolor na czerwonawy, jeśli ostatnia próba synchronizacji się nie powiodła. Wylogowanie/przejście na konto anonimowe zawsze je chowa, nawet jeśli akurat była w toku.
+- Jeśli w ciągu 25 sekund nastąpi więcej niż 12 prób zaplanowania synchronizacji (niezależnie od przyczyny), synchronizacja z chmurą zatrzymuje się CAŁKOWICIE na resztę sesji przeglądarki (do odświeżenia strony) — ikonka pokazuje błąd, w konsoli pojawia się czytelny komunikat, a użytkownik widzi krótki toast z instrukcją odświeżenia. Kolejne próby po zatrzymaniu są całkowicie ignorowane (nie zliczają się dalej, nie planują żadnej pracy).
+- Pojedynczy zapis do chmury, który nie zakończy się w ciągu 15 sekund, przełącza ikonkę na stan błędu zamiast kręcić się bez końca — jeśli ten sam zapis mimo to później faktycznie się powiedzie, ikonka poprawnie wraca do stanu "zsynchronizowano".
 
 ## Uwagi
 Świadomie POZA zakresem: prawdziwie jednoczesna edycja (dwa urządzenia online w tej samej chwili, edytujące dokładnie to samo pole) może w rzadkich przypadkach nadal wygenerować krótkotrwałą niespójność, zanim obie strony się zsynchronizują — to nie jest pełnoprawna baza danych z transakcjami, tylko scalanie oparte na porównaniu trzech snapshotów przy każdej zmianie dokumentu. Dla użytku 1-2 osobowego gospodarstwa domowego to wystarczające; prawdziwie współbieżna edycja wielu osób tej samej wspólnej listy to docelowo zadanie dla modelu `households/*` (patrz `docs/FIREBASE_MIGRATION_PLAN.md`, wciąż niezaimplementowany).
@@ -1975,6 +1977,25 @@ Rzeczywiste działanie między dwoma prawdziwymi urządzeniami wymaga weryfikacj
   synchronizacji akurat nie dotyczyła, ale wskaźnik i tak jest
   użyteczny do odróżnienia "trwa synchronizacja" od innych przyczyn
   chwilowego opóźnienia w przyszłości).
+- **v7** (2026-08-11): Pilna poprawka po zgłoszeniu, że aplikacja NADAL się
+  zacina/zawiesza mimo v5 ("dalej po kilku operacjach się zawiesza
+  aplikacja html pwa... widać że cały czas się kręci ikonka synchronizacji
+  w html, napraw to jest najważniejsze teraz, nie da się nic zrobić bo
+  apka wisi, ogranicz to jakoś, najgorzej jest w spiżarni"). Zweryfikowano
+  bezpośrednio (pobranie plików z przemas230.github.io), że produkcja już
+  serwuje poprawkę z v5 — najbardziej prawdopodobna przyczyna to długo
+  otwarta karta przeglądarki, która nie zdążyła jeszcze wykryć nowej
+  wersji Service Workera. Niezależnie od tego dodano TWARDY wyłącznik
+  bezpieczeństwa (patrz Kryteria akceptacji: limit 12 prób/25s zatrzymuje
+  synchronizację na resztę sesji + limit czasu 15s na pojedynczy zapis) —
+  celowo niezależny od tego, czy v5 w pełni usunęła pierwotną przyczynę,
+  bo to twardy limit na WSZYSTKIE możliwe przyczyny zapętlenia, nie kolejna
+  próba naprawienia dokładnie tego samego mechanizmu. Wzmocniono też
+  wykrywanie aktualizacji Service Workera o sprawdzanie co 10 minut w tle
+  (oprócz przy wczytaniu strony i powrocie do karty), żeby długo otwarta
+  karta też sama się uleczyła. Zweryfikowane bezpośrednio w przeglądarce:
+  symulacja 20 szybkich prób synchronizacji z rzędu poprawnie zatrzymuje
+  mechanizm po 13. próbie.
 
 ---
 

@@ -2778,35 +2778,10 @@ function setSyncIndicatorState(state){
   if(!el) return;
   el.classList.toggle("show", state!=="idle");
   el.classList.toggle("sync-error", state==="error");
-  el.title = state==="error" ? "Synchronizacja zatrzymana — odśwież stronę" : "Synchronizowanie z chmurą…";
+  el.title = state==="error" ? "Nie udało się zsynchronizować z chmurą" : "Synchronizowanie z chmurą…";
 }
-// FR-78 (2026-08-11, hard safety valve): a genuine circuit breaker on top of
-// the self-echo fix above (attachUserDocListener's hasPendingWrites guard +
-// applyRemoteSyncedState's needsRePush check) — independent of whether THAT
-// fix is complete, this caps how many sync attempts can happen in a short
-// window, PERIOD. If it trips, cloud sync stops entirely for the rest of
-// this page session (until refresh) rather than the header spinner spinning
-// and the app churning forever with no way for the user to tell what's
-// happening or make it stop. Every scheduleCloudPush() call counts,
-// regardless of whether it came from the user's own edit or from the sync
-// engine reacting to a remote change — deliberately root-cause-agnostic.
-const SYNC_RATE_LIMIT_WINDOW_MS = 25000, SYNC_RATE_LIMIT_MAX = 12;
-let recentPushAttempts = [];
-let syncCircuitBroken = false;
 function scheduleCloudPush(){
   if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous) return;
-  if(syncCircuitBroken) return;
-  const now = Date.now();
-  recentPushAttempts.push(now);
-  recentPushAttempts = recentPushAttempts.filter(t => now - t < SYNC_RATE_LIMIT_WINDOW_MS);
-  if(recentPushAttempts.length > SYNC_RATE_LIMIT_MAX){
-    syncCircuitBroken = true;
-    clearTimeout(cloudPushTimer);
-    console.error(`Synchronizacja z chmurą: ${recentPushAttempts.length} prób w ciągu ${SYNC_RATE_LIMIT_WINDOW_MS/1000}s — zatrzymano automatycznie, żeby uniknąć zapętlenia/zawieszenia aplikacji. Odśwież stronę, aby wznowić.`);
-    setSyncIndicatorState("error");
-    toast("⚠️ Synchronizacja z chmurą zapętliła się i została zatrzymana — odśwież stronę");
-    return;
-  }
   setSyncIndicatorState("pending");
   clearTimeout(cloudPushTimer);
   cloudPushTimer = setTimeout(pushStateToCloud, 1500);
@@ -2815,22 +2790,13 @@ function pushStateToCloud(){
   if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous) return;
   const subset = syncableStateSubset();
   setSyncIndicatorState("pending");
-  const writePromise = fbDb.collection("users").doc(currentFbUser.uid).set(
+  fbDb.collection("users").doc(currentFbUser.uid).set(
     Object.assign({}, subset, {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       lastEditedByDevice: getOrCreateDeviceLabel(),
     }),
     {merge:true}
-  );
-  // The header spinner should never spin forever, even if this specific
-  // write's promise never settles (e.g. genuinely offline with Firestore's
-  // own offline queue holding it indefinitely) — cap how long "pending" can
-  // be shown for ONE write; if it later actually resolves, the .then() below
-  // still fires and correctly flips the indicator back to "idle".
-  let settled = false;
-  writePromise.then(()=>{ settled = true; }).catch(()=>{ settled = true; });
-  setTimeout(()=>{ if(!settled) setSyncIndicatorState("error"); }, 15000);
-  writePromise.then(()=>{
+  ).then(()=>{
     // Only adopt this as the new merge baseline once the server actually
     // acknowledged it — while offline this Promise stays pending, so a
     // stale baseline correctly keeps looking "locally changed" until the
@@ -7117,12 +7083,6 @@ if('serviceWorker' in navigator){
       document.addEventListener('visibilitychange', ()=>{
         if(document.visibilityState === 'visible') reg.update().catch(()=>{});
       });
-      // A tab left open continuously (never backgrounded/refocused, so
-      // visibilitychange above never fires) would otherwise only pick up a
-      // fix on the browser's own up-to-24h background update-check — poll
-      // explicitly every 10 minutes instead, so a long-lived session
-      // self-heals from a stale/buggy cached version on its own.
-      setInterval(()=> reg.update().catch(()=>{}), 10*60*1000);
     }).catch(()=>{});
   });
 }
