@@ -114,6 +114,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 ### Konto i chmura
 - [FR-73: Synchronizacja danych osobistych w chmurze między urządzeniami](#fr-73-synchronizacja-danych-osobistych-w-chmurze-między-urządzeniami)
 - [FR-76: Przepisy społeczności oraz przeglądana lista użytkowników i profili](#fr-76-przepisy-społeczności-oraz-przeglądana-lista-użytkowników-i-profili)
+- [FR-85: Zatwierdzanie przepisów społeczności z poziomu aplikacji + „Moje przepisy”](#fr-85-zatwierdzanie-przepisów-społeczności-z-poziomu-aplikacji--moje-przepisy)
 - [FR-78: Pełna synchronizacja stanu z prawdziwym scalaniem zmian (3-way merge)](#fr-78-pełna-synchronizacja-stanu-z-prawdziwym-scalaniem-zmian-3-way-merge)
 - [FR-79: Wylogowanie z urządzenia](#fr-79-wylogowanie-z-urządzenia)
 - [FR-80: Dzień tygodnia przy składniku na liście zakupów](#fr-80-dzień-tygodnia-przy-składniku-na-liście-zakupów)
@@ -1490,6 +1491,13 @@ Zrewidowane 2026-08-08: dodano automatyczne obliczanie kalorii/makroskładników
 - **v1** (2026-08-07): Pierwsza wersja wymagania na podstawie polecenia użytkownika.
 - **v2** (2026-08-08): Dodano automatyczne obliczanie makroskładników z listy składników oraz poprawiono czytelność walidacji — patrz "Uwagi" i zaktualizowane kryteria akceptacji.
 - **v3** (2026-08-08): Przewidywanie z "Uwag" ("gotowy stać się przepisem społecznościowym po podłączeniu Firebase, bez zmiany kształtu danych") zrealizowane — patrz FR-76.
+- **v4** (2026-08-11, Android): Na życzenie użytkownika, przycisk „➕ Dodaj
+  swój przepis” przeniesiony z inline (pod paskiem filtrów) na floating
+  przycisk „📖” w prawym dolnym rogu, widoczny tylko na Przepisach, obok
+  analogicznego floating „💡” z FR-32/v2. Sam formularz i zachowanie po
+  zapisaniu — bez zmian. Web NIE zmieniony w tej turze — świadoma
+  rozbieżność, patrz `android/PARITY.md`. Zatwierdzanie przepisów z
+  poziomu aplikacji (nie tylko konsoli Firebase) opisane w nowym FR-85.
 
 ---
 
@@ -1956,6 +1964,90 @@ Zapisanie własnej oceny/komentarza (FR-67) publikuje ją — jeśli użytkownik
   rozwinięcia tego i zobaczenia domyślnie 3 komentarzy a po show more/pokaż
   więcej żeby doczytywało powiedzmy po 10 komentarzy do tego przepisu jeśli
   takie będą").
+
+---
+
+# FR-85: Zatwierdzanie przepisów społeczności z poziomu aplikacji + „Moje przepisy”
+
+**Obszar:** Przepisy i przeglądanie
+**Status:** Zaimplementowane (Android), Android-only
+
+## Opis
+Rozszerzenie moderacji przepisów społeczności (FR-76/FR-68) o dwie nowe
+sekcje w Ustawieniach → Konto, dostępne **tylko w aplikacji Android**:
+
+1. **„🧑‍🍳 Moje przepisy”** — widoczna dla każdego użytkownika, który dodał
+   przynajmniej jeden własny przepis („📖 Dodaj swój przepis”, FR-66).
+   Lista jego przepisów wraz ze statusem moderacji pobranym z Firestore:
+   „⏳ Czeka na zatwierdzenie” / „✅ Zatwierdzony” / „❌ Odrzucony” / „☁️
+   Synchronizowanie…” (dopóki publikacja jeszcze nie dotarła do chmury).
+2. **„🛡️ Zatwierdzanie przepisów społeczności”** — widoczna WYŁĄCZNIE dla
+   konta `przemas230@gmail.com` (sprawdzane po zalogowanym e-mailu). Lista
+   wszystkich przepisów ze statusem `"pending"` w całej bazie, z
+   przyciskami „✅ Zatwierdź” i „❌ Odrzuć” przy każdym. Zatwierdzenie
+   ustawia `status: "approved"` (przepis staje się widoczny dla innych
+   użytkowników z włączonym przełącznikiem „Przepisy społeczności”, FR-68);
+   odrzucenie ustawia `status: "rejected"` (dokument NIE jest kasowany, więc
+   autor widzi w swoim „Moje przepisy”, że został odrzucony).
+
+Wcześniej (FR-76) jedynym sposobem zatwierdzenia przepisu była ręczna
+edycja pola `status` w konsoli Firebase — ta droga nadal działa (reguły
+bezpieczeństwa nie blokują edycji z konsoli), ale nie jest już jedyną.
+
+## Kryteria akceptacji
+- „Moje przepisy” nie pokazuje się, jeśli użytkownik nie ma żadnych
+  własnych przepisów (`myRecipes` puste).
+- „🛡️ Zatwierdzanie…” pokazuje się WYŁĄCZNIE gdy `AuthState.SignedIn.email
+  == "przemas230@gmail.com"` — dla każdego innego konta (w tym innych
+  prawdziwych kont Google/e-mail) karta jest całkowicie niewidoczna, nie
+  tylko wyszarzona.
+- Zatwierdzenie/odrzucenie aktualizuje Firestore natychmiast (bez
+  potwierdzenia/dialogu — pojedyncze kliknięcie, symetrycznie do
+  dotychczasowej ręcznej edycji w konsoli) i przepis znika z listy
+  oczekujących (żywy nasłuch `status == "pending"`, nie odświeżanie ręczne).
+- Bez wklejonej zaktualizowanej reguły Firestore (patrz Uwagi) obie karty
+  bezpiecznie pokazują pusty/nieaktywny stan zamiast crasha — ten sam
+  wzorzec co reszta funkcji społecznościowych (FR-68/76/77).
+
+## Uwagi
+**Wymaga zaktualizowanej reguły bezpieczeństwa Firestore dla
+`recipes/{recipeId}`** — dodano trzeci przypadek do `allow read`/`allow
+update`, sprawdzający `request.auth.token.email ==
+"przemas230@gmail.com"`. Pełna reguła w
+`docs/FIREBASE_MIGRATION_PLAN.md`, sekcja z regułami Firestore — **użytkownik
+musi ją ręcznie wkleić w konsoli Firebase**, tak samo jak przy
+poprzednich funkcjach społecznościowych; do tego czasu karta moderacji
+bezpiecznie pokazuje pustą listę (odczyt `status == "pending"` po prostu
+nic nie zwróci dla kont bez uprawnień).
+
+Świadoma, udokumentowana rozbieżność web/Android (patrz `android/PARITY.md`)
+— funkcja dodana wyłącznie w sesji dotyczącej Kotlina; port do
+`index.html` pozostaje do rozważenia w osobnej turze.
+
+Sprawdzanie uprawnień moderatora po e-mailu (nie po uid) jest celowe — to
+jedyny sposób, żeby zarówno reguła Firestore, jak i klient, rozpoznały to
+samo konto niezależnie od metody logowania (Google vs e-mail/hasło mogą w
+teorii dać różne uid dla tego samego adresu, jeśli konto kiedyś zmieniło
+metodę logowania).
+
+## Historia rewizji
+- **v1** (2026-08-11, Android): Pierwsza wersja, na wyraźną prośbę
+  użytkownika ("tylko konto przemas230@gmail.com będzie mogło zatwierdzać
+  przepisy dodaj mi w ustawieniach taką opcję"). Nowe
+  `ui/RecipeModerationViewModel.kt` + `ui/RecipeModerationCoordinator.kt`
+  (Firestore listenery: `authorUid == uid` dla "Moje przepisy",
+  `status == "pending"` tylko dla moderatora) + `MyRecipesCard`/
+  `RecipeModerationCard` w `SettingsScreen.kt`. Przy okazji naprawiony
+  pre-istniejący błąd: `SettingsScreen`'s `recipeViewModel` nigdy nie było
+  jawnie przekazywane z `MainActivity.kt`, więc domyślny `viewModel()`
+  faktycznie tworzył OSOBNĄ instancję scopowaną do ekranu Ustawień,
+  niezależną od współdzielonej używanej przez resztę aplikacji — bez tej
+  poprawki "Moje przepisy" pokazywałoby pustą/nieaktualną listę.
+  `./gradlew :app:assembleDebug :app:testDebugUnitTest :logic:test`
+  przechodzi. **Nie zweryfikowane na żywo** — wymaga (1) wklejenia
+  zaktualizowanej reguły Firestore w konsoli Firebase, (2) sprawdzenia w
+  Android Studio na koncie `przemas230@gmail.com` oraz na innym koncie
+  (żeby potwierdzić że karta moderacji faktycznie się nie pokazuje).
 
 ---
 

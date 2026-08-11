@@ -124,6 +124,8 @@ import com.przemas230.dietaapp.ui.PostepScreen
 import com.przemas230.dietaapp.ui.ProfileViewModel
 import com.przemas230.dietaapp.ui.RecipeCommentsViewModel
 import com.przemas230.dietaapp.ui.RecipeListScreen
+import com.przemas230.dietaapp.ui.RecipeModerationCoordinator
+import com.przemas230.dietaapp.ui.RecipeModerationViewModel
 import com.przemas230.dietaapp.ui.RecipeViewModel
 import com.przemas230.dietaapp.ui.SettingsScreen
 import com.przemas230.dietaapp.ui.ShoppingScreen
@@ -271,6 +273,8 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // so CommunityCoordinator below can invalidate an expanded comment
     // thread the instant this device's own review is saved/deleted.
     val recipeCommentsViewModel: RecipeCommentsViewModel = viewModel()
+    // FR-76/v2: "Moje przepisy" status + moderator-only approval in Ustawienia.
+    val recipeModerationViewModel: RecipeModerationViewModel = viewModel()
     // FR-70: shared at the Scaffold level (not per-screen) so the header
     // droplet strip below is the single source of truth, visible on every tab.
     val waterViewModel: WaterViewModel = viewModel()
@@ -334,6 +338,9 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
         recipeViewModel = recipeViewModel,
         commentsViewModel = recipeCommentsViewModel,
     )
+    // FR-76/v2: no UI of its own -- feeds "Moje przepisy"'s status badges +
+    // the moderator-only approval card in Ustawienia, see its own doc comment.
+    RecipeModerationCoordinator(authViewModel = authViewModel, viewModel = recipeModerationViewModel)
     // FR-38/39: no UI of its own -- keeps the persistent tracker notification
     // in sync with waterViewModel in both directions. See its own doc comment.
     WaterNotificationCoordinator(waterViewModel = waterViewModel, notificationViewModel = waterNotificationViewModel)
@@ -396,6 +403,9 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // FR-32/v2: floating "💡" on Przepisy -- see FavoriteDishIdeaDialog.
     var showFavoriteDishIdeaDialog by remember { mutableStateOf(false) }
     val favIngredientsForIdea by favoriteIngredientsViewModel.favorites.collectAsState()
+    // FR-66/v2: floating "📖" on Przepisy -- see RecipeListScreen's
+    // showAddRecipeDialog/onAddRecipeDialogDismiss doc comment.
+    var showAddRecipeDialog by remember { mutableStateOf(false) }
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
     val allRecipes by plannerViewModel.allRecipes.collectAsState()
     val recipesById = remember(allRecipes) { allRecipes.associateBy { it.id } }
@@ -571,12 +581,23 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     Text("➕")
                 }
             }
-            // FR-32/v2 (2026-08-11): floating dish-idea search, Przepisy only
-            // -- replaces the old inline "💡 Pomysł na danie" button, see
-            // FavoriteDishIdeaDialog's doc comment.
+            // FR-32/v2 + FR-66/v2 (2026-08-11): two floating buttons, Przepisy
+            // only -- "💡" (dish-idea search, replaces the old inline "💡
+            // Pomysł na danie" button, see FavoriteDishIdeaDialog's doc
+            // comment) and "📖" (add your own recipe -- "książka kucharska"
+            // cookbook look per the user's request, replaces the old inline
+            // "➕ Dodaj swój przepis" button). Stacked in an explicit Column
+            // (Scaffold's floatingActionButton slot does NOT auto-arrange
+            // multiple direct children -- without this they'd overlap at the
+            // same anchor), bottom one first so "💡" ends up above "📖".
             if (currentRoute == Screen.Recipes.route) {
-                FloatingActionButton(onClick = { showFavoriteDishIdeaDialog = true }) {
-                    Text("💡")
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    FloatingActionButton(onClick = { showFavoriteDishIdeaDialog = true }) {
+                        Text("💡")
+                    }
+                    FloatingActionButton(onClick = { showAddRecipeDialog = true }) {
+                        Text("📖")
+                    }
                 }
             }
         },
@@ -599,6 +620,8 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     listState = recipeListState,
                     commentsViewModel = recipeCommentsViewModel,
                     headerExpanded = headerExpanded,
+                    showAddRecipeDialog = showAddRecipeDialog,
+                    onAddRecipeDialogDismiss = { showAddRecipeDialog = false },
                 )
             }
             composable(Screen.Shopping.route) {
@@ -637,6 +660,20 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     allRecipes = allRecipes,
                     plannerViewModel = plannerViewModel,
                     shoppingViewModel = shoppingViewModel,
+                    // Bug fixed 2026-08-11: was never explicitly passed, so
+                    // SettingsScreen's `recipeViewModel: RecipeViewModel =
+                    // viewModel()` default silently resolved to an instance
+                    // scoped to the Ustawienia NavBackStackEntry -- DIFFERENT
+                    // from the shared instance every other screen uses
+                    // (Navigation-Compose scopes unpassed `viewModel()`
+                    // defaults per-destination, same reason every other
+                    // ViewModel in this file is explicitly threaded through).
+                    // CommunityRecipesCard's toggle happened to still look
+                    // reactive via the cloud/local-disk round-trip, but the
+                    // new "Moje przepisy" card needs the REAL shared
+                    // `myRecipes` list, which surfaced this.
+                    recipeViewModel = recipeViewModel,
+                    recipeModerationViewModel = recipeModerationViewModel,
                     onClearLocalData = {
                         // FR-79: "wyczyść dane lokalne". The on-disk cloud-sync
                         // baseline is cleared right away (harmless regardless of

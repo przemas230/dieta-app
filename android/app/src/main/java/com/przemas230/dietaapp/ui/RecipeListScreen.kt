@@ -137,6 +137,14 @@ fun RecipeListScreen(
     // manual-override state), since it took up too much of the screen
     // pinned visible the whole time scrolled into a long recipe list.
     headerExpanded: Boolean = true,
+    // FR-66/v2 (2026-08-11): hoisted (was an internal `remember`) -- the
+    // trigger moved from an inline "➕ Dodaj swój przepis" button to a
+    // floating "📖" FAB that lives in MainActivity's Scaffold (Przepisy-only,
+    // same reasoning as the FR-32/v2 floating "💡"), so MainActivity now owns
+    // when this dialog opens; this screen still owns rendering it and
+    // resetting the flag on dismiss/submit.
+    showAddRecipeDialog: Boolean = false,
+    onAddRecipeDialogDismiss: () -> Unit = {},
 ) {
     val swipeRatingStyle by swipeRatingStyleViewModel.style.collectAsState()
     val recipes by viewModel.visibleRecipes.collectAsState()
@@ -165,7 +173,6 @@ fun RecipeListScreen(
     var onlyPantryReady by remember { mutableStateOf(false) }
     var onlyUserRecipes by remember { mutableStateOf(false) }
     var minRatingFilter by remember { mutableStateOf(0) }
-    var showAddRecipeDialog by remember { mutableStateOf(false) }
     val macroTargets = remember(profile) { ProfileCalculations.calcMacroTargets(profile) }
     val kcalTargets = remember(profile) { ProfileCalculations.calcTargets(profile) }
     // FR-72: the 🎯 badge means nothing before the user has entered real
@@ -302,19 +309,6 @@ fun RecipeListScreen(
         }
         }
 
-        // FR-66: opens a form to add a fully-custom recipe (own ingredients,
-        // method, kcal) -- port of index.html's "➕ Dodaj swój przepis".
-        OutlinedButton(
-            onClick = { showAddRecipeDialog = true },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-        ) {
-            Text("➕ Dodaj swój przepis")
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
         when {
             isLoading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Wczytywanie przepisów…")
@@ -351,7 +345,7 @@ fun RecipeListScreen(
         AddCustomRecipeDialog(
             initialCat = selectedCategory,
             onAdd = { input -> viewModel.addCustomRecipe(input) },
-            onDismiss = { showAddRecipeDialog = false },
+            onDismiss = onAddRecipeDialogDismiss,
         )
     }
 }

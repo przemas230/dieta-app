@@ -200,18 +200,32 @@ service cloud.firestore {
     }
 
     match /recipes/{recipeId} {
+      // 2026-08-11: dodano trzeci przypadek do read/update -- konto
+      // moderatora (sprawdzane po e-mailu z tokenu, nie po uid, bo to on
+      // się nie zmienia niezależnie od tego jak moderator się zalogował)
+      // może teraz odczytać i zatwierdzić/odrzucić DOWOLNY przepis w stanie
+      // "pending" bezpośrednio z aplikacji (Ustawienia -> "🛡️ Zatwierdzanie
+      // przepisów społeczności"), zamiast wyłącznie ręcznej edycji w
+      // konsoli Firebase jak dotychczas -- ta ręczna ścieżka nadal działa
+      // (edycja w konsoli nie przechodzi przez te reguły), to dodatkowa,
+      // wygodniejsza droga, nie zamiennik.
       allow read: if resource.data.status == "approved"
-        || (request.auth != null && request.auth.uid == resource.data.authorUid);
+        || (request.auth != null && request.auth.uid == resource.data.authorUid)
+        || (request.auth != null && request.auth.token.email == "przemas230@gmail.com");
       allow create: if request.auth != null
         && request.auth.uid == request.resource.data.authorUid
         && request.resource.data.status == "pending";
       // Autor może poprawić inne pola (np. literówkę), ale NIE może sam
-      // zmienić status z "pending" na "approved" — to zatwierdza tylko Ty,
-      // ręcznie w konsoli Firebase (edycja pola w konsoli nie przechodzi
-      // przez te reguły, więc to nadal działa).
+      // zmienić status z "pending" na "approved" — to zatwierdza tylko
+      // konto moderatora (przemas230@gmail.com), z aplikacji (patrz wyżej)
+      // albo ręcznie w konsoli Firebase.
       allow update: if request.auth != null
-        && request.auth.uid == resource.data.authorUid
-        && request.resource.data.status == resource.data.status;
+        && (
+          (request.auth.uid == resource.data.authorUid
+            && request.resource.data.status == resource.data.status)
+          || (request.auth.token.email == "przemas230@gmail.com"
+            && request.resource.data.status in ["pending", "approved", "rejected"])
+        );
       allow delete: if request.auth != null && request.auth.uid == resource.data.authorUid;
 
       match /ratings/{uid} {
@@ -250,9 +264,17 @@ requirements/FR-76). Zgodnie z pierwotnym planem poniżej:
 - ✅ Formularz "Dodaj swój przepis" zapisuje nowy dokument w `recipes/` ze
   `status: "pending"`, widoczny od razu tylko dla autora (lokalnie, przez
   `state.myRecipes` — niezależnie od statusu zatwierdzenia w chmurze).
-- ✅ Zatwierdzanie `"pending" → "approved"`: ręczna zmiana pola w konsoli
-  Firebase (Ty jako jedyny moderator) — reguły bezpieczeństwa wyżej
-  jawnie NIE pozwalają autorowi samodzielnie zmienić własny status.
+- ✅ Zatwierdzanie `"pending" → "approved"` (lub `"rejected"`): reguły
+  bezpieczeństwa wyżej jawnie NIE pozwalają autorowi samodzielnie zmienić
+  własny status — tylko konto moderatora (`przemas230@gmail.com`, po
+  e-mailu z tokenu) może to zrobić. **Od 2026-08-11 (Android)**: bezpośrednio
+  z aplikacji — Ustawienia -> "🛡️ Zatwierdzanie przepisów społeczności"
+  (widoczne tylko po zalogowaniu na to konto), lista wszystkich `"pending"`
+  z przyciskami ✅/❌. Ręczna edycja pola w konsoli Firebase nadal działa
+  jako alternatywa (edycja w konsoli nie przechodzi przez te reguły).
+  **Wymaga wklejenia zaktualizowanej reguły `recipes/{recipeId}` powyżej w
+  konsoli Firebase** — bez tego karta bezpiecznie pokazuje pustą listę
+  zamiast crasha (patrz `android/PARITY.md`).
 - ⬜ Jeszcze nie zrobione: sortowanie po ŚREDNIEJ ocenie od wszystkich
   użytkowników. Dziś sortowanie "🏆" nadal patrzy tylko na `state.
   recipeReviews` (Twoją własną ocenę na tym urządzeniu) — prawdziwa,

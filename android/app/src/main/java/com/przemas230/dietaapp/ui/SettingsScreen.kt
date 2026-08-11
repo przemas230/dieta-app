@@ -41,11 +41,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -68,6 +70,7 @@ import com.przemas230.dietaapp.logic.PantryTiles
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.UiScale
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 /** FR-71: the 4 pill tabs, in index.html's own order. */
 private enum class SettingsTab(val emoji: String, val label: String) {
@@ -118,6 +121,9 @@ fun SettingsScreen(
     // shares the same instance MainActivity/CommunityCoordinator use --
     // toggling here must be visible to the recipe list immediately.
     recipeViewModel: RecipeViewModel = viewModel(),
+    // FR-76/v2: "Moje przepisy" status + moderator-only approval, see
+    // RecipeModerationCoordinator's doc comment.
+    recipeModerationViewModel: RecipeModerationViewModel = viewModel(),
     onBrowseUsers: () -> Unit = {},
 ) {
     // FR-71: always starts on Konto -- plain remember (no key/ViewModel
@@ -168,6 +174,8 @@ fun SettingsScreen(
                             ProfileCard(profileViewModel, plannerViewModel, shoppingViewModel, allRecipes)
                             CloudAccountCard(authViewModel, onClearLocalData)
                             CommunityRecipesCard(recipeViewModel, onBrowseUsers)
+                            MyRecipesCard(recipeViewModel, recipeModerationViewModel)
+                            RecipeModerationCard(authViewModel, recipeModerationViewModel)
                         }
                         SettingsTab.WYGLAD -> {
                             ThemeCard(themeViewModel)
@@ -633,6 +641,101 @@ private fun CommunityRecipesCard(viewModel: RecipeViewModel, onBrowseUsers: () -
             }
             OutlinedButton(onClick = onBrowseUsers, modifier = Modifier.fillMaxWidth()) {
                 Text("👥 Przeglądaj użytkowników")
+            }
+        }
+    }
+}
+
+private fun recipeStatusLabel(status: String?): String = when (status) {
+    "approved" -> "✅ Zatwierdzony"
+    "rejected" -> "❌ Odrzucony"
+    "pending" -> "⏳ Czeka na zatwierdzenie"
+    else -> "☁️ Synchronizowanie…"
+}
+
+/**
+ * FR-76/v2 (2026-08-11, user request): every recipe the CURRENT device has
+ * added via "📖 Dodaj swój przepis" (`recipeViewModel.myRecipes`, always
+ * shown locally regardless of cloud status -- FR-76's own rule), each with
+ * its moderation status pulled from Firestore by
+ * `RecipeModerationCoordinator` (`recipeModerationViewModel.myRecipeStatuses`,
+ * keyed by recipe id). A recipe not yet present in that map means the
+ * publish write (`CommunityCoordinator`) hasn't round-tripped yet, or
+ * `communityRecipesEnabled`/the Firestore rules aren't set up -- shown as
+ * "☁️ Synchronizowanie…" either way rather than guessing which.
+ */
+@Composable
+private fun MyRecipesCard(recipeViewModel: RecipeViewModel, moderationViewModel: RecipeModerationViewModel) {
+    val myRecipes by recipeViewModel.myRecipes.collectAsState()
+    val statuses by moderationViewModel.myRecipeStatuses.collectAsState()
+    if (myRecipes.isEmpty()) return
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("🧑‍🍳 Moje przepisy", style = MaterialTheme.typography.titleMedium)
+            myRecipes.forEach { recipe ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(recipe.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    Text(
+                        recipeStatusLabel(statuses[recipe.id]),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * FR-76/v2 (2026-08-11, user request): "tylko konto przemas230@gmail.com
+ * będzie mogło zatwierdzać przepisy" -- visible ONLY while signed in as
+ * [RECIPE_MODERATOR_EMAIL] (client-side convenience gate; the Firestore
+ * security rule is the real enforcement, see RecipeModerationCoordinator's
+ * doc comment). Lists every `status == "pending"` community submission with
+ * ✅/❌ actions -- approve sets `status = "approved"` (same effect as the
+ * previous manual Firebase-console edit), reject sets `status = "rejected"`
+ * rather than deleting, so the author's own MyRecipesCard can show why.
+ */
+@Composable
+private fun RecipeModerationCard(authViewModel: AuthViewModel, moderationViewModel: RecipeModerationViewModel) {
+    val authState by authViewModel.state.collectAsState()
+    if ((authState as? AuthState.SignedIn)?.email != RECIPE_MODERATOR_EMAIL) return
+    val pending by moderationViewModel.pendingRecipes.collectAsState()
+    val scope = rememberCoroutineScope()
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("🛡️ Zatwierdzanie przepisów społeczności", style = MaterialTheme.typography.titleMedium)
+            if (pending.isEmpty()) {
+                Text(
+                    "Brak przepisów czekających na zatwierdzenie.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                pending.forEach { recipe ->
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(recipe.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Autor: ${recipe.authorDisplayName ?: "?"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { scope.launch { approveRecipe(recipe.id) } }) { Text("✅ Zatwierdź") }
+                            OutlinedButton(onClick = { scope.launch { rejectRecipe(recipe.id) } }) { Text("❌ Odrzuć") }
+                        }
+                    }
+                }
             }
         }
     }
