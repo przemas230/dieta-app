@@ -187,6 +187,8 @@ fun RecipeListScreen(
     var onlyPantryReady by remember { mutableStateOf(false) }
     var onlyUserRecipes by remember { mutableStateOf(false) }
     var minRatingFilter by remember { mutableStateOf(0) }
+    // 2026-08-11: "❤️ Podoba się" chip, see its own doc comment below.
+    var onlyLiked by remember { mutableStateOf(false) }
     val macroTargets = remember(profile) { ProfileCalculations.calcMacroTargets(profile) }
     val kcalTargets = remember(profile) { ProfileCalculations.calcTargets(profile) }
     // FR-72: the 🎯 badge means nothing before the user has entered real
@@ -201,7 +203,7 @@ fun RecipeListScreen(
         }
     }
     val displayedRecipes = remember(
-        recipes, onlyFavorites, onlyIngFav, onlyPantryReady, onlyUserRecipes, minRatingFilter,
+        recipes, onlyFavorites, onlyIngFav, onlyPantryReady, onlyUserRecipes, minRatingFilter, onlyLiked,
         sortByMatch, sortByReview, matchScores, reviews,
         favoriteRecipeIds, favIngredients, pantryItems,
     ) {
@@ -219,6 +221,11 @@ fun RecipeListScreen(
         // community recipes from other users, same as index.html's criterion.
         if (onlyUserRecipes) result = result.filter { it.source == "custom" || it.source == "community" }
         if (minRatingFilter > 0) result = result.filter { (reviews[it.id]?.stars ?: 0) >= minRatingFilter }
+        // 2026-08-11: same >=4 "liked" cutoff RecipeCard's border tint/swipe
+        // feedback already use (see class doc there) -- independent of
+        // minRatingFilter above, which is a single-select 0/3/4/5 radio,
+        // not a togglable shortcut for exactly "dania, które lubię".
+        if (onlyLiked) result = result.filter { (reviews[it.id]?.stars ?: 0) >= 4 }
         if (sortByMatch) result = result.sortedByDescending { matchScores[it.id] ?: -1 }
         if (sortByReview) result = RecipeReviewOperations.sortByReview(result, reviews)
         result
@@ -331,6 +338,23 @@ fun RecipeListScreen(
                     selected = onlyFavorites,
                     onClick = { onlyFavorites = !onlyFavorites },
                     label = { Text("⭐ Ulubione") },
+                )
+            }
+            item {
+                // 2026-08-11 (user request, "filtrowanie po daniach które
+                // są zaznaczone jako podoba się to dla mnie"): dedicated
+                // shortcut for the exact swipe-right label ("❤️ Podoba się
+                // to dla mnie!", RecipeCard's swipe feedback) -- the
+                // underlying data already existed (stars>=4 IS "liked" per
+                // the unified rating's own >=4/<=2 convention, reachable
+                // before this only via the generic "★4+"/"★5" threshold
+                // chips below), this just makes it directly discoverable
+                // under the name the user actually used, independent of
+                // minRatingFilter's single-select radio-like behavior.
+                FilterChip(
+                    selected = onlyLiked,
+                    onClick = { onlyLiked = !onlyLiked },
+                    label = { Text("❤️ Podoba się") },
                 )
             }
             item {

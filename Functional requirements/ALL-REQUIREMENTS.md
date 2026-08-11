@@ -216,6 +216,18 @@ Filtr progu oceny pokazuje wyłącznie przepisy, których ocena gwiazdkowa (⭐ 
   w `RecipeListScreen.kt`. `./gradlew :app:assembleDebug
   :app:testDebugUnitTest :logic:test` przechodzi. **Nie zweryfikowane na
   żywo** — wymaga sprawdzenia w Android Studio.
+- **v5** (2026-08-11, Android): Użytkownik poprosił o "filtrowanie po
+  daniach, które są zaznaczone jako podoba się to dla mnie" — dane już
+  istniały (ocena gwiazdkowa ≥4 JEST "polubione", ten sam próg co
+  obramowanie karty i etykieta przesunięcia „❤️ Podoba się to dla mnie!”),
+  ale nie było do tego dedykowanego skrótu pod tą nazwą — próg oceny
+  („★4+”/„★5”) to jedno-wyborowe pole radio, nie przełącznik. Dodano
+  osobny, niezależny przełącznik „❤️ Podoba się” (Android) filtrujący
+  `stars >= 4`, obok „⭐ Ulubione”. Web bez zmian (ma tę samą funkcjonalność
+  pod postacią progu oceny „★4+”) — świadoma rozbieżność w samej
+  PREZENTACJI (nie w danych), patrz `android/PARITY.md`. `./gradlew
+  :app:assembleDebug :app:testDebugUnitTest :logic:test` przechodzi. **Nie
+  zweryfikowane na żywo** — wymaga sprawdzenia w Android Studio.
 
 ---
 
