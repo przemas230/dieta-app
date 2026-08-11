@@ -86,6 +86,8 @@ fun DietaAppTheme(themeId: String = AppThemes.DEFAULT_ID, content: @Composable (
         MaterialTheme(
             colorScheme = colorSchemeFor(def),
             typography = Typography,
+            // Faza 1 planu wizualnego dopracowania (2026-08-11) -- patrz Shapes.kt.
+            shapes = AppShapes,
             content = content,
         )
     }
