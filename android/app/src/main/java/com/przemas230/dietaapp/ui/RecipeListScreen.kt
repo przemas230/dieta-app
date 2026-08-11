@@ -989,11 +989,13 @@ private fun RecipeCard(
         if (offsetX.value != 0f) {
             val swipeProgress = (abs(offsetX.value) / swipeThresholdPx).coerceIn(0f, 1f)
             Text(
-                text = if (offsetX.value > 0) "❤️ LUBIĘ" else "👎 NIE LUBIĘ",
+                text = if (offsetX.value > 0) "❤️ Podoba się to dla mnie!" else "👎 Nie podoba się to dla mnie!",
                 modifier = Modifier
                     .align(Alignment.Center)
+                    .padding(horizontal = 16.dp)
                     .alpha(swipeProgress),
-                style = MaterialTheme.typography.headlineMedium,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = if (offsetX.value > 0) Color(0xFF43A047) else Color(0xFFE53935),
             )

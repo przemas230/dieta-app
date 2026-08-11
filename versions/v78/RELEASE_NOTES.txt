@@ -1,0 +1,38 @@
+Wersja 78 (2026-08-11)
+
+Pilna poprawka na zgłoszenie użytkownika: aplikacja webowa (PWA) zacinała
+się/mrugała ciągle przy włączonym internecie ("kręci i kręci", znika po
+wyłączeniu internetu), mimo wcześniejszych poprawek nieskończonej pętli
+synchronizacji z tej samej doby. Rzeczywista przyczyna: KAŻDE pojedyncze
+zdarzenie odebrane z Firestore (onSnapshot) natychmiast uruchamiało pełne
+porównanie scalające (29 pól) ORAZ pełne przebudowanie listy przepisów
+(229 kart), niezależnie od tego, czy zmiana w ogóle dotyczyła czegoś
+związanego z przepisami. Gdy drugie urządzenie (np. telefon z Androidem)
+było aktywnie używane, kolejne zdarzenia synchronizacji potrafiły
+przychodzić co kilka sekund, każde odpalając ten sam kosztowny cykl —
+stąd wrażenie ciągłego zacinania się.
+
+Naprawione dwoma zmianami:
+- Odbieranie zmian z chmury jest teraz debounce'owane (1,2 s), tak samo
+  jak wysyłanie — kilka szybko następujących po sobie zdarzeń synchronizacji
+  scala się w JEDNO zastosowanie najnowszych danych, zamiast przetwarzać
+  każde osobno.
+- Przebudowanie listy przepisów (najdroższa operacja) uruchamia się teraz
+  tylko wtedy, gdy faktycznie zmieniło się coś, co wpływa na jej wygląd
+  (spiżarnia, ulubione, własne przepisy, oceny, przełącznik społeczności) —
+  zmiana np. wpisu wagi czy licznika wody z drugiego urządzenia już nie
+  odpala pełnego przebudowania 229 kart.
+
+Synchronizacja pozostaje w czasie rzeczywistym (nie przerzucono na
+"tylko przy starcie/zamknięciu aplikacji", jak sugerował użytkownik jako
+alternatywę) — te dwie zmiany mają sprawić, że nie będzie już to
+odczuwalne jako zacinanie, przy zachowaniu korzyści z prawdziwego
+real-time syncu (FR-78).
+
+Drobna poprawka spójności: napis podczas przesuwania karty przepisu
+("❤️ LUBIĘ"/"👎 NIE LUBIĘ" w Kotlinie) ujednolicony z web'em na
+"Podoba się to dla mnie!"/"Nie podoba się to dla mnie!" — to samo
+dotyczyło zapomnianej starej wersji napisu w podpowiedzi w Ustawieniach
+na web.
+
+Service Worker: v51 → v52. Android: 46/"0.1.45" → 47/"0.1.46".

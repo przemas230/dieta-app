@@ -1269,7 +1269,7 @@
             <button type="button" class="ing-chip" data-swipe-style="balloon">🎈 Balonowa czcionka</button>
             <button type="button" class="ing-chip" data-swipe-style="glow">🎨 Kolorowa karta</button>
           </div>
-          <div class="hint-text" style="margin:6px 0 0;">Niezależnie od wybranego motywu kolorystycznego powyżej — decyduje tylko o wyglądzie napisu „Lubię to!”/„Nie lubię!” podczas przesuwania karty przepisu.</div>
+          <div class="hint-text" style="margin:6px 0 0;">Niezależnie od wybranego motywu kolorystycznego powyżej — decyduje tylko o wyglądzie napisu „Podoba się to dla mnie!”/„Nie podoba się to dla mnie!” podczas przesuwania karty przepisu.</div>
         </div>
       </div>
     </div>
@@ -2640,6 +2640,11 @@ function saveState(){
 // so instead of excluding collision-prone keys (shopping/planner/history),
 // they're included here and protected by a real 3-way merge below instead.
 const SYNCED_STATE_KEYS = ["displayName","profile","theme","uiScale","communityRecipesEnabled","pantry","pantryUnitOverride","pantryCategoryOverride","favorites","favIngredients","myRecipes","recipeReviews","recipeRating","customTiles","swipeRatingStyle","shopping","recipeAdded","planner","plannerScale","plannerLeftover","cooked","eaten","waterHistory","water","weights","history","waterNotifEnabled","waterReminder","household"];
+// Keys whose change can actually affect what renderRecipes() draws (matching
+// %, badges, filters) -- used to skip that expensive 229-card full rebuild
+// on syncs that only touched something unrelated (e.g. a weight entry or
+// water count from another device). See refreshUiAfterSync below.
+const RECIPE_RELEVANT_SYNC_KEYS = new Set(["pantry","favorites","favIngredients","myRecipes","recipeReviews","recipeRating","communityRecipesEnabled","cooked","profile"]);
 // Keys shaped as {id: value} maps, where a real 3-way merge can be done
 // PER ENTRY (so two devices adding different shopping items both survive,
 // instead of one whole-field overwrite winning outright).
@@ -2885,15 +2890,16 @@ function applyRemoteSyncedState(data){
   // -- see the hasPendingWrites guard in attachUserDocListener above, which
   // closes the other half of that same loop.
   let needsRePush = false;
+  const changedKeys = new Set();
   Object.keys(merged).forEach(k=>{
-    if(!deepEqualJson(merged[k], state[k])){ state[k] = merged[k]; changed = true; }
+    if(!deepEqualJson(merged[k], state[k])){ state[k] = merged[k]; changed = true; changedKeys.add(k); }
     if(!deepEqualJson(merged[k], data[k])) needsRePush = true;
   });
   state._lastSyncedSnapshot = pickSyncedKeys(data);
   try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
   if(changed){
     refreshCommunityRecipesSubscription();
-    refreshUiAfterSync(conflicts.length>0);
+    refreshUiAfterSync(conflicts.length>0, changedKeys);
   }
   // Any local-only changes folded into the merge (or conflicts resolved
   // in the user's favor below) need to reach the cloud too, so both
@@ -2915,12 +2921,22 @@ function applyRemoteSyncedState(data){
   // reserved for.
   if(conflicts.length) showSyncConflictModal(conflicts, remoteChanges, data.lastEditedByDevice);
 }
-function refreshUiAfterSync(silent){
+// changedKeys is optional -- omitted (e.g. the first-ever sync in
+// applyRemoteSyncedState above) means "don't know, assume everything",
+// so renderRecipes() still runs; passed explicitly, it's used to skip that
+// expensive full rebuild when nothing recipe-relevant actually changed
+// (see RECIPE_RELEVANT_SYNC_KEYS) -- this used to run unconditionally on
+// EVERY applied sync regardless of which field changed, which made a
+// second device being actively used (each edit syncing here within ~1-2s)
+// feel like the whole app was freezing, since every single one of those
+// syncs rebuilt all ~229 recipe cards even for e.g. just a weight entry.
+function refreshUiAfterSync(silent, changedKeys){
   document.documentElement.setAttribute("data-theme", state.theme || "teal");
   applyUiScale(state.uiScale);
   renderHeader();
   renderPills();
-  renderRecipes();
+  const recipesRelevant = !changedKeys || [...changedKeys].some(k=> RECIPE_RELEVANT_SYNC_KEYS.has(k));
+  if(recipesRelevant) renderRecipes();
   if(document.getElementById("view-pantry").classList.contains("active")) renderPantry();
   if(document.getElementById("view-shop").classList.contains("active")) renderShop();
   if(document.getElementById("view-planner").classList.contains("active")) renderPlanner();
@@ -2933,7 +2949,11 @@ let userDocListenerUid = null;
 function detachUserDocListener(){
   if(userDocUnsubscribe){ userDocUnsubscribe(); userDocUnsubscribe = null; }
   userDocListenerUid = null;
+  clearTimeout(applyRemoteSyncedStateTimer);
+  pendingRemoteSnapshotData = null;
 }
+let pendingRemoteSnapshotData = null;
+let applyRemoteSyncedStateTimer = null;
 function attachUserDocListener(uid){
   if(userDocListenerUid === uid) return;
   detachUserDocListener();
@@ -2947,7 +2967,23 @@ function attachUserDocListener(uid){
     // Android port (CloudSyncCoordinator.kt) already had from the start.
     if(snap.metadata.hasPendingWrites) return;
     if(!snap.exists){ pushStateToCloud(); return; }
-    applyRemoteSyncedState(snap.data());
+    // 2026-08-11: debounced the same way pushStateToCloud() already is --
+    // when another device is actively being used (each of ITS edits
+    // syncing here every ~1-2s), onSnapshot can fire in quick succession,
+    // and applyRemoteSyncedState()'s 29-key merge diff + a full recipe
+    // re-render on EVERY single one of those events was enough to make the
+    // whole tab visibly stutter/freeze ("zacina się co chwila jak jest
+    // internet"). Coalescing rapid-fire snapshots into one applied update
+    // (always using the LATEST data, never an intermediate one) keeps sync
+    // close to real-time while capping how often the expensive merge+render
+    // pipeline can actually run.
+    pendingRemoteSnapshotData = snap.data();
+    clearTimeout(applyRemoteSyncedStateTimer);
+    applyRemoteSyncedStateTimer = setTimeout(()=>{
+      const data = pendingRemoteSnapshotData;
+      pendingRemoteSnapshotData = null;
+      applyRemoteSyncedState(data);
+    }, 1200);
   }, err=> console.warn("Błąd nasłuchiwania synchronizacji z chmurą.", err));
 }
 // ---------- SYNC CONFLICT REVIEW (two devices changed the same thing) ----------
