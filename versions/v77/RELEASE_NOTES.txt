@@ -1,0 +1,14 @@
+Wersja 77 (2026-08-11)
+
+Drobna zmiana na wyraźną prośbę użytkownika: w Ustawieniach (karta
+„☁️ Konto w chmurze”) pojawiła się nowa linijka „Wersja aplikacji: …”,
+odczytywana bezpośrednio z aktywnej pamięci podręcznej przeglądarki
+(Cache Storage), a nie z osobno utrzymywanej stałej — dzięki temu zawsze
+pokazuje faktyczny stan tego konkretnego urządzenia, nawet jeśli ktoś
+zapomni ręcznie zaktualizować jakąś liczbę wersji gdzie indziej. Pozwala
+naocznie sprawdzić, czy aktualizacja PWA faktycznie dotarła na dane
+urządzenie, zamiast zgadywać po samym wyglądzie strony. Odświeża się też
+automatycznie po przejęciu strony przez nowy Service Worker.
+
+Service Worker: v50 → v51 (wymagane przy każdej zmianie index.html, żeby
+przeglądarka pobrała nową wersję zamiast serwować starą z cache).

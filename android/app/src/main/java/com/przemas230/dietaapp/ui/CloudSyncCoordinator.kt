@@ -122,6 +122,42 @@ private data class PushedSnapshot(
  * (including "document doesn't exist yet", which correctly means "nothing
  * to lose, safe to push now").
  *
+ * **Fourth change 2026-08-11** ("czy da się zrobić że ostatni zapis
+ * wygrywa, na podstawie logu zmian" -- user explicitly asked for a
+ * last-write-wins model informed by what actually changed, instead of the
+ * full field-level 3-way merge + conflict dialog that FR-78 implements on
+ * web): added [lastKnownFields], a per-field "last value we know Firestore
+ * and this device agreed on" map. Every push now only lists the Firestore
+ * fields that actually changed locally since [lastKnownFields] was last
+ * updated -- NOT the full static field list -- in `SetOptions.mergeFields`.
+ * This closes a real gap in the "last cloud write wins" model above: without
+ * it, EVERY push re-writes ALL 19 fields using this device's current local
+ * copy of each, including fields the user never touched here. If this
+ * device was offline (or its listener simply hadn't caught up yet) while
+ * ANOTHER device pushed a change to, say, `pantry`, and this device then
+ * pushes an unrelated `profile` edit, the old code would silently include
+ * this device's now-stale `pantry` in that same write, overwriting the
+ * other device's real change in Firestore -- a genuine, silent data-loss
+ * bug, not merely a display glitch. Restricting `mergeFields` to only the
+ * fields this device actually changed makes that impossible: an unrelated
+ * push simply never touches a field it didn't dirty. [lastKnownFields] is
+ * updated optimistically right when a push is sent (same "before the
+ * network round-trip" timing as [lastPushed], for the same reason) AND
+ * whenever the pull side below successfully decodes a field from an
+ * incoming snapshot, whether or not that value ends up applied locally --
+ * either way, it is what this device now knows Firestore holds for that
+ * field. Deliberately NOT a replacement for [PushedSnapshot]/[lastPushed]
+ * or the stale-echo guards below -- those already correctly solve the
+ * out-of-order-ack race documented above, and are left untouched here to
+ * avoid risking a regression of that specific, previously-diagnosed bug.
+ * There is still no conflict dialog: if two devices genuinely edit the
+ * SAME field before either sees the other's change, whichever push reaches
+ * the Firestore server last simply wins for that field, silently -- an
+ * intentional, much simpler trade-off than FR-78's web behavior, since two
+ * devices editing the exact same field within the same few seconds is rare
+ * for a single-user app. Documented as such in PARITY.md rather than
+ * chasing full parity with web's conflict UI.
+ *
  * Renders nothing; called once from DietaAppRoot alongside the other
  * shared-ViewModel wiring, after every ViewModel it reads already exists.
  */
@@ -195,6 +231,11 @@ fun CloudSyncCoordinator(
     // Firestore. Cleared again once consumed.
     var suppressNextPush by remember { mutableStateOf(false) }
     var lastPushed by remember { mutableStateOf<PushedSnapshot?>(null) }
+    // See class doc, "Fourth change" -- per-field last-known-synced value,
+    // used only to decide which Firestore fields a push actually needs to
+    // touch. Keyed on uid so a different account starts with a clean slate
+    // (everything looks "dirty" until the first real push for that account).
+    var lastKnownFields by remember(uid) { mutableStateOf<Map<String, Any?>>(emptyMap()) }
     // See class doc, "Third change" -- blocks pushing until this device has
     // processed at least one snapshot for the signed-in account, so it never
     // races ahead and clobbers real cloud data with its own stale/default
@@ -213,6 +254,51 @@ fun CloudSyncCoordinator(
         }
         delay(1500)
         val today = CloudSyncCodec.todayUtcDateString()
+
+        // See class doc, "Fourth change" -- only fields that actually
+        // changed since lastKnownFields was last updated get pushed, so a
+        // push triggered by (say) a profile edit never re-writes this
+        // device's possibly-stale local copy of unrelated fields like
+        // pantry over a fresher value another device already wrote.
+        val currentFieldValues: Map<String, Any?> = mapOf(
+            "displayName" to displayName,
+            "profile" to profile,
+            "pantry" to pantryItems,
+            "themeId" to themeId,
+            "uiScale" to uiScale,
+            "swipeStyle" to swipeStyle,
+            "favIngredients" to favIngredients,
+            "ratings" to ratings,
+            "cooked" to cooked,
+            "shoppingItems" to shoppingItems,
+            "weekPlan" to weekPlan,
+            "eaten" to (eatenEntries to snacks),
+            "waterCount" to waterCount,
+            "weights" to weightEntries,
+            "activityLog" to activityLogEntries,
+            "communityRecipesEnabled" to communityRecipesEnabled,
+        )
+        val dirtyKeys = currentFieldValues.filter { (key, value) -> value != lastKnownFields[key] }.keys
+        if (dirtyKeys.isEmpty()) return@LaunchedEffect
+        val fieldGroups: Map<String, List<String>> = mapOf(
+            "displayName" to listOf("displayName"),
+            "profile" to listOf("profile"),
+            "pantry" to listOf("pantry"),
+            "themeId" to listOf("theme"),
+            "uiScale" to listOf("uiScale"),
+            "swipeStyle" to listOf("swipeRatingStyle"),
+            "favIngredients" to listOf("favIngredients"),
+            "ratings" to listOf("recipeRating"),
+            "cooked" to listOf("cooked"),
+            "shoppingItems" to listOf("shopping"),
+            "weekPlan" to listOf("planner", "plannerScale", "plannerLeftover"),
+            "eaten" to listOf("eaten.$today"),
+            "waterCount" to listOf("water", "waterHistory.$today"),
+            "weights" to listOf("weights"),
+            "activityLog" to listOf("history"),
+            "communityRecipesEnabled" to listOf("communityRecipesEnabled"),
+        )
+
         val data = CloudSyncCodec.encodeAll(
             displayName = displayName,
             profile = profile,
@@ -237,22 +323,22 @@ fun CloudSyncCoordinator(
             "history" to CloudSyncCodec.encodeActivityLog(activityLogEntries),
             "communityRecipesEnabled" to communityRecipesEnabled,
         )
-        val mergeFields = listOf(
-            "displayName", "profile", "pantry", "theme", "uiScale", "swipeRatingStyle",
-            "favIngredients", "recipeRating", "cooked", "shopping",
-            "planner", "plannerScale", "plannerLeftover",
-            "eaten.$today", "water", "waterHistory.$today", "weights", "history",
-            "communityRecipesEnabled",
-        )
+        // Restricted to exactly the dirty keys -- Firestore's mergeFields
+        // option only ever writes the paths listed here, so any OTHER
+        // top-level key still present in `data` above is simply ignored.
+        val mergeFields = dirtyKeys.flatMap { fieldGroups.getValue(it) }
         // Recorded BEFORE the network round-trip (not in a .then()-style
         // callback on ack) -- what matters is "what did we tell Firestore",
         // which is already fixed at this point, not when the server happens
-        // to confirm it.
+        // to confirm it. Both lastPushed (whole-snapshot self-echo guard,
+        // untouched by this change) and lastKnownFields (per-field dirty
+        // baseline) are updated here for the same reason.
         lastPushed = PushedSnapshot(
             displayName, profile, pantryItems, themeId, uiScale, swipeStyle,
             favIngredients, ratings, cooked, shoppingItems, weekPlan, eatenEntries, snacks, waterCount,
             weightEntries, activityLogEntries, communityRecipesEnabled,
         )
+        lastKnownFields = lastKnownFields + currentFieldValues.filterKeys { it in dirtyKeys }
         try {
             FirebaseFirestore.getInstance().collection("users").document(uid)
                 .set(data, SetOptions.mergeFields(mergeFields))
@@ -281,53 +367,72 @@ fun CloudSyncCoordinator(
                 val pushed = lastPushed
 
                 var appliedAnything = false
+                // See class doc, "Fourth change" -- every field successfully
+                // decoded below (whether applied locally or recognized as a
+                // stale/self echo) is Firestore's current known truth for
+                // that key, so it updates the push side's dirty-tracking
+                // baseline too. Collected here and applied once at the end
+                // to avoid 16 separate recompositions per snapshot.
+                val known = mutableMapOf<String, Any?>()
                 (data["displayName"] as? String)?.let {
+                    known["displayName"] = it
                     if (it != pushed?.displayName && it != currentDisplayName.value) {
                         profileViewModel.setDisplayName(it); appliedAnything = true
                     }
                 }
                 CloudSyncCodec.decodeProfile(data["profile"] as? Map<*, *>)?.let {
+                    known["profile"] = it
                     if (it != pushed?.profile && it != currentProfile.value) {
                         profileViewModel.save(it); appliedAnything = true
                     }
                 }
                 CloudSyncCodec.decodePantry(data["pantry"] as? Map<*, *>)?.let {
+                    known["pantry"] = it
                     if (it != pushed?.pantry && it != currentPantryItems.value) {
                         pantryViewModel.replaceAll(it); appliedAnything = true
                     }
                 }
                 (data["theme"] as? String)?.let {
+                    known["themeId"] = it
                     if (it != pushed?.themeId && it != currentThemeId.value) {
                         themeViewModel.setTheme(it); appliedAnything = true
                     }
                 }
                 (data["uiScale"] as? Number)?.toDouble()?.let {
+                    known["uiScale"] = it
                     if (it != pushed?.uiScale && it != currentUiScale.value) {
                         uiScaleViewModel.setScale(it); appliedAnything = true
                     }
                 }
                 (data["swipeRatingStyle"] as? String)?.let { raw ->
                     val style = SwipeRatingStyle.entries.find { it.name == raw }
-                    if (style != null && style != pushed?.swipeRatingStyle && style != currentSwipeStyle.value) {
-                        swipeRatingStyleViewModel.setStyle(style); appliedAnything = true
+                    if (style != null) {
+                        known["swipeStyle"] = style
+                        if (style != pushed?.swipeRatingStyle && style != currentSwipeStyle.value) {
+                            swipeRatingStyleViewModel.setStyle(style); appliedAnything = true
+                        }
                     }
                 }
                 CloudSyncCodec.decodeFavIngredients(data["favIngredients"] as? Map<*, *>)?.let {
+                    known["favIngredients"] = it
                     if (it != pushed?.favIngredients && it != currentFavIngredients.value) {
                         favoriteIngredientsViewModel.replaceAll(it); appliedAnything = true
                     }
                 }
                 CloudSyncCodec.decodeRecipeRating(data["recipeRating"] as? Map<*, *>)?.let {
+                    known["ratings"] = it
                     if (it != pushed?.recipeRating && it != currentRatings.value) {
                         recipeViewModel.replaceRatings(it); appliedAnything = true
                     }
                 }
                 CloudSyncCodec.decodeCooked(data["cooked"] as? Map<*, *>)?.let {
+                    known["cooked"] = it
                     if (it != pushed?.cooked && it != currentCooked.value) {
                         recipeViewModel.replaceCooked(it); appliedAnything = true
                     }
                 }
                 CloudSyncCodec.decodeShopping(data["shopping"] as? Map<*, *>)?.let {
+                    known["shoppingItems"] = it
                     if (it != pushed?.shopping && it != currentShoppingItems.value) {
                         shoppingViewModel.replaceAll(it); appliedAnything = true
                     }
@@ -337,11 +442,13 @@ fun CloudSyncCoordinator(
                     data["plannerScale"] as? Map<*, *>,
                     data["plannerLeftover"] as? Map<*, *>,
                 )?.let {
+                    known["weekPlan"] = it
                     if (it != pushed?.weekPlan && it != currentWeekPlan.value) {
                         plannerViewModel.replaceAll(it); appliedAnything = true
                     }
                 }
                 CloudSyncCodec.decodeEaten(data["eaten"] as? Map<*, *>)?.let {
+                    known["eaten"] = it.entries to it.snacks
                     val matchesPushed = pushed != null && it.entries == pushed.eatenEntries && it.snacks == pushed.snacks
                     val matchesCurrent = it.entries == currentEatenEntries.value && it.snacks == currentSnacks.value
                     if (!matchesPushed && !matchesCurrent) {
@@ -350,6 +457,7 @@ fun CloudSyncCoordinator(
                     }
                 }
                 CloudSyncCodec.decodeWater(data["water"] as? Map<*, *>)?.let {
+                    known["waterCount"] = it
                     if (it != pushed?.waterCount && it != currentWaterCount.value) {
                         waterViewModel.setCount(it); appliedAnything = true
                     }
@@ -369,20 +477,24 @@ fun CloudSyncCoordinator(
                     }
                 }
                 CloudSyncCodec.decodeWeights(data["weights"] as? List<*>)?.let {
+                    known["weights"] = it
                     if (it != pushed?.weights && it != currentWeightEntries.value) {
                         weightViewModel.replaceAll(it); appliedAnything = true
                     }
                 }
                 CloudSyncCodec.decodeActivityLog(data["history"] as? List<*>)?.let {
+                    known["activityLog"] = it
                     if (it != pushed?.activityLog && it != currentActivityLog.value) {
                         activityLogViewModel.replaceAll(it); appliedAnything = true
                     }
                 }
                 (data["communityRecipesEnabled"] as? Boolean)?.let {
+                    known["communityRecipesEnabled"] = it
                     if (it != pushed?.communityRecipesEnabled && it != currentCommunityRecipesEnabled.value) {
                         recipeViewModel.setCommunityRecipesEnabled(it); appliedAnything = true
                     }
                 }
+                if (known.isNotEmpty()) lastKnownFields = lastKnownFields + known
                 if (appliedAnything) suppressNextPush = true
             }
         onDispose { registration.remove() }

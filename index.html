@@ -1220,6 +1220,7 @@
 
       <div class="card">
         <h3 style="margin:0 0 10px; font-size:15px;">☁️ Konto w chmurze</h3>
+        <div class="hint-text" id="appVersionLine" style="margin:0 0 6px;">Wersja aplikacji: sprawdzanie…</div>
         <div class="hint-text" id="authStatusLine" style="margin:0 0 10px;">Sprawdzanie stanu połączenia…</div>
         <div id="authLinkedSection" style="display:none;">
           <div class="hint-text" style="margin:0 0 10px;">✅ Twoje konto jest zabezpieczone i WSZYSTKIE dane — profil, spiżarnia, lista zakupów, planer, ulubione, własne przepisy, oceny, historia gotowania i ustawienia — synchronizują się automatycznie między wszystkimi urządzeniami zalogowanymi tym samym kontem. Jeśli jakieś urządzenie było offline i w międzyczasie coś zmieniło się też na innym, po powrocie do sieci aplikacja sama scala obie zmiany; jeśli dokładnie ta sama rzecz zmieniła się inaczej na obu urządzeniach naraz, pokaże Ci to do ręcznej decyzji zamiast czegokolwiek cicho nadpisywać. Wspólne gospodarstwo domowe (kilka OSÓB edytujących wspólnie tę samą listę zakupów w tym samym czasie) to osobna, jeszcze niegotowa funkcja (patrz <code>docs/FIREBASE_MIGRATION_PLAN.md</code>).</div>
@@ -3791,6 +3792,27 @@ document.getElementById("setCommunityRecipes").addEventListener("change", (e)=>{
   saveState();
   refreshCommunityRecipesSubscription();
 });
+
+// Reads the *actual* active Cache Storage entry rather than a manually
+// duplicated constant, so this line reflects reality even if someone forgets
+// to bump a version string somewhere — directly answers "did the update
+// I just deployed actually reach this device" without opening devtools.
+function renderAppVersionLine(){
+  const line = document.getElementById("appVersionLine");
+  if(!line) return;
+  if(!("caches" in window)){
+    line.textContent = "Wersja aplikacji: brak Cache Storage (tryb bez Service Workera)";
+    return;
+  }
+  caches.keys().then(keys=>{
+    if(!keys.length){ line.textContent = "Wersja aplikacji: brak aktywnej pamięci podręcznej"; return; }
+    line.textContent = "Wersja aplikacji: " + keys[keys.length-1];
+  }).catch(()=>{ line.textContent = "Wersja aplikacji: nie udało się odczytać"; });
+}
+renderAppVersionLine();
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.addEventListener("controllerchange", renderAppVersionLine);
+}
 
 // ---------- AUTH (Google / e-mail, optional, anonymous by default) ----------
 // Anonymous-first: every device gets signed in anonymously on load so it

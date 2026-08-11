@@ -116,6 +116,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-79: Wylogowanie z urządzenia](#fr-79-wylogowanie-z-urządzenia)
 - [FR-80: Dzień tygodnia przy składniku na liście zakupów](#fr-80-dzień-tygodnia-przy-składniku-na-liście-zakupów)
 - [FR-81: Propozycja przeliczenia planu i listy zakupów po zapisaniu profilu](#fr-81-propozycja-przeliczenia-planu-i-listy-zakupów-po-zapisaniu-profilu)
+- [FR-82: Widoczna wersja aplikacji w Ustawieniach](#fr-82-widoczna-wersja-aplikacji-w-ustawieniach)
 
 ---
 
@@ -1910,6 +1911,8 @@ Ponieważ te pola (zwłaszcza lista zakupów i planer) mogą być edytowane niez
 
 Rzeczywiste działanie między dwoma prawdziwymi urządzeniami wymaga weryfikacji na urządzeniach z dostępem do internetu — środowisko deweloperskie nie ma dostępu do serwerów Firebase. Logika scalania (dodawanie/usuwanie/zmiana pozycji, wykrywanie sprzeczności, zachowanie przy pierwszej synchronizacji, przywracanie lokalnej wersji) została w pełni zweryfikowana automatycznie z podstawionym Firestore.
 
+**Android świadomie implementuje UPROSZCZONY wariant, nie ten opis wprost** — na wyraźną prośbę użytkownika (patrz Historia rewizji, v8) last-write-wins PER POLE zamiast pełnego 3-way merge z oknem konfliktu opisanym wyżej. Szczegóły w `android/PARITY.md`, notatka „FR-78 (uproszczony port, 2026-08-11)”.
+
 ## Historia rewizji
 - **v1** (2026-08-08): Pierwsza wersja wymagania, na życzenie użytkownika
   ("teraz znów widzę że lista zakupów się nie synchronizuje a tak nie może
@@ -2009,6 +2012,21 @@ Rzeczywiste działanie między dwoma prawdziwymi urządzeniami wymaga weryfikacj
   karta też sama się uleczyła. Zweryfikowane bezpośrednio w przeglądarce:
   symulacja 20 szybkich prób synchronizacji z rzędu poprawnie zatrzymuje
   mechanizm po 13. próbie.
+- **v8** (2026-08-11): Użytkownik zapytał wprost, czy dla Androida
+  wystarczyłoby last-write-wins oparte na tym, co faktycznie się zmieniło
+  ("a tutaj nie da się zrobić też że ostatni zapis wygrywa? masz chyba
+  jakiś log rzeczy zrobionych klikniętych dodanych odjętych, to może na
+  tej podstawie by się dało"), zamiast pełnego portu 3-way merge z oknem
+  konfliktu opisanego wyżej. Zaimplementowano w Kotlinie: każdy zapis do
+  chmury ogranicza się teraz WYŁĄCZNIE do pól, które faktycznie zmieniły
+  się lokalnie od ostatniej znanej zgodności z Firestore (nie do statycznej
+  listy wszystkich pól jak dotychczas) — to eliminuje realne ryzyko, że
+  urządzenie A nadpisze świeżą zmianę pola X z urządzenia B swoją
+  nieaktualną lokalną kopią tego samego pola tylko dlatego, że A akurat
+  zapisywało niezwiązaną zmianę pola Y. Nie ma jednak okna konfliktu — jeśli
+  oba urządzenia edytują DOKŁADNIE to samo pole, zanim zobaczą nawzajem
+  swoje zmiany, wygrywa cicho to, które dotrze do serwera jako ostatnie.
+  Pełny opis w `android/PARITY.md`.
 
 ---
 
@@ -2101,5 +2119,31 @@ Jeśli użytkownik odmówi pierwszemu pytaniu (nie chce nowego planu), nic więc
   `addWeekPlan`), zweryfikowane wizualnie na emulatorze na żywo: zapisanie
   profilu poprawnie pokazało oba pytania po kolei i poprawnie wypełniło
   listę zakupów z etykietami dni.
+
+---
+
+# FR-82: Widoczna wersja aplikacji w Ustawieniach
+
+**Obszar:** Konto i chmura
+**Status:** Zaimplementowane (web + Android — Android miał to już od wcześniej)
+
+## Opis
+W Ustawieniach widoczna jest linijka pokazująca aktualną wersję aplikacji zainstalowaną NA TYM URZĄDZENIU, żeby użytkownik mógł naocznie sprawdzić, czy dana aktualizacja faktycznie dotarła, zamiast zgadywać po samym wyglądzie/działaniu aplikacji.
+
+Web (karta „☁️ Konto w chmurze”, linijka „Wersja aplikacji: …”): odczytywana bezpośrednio z aktywnej pamięci podręcznej przeglądarki (nazwa wpisu w Cache Storage, ta sama, którą Service Worker sam nadaje i utrzymuje unikalną — patrz `sw.js`'s `CACHE_NAME`), a nie z osobno utrzymywanej stałej w `index.html` — dzięki temu linijka zawsze pokazuje faktyczny stan TEGO KONKRETNEGO urządzenia/karty, nawet jeśli ktoś zapomni ręcznie zaktualizować jakąś liczbę wersji gdzie indziej. Odświeża się automatycznie po przejęciu strony przez nowy Service Worker (`controllerchange`).
+
+Android: karta „🔄 Aktualizacja aplikacji” w Ustawieniach już od wcześniej (część pierwotnego szkieletu aktualizacji APK) pokazuje „Zainstalowana wersja: X” na stałe, niezależnie od tego, czy użytkownik akurat sprawdza dostępność aktualizacji — ten FR tylko formalnie to udokumentował, bez zmian w kodzie Kotlin.
+
+## Kryteria akceptacji
+- Web: w Ustawieniach zawsze widoczna jest linijka z aktualną wersją/nazwą pamięci podręcznej tego urządzenia, bez potrzeby otwierania narzędzi deweloperskich.
+- Web: po zaktualizowaniu Service Workera (np. odświeżenie strony po wdrożeniu nowej wersji) linijka aktualizuje się na nową wartość bez potrzeby ręcznego odświeżania widoku Ustawień.
+- Android: „Zainstalowana wersja: X” widoczna zawsze w karcie aktualizacji, niezależnie od stanu sprawdzania aktualizacji.
+
+## Historia rewizji
+- **v1** (2026-08-11): Pierwsza wersja wymagania, na życzenie użytkownika
+  ("pokazuj wersję aplikacji webowej wewnątrz aplikacji gdzieś żeby można
+  było faktycznie zobaczyć czy był update"). Zaimplementowane na web
+  (`versions/v77/`, Service Worker v50→v51); Android już to miał
+  (`AppUpdateCard` w `SettingsScreen.kt`), więc tylko udokumentowane.
 
 ---
