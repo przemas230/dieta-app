@@ -25,8 +25,9 @@ import org.json.JSONObject
 object LocalStateStore {
     private const val FILE_NAME = "local_state.json"
 
-    fun load(context: Context): Map<String, Any?>? {
-        val file = File(context.filesDir, FILE_NAME)
+    /** fileName defaults to the main local-state file; CloudSyncCoordinator reuses this same JSON plumbing under a different file name for its sync baseline (see CloudSyncBaselineStore). */
+    fun load(context: Context, fileName: String = FILE_NAME): Map<String, Any?>? {
+        val file = File(context.filesDir, fileName)
         if (!file.exists()) return null
         return try {
             val text = file.readText(Charsets.UTF_8)
@@ -37,8 +38,8 @@ object LocalStateStore {
         }
     }
 
-    fun save(context: Context, data: Map<String, Any?>) {
-        val file = File(context.filesDir, FILE_NAME)
+    fun save(context: Context, data: Map<String, Any?>, fileName: String = FILE_NAME) {
+        val file = File(context.filesDir, fileName)
         try {
             file.writeText(mapToJson(data).toString(), Charsets.UTF_8)
         } catch (e: Exception) {
