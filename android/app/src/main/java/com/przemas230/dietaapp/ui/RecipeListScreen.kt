@@ -163,6 +163,17 @@ fun RecipeListScreen(
         viewModel.setDietaryFilters(profile.glutenFree, profile.lactoseFree)
     }
 
+    // 2026-08-11 (user request): categories used to show/hide together with
+    // the search field and the rest of the filter chips below, all keyed
+    // off the SAME `headerExpanded` MainActivity passes in -- so scrolling
+    // (which auto-collapses `headerExpanded`, FR-44) hid category switching
+    // along with everything else. Now its own panel with its own toggle,
+    // collapsed by default (`false`, not tied to `headerExpanded`'s
+    // initial-expanded-on-Przepisy default) and NOT affected by scroll --
+    // switching categories stays reachable even once the header has
+    // auto-collapsed. Mirrors the header's own tap-to-toggle/chevron pattern
+    // (MainActivity.kt's TopAppBar title).
+    var categoryPanelExpanded by remember { mutableStateOf(false) }
     var sortByMatch by remember { mutableStateOf(false) }
     var sortByReview by remember { mutableStateOf(false) }
     // FR-2: independent filter toggles, applied before the three sorts above
@@ -211,6 +222,41 @@ fun RecipeListScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        // 2026-08-11: standalone category panel, see categoryPanelExpanded's
+        // doc comment above -- always rendered (not gated on headerExpanded),
+        // collapsed by default, shows the currently selected category in its
+        // own collapsed header row so switching categories is still visible
+        // at a glance even collapsed.
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
+            val currentCategory = CATEGORIES.find { it.id == selectedCategory }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { categoryPanelExpanded = !categoryPanelExpanded },
+            ) {
+                Text(
+                    "Kategoria: ${currentCategory?.emoji ?: "🍽️"} ${currentCategory?.label ?: ""}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(if (categoryPanelExpanded) "⌃" else "⌄", style = MaterialTheme.typography.labelSmall)
+            }
+            AnimatedVisibility(visible = categoryPanelExpanded) {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                ) {
+                    items(CATEGORIES) { category ->
+                        FilterChip(
+                            selected = category.id == selectedCategory,
+                            onClick = { viewModel.selectCategory(category.id) },
+                            label = { Text("${category.emoji} ${category.label}") },
+                        )
+                    }
+                }
+            }
+        }
         AnimatedVisibility(visible = headerExpanded) {
         Column {
         OutlinedTextField(
@@ -227,13 +273,6 @@ fun RecipeListScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(horizontal = 12.dp),
         ) {
-            items(CATEGORIES) { category ->
-                FilterChip(
-                    selected = category.id == selectedCategory,
-                    onClick = { viewModel.selectCategory(category.id) },
-                    label = { Text("${category.emoji} ${category.label}") },
-                )
-            }
             item {
                 // FR-11/FR-2: sorts the visible list by 🎯 match-to-profile score, descending.
                 FilterChip(
