@@ -2082,6 +2082,26 @@ Rzeczywiste działanie między dwoma prawdziwymi urządzeniami wymaga weryfikacj
   wymuszone zamknięcie aplikacji w środku okna debounce + ponowne
   uruchomienie (dwukrotnie) — wartość poprawnie przetrwała i pozostała
   stabilna. Pełny opis w `android/PARITY.md`.
+- **v11** (2026-08-11): Mimo poprawki v9, użytkownik zgłosił, że web nadal
+  odczuwalnie "wczytuje konto" bez przerwy przy aktywnym drugim urządzeniu
+  ("ta synchronizacja w apce webowej musi być wykonywana jakoś pod spodem
+  bo nie da się tak pracować... rozwiąż to raz a porządnie... może to być
+  robione raz na jakiś czas"). Znaleziono dodatkową przyczynę: KAŻDA
+  bezkolizyjna zmiana z chmury (czyli niemal każdy cykl synchronizacji przy
+  aktywnym drugim urządzeniu) pokazywała toast „☁️ Zsynchronizowano dane z
+  chmury" — pojawiający się co kilka sekund, wyglądał jak ciągłe
+  przeładowywanie konta, mimo że nic nie wymagało uwagi użytkownika (mały
+  wskaźnik synchronizacji w nagłówku już to pokrywał bez przeszkadzania).
+  Naprawione: (1) zwykłe, bezkolizyjne synchronizacje są teraz zawsze ciche
+  (bez toastu) — okno sprzeczności nadal się pokazuje dla prawdziwych
+  konfliktów, to wystarczający sygnał samo w sobie; (2) okno debounce'a na
+  odbiór zmian z chmury wydłużone z 1,2 s do 3 s, celowo traktując
+  propagację zmian z INNYCH urządzeń jako "wkrótce, w tle", a nie
+  natychmiastową — lokalne zmiany nadal zapisują się do localStorage od
+  razu (synchronicznie, niezależnie od tego mechanizmu) i wypychają się do
+  chmury na własnym, niezmienionym 1,5-sekundowym debounsie. Zweryfikowane
+  bezpośrednio w przeglądarce: symulowana bezkolizyjna zmiana zdalna
+  zastosowała się poprawnie bez pokazania toastu. Service Worker v54→v55.
 
 ---
 

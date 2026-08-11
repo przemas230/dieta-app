@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
@@ -2907,15 +2907,7 @@ function applyRemoteSyncedState(data){
   try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
   if(changed){
     refreshCommunityRecipesSubscription();
-    // 2026-08-11: always silent here now, regardless of conflicts -- a
-    // toast on every routine, non-conflicting remote change (which can fire
-    // every debounce cycle while a second device is actively used) reads as
-    // "the app keeps reloading my account" even though nothing actually
-    // needed the user's attention; the small header spinner already covers
-    // "sync is happening" without interrupting anything. Genuine conflicts
-    // still get the review modal below, which is a much clearer signal than
-    // a 1.8s toast anyway.
-    refreshUiAfterSync(true, changedKeys);
+    refreshUiAfterSync(conflicts.length>0, changedKeys);
   }
   // Any local-only changes folded into the merge (or conflicts resolved
   // in the user's favor below) need to reach the cloud too, so both
@@ -2986,27 +2978,20 @@ function attachUserDocListener(uid){
     // 2026-08-11: debounced the same way pushStateToCloud() already is --
     // when another device is actively being used (each of ITS edits
     // syncing here every ~1-2s), onSnapshot can fire in quick succession,
-    // and applyRemoteSyncedState()'s 29-key merge diff + a re-render on
-    // EVERY single one of those events was enough to make the whole tab
-    // visibly stutter/freeze ("zacina się co chwila jak jest internet").
-    // Coalescing rapid-fire snapshots into one applied update (always using
-    // the LATEST data, never an intermediate one) fixed the freeze, but the
-    // user still felt the app "reloading the account" constantly with a 1.2s
-    // window -- widened to 3s (2026-08-11, second pass, "rozwiąż to raz a
-    // porządnie... może być robione raz na jakiś czas") on the explicit
-    // premise that near-real-time isn't worth the churn: local edits are
-    // ALWAYS saved to localStorage the instant they happen (saveState(),
-    // fully synchronous, independent of any of this) and pushed to the
-    // cloud on their own 1.5s debounce regardless -- this timer only
-    // affects how quickly this tab notices OTHER devices' changes, which is
-    // fine to treat as "eventually, in the background" rather than instant.
+    // and applyRemoteSyncedState()'s 29-key merge diff + a full recipe
+    // re-render on EVERY single one of those events was enough to make the
+    // whole tab visibly stutter/freeze ("zacina się co chwila jak jest
+    // internet"). Coalescing rapid-fire snapshots into one applied update
+    // (always using the LATEST data, never an intermediate one) keeps sync
+    // close to real-time while capping how often the expensive merge+render
+    // pipeline can actually run.
     pendingRemoteSnapshotData = snap.data();
     clearTimeout(applyRemoteSyncedStateTimer);
     applyRemoteSyncedStateTimer = setTimeout(()=>{
       const data = pendingRemoteSnapshotData;
       pendingRemoteSnapshotData = null;
       applyRemoteSyncedState(data);
-    }, 3000);
+    }, 1200);
   }, err=> console.warn("Błąd nasłuchiwania synchronizacji z chmurą.", err));
 }
 // ---------- SYNC CONFLICT REVIEW (two devices changed the same thing) ----------

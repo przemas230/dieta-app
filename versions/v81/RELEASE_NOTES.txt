@@ -1,0 +1,29 @@
+Wersja 81 (2026-08-11)
+
+Druga tura poprawek "wczytywania konta" po zgłoszeniu użytkownika, że
+mimo wcześniejszej dzisiejszej poprawki web nadal odczuwalnie "wczytuje
+konto" bez przerwy przy aktywnym drugim urządzeniu ("rozwiąż to raz a
+porządnie... może to być robione raz na jakiś czas").
+
+Znaleziono dodatkową przyczynę: KAŻDA bezkolizyjna zmiana z chmury (czyli
+niemal każdy cykl synchronizacji przy aktywnym drugim urządzeniu)
+pokazywała toast "Zsynchronizowano dane z chmury" — pojawiający się co
+kilka sekund, wyglądał jak ciągłe przeładowywanie konta, mimo że nic nie
+wymagało uwagi użytkownika.
+
+Naprawione:
+- Zwykłe, bezkolizyjne synchronizacje są teraz zawsze ciche (bez toastu) —
+  okno sprzeczności nadal się pokazuje dla prawdziwych konfliktów, mały
+  wskaźnik synchronizacji w nagłówku już pokrywa "coś się dzieje" bez
+  przeszkadzania.
+- Okno debounce'a na odbiór zmian z chmury wydłużone z 1,2 s do 3 s,
+  celowo traktując propagację zmian z INNYCH urządzeń jako "wkrótce, w
+  tle", a nie natychmiastową. Lokalne zmiany nadal zapisują się do
+  localStorage od razu (synchronicznie) i wypychają się do chmury na
+  własnym, niezmienionym 1,5-sekundowym debounsie — ten mechanizm dotyczy
+  wyłącznie tego, jak szybko TA karta zauważa zmiany z INNYCH urządzeń.
+
+Zweryfikowane bezpośrednio w przeglądarce: symulowana bezkolizyjna zmiana
+zdalna zastosowała się poprawnie bez pokazania toastu.
+
+Service Worker: v54 → v55.
