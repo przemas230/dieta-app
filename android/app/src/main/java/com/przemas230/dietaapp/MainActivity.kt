@@ -108,6 +108,7 @@ import com.przemas230.dietaapp.logic.UiScale
 import com.przemas230.dietaapp.logic.WaterOperations
 import com.przemas230.dietaapp.logic.forCategory
 import com.przemas230.dietaapp.ui.ActivityLogViewModel
+import com.przemas230.dietaapp.ui.AuthState
 import com.przemas230.dietaapp.ui.AuthViewModel
 import com.przemas230.dietaapp.ui.CloudSyncCoordinator
 import com.przemas230.dietaapp.ui.CommunityCoordinator
@@ -335,6 +336,59 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // FR-38/39: no UI of its own -- keeps the persistent tracker notification
     // in sync with waterViewModel in both directions. See its own doc comment.
     WaterNotificationCoordinator(waterViewModel = waterViewModel, notificationViewModel = waterNotificationViewModel)
+
+    // Bug fixed 2026-08-11 ("mimo wyczyszczenia danych dalej wróciły
+    // poprzednie ustawienia, czyli kobieta mimo że był wybrany mężczyzna"):
+    // the FR-79 "Wyczyść dane lokalne" flow used to reset every ViewModel to
+    // defaults SYNCHRONOUSLY, in the very same click handler as
+    // authViewModel.signOut() -- but FirebaseAuth's AuthStateListener (the
+    // only thing that actually flips CloudSyncCoordinator's `uid` away from
+    // the real account) fires asynchronously, not within that same call.
+    // If it hadn't fired yet by the time the ViewModels flipped to defaults,
+    // CloudSyncCoordinator was still composed with the REAL signed-in uid,
+    // so its 1.5s-debounced push effect could -- depending on exactly how
+    // fast the listener happened to fire relative to that window -- push the
+    // freshly-reset default profile (Profile()'s hardcoded KOBIETA) up to
+    // the real account's Firestore document, genuinely OVERWRITING the
+    // user's real data with defaults, not just failing to redisplay it.
+    // Signing back in then correctly pulled back this now-corrupted cloud
+    // copy, which is indistinguishable from "the old defaults never left"
+    // from the user's side. Fixed by no longer resetting the ViewModels
+    // directly from the click handler at all -- `onClearLocalData` below
+    // only clears the on-disk baseline (harmless regardless of timing) and
+    // sets `pendingLocalDataClear`; the actual reset is deferred to this
+    // LaunchedEffect, which only runs once `authState` has ACTUALLY stopped
+    // reporting the real account (Loading/Anonymous/Unavailable), so
+    // CloudSyncCoordinator is guaranteed to already be composed with a
+    // non-real `uid` (and thus unable to push) by the time any ViewModel
+    // changes at all.
+    val authState by authViewModel.state.collectAsState()
+    var pendingLocalDataClear by remember { mutableStateOf(false) }
+    LaunchedEffect(authState, pendingLocalDataClear) {
+        if (!pendingLocalDataClear || authState is AuthState.SignedIn) return@LaunchedEffect
+        pendingLocalDataClear = false
+        profileViewModel.resetToDefault()
+        profileViewModel.setDisplayName("")
+        pantryViewModel.replaceAll(emptyMap())
+        shoppingViewModel.replaceAll(emptyMap())
+        plannerViewModel.replaceAll(emptyMap())
+        recipeViewModel.replaceCooked(emptyMap())
+        recipeViewModel.replaceRatings(emptyMap())
+        recipeViewModel.replaceReviews(emptyMap())
+        recipeViewModel.replaceMyRecipes(emptyList())
+        favoriteIngredientsViewModel.replaceAll(emptySet())
+        eatenViewModel.replaceAll(emptyMap(), emptyList())
+        eatenViewModel.replaceHistory(emptyMap())
+        waterViewModel.setCount(0)
+        waterViewModel.replaceHistory(emptyMap())
+        weightViewModel.replaceAll(emptyList())
+        activityLogViewModel.clear()
+        themeViewModel.setTheme(com.przemas230.dietaapp.logic.AppThemes.DEFAULT_ID)
+        uiScaleViewModel.resetToAuto()
+        swipeRatingStyleViewModel.setStyle(SwipeRatingStyle.BALLOON)
+        recipeViewModel.setCommunityRecipesEnabled(false)
+    }
+
     val eatenEntries by eatenViewModel.entries.collectAsState()
     val snacks by eatenViewModel.snacks.collectAsState()
     var showQuickAddDialog by remember { mutableStateOf(false) }
@@ -572,41 +626,17 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     plannerViewModel = plannerViewModel,
                     shoppingViewModel = shoppingViewModel,
                     onClearLocalData = {
-                        // FR-79: "wyczyść dane lokalne" -- resets every local
-                        // ViewModel to fresh-install defaults. LocalPersistenceCoordinator
-                        // picks up each of these changes and re-saves the (now
-                        // empty) state on its own, so no separate file-delete needed.
-                        //
-                        // The cloud-sync baseline IS explicitly cleared here (bug
-                        // fixed 2026-08-11, see CloudSyncBaselineStore's doc comment):
-                        // without this, a later sign-in to the SAME account would
-                        // find CloudSyncCoordinator's persisted baseline already
-                        // "agreeing" with Firestore's real data, so the pull
-                        // condition would treat the incoming snapshot as already-
-                        // known and never re-apply it over these now-default
-                        // ViewModels -- permanently, since nothing else invalidates
-                        // that baseline.
+                        // FR-79: "wyczyść dane lokalne". The on-disk cloud-sync
+                        // baseline is cleared right away (harmless regardless of
+                        // timing, see CloudSyncBaselineStore's doc comment); the
+                        // actual ViewModel reset is deferred to the
+                        // LaunchedEffect(authState, pendingLocalDataClear) above,
+                        // which waits until we're confirmed to no longer be
+                        // signed in as the real account before touching any
+                        // ViewModel -- see that LaunchedEffect's doc comment for
+                        // the data-loss bug this avoids.
                         CloudSyncBaselineStore.clear(context)
-                        profileViewModel.resetToDefault()
-                        profileViewModel.setDisplayName("")
-                        pantryViewModel.replaceAll(emptyMap())
-                        shoppingViewModel.replaceAll(emptyMap())
-                        plannerViewModel.replaceAll(emptyMap())
-                        recipeViewModel.replaceCooked(emptyMap())
-                        recipeViewModel.replaceRatings(emptyMap())
-                        recipeViewModel.replaceReviews(emptyMap())
-                        recipeViewModel.replaceMyRecipes(emptyList())
-                        favoriteIngredientsViewModel.replaceAll(emptySet())
-                        eatenViewModel.replaceAll(emptyMap(), emptyList())
-                        eatenViewModel.replaceHistory(emptyMap())
-                        waterViewModel.setCount(0)
-                        waterViewModel.replaceHistory(emptyMap())
-                        weightViewModel.replaceAll(emptyList())
-                        activityLogViewModel.clear()
-                        themeViewModel.setTheme(com.przemas230.dietaapp.logic.AppThemes.DEFAULT_ID)
-                        uiScaleViewModel.resetToAuto()
-                        swipeRatingStyleViewModel.setStyle(SwipeRatingStyle.BALLOON)
-                        recipeViewModel.setCommunityRecipesEnabled(false)
+                        pendingLocalDataClear = true
                     },
                     onBrowseUsers = { navController.navigate(Screen.UserList.route) },
                 )

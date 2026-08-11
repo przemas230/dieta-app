@@ -2143,6 +2143,28 @@ Rzeczywiste działanie między dwoma prawdziwymi urządzeniami wymaga weryfikacj
   ręcznego odtworzenia w Android Studio (zalogować się, "Wyloguj i wyczyść
   dane", zalogować się ponownie na to samo konto, sprawdzić że wraca
   prawdziwy profil/plan zamiast domyślnego).
+- **v13** (2026-08-11, Android): Użytkownik zgłosił, że mimo v12 problem
+  nadal występuje ("mimo wyczyszczenia danych dalej wróciły poprzednie
+  ustawienia, czyli kobieta mimo że był wybrany mężczyzna i reszta
+  ustawień"). Znaleziona głębsza, poważniejsza przyczyna tego samego
+  objawu: `onClearLocalData` resetowało wszystkie ViewModele SYNCHRONICZNIE,
+  w tym samym kliknięciu co `signOut()`, ale `AuthStateListener` (jedyny
+  mechanizm przestawiający `uid` w `CloudSyncCoordinator` na inny niż
+  prawdziwe konto) odpala się asynchronicznie. Jeśli nie zdążył odpalić się
+  na czas, `CloudSyncCoordinator` był wciąż skomponowany z PRAWDZIWYM
+  `uid`, więc jego efekt push mógł wypchnąć świeżo zresetowany domyślny
+  profil (Kobieta) do prawdziwego dokumentu Firestore konta, realnie
+  NADPISUJĄC dane użytkownika w chmurze, a nie tylko nie odświeżając ich
+  lokalnie — kolejne logowanie poprawnie pociągało z powrotem tę już
+  uszkodzoną kopię. Naprawione usunięciem synchronicznego resetu z
+  handlera kliknięcia: reset ViewModeli przeniesiony do
+  `LaunchedEffect(authState, pendingLocalDataClear)`, który czeka aż
+  `authState` faktycznie przestanie być `SignedIn`, zanim tknie
+  którykolwiek ViewModel. `versionCode` 54→55, `versionName`
+  0.1.53→0.1.54. `./gradlew :app:assembleDebug :app:testDebugUnitTest
+  :logic:test` przechodzi. Pełny opis w `android/PARITY.md`. **Nadal nie
+  zweryfikowane na żywo** — wymaga ręcznego odtworzenia w Android Studio z
+  prawdziwym kontem Google.
 
 ---
 
