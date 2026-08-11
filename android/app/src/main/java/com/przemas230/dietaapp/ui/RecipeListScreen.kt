@@ -92,6 +92,7 @@ import com.przemas230.dietaapp.logic.CustomRecipeOperations
 import com.przemas230.dietaapp.logic.DailyCalorieTargets
 import com.przemas230.dietaapp.logic.DishIdeaGenerator
 import com.przemas230.dietaapp.logic.IngredientCanon
+import com.przemas230.dietaapp.logic.IngredientMacroEstimation
 import com.przemas230.dietaapp.logic.Micronutrients
 import com.przemas230.dietaapp.logic.PantryOperations
 import com.przemas230.dietaapp.logic.PlannerOperations
@@ -373,8 +374,10 @@ fun RecipeListScreen(
 /**
  * FR-66: name/category/time/ingredients(one per line)/method/kcal(required)
  * + optional protein/carbs/fat -- port of index.html's "➕ Dodaj swój
- * przepis" form, minus the automatic macro estimation from ingredient text
- * (see CustomRecipeOperations' doc comment for why that's deferred).
+ * przepis" form, including live macro auto-calculation from the ingredients
+ * text (IngredientMacroEstimation, port of estimateRecipeMacrosFromText) --
+ * see the kcalDirty/proteinDirty/carbsDirty/fatDirty flags below for the
+ * "auto-calc fills it until you type into it yourself" behavior.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -393,6 +396,30 @@ private fun AddCustomRecipeDialog(
     var carbsText by remember { mutableStateOf("") }
     var fatText by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<CustomRecipeOperations.ValidationError?>(null) }
+    // FR-66: "dirty" flags -- port of index.html's arMacroDirty. Auto-calc
+    // keeps filling these fields live as ingredientsText changes, but the
+    // moment the user types into one of them directly, their number wins
+    // from then on (auto-calc never overwrites a deliberately-entered value).
+    var kcalDirty by remember { mutableStateOf(false) }
+    var proteinDirty by remember { mutableStateOf(false) }
+    var carbsDirty by remember { mutableStateOf(false) }
+    var fatDirty by remember { mutableStateOf(false) }
+    var autoCalcHint by remember {
+        mutableStateOf("Wpisz składniki, a kalorie i makroskładniki obliczą się automatycznie.")
+    }
+    LaunchedEffect(ingredientsText) {
+        val result = IngredientMacroEstimation.estimateRecipeMacrosFromText(ingredientsText)
+        autoCalcHint = when {
+            result.total == 0 -> "Wpisz składniki, a kalorie i makroskładniki obliczą się automatycznie."
+            result.matched == 0 -> "Nie rozpoznano żadnego z ${result.total} składników — wpisz kalorie i makroskładniki ręcznie."
+            else -> "Rozpoznano ${result.matched} z ${result.total} składników — obliczono na tej podstawie (możesz poprawić ręcznie)."
+        }
+        if (result.matched == 0) return@LaunchedEffect
+        if (!kcalDirty) kcalText = result.kcal.toString()
+        if (!proteinDirty) proteinText = formatNum(result.protein)
+        if (!carbsDirty) carbsText = formatNum(result.carbs)
+        if (!fatDirty) fatText = formatNum(result.fat)
+    }
 
     fun errorText(e: CustomRecipeOperations.ValidationError) = when (e) {
         CustomRecipeOperations.ValidationError.MissingName -> "Podaj nazwę przepisu."
@@ -453,6 +480,12 @@ private fun AddCustomRecipeDialog(
                     minLines = 3,
                     maxLines = 6,
                 )
+                Text(
+                    autoCalcHint,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = method,
@@ -465,7 +498,7 @@ private fun AddCustomRecipeDialog(
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = kcalText,
-                    onValueChange = { kcalText = it },
+                    onValueChange = { kcalText = it; kcalDirty = true },
                     label = { Text("Kalorie (kcal)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -475,21 +508,21 @@ private fun AddCustomRecipeDialog(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
                     OutlinedTextField(
                         value = proteinText,
-                        onValueChange = { proteinText = it },
+                        onValueChange = { proteinText = it; proteinDirty = true },
                         label = { Text("Białko") },
                         singleLine = true,
                         modifier = Modifier.weight(1f),
                     )
                     OutlinedTextField(
                         value = carbsText,
-                        onValueChange = { carbsText = it },
+                        onValueChange = { carbsText = it; carbsDirty = true },
                         label = { Text("Węgle") },
                         singleLine = true,
                         modifier = Modifier.weight(1f),
                     )
                     OutlinedTextField(
                         value = fatText,
-                        onValueChange = { fatText = it },
+                        onValueChange = { fatText = it; fatDirty = true },
                         label = { Text("Tłuszcz") },
                         singleLine = true,
                         modifier = Modifier.weight(1f),

@@ -4,12 +4,14 @@ import com.przemas230.dietaapp.data.Recipe
 
 /**
  * FR-66: pure port of index.html's "➕ Dodaj swój przepis" form validation
- * and save handler (`state.myRecipes.push(recipe)`), minus the automatic
- * kcal/macro estimation from ingredient text (`estimateRecipeMacrosFromText`,
- * INGREDIENT_MACRO_DB) -- that convenience feature is intentionally
- * deferred (see android/PARITY.md); manual entry of kcal (required) and
- * protein/carbs/fat (optional) is always a valid, fully supported path in
- * the web source too, so this covers FR-66's actual acceptance criteria.
+ * and save handler (`state.myRecipes.push(recipe)`). The automatic
+ * kcal/macro estimation from ingredient text lives separately in
+ * `IngredientMacroEstimation`/`IngredientMacroDb` (port of
+ * `estimateRecipeMacrosFromText`/`INGREDIENT_MACRO_DB`) and is wired up in
+ * `AddCustomRecipeDialog` (app module), not here -- this object only ever
+ * validates/builds the final `Recipe` from whatever kcal/protein/carbs/fat
+ * values the form settles on, same as index.html's own submit handler,
+ * which doesn't care whether those numbers came from auto-calc or manual entry.
  */
 object CustomRecipeOperations {
     data class Input(
