@@ -85,6 +85,11 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
     // zawartości" criterion.
     var tileView by remember { mutableStateOf(false) }
     var showClearAllConfirm by remember { mutableStateOf(false) }
+    val todayIdx = remember { ShoppingDayStrip.todayIndex(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) - 1) }
+    val recipesById = remember(allRecipes) { allRecipes.associateBy { it.id } }
+    // 2026-08-11: which planner day(s) need each item, so the user can shop
+    // for just "today + jutro" and stop -- see ShoppingOperations.computeIngredientDays.
+    val ingredientDays = remember(items, weekPlan, recipesById) { ShoppingOperations.computeIngredientDays(items, weekPlan, recipesById) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -120,7 +125,7 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
                 onClick = {
                     val sendIntent = Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, ShoppingOperations.buildShareText(items))
+                        putExtra(Intent.EXTRA_TEXT, ShoppingOperations.buildShareText(items, ingredientDays, todayIdx))
                     }
                     context.startActivity(Intent.createChooser(sendIntent, null))
                 },
@@ -133,11 +138,9 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
 
         // FR-58/FR-62: one strip of 7 day cards, each stating its own
         // add-to-shopping-list status and doubling as the add button itself.
-        val todayIdx = remember { ShoppingDayStrip.todayIndex(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) - 1) }
         val dayCards = remember(weekPlan, items) {
             ShoppingDayStrip.buildCards(weekPlan, { rid -> ShoppingOperations.isRecipeAdded(items, rid) }, todayIdx)
         }
-        val recipesById = remember(allRecipes) { allRecipes.associateBy { it.id } }
         ShoppingDayStripRow(
             cards = dayCards,
             onDayClick = { card ->
@@ -181,6 +184,7 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
                     ShoppingTile(
                         item = item,
                         pantryEntry = pantryItems[item.name] as? PantryItem.Product,
+                        dayLabel = ShoppingOperations.formatIngredientDays(ingredientDays[key], todayIdx),
                         onToggle = { viewModel.toggleChecked(key) },
                     )
                 }
@@ -191,6 +195,7 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
                 items(sorted, key = { it.key }) { (key, item) ->
                     ShoppingRow(
                         item = item,
+                        dayLabel = ShoppingOperations.formatIngredientDays(ingredientDays[key], todayIdx),
                         onToggle = { viewModel.toggleChecked(key) },
                         onRemove = { viewModel.removeItem(key) },
                     )
@@ -292,13 +297,13 @@ private fun ShoppingDayCardView(card: ShoppingDayCard, onClick: () -> Unit, onLo
  * source of truth to keep in sync.
  */
 @Composable
-private fun ShoppingTile(item: ShoppingItem, pantryEntry: PantryItem.Product?, onToggle: () -> Unit) {
+private fun ShoppingTile(item: ShoppingItem, pantryEntry: PantryItem.Product?, dayLabel: String = "", onToggle: () -> Unit) {
     val missing = remember(item.name, item.unitCat, item.quantity, pantryEntry) {
         RecipePantryMatching.missingAfterPantry(item.quantity, item.unitCat, pantryEntry)
     }
     val badge = if (missing == null) "✓" else "−${ShoppingDisplay.formatQty(item.unitCat, missing)}"
     val emoji = IngredientCanon.CANON_INFO[item.name]?.emoji ?: "🛒"
-    val displayName = ShoppingDisplay.displayName(item.name, item.unitCat, item.quantity)
+    val displayName = ShoppingDisplay.displayName(item.name, item.unitCat, item.quantity) + dayLabel
     val containerColor = if (item.checked) {
         MaterialTheme.colorScheme.primaryContainer
     } else {
@@ -335,7 +340,7 @@ private fun ShoppingTile(item: ShoppingItem, pantryEntry: PantryItem.Product?, o
 }
 
 @Composable
-private fun ShoppingRow(item: ShoppingItem, onToggle: () -> Unit, onRemove: () -> Unit) {
+private fun ShoppingRow(item: ShoppingItem, dayLabel: String = "", onToggle: () -> Unit, onRemove: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Row(
             modifier = Modifier
@@ -349,7 +354,7 @@ private fun ShoppingRow(item: ShoppingItem, onToggle: () -> Unit, onRemove: () -
                 val qtyLabel = ShoppingDisplay.formatQty(item.unitCat, item.quantity)
                 val displayName = ShoppingDisplay.displayName(item.name, item.unitCat, item.quantity)
                 Text(
-                    "$qtyLabel $displayName",
+                    "$qtyLabel $displayName$dayLabel",
                     textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
                 )
             }

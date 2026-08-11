@@ -143,6 +143,55 @@ object ShoppingOperations {
     fun clearAll(items: Map<String, ShoppingItem>): Map<String, ShoppingItem> = emptyMap()
 
     /**
+     * 2026-08-11: which planner day(s) actually need a given shopping list
+     * item, so the user can shop for just "today + jutro" and stop instead
+     * of buying everything on the list at once. Purely DERIVED from the
+     * current week plan + which recipes are actually on the list
+     * (isRecipeAdded) -- never stored, recomputed fresh, so it can never
+     * drift out of sync. An item added straight from a recipe card (not via
+     * a planned day) simply gets no day in the result -- there's no day to
+     * report. Port of index.html's computeIngredientDays() (2026-08-11).
+     */
+    fun computeIngredientDays(
+        items: Map<String, ShoppingItem>,
+        weekPlan: WeekPlan,
+        recipesById: Map<String, Recipe>,
+    ): Map<String, Set<Int>> {
+        val result = mutableMapOf<String, MutableSet<Int>>()
+        weekPlan.forEach { (day, dayMeals) ->
+            dayMeals.values.forEach { meal ->
+                if (!isRecipeAdded(items, meal.recipeId)) return@forEach
+                val recipe = recipesById[meal.recipeId] ?: return@forEach
+                val scaledIngredients = PlannerOperations.scaleIngredients(recipe.ingredients, meal.scale)
+                scaledIngredients.forEach { ingredient ->
+                    val parsed = RecipePantryMatching.parseIngredient(ingredient)
+                    val key = keyFor(parsed.canonName, parsed.unitCat)
+                    if (!items.containsKey(key)) return@forEach
+                    result.getOrPut(key) { mutableSetOf() }.add(day)
+                }
+            }
+        }
+        return result
+    }
+
+    private const val SUNDAY_DAY_INDEX = 6
+
+    /** "(dziś, jutro)"-style suffix for a shopping item's day label -- [todayIdx] is ShoppingDayStrip.todayIndex's result. Calls out Sunday specifically since stores are closed then. */
+    fun formatIngredientDays(days: Set<Int>?, todayIdx: Int): String {
+        if (days.isNullOrEmpty()) return ""
+        val labels = days.sorted().map { day ->
+            when (day) {
+                todayIdx -> "dziś"
+                (todayIdx + 1) % 7 -> "jutro"
+                (todayIdx + 2) % 7 -> "pojutrze"
+                else -> PlannerOperations.DAYS_PL[day].take(3).lowercase()
+            }
+        }
+        val sundayNote = if (SUNDAY_DAY_INDEX in days) " — sklepy nieczynne, kup wcześniej" else ""
+        return " (${labels.joinToString(", ")}$sundayNote)"
+    }
+
+    /**
      * FR-26: plain-text summary for Android's share sheet -- port of
      * index.html's buildListText(), grouped by category and sorted by name
      * within each group, unchecked items only. Reuses Android's own 8-
@@ -151,7 +200,11 @@ object ShoppingOperations {
      * `classify()`, which exists only for this one text — same information,
      * one fewer categorization scheme to maintain.
      */
-    fun buildShareText(items: Map<String, ShoppingItem>): String {
+    fun buildShareText(
+        items: Map<String, ShoppingItem>,
+        ingredientDays: Map<String, Set<Int>> = emptyMap(),
+        todayIdx: Int = -1,
+    ): String {
         val unchecked = items.values.filter { !it.checked }
         if (unchecked.isEmpty()) return "Lista zakupów jest pusta \uD83C\uDF89"
         val byCategoryLabel = unchecked.groupBy { IngredientCanon.CANON_INFO[it.name]?.cat ?: PantryCategory.INNE.label }
@@ -161,7 +214,8 @@ object ShoppingOperations {
             sb.append('\n').append(cat.label).append(":\n")
             group.sortedBy { it.name }.forEach { item ->
                 val displayName = ShoppingDisplay.displayName(item.name, item.unitCat, item.quantity)
-                sb.append("- ").append(ShoppingDisplay.formatQty(item.unitCat, item.quantity)).append(' ').append(displayName).append('\n')
+                val dayLabel = formatIngredientDays(ingredientDays[keyFor(item.name, item.unitCat)], todayIdx)
+                sb.append("- ").append(ShoppingDisplay.formatQty(item.unitCat, item.quantity)).append(' ').append(displayName).append(dayLabel).append('\n')
             }
         }
         return sb.toString().trim()

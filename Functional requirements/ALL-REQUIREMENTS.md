@@ -114,6 +114,8 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-76: Przepisy społeczności oraz przeglądana lista użytkowników i profili](#fr-76-przepisy-społeczności-oraz-przeglądana-lista-użytkowników-i-profili)
 - [FR-78: Pełna synchronizacja stanu z prawdziwym scalaniem zmian (3-way merge)](#fr-78-pełna-synchronizacja-stanu-z-prawdziwym-scalaniem-zmian-3-way-merge)
 - [FR-79: Wylogowanie z urządzenia](#fr-79-wylogowanie-z-urządzenia)
+- [FR-80: Dzień tygodnia przy składniku na liście zakupów](#fr-80-dzień-tygodnia-przy-składniku-na-liście-zakupów)
+- [FR-81: Propozycja przeliczenia planu i listy zakupów po zapisaniu profilu](#fr-81-propozycja-przeliczenia-planu-i-listy-zakupów-po-zapisaniu-profilu)
 
 ---
 
@@ -927,18 +929,22 @@ Aplikacja liczy serie kolejnych dni spełniających kryteria (np. pełne nawodni
 **Status:** Zaimplementowane
 
 ## Opis
-Na widoku Przepisy pasek kategorii i filtrów (FR-2) jest position:sticky, zadokowany bezpośrednio pod nagłówkiem — pozostaje widoczny podczas przewijania listy niezależnie od tego, czy nagłówek jest akurat zwinięty czy rozwinięty. Wysokość nagłówka jest śledzona na bieżąco (ResizeObserver), by pasek zawsze przylegał do jego aktualnej krawędzi, także w trakcie animacji zwijania.
+Na widoku Przepisy pasek kategorii i filtrów (FR-2, w tym pole wyszukiwania) jest position:sticky, zadokowany bezpośrednio pod nagłówkiem — pozostaje widoczny podczas przewijania listy niezależnie od tego, czy nagłówek jest akurat zwinięty czy rozwinięty. Wysokość nagłówka jest śledzona na bieżąco (ResizeObserver), by pasek zawsze przylegał do jego aktualnej krawędzi, także w trakcie animacji zwijania. Od 2026-08-11 cały ten pasek (pole wyszukiwania + pigułki kategorii + wszystkie przełączniki filtrów) chowa się i pokazuje RAZEM z nagłówkiem (FR-44/FR-45's te same zasady: tylko blisko góry listy, chowa się niżej niezależnie od kierunku przewijania) — wcześniej pasek zostawał zawsze widoczny (tylko przesuwał się wyżej wraz ze zwijaniem nagłówka), co razem z samym nagłówkiem zajmowało zbyt dużo ekranu.
 
 ## Kryteria akceptacji
 - Pasek nigdy nie zachodzi na treść nagłówka ani nie zostawia szpary między nimi, niezależnie od stanu zwinięcia.
 - Poziomy pasek kategorii (pigułki) przewija się bez widocznego paska przewijania pod żadnym pozorem, mimo że mieści się w jednej linii (patrz historia rewizji).
+- Cały pasek (pole wyszukiwania, pigułki kategorii, przełączniki filtrów) chowa się/pokazuje w dokładnie tym samym momencie co nagłówek — nigdy nie widać jednego bez drugiego ani z opóźnieniem.
 
 ## Uwagi
 Zrewidowane 2026-08-03: pierwotna wersja paska pigułek kategorii nie ukrywała natywnego paska przewijania przeglądarki, co po przypięciu paska na stałe pod nagłówkiem stało się szczególnie widoczne i przeszkadzające. Naprawiono przez `scrollbar-width:none` / ukrycie paska WebKit, zachowując przewijanie dotykiem.
 
+Zrewidowane 2026-08-11, na wyraźną prośbę użytkownika ("szukajka na stronie z przepisami niech się zachowuje tak samo jak header, bo zasłania za dużo ekranu niech się chowa i pokazuje tylko u góry"): dodano współdzielone chowanie z nagłówkiem. Web: czysto CSS-owe (`header.app-top.collapsed ~ main .recipes-sticky-bar{max-height:0;opacity:0}`), więc pasek nigdy nie może rozjechać się z nagłówkiem — nie ma osobnego stanu JS do synchronizowania. Android: `RecipeListScreen` dostał nowy parametr `headerExpanded: Boolean` (mirror `MainActivity`'s własnego `headerExpanded`), owijający pole wyszukiwania + pigułki + filtry w `AnimatedVisibility`.
+
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-03): Doprecyzowano zachowanie na podstawie zgłoszonej poprawki — patrz sekcja "Uwagi" powyżej.
+- **v3** (2026-08-11): Cały pasek teraz chowa się/pokazuje razem z nagłówkiem (FR-44/FR-45) zamiast zostawać zawsze widoczny — patrz sekcja "Uwagi" powyżej.
 
 ---
 
@@ -2029,5 +2035,71 @@ W obu przypadkach aplikacja odłącza nasłuchiwanie synchronizacji (`users/{uid
 ## Historia rewizji
 - **v1** (2026-08-08): Pierwsza wersja wymagania, na życzenie użytkownika
   ("brakuje przycisku wyloguj").
+
+---
+
+# FR-80: Dzień tygodnia przy składniku na liście zakupów
+
+**Obszar:** Lista zakupów
+**Status:** Zaimplementowane (web + Android)
+
+## Opis
+Każda pozycja na liście zakupów (widok listy i widok kafelkowy, FR-75) pokazuje w nawiasie za nazwą, na który dzień (lub dni) tygodnia jest potrzebny dany składnik — wyłącznie dla składników pochodzących z dań faktycznie zaplanowanych w Planerze (FR-58/FR-62's dodawanie "na dany dzień"/"na cały tydzień"). Pozwala to kupić tylko to, co potrzebne np. na dziś/jutro/pojutrze, bez konieczności kupowania od razu wszystkiego z listy. Etykieta używa tych samych skrótów co pasek dni na liście zakupów: „dziś"/„jutro"/„pojutrze" dla najbliższych dwóch dni, trzyliterowy skrót nazwy dnia dla pozostałych („pon", „wto"...). Jeśli ten sam składnik jest potrzebny na kilka dni (bo powtarza się w kilku zaplanowanych daniach), wszystkie te dni są wymienione razem, oddzielone przecinkami.
+
+Ponieważ sklepy w niedzielę są zwyczajowo zamknięte, składnik potrzebny na niedzielę dostaje dodatkową, wyraźną adnotację „— sklepy nieczynne, kup wcześniej", zamiast cicho sugerować zakupy w dniu, w którym i tak nie da się ich zrobić.
+
+Etykieta dnia jest w pełni WYLICZANA na bieżąco z aktualnego stanu Planera i tego, które przepisy są już na liście zakupów (`recipeAdded`/odpowiednik `contributions` w Kotlinie) — nie jest osobno zapisywana ani synchronizowana, więc nigdy nie może się rozjechać z rzeczywistym stanem planu. Składnik dodany bezpośrednio z karty przepisu (nie przez Planer) nie ma żadnej etykiety dnia — po prostu nie ma z czym jej powiązać.
+
+## Kryteria akceptacji
+- Etykieta dnia pojawia się WYŁĄCZNIE dla składników pochodzących z dania, które jest jednocześnie: (a) zaplanowane na dany dzień w Planerze, oraz (b) faktycznie znajduje się na liście zakupów (nie samo zaplanowanie, bez dodania do listy, nie generuje etykiety).
+- Ten sam składnik potrzebny w kilku dniach pokazuje wszystkie te dni razem w jednej etykiecie, posortowane chronologicznie od dziś.
+- Niedziela zawsze dostaje dodatkowy dopisek o zamkniętych sklepach, niezależnie od tego, z jakim innym dniem występuje razem w tej samej etykiecie.
+- Etykieta dnia widoczna jest w obu widokach listy zakupów (lista i kafelki) oraz w tekście generowanym do udostępnienia (przycisk „Udostępnij"/SMS/WhatsApp/kopiuj).
+- Odznaczenie/zaznaczenie pozycji jako kupionej albo zmiana planu w Planerze natychmiast aktualizuje widoczne etykiety dni bez potrzeby ręcznego odświeżenia.
+
+## Historia rewizji
+- **v1** (2026-08-11): Pierwsza wersja wymagania, na życzenie użytkownika
+  ("na liście zakupów chciałbym żeby w nawiasie albo na kafelkach też w
+  nawiasie po nazwie produktu pojawiał się dzień tygodnia na który
+  potrzebny jest składnik, bo może np sobie użytkownik chcieć kupić tylko
+  zakupy na jutro i pojutrze i dzisiaj a nie chce już dalej, pamiętaj że
+  w niedzielę sklepy są nieczynne"). Zaimplementowane jednocześnie na
+  web (`computeIngredientDays`/`formatIngredientDays` w index.html) i
+  Android (`ShoppingOperations.computeIngredientDays`/`formatIngredientDays`
+  w logic, z testami JUnit), zweryfikowane wizualnie na emulatorze.
+
+---
+
+# FR-81: Propozycja przeliczenia planu i listy zakupów po zapisaniu profilu
+
+**Obszar:** Profil i dieta
+**Status:** Zaimplementowane (web + Android)
+
+## Opis
+Po kliknięciu „Zapisz i dopasuj dietę” w Ustawieniach — po zwykłym zapisaniu profilu i przeliczeniu dziennych celów kalorycznych/makro, bez zmian — aplikacja pyta dodatkowo, czy wygenerować NOWY plan posiłków na cały tydzień dopasowany do właśnie zaktualizowanej diety (ten sam mechanizm losowego generowania co „🎲 Wygeneruj losowo cały tydzień” w Planerze, FR-21). Stary plan mógł zostać ułożony pod inne parametry (inny cel, inna waga, inna aktywność) i niekoniecznie nadal dobrze pasuje.
+
+Jeśli użytkownik się zgodzi: cały tygodniowy plan zostaje nadpisany nowymi, dopasowanymi propozycjami dań, a dotychczasowa lista zakupów zostaje wyczyszczona (bo była ułożona pod STARY plan i już nie odzwierciedla rzeczywistości). Dopiero po tym aplikacja zadaje DRUGIE, osobne pytanie: czy dodać składniki nowo wygenerowanego planu do (teraz pustej) listy zakupów. To dwa osobne pytania, nie jedno połączone, bo dotyczą dwóch różnych, niezależnie odwracalnych konsekwencji (Planer vs Zakupy).
+
+Jeśli użytkownik odmówi pierwszemu pytaniu (nie chce nowego planu), nic więcej się nie dzieje — profil i przeliczone cele kaloryczne i tak już zostały zapisane normalnie, jak zawsze.
+
+## Kryteria akceptacji
+- Pytanie o nowy plan pojawia się PO każdym kliknięciu „Zapisz i dopasuj dietę”, niezależnie od tego, czy dane w formularzu faktycznie się zmieniły względem poprzedniego zapisu.
+- Odpowiedź „nie” na pierwsze pytanie nie zmienia ani planu, ani listy zakupów — zachowanie identyczne jak przed wprowadzeniem tej funkcji.
+- Odpowiedź „tak” na pierwsze pytanie: cały tygodniowy Planer zostaje nadpisany nowym losowym planem dopasowanym do ŚWIEŻO zapisanego profilu (nie starego), a lista zakupów zostaje całkowicie wyczyszczona — dopiero potem pojawia się drugie pytanie.
+- Drugie pytanie („dodać składniki do listy zakupów?”) pojawia się WYŁĄCZNIE, jeśli użytkownik zgodził się na pierwsze — nigdy samodzielnie.
+- Odpowiedź „tak” na drugie pytanie dodaje składniki wszystkich dań z nowego planu do listy zakupów, tym samym mechanizmem co „Dodaj składniki z całego tygodnia” w zakładce Zakupy (FR-27), włącznie z etykietami dni z FR-80.
+
+## Historia rewizji
+- **v1** (2026-08-11): Pierwsza wersja wymagania, na życzenie użytkownika
+  ("po zapisz i dopasuj dietę zadaj pytanie czy przekalkulować dietę, i
+  listę zakupów i jeśli użytkownik się zgodzi to wyczyść listę zakupów i
+  wstaw nowe sugerowane dania do planera, dopytać czy dodać nowe zakupy na
+  listę zakupów"). Zaimplementowane jednocześnie na web (rozszerzenie
+  `saveSettingsBtn`'s handlera, reużywające `fittingPool`/`idealScaleFor`
+  z FR-21) i Android (rozszerzenie `ProfileCard` w SettingsScreen.kt,
+  reużywające `PlannerViewModel.randomizeWeek`/`ShoppingViewModel.clearAll`/
+  `addWeekPlan`), zweryfikowane wizualnie na emulatorze na żywo: zapisanie
+  profilu poprawnie pokazało oba pytania po kolei i poprawnie wypełniło
+  listę zakupów z etykietami dni.
 
 ---

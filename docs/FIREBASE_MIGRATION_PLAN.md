@@ -15,6 +15,21 @@ głównie właściwa synchronizacja danych (spiżarnia/lista zakupów/planer) i
 gospodarstwo domowe. Reszta tego dokumentu (model danych, reguły
 bezpieczeństwa) jest nadal aktualnym planem na te pozostałe kroki.
 
+**AKTUALIZACJA 2026-08-11: reguły bezpieczeństwa Firestore z sekcji niżej
+zostały wklejone w konsoli Firebase** (użytkownik potwierdził: "mam dodane
+reguły bezpieczeństwa dla firebase już dawno") — krok 10 checklisty niżej
+jest więc ukończony. Przepisy społeczności, komentarze wielo-użytkownikowe
+i lista użytkowników/profili (FR-76/FR-77) są w pełni funkcjonalne na web
+(od 2026-08-08) i od 2026-08-11 też na Androidzie (FR-68/76/77 port —
+patrz `android/PARITY.md`). Pełna synchronizacja stanu z prawdziwym
+scalaniem zmian (3-way merge, FR-78) działa na web od 2026-08-08 (patrz
+"Dlaczego zaskakująco mało trzeba dopisywać" niżej — ten opis jest już
+NIEAKTUALNY, naiwne "ostatni zapis wygrywa" zostało zastąpione prawdziwym
+per-polowym scalaniem, patrz FR-78 w `Functional requirements/`). **Jedyny
+naprawdę pozostały krok z tego całego planu to punkt 8 — model
+`households/*` (wspólne gospodarstwo domowe) — wciąż ⬜ na OBU platformach,
+nie ma dziś żadnego kodu klienckiego, który by z niego czytał/pisał.**
+
 ## Co już zrobiono (działa dziś)
 
 - **Nazwa użytkownika w aplikacji** (`state.displayName`, ustawienia →
@@ -41,6 +56,12 @@ bezpieczeństwa) jest nadal aktualnym planem na te pozostałe kroki.
   "Checklist" niżej, punkt 8).
 
 ## Dlaczego zaskakująco mało trzeba dopisywać "warstwy synchronizacji"
+
+**Ta sekcja opisuje pierwotne, uproszczone założenie z 2026-08-08 — od tego
+czasu okazało się NIEWYSTARCZAJĄCE i zostało zastąpione prawdziwym 3-way
+merge (FR-78, patrz `Functional requirements/FR-78.md` po pełny opis
+algorytmu). Zostawione niżej dla kontekstu historycznego, nie jako opis
+aktualnego zachowania.**
 
 Cała obecna logika aplikacji operuje na jednym obiekcie `state` (patrz
 `loadState()`/`saveState()` w `index.html`) z czytelnymi, już wydzielonymi
@@ -272,17 +293,26 @@ requirements/FR-76). Zgodnie z pierwotnym planem poniżej:
 8. ⬜ Dodaj UI gospodarstwa domowego: formularz "Dołącz do gospodarstwa" /
    "Utwórz gospodarstwo" (dopiero ma sens, gdy krok 6 faktycznie
    synchronizuje dane — inaczej byłby to formularz udający działanie,
-   czego świadomie unikamy, patrz FR-68).
+   czego świadomie unikamy, patrz FR-68). Stan na 2026-08-11: JEDYNY punkt
+   z całego tego planu bez żadnego kodu klienckiego po żadnej stronie (web
+   ani Android) — reguły bezpieczeństwa dla `households/*` są już wklejone
+   w konsoli razem z resztą (krok 10), ale nic ich jeszcze nie używa.
 9. ✅ Przepisy społeczności, komentarze wielo-użytkownikowe i przeglądana
    lista użytkowników/profili zaimplementowane po stronie klienta (FR-76,
    FR-77). *(zrobione 2026-08-08)*
-10. ⬜ **Wymagana Twoja akcja w konsoli Firebase, żeby krok 9 zadziałał:**
-   wklej reguły bezpieczeństwa z sekcji wyżej (Firebase Console → Firestore
-   Database → Reguły → zastąp całą treść → Opublikuj). Bez tego kroku
-   Firestore w trybie produkcyjnym domyślnie ODRZUCA każdy odczyt/zapis do
-   `recipes/*` i `publicProfiles/*` — funkcja po prostu nic nie pokaże ani
-   nie zapisze (bezpieczne, ale niedziałające), dopóki reguły nie zostaną
-   wklejone.
+10. ✅ Reguły bezpieczeństwa z sekcji wyżej wklejone w konsoli Firebase
+   (Firebase Console → Firestore Database → Reguły → Opublikuj) —
+   potwierdzone przez użytkownika 2026-08-11. `recipes/*`, `publicProfiles/*`
+   (+ podkolekcje) działają w pełni na obu platformach, o ile logowanie jest
+   na prawdziwe (nie anonimowe) konto.
+11. ✅ Pełna synchronizacja stanu z prawdziwym 3-way merge (FR-78) —
+   zaimplementowana na web od 2026-08-08, z oknem sprzeczności „🔄
+   Synchronizacja z chmurą" i wyłącznikiem bezpieczeństwa przeciw pętlom
+   synchronizacji (v7, 2026-08-11). **⬜ Na Androidzie wciąż NIE
+   zaimplementowana** — Android ma dziś tylko FR-73's prostsze "ostatni
+   zapis wygrywa całe pole", bez per-elementowego scalania ani okna
+   sprzeczności. To największy pozostały port między platformami, patrz
+   `android/PARITY.md`.
 
 ## Jeśli jednak przepiszesz na Kotlin / Android Studio
 

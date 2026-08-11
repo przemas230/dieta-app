@@ -103,6 +103,11 @@ fun SettingsScreen(
     // needs the full recipe list, which only MainActivity's PlannerViewModel
     // already has loaded, not something SettingsScreen fetches itself.
     allRecipes: List<com.przemas230.dietaapp.data.Recipe> = emptyList(),
+    // 2026-08-11: hoisted (not default viewModel() params) so ProfileCard's
+    // post-save "regenerate the week plan + shopping list" prompt acts on
+    // the SAME shared instances the Planer/Zakupy tabs themselves show.
+    plannerViewModel: PlannerViewModel = viewModel(),
+    shoppingViewModel: ShoppingViewModel = viewModel(),
     effectiveUiScale: Double = 1.0,
     // FR-79: resets every local ViewModel to fresh-install defaults --
     // needs to reach ALL of them, not just what this screen otherwise
@@ -160,7 +165,7 @@ fun SettingsScreen(
                             // FR-71: "Twoja nazwa w aplikacji" lives physically at
                             // the top of ProfileCard itself now, not a separate card
                             // above it (that was the pre-FR-71 layout).
-                            ProfileCard(profileViewModel)
+                            ProfileCard(profileViewModel, plannerViewModel, shoppingViewModel, allRecipes)
                             CloudAccountCard(authViewModel, onClearLocalData)
                             CommunityRecipesCard(recipeViewModel, onBrowseUsers)
                         }
@@ -357,9 +362,23 @@ private fun AppUpdateCard(viewModel: AppUpdateViewModel, modifier: Modifier = Mo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ProfileCard(viewModel: ProfileViewModel) {
+private fun ProfileCard(
+    viewModel: ProfileViewModel,
+    plannerViewModel: PlannerViewModel,
+    shoppingViewModel: ShoppingViewModel,
+    allRecipes: List<com.przemas230.dietaapp.data.Recipe>,
+) {
     val profile by viewModel.profile.collectAsState()
     val displayName by viewModel.displayName.collectAsState()
+    // 2026-08-11, on explicit user request: after saving a changed profile,
+    // offer to regenerate the week plan (and, separately, the shopping
+    // list) to match the just-recalculated diet -- port of index.html's
+    // saveSettingsBtn handler extension. Two SEPARATE confirmations, not
+    // one combined dialog, since generating a new plan and adding it to
+    // the shopping list are different-enough consequences (one overwrites
+    // the Planer, the other overwrites the Zakupy list).
+    var pendingProfileForRegenerate by remember { mutableStateOf<Profile?>(null) }
+    var showAddToShoppingConfirm by remember { mutableStateOf(false) }
 
     // FR-71: rememberSaveable (not plain remember) so SettingsScreen's
     // SaveableStateHolder can restore in-progress edits after a tab switch
@@ -520,6 +539,7 @@ private fun ProfileCard(viewModel: ProfileViewModel) {
                         "II śniadanie ${t.drugie}, obiad ${t.obiady}, kolacja ${t.kolacje}, " +
                         "deser/przekąska ${t.deser}). Makra na dzień: ${m.protein} g białka, " +
                         "${m.carbs} g węglowodanów, ${m.fat} g tłuszczu."
+                    pendingProfileForRegenerate = saved
                 }) {
                     Text("Zapisz i dopasuj dietę")
                 }
@@ -540,6 +560,47 @@ private fun ProfileCard(viewModel: ProfileViewModel) {
                 )
             }
         }
+    }
+
+    pendingProfileForRegenerate?.let { pendingProfile ->
+        AlertDialog(
+            onDismissRequest = { pendingProfileForRegenerate = null },
+            title = { Text("Zaktualizowano dietę") },
+            text = {
+                Text(
+                    "Czy wygenerować nowy plan posiłków na cały tydzień dopasowany do nowej diety? " +
+                        "Nadpisze obecnie zaplanowane dania i wyczyści listę zakupów.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    plannerViewModel.randomizeWeek(pendingProfile)
+                    shoppingViewModel.clearAll()
+                    pendingProfileForRegenerate = null
+                    showAddToShoppingConfirm = true
+                }) { Text("Tak, wygeneruj") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingProfileForRegenerate = null }) { Text("Nie") }
+            },
+        )
+    }
+    if (showAddToShoppingConfirm) {
+        AlertDialog(
+            onDismissRequest = { showAddToShoppingConfirm = false },
+            title = { Text("Nowy plan gotowy") },
+            text = { Text("Dodać składniki nowego planu do listy zakupów?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val recipesById = allRecipes.associateBy { it.id }
+                    shoppingViewModel.addWeekPlan(plannerViewModel.weekPlan.value, recipesById)
+                    showAddToShoppingConfirm = false
+                }) { Text("Tak, dodaj") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddToShoppingConfirm = false }) { Text("Nie") }
+            },
+        )
     }
 }
 

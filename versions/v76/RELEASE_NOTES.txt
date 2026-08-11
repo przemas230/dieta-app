@@ -1,0 +1,25 @@
+Wersja 76 (2026-08-11)
+
+Dwie nowe funkcje na wyraźną prośbę użytkownika, zaimplementowane
+jednocześnie na web i w Kotlinie:
+
+- Lista zakupów pokazuje teraz w nawiasie za nazwą każdego produktu, na
+  który dzień (lub dni) tygodnia jest potrzebny — "dziś"/"jutro"/"pojutrze"
+  dla najbliższych dwóch dni, skrót nazwy dnia dla pozostałych. Dotyczy
+  wyłącznie składników pochodzących z dań faktycznie zaplanowanych w
+  Planerze i dodanych do listy — pozwala kupić tylko to, co potrzebne np.
+  na najbliższe dni, bez kupowania od razu wszystkiego. Niedziela dostaje
+  dodatkową adnotację "sklepy nieczynne, kup wcześniej" (FR-80).
+- Po kliknięciu „Zapisz i dopasuj dietę” aplikacja pyta dodatkowo, czy
+  wygenerować nowy plan posiłków na cały tydzień dopasowany do właśnie
+  zaktualizowanej diety (stary plan mógł być ułożony pod inne parametry).
+  Zgoda: cały tygodniowy plan zostaje nadpisany, a lista zakupów
+  wyczyszczona (bo dotyczyła starego planu) — dopiero potem osobne pytanie,
+  czy dodać składniki nowego planu do (teraz pustej) listy zakupów (FR-81).
+
+Zweryfikowane bezpośrednio na emulatorze (Android): pełny przebieg zapisania
+profilu poprawnie pokazał oba pytania po kolei i wypełnił listę zakupów z
+poprawnymi etykietami dni ("sob", "nie — sklepy nieczynne, kup wcześniej",
+kombinacje kilku dni naraz). Web zweryfikowane składnią (node --check) —
+pełny przebieg w przeglądarce wymaga jeszcze ręcznego potwierdzenia przez
+użytkownika. Service Worker v49→v50.

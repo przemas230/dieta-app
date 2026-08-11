@@ -199,4 +199,58 @@ class ShoppingOperationsTest {
         assertTrue(text.contains("jaj"))
         assertFalse(text.contains("mlek"))
     }
+
+    @Test
+    fun `computeIngredientDays reports the planner day only for recipes actually on the list`() {
+        var items = ShoppingOperations.addRecipe(emptyMap(), recipe("r1", "6 jajka"))
+        val recipesById = mapOf("r1" to recipe("r1", "6 jajka"), "r2" to recipe("r2", "500 g mąki"))
+        val weekPlan = mapOf(
+            0 to mapOf("sniadania" to PlannedMeal("r1", scale = 1.0)),
+            // r2 is planned too, but never actually added to the shopping list -- must not show a day.
+            1 to mapOf("obiady" to PlannedMeal("r2", scale = 1.0)),
+        )
+
+        val days = ShoppingOperations.computeIngredientDays(items, weekPlan, recipesById)
+
+        assertEquals(setOf(0), days["jajka|count"])
+        assertNull(days["mąka|weight"])
+    }
+
+    @Test
+    fun `computeIngredientDays unions multiple days when the same ingredient recurs`() {
+        var items = ShoppingOperations.addRecipe(emptyMap(), recipe("r1", "6 jajka"))
+        val recipesById = mapOf("r1" to recipe("r1", "6 jajka"))
+        val weekPlan = mapOf(
+            0 to mapOf("sniadania" to PlannedMeal("r1", scale = 1.0)),
+            2 to mapOf("sniadania" to PlannedMeal("r1", scale = 1.0)),
+        )
+
+        val days = ShoppingOperations.computeIngredientDays(items, weekPlan, recipesById)
+
+        assertEquals(setOf(0, 2), days["jajka|count"])
+    }
+
+    @Test
+    fun `formatIngredientDays renders empty for no days`() {
+        assertEquals("", ShoppingOperations.formatIngredientDays(null, todayIdx = 0))
+        assertEquals("", ShoppingOperations.formatIngredientDays(emptySet(), todayIdx = 0))
+    }
+
+    @Test
+    fun `formatIngredientDays uses dziś jutro pojutrze relative to todayIdx`() {
+        val label = ShoppingOperations.formatIngredientDays(setOf(0, 1, 2), todayIdx = 0)
+        assertEquals(" (dziś, jutro, pojutrze)", label)
+    }
+
+    @Test
+    fun `formatIngredientDays falls back to a 3-letter day name further out`() {
+        val label = ShoppingOperations.formatIngredientDays(setOf(4), todayIdx = 0)
+        assertEquals(" (pią)", label)
+    }
+
+    @Test
+    fun `formatIngredientDays calls out Sunday as closed`() {
+        val label = ShoppingOperations.formatIngredientDays(setOf(6), todayIdx = 0)
+        assertEquals(" (nie — sklepy nieczynne, kup wcześniej)", label)
+    }
 }

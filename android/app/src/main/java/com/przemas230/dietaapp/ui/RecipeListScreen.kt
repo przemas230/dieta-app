@@ -135,6 +135,11 @@ fun RecipeListScreen(
     // FR-77: hoisted (not a default viewModel() param) so CommunityCoordinator
     // can invalidate() an expanded comment thread from outside this screen.
     commentsViewModel: RecipeCommentsViewModel = viewModel(),
+    // 2026-08-11: mirrors MainActivity's own headerExpanded -- the search/
+    // filter bar now hides together with the header (same near-top-only +
+    // manual-override state), since it took up too much of the screen
+    // pinned visible the whole time scrolled into a long recipe list.
+    headerExpanded: Boolean = true,
 ) {
     val swipeRatingStyle by swipeRatingStyleViewModel.style.collectAsState()
     val recipes by viewModel.visibleRecipes.collectAsState()
@@ -206,6 +211,8 @@ fun RecipeListScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        AnimatedVisibility(visible = headerExpanded) {
+        Column {
         OutlinedTextField(
             value = searchTerm,
             onValueChange = { viewModel.setSearchTerm(it) },
@@ -301,6 +308,8 @@ fun RecipeListScreen(
                     },
                 )
             }
+        }
+        }
         }
 
         // FR-32: dish-name inspiration generated from the user's starred

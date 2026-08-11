@@ -446,7 +446,17 @@
   .recipes-sticky-bar{
     position:sticky; top:var(--header-h, 78px); z-index:15;
     background:var(--bg); margin:0 -14px; padding:10px 14px 0;
+    max-height:600px; opacity:1; overflow:hidden;
+    transition:max-height .2s ease, opacity .15s ease, padding .2s ease;
   }
+  /* 2026-08-11: the search/filter bar hides together with the header
+     (same near-top-only + manual-override rules, see "HEADER COLLAPSE ON
+     SCROLL" below) — it took up too much of the screen to stay pinned
+     visible the whole time you're scrolled into a long recipe list.
+     Purely CSS (general sibling combinator off header.app-top's own
+     "collapsed" class) so this can never drift out of sync with the
+     header's own collapse state — no separate JS toggle to keep in step. */
+  header.app-top.collapsed ~ main .recipes-sticky-bar{ max-height:0; opacity:0; padding-top:0; padding-bottom:0; }
   .pill-row{
     display:flex; gap:7px; overflow-x:auto; padding-bottom:2px; margin-bottom:10px;
     scrollbar-width:none; -ms-overflow-style:none;
@@ -3996,6 +4006,59 @@ document.getElementById("saveSettingsBtn").addEventListener("click", ()=>{
   document.getElementById("settingsResult").textContent =
     `Dopasowano: ${t.daily} kcal/dzień (śniadanie ${t.sniadania}, II śniadanie ${t.drugie}, obiad ${t.obiady}, kolacja ${t.kolacje}, deser/przekąska ${t.deser}).`;
   toast("Zapisano profil i dopasowano dietę");
+
+  // 2026-08-11, on explicit user request: after saving a changed profile,
+  // offer to regenerate the week plan (and, separately, the shopping list)
+  // to match the just-recalculated diet -- the old plan/list were built
+  // against the PREVIOUS targets and may no longer fit well after a real
+  // change (goal, weight, activity...). Two SEPARATE questions, not one
+  // combined dialog, per the request's own phrasing ("...i jeśli użytkownik
+  // się zgodzi... dopytać czy dodać nowe zakupy") -- generating a new plan
+  // and adding it to the shopping list are different-enough consequences
+  // (one overwrites the Planer, the other overwrites the Zakupy list) that
+  // each deserves its own explicit confirmation.
+  if(confirm("Zaktualizowano dietę. Czy wygenerować nowy plan posiłków na cały tydzień dopasowany do nowej diety? Nadpisze obecnie zaplanowane dania i wyczyści listę zakupów.")){
+    const pools = {};
+    CATS.forEach(c=>{ pools[c.id] = [...fittingPool(c.id, p)].sort(()=>Math.random()-0.5); });
+    const idx = {};
+    CATS.forEach(c=>{ idx[c.id] = 0; });
+    DAYS.forEach((day,di)=>{
+      state.planner[di] = {};
+      state.plannerScale[di] = {};
+      state.plannerLeftover[di] = {};
+      CATS.forEach(c=>{
+        const pool = pools[c.id];
+        if(!pool.length) return;
+        const r = pool[idx[c.id] % pool.length];
+        idx[c.id]++;
+        state.planner[di][c.id] = r.id;
+        state.plannerScale[di][c.id] = idealScaleFor(r, t[c.id]);
+      });
+    });
+    // Old plan is gone -- the shopping list it was built from no longer
+    // reflects reality, same reasoning as the "Wyczyść całą listę" button.
+    state.shopping = {};
+    state.recipeAdded = {};
+    saveState(); renderPlanner(); renderHeader(); renderShop();
+    toast("Wygenerowano nowy plan na cały tydzień i wyczyszczono listę zakupów");
+
+    if(confirm("Dodać składniki nowego planu do listy zakupów?")){
+      let added = 0;
+      DAYS.forEach((day,di)=>{
+        const dayMeals = state.planner[di] || {};
+        CATS.forEach(c=>{
+          const rid = dayMeals[c.id];
+          if(!rid) return;
+          const r = findRecipeById(rid);
+          if(!r || state.recipeAdded[r.id]) return;
+          addRecipeToShoppingList(scaleRecipe(r, getPlannerScale(di, c.id)));
+          added++;
+        });
+      });
+      saveState(); renderShop(); renderRecipes();
+      toast(`Dodano składniki z ${added} dań do listy zakupów`);
+    }
+  }
 });
 document.getElementById("resetSettingsBtn").addEventListener("click", ()=>{
   state.profile = {...DEFAULT_PROFILE, configured:true};
@@ -5017,6 +5080,49 @@ function classify(label){
 const GROUP_ORDER = ["Nabiał bez laktozy","Warzywa i owoce","Mięso, ryby i jajka","Strączki, orzechy i nasiona","Pieczywo i zboża","Przyprawy i dodatki","Inne"];
 
 let shopViewMode = "list";
+// FR-58/62 extension (2026-08-11): which planner day(s) actually need a
+// given shopping list item, so the user can shop for just "today + jutro"
+// and stop instead of buying everything on the list in one go. Purely
+// DERIVED from the current planner + which recipes are actually on the
+// list (state.recipeAdded) -- not stored separately, so it can never drift
+// out of sync with the real state (recomputed fresh on every render). An
+// item added straight from a recipe card (not via a planned day) simply
+// gets no day at all -- there's no day to report.
+function computeIngredientDays(){
+  const result = {};
+  DAYS.forEach((day, di)=>{
+    const dayMeals = state.planner[di] || {};
+    CATS.forEach(c=>{
+      const rid = dayMeals[c.id];
+      if(!rid || !state.recipeAdded[rid]) return;
+      const base = findRecipeById(rid);
+      if(!base) return;
+      const r = scaleRecipe(base, getPlannerScale(di, c.id));
+      r.ingredients.forEach(ing=>{
+        const {unitCat, name} = parseIngredient(ing);
+        const canon = pantryCanon(name);
+        const key = canon + "|" + unitCat;
+        if(!state.shopping[key]) return;
+        (result[key] = result[key] || new Set()).add(di);
+      });
+    });
+  });
+  return result;
+}
+const SUNDAY_DAY_INDEX = 6; // DAYS[6] -- sklepy nieczynne, warto to zaznaczyć zamiast cicho sugerować zakupy "na niedzielę"
+function formatIngredientDays(dayIndexSet){
+  if(!dayIndexSet || dayIndexSet.size===0) return "";
+  const jsDay = new Date().getDay();
+  const todayIdx = jsDay===0 ? 6 : jsDay-1;
+  const labels = [...dayIndexSet].sort((a,b)=>a-b).map(di=>{
+    if(di===todayIdx) return "dziś";
+    if(di===(todayIdx+1)%7) return "jutro";
+    if(di===(todayIdx+2)%7) return "pojutrze";
+    return DAYS[di].slice(0,3).toLowerCase();
+  });
+  const sundayNote = dayIndexSet.has(SUNDAY_DAY_INDEX) ? " — sklepy nieczynne, kup wcześniej" : "";
+  return ` (${labels.join(", ")}${sundayNote})`;
+}
 function renderShop(){
   renderShopDayStrip();
   const box = document.getElementById("shopList");
@@ -5027,7 +5133,8 @@ function renderShop(){
     box.innerHTML = `<div class="empty">Lista jest pusta — dodaj składniki zaznaczając przepisy w zakładce Przepisy 🍽 lub przyciskiem w Planerze.</div>`;
     return;
   }
-  if(shopViewMode==="tiles"){ renderShopTiles(box); return; }
+  const ingredientDays = computeIngredientDays();
+  if(shopViewMode==="tiles"){ renderShopTiles(box, ingredientDays); return; }
   const groups = {};
   keys.forEach(k=>{
     const item = state.shopping[k];
@@ -5045,7 +5152,8 @@ function renderShop(){
       row.className = "shop-item" + (item.checked ? " checked":"");
       const qtyLabel = formatQty(item.unitCat, item.qty);
       const displayName = shopDisplayName(item.name, item.unitCat, item.qty);
-      row.innerHTML = `<input type="checkbox" ${item.checked?'checked':''}><span class="label">${qtyLabel} ${displayName}</span>${buildPantryTag(item)}`;
+      const dayLabel = formatIngredientDays(ingredientDays[item.key]);
+      row.innerHTML = `<input type="checkbox" ${item.checked?'checked':''}><span class="label">${qtyLabel} ${displayName}${dayLabel}</span>${buildPantryTag(item)}`;
       row.querySelector("input").addEventListener("change", e=>{
         state.shopping[item.key].checked = e.target.checked;
         saveState(); renderShop();
@@ -5061,7 +5169,8 @@ function renderShop(){
 // spiżarnia (negative = still need to buy that much; ✓ = pantry already
 // covers the full planned quantity), per the user's request to see
 // "wartości ujemne produktów które są potrzebne".
-function renderShopTiles(box){
+function renderShopTiles(box, ingredientDays){
+  ingredientDays = ingredientDays || computeIngredientDays();
   const keys = Object.keys(state.shopping);
   const groups = {};
   keys.forEach(k=>{
@@ -5086,7 +5195,7 @@ function renderShopTiles(box){
       tile.type = "button";
       tile.className = "pantry-tile shop-tile" + (item.checked ? " shop-tile-checked" : "");
       const emoji = canonEmoji(item.name) || "🛒";
-      const displayName = shopDisplayName(item.name, item.unitCat, item.qty);
+      const displayName = shopDisplayName(item.name, item.unitCat, item.qty) + formatIngredientDays(ingredientDays[item.key]);
       const badge = covered ? "✓" : "−" + formatQty(item.unitCat, shortage);
       tile.title = covered
         ? "Masz w spiżarni wystarczająco — stuknij, aby oznaczyć jako kupione"
@@ -5113,11 +5222,12 @@ document.querySelectorAll("#shopViewToggle .pill").forEach(btn=>{
 function buildListText(){
   const keys = Object.keys(state.shopping).filter(k=>!state.shopping[k].checked);
   if(keys.length===0) return "Lista zakupów jest pusta 🎉";
+  const ingredientDays = computeIngredientDays();
   const groups = {};
   keys.forEach(k=>{
     const item = state.shopping[k];
     const g = classify(item.name);
-    (groups[g] = groups[g] || []).push(item);
+    (groups[g] = groups[g] || []).push({key:k, ...item});
   });
   let out = "🛒 Lista zakupów:\n";
   GROUP_ORDER.forEach(g=>{
@@ -5125,7 +5235,8 @@ function buildListText(){
     out += "\n" + g + ":\n";
     groups[g].sort((a,b)=>a.name.localeCompare(b.name,'pl')).forEach(item=>{
       const displayName = shopDisplayName(item.name, item.unitCat, item.qty);
-      out += "- " + formatQty(item.unitCat, item.qty) + " " + displayName + "\n";
+      const dayLabel = formatIngredientDays(ingredientDays[item.key]);
+      out += "- " + formatQty(item.unitCat, item.qty) + " " + displayName + dayLabel + "\n";
     });
   });
   return out.trim();

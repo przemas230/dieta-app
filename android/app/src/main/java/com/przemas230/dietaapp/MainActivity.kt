@@ -68,6 +68,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -216,6 +218,17 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+    // FR-71 bugfix (2026-08-11): tapping a bottom-nav tab while a text field
+    // on Ustawienia still has focus/keyboard open silently ate that tap --
+    // Android's default behavior lets the first outside-tap merely dismiss
+    // the keyboard/clear focus rather than ALSO performing the click
+    // underneath it, so nothing visibly happened until a second tap (or,
+    // confusingly, the system Back button, which clears focus as part of
+    // its own handling). Clearing focus explicitly in the same click that
+    // triggers navigation (below) makes both happen together, like Back
+    // already did implicitly.
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     // Created here (not inside SettingsScreen's default viewModel() param) so
     // it's scoped to the whole NavHost/Activity — the header subtitle below
     // and the profile form on the Ustawienia screen must share one instance,
@@ -420,6 +433,8 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                             Icon(Icons.Filled.Add, contentDescription = "Dodaj przekąskę lub dodatkowe danie")
                         }
                         IconButton(onClick = {
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
                             navController.navigate(Screen.Settings.route) { launchSingleTop = true }
                         }) {
                             Icon(Screen.Settings.icon, contentDescription = Screen.Settings.label)
@@ -450,6 +465,8 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     NavigationBarItem(
                         selected = currentRoute == screen.route,
                         onClick = {
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
                             navController.navigate(screen.route) {
                                 popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                 launchSingleTop = true
@@ -491,6 +508,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     activityLogViewModel = activityLogViewModel,
                     listState = recipeListState,
                     commentsViewModel = recipeCommentsViewModel,
+                    headerExpanded = headerExpanded,
                 )
             }
             composable(Screen.Shopping.route) {
@@ -527,6 +545,8 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     currentWaterCount = waterViewModel.count.collectAsState().value,
                     favoriteIngredientsViewModel = favoriteIngredientsViewModel,
                     allRecipes = allRecipes,
+                    plannerViewModel = plannerViewModel,
+                    shoppingViewModel = shoppingViewModel,
                     onClearLocalData = {
                         // FR-79: "wyczyść dane lokalne" -- resets every local
                         // ViewModel to fresh-install defaults. LocalPersistenceCoordinator
