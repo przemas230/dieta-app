@@ -365,21 +365,6 @@
   }
   header.app-top h1 .header-profile-inline::-webkit-scrollbar{display:none;}
   header.app-top .header-btn-row{display:flex; align-items:center; gap:6px; flex:0 0 auto;}
-  /* FR-78: small spinner in the header bar showing an in-flight cloud sync
-     (queued push or a request actually in the air) -- on request, so the
-     user can tell whether the app is currently syncing or already
-     up to date, instead of guessing from unrelated lag. Hidden by default;
-     only ever shown while signed into a real (non-anonymous) account. */
-  .cloud-sync-indicator{
-    display:none; width:16px; height:16px; border-radius:50%; flex:0 0 auto;
-    border:2px solid rgba(255,255,255,.35); border-top-color:#fff;
-    animation:cloud-sync-spin .8s linear infinite;
-  }
-  .cloud-sync-indicator.show{display:inline-block;}
-  .cloud-sync-indicator.sync-error{
-    animation:none; border-color:rgba(255,107,107,.45); border-top-color:#ff6b6b;
-  }
-  @keyframes cloud-sync-spin{ to{ transform:rotate(360deg); } }
   header.app-top .header-collapse-btn{
     background:rgba(255,255,255,.16); border:none; color:#fff; width:32px; height:32px; border-radius:10px;
     display:flex; align-items:center; justify-content:center; cursor:pointer; flex:0 0 auto;
@@ -1040,7 +1025,6 @@
   <div class="header-title-row">
     <h1><span class="app-name">🍲 Dieta App</span><span class="header-chevron" id="headerChevron" aria-hidden="true">⌃</span><span class="header-profile-inline" id="headerSub"></span></h1>
     <div class="header-btn-row">
-      <span id="cloudSyncIndicator" class="cloud-sync-indicator" aria-hidden="true"></span>
       <button id="settingsBtn" style="background:rgba(255,255,255,.16); border:none; color:#fff; width:36px; height:36px; border-radius:10px; flex:0 0 auto; display:flex; align-items:center; justify-content:center;"><i data-lucide="settings" style="width:18px;height:18px;"></i></button>
       <button id="quickAddBtn" class="header-collapse-btn quick-add-btn" title="Dodaj przekąskę lub dodatkowe danie" aria-label="Dodaj przekąskę lub dodatkowe danie"><span style="font-size:17px; line-height:1;">➕</span></button>
     </div>
@@ -2768,28 +2752,14 @@ function getOrCreateDeviceLabel(){
   }catch(e){ return "Nieznane urządzenie"; }
 }
 let cloudPushTimer = null;
-// FR-78: drives the small spinner in the header bar (#cloudSyncIndicator) —
-// "pending" covers both the 1.5s debounce window and an actual write in
-// flight, so the user sees ONE continuous indicator for "there is
-// unsynced/in-flight work" rather than it flickering off during the wait
-// and back on for the network round-trip.
-function setSyncIndicatorState(state){
-  const el = document.getElementById("cloudSyncIndicator");
-  if(!el) return;
-  el.classList.toggle("show", state!=="idle");
-  el.classList.toggle("sync-error", state==="error");
-  el.title = state==="error" ? "Nie udało się zsynchronizować z chmurą" : "Synchronizowanie z chmurą…";
-}
 function scheduleCloudPush(){
   if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous) return;
-  setSyncIndicatorState("pending");
   clearTimeout(cloudPushTimer);
   cloudPushTimer = setTimeout(pushStateToCloud, 1500);
 }
 function pushStateToCloud(){
   if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous) return;
   const subset = syncableStateSubset();
-  setSyncIndicatorState("pending");
   fbDb.collection("users").doc(currentFbUser.uid).set(
     Object.assign({}, subset, {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -2803,11 +2773,7 @@ function pushStateToCloud(){
     // write really lands (see docs/FIREBASE_MIGRATION_PLAN.md, sync notes).
     state._lastSyncedSnapshot = subset;
     try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
-    setSyncIndicatorState("idle");
-  }).catch(e=>{
-    console.warn("Nie udało się zsynchronizować danych z chmurą.", e);
-    setSyncIndicatorState("error");
-  });
+  }).catch(e=> console.warn("Nie udało się zsynchronizować danych z chmurą.", e));
   touchPublicProfile();
 }
 function applyRemoteSyncedState(data){
@@ -3275,21 +3241,14 @@ function toast(msg){
 }
 
 // ---------- NAV ----------
-// Set true once the user manually toggles the header (either direction) on
-// Recipes, so the near-top-only auto show/hide logic (further down) stops
-// fighting a deliberate choice — cleared again on the next visit to the
-// Recipes tab (see switchView below).
+// Set true once the user manually collapses the header on Recipes, so the
+// scroll-driven auto-show logic (further down) stops fighting a deliberate
+// choice until they manually expand it again themselves.
 let headerAutoSuspended = false;
 function switchView(name, opts){
   document.querySelectorAll("nav.bottom button").forEach(b=>b.classList.toggle("active", b.dataset.view===name));
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
   document.getElementById("view-"+name).classList.add("active");
-  // FR-1/FR-16: pantry taps (and a few other background actions) no longer
-  // eagerly re-render the -- possibly not even visible -- Recipes view on
-  // every single interaction (2026-08-11, was the actual cause of "a few
-  // taps are fine, then it stalls"); re-rendering it fresh here on every
-  // (re-)entry is the one authoritative catch-up point instead.
-  if(name==="recipes") renderRecipes();
   if(name==="shop") renderShop();
   if(name==="planner") renderPlanner();
   if(name==="progress") renderProgress();
@@ -3783,12 +3742,6 @@ if(firebaseReady){
     renderAuthStatus();
     if(user.isAnonymous){
       detachUserDocListener();
-      // Sync only ever runs for real accounts (see scheduleCloudPush's own
-      // guard) -- without this, a push queued right before sign-out could
-      // leave the header spinner stuck "pending" forever, since the queued
-      // pushStateToCloud() call later no-ops on the now-anonymous user
-      // without ever getting to its own idle/error state update.
-      setSyncIndicatorState("idle");
     }else{
       attachUserDocListener(user.uid);
       touchPublicProfile();
@@ -3970,32 +3923,16 @@ let onlyUserRecipes = false;
 let minRatingFilter = 0;
 let searchTerm = "";
 let expandedCardEl = null;
-// Two-step open, on explicit request (2026-08-11): a first tap on a
-// collapsed card only brings it into view (so the user can see what they're
-// about to open without the list jumping AND expanding at once); a second
-// tap on that same, already-centered card actually expands it. Reset
-// whenever a DIFFERENT card is tapped first, so it's always "this exact
-// card, tapped twice in a row" — never a stale leftover from an earlier card.
-let pendingCenterCard = null;
-// Centers a card, unless it's taller than the viewport (only possible once
-// expanded) — centering something taller than the screen just clips its top
-// half (title/ingredients) off-screen, so align its TOP edge into view instead.
-function scrollCardIntoView(card){
-  const viewportH = window.innerHeight || document.documentElement.clientHeight;
-  const cardH = card.getBoundingClientRect().height;
-  card.scrollIntoView({behavior:"smooth", block: cardH > viewportH ? "start" : "center"});
-}
 function setCardExpanded(card, expand){
   if(expand){
     if(expandedCardEl && expandedCardEl!==card) expandedCardEl.classList.remove("expanded");
     card.classList.add("expanded");
     expandedCardEl = card;
-    // Bring the card into view once it has actually finished growing,
-    // instead of scrolling to wherever it happened to land mid-animation —
-    // the user shouldn't have to scroll manually afterwards to see what
-    // expanded.
+    // Center the card once it has actually finished growing, instead of
+    // scrolling to wherever it happened to land mid-animation — the user
+    // shouldn't have to scroll manually afterwards to see what expanded.
     const body = card.querySelector(".card-collapsible-body");
-    const centerNow = ()=> scrollCardIntoView(card);
+    const centerNow = ()=> card.scrollIntoView({behavior:"smooth", block:"center"});
     if(body){
       let done = false;
       const onEnd = (e)=>{
@@ -4014,25 +3951,6 @@ function setCardExpanded(card, expand){
     if(expandedCardEl===card) expandedCardEl = null;
   }
   card.setAttribute("aria-expanded", expand ? "true" : "false");
-}
-// FR-3: the actual tap handler wired to both the whole (non-swipeable) card
-// and the dedicated chevron/[data-expand-toggle] button — implements the
-// two-step center-then-expand described above. Collapsing an already-
-// expanded card stays a single, immediate tap (no two-step needed to CLOSE
-// something).
-function handleCardTap(card){
-  if(card.classList.contains("expanded")){
-    setCardExpanded(card, false);
-    if(pendingCenterCard===card) pendingCenterCard = null;
-    return;
-  }
-  if(pendingCenterCard===card){
-    pendingCenterCard = null;
-    setCardExpanded(card, true);
-  }else{
-    pendingCenterCard = card;
-    scrollCardIntoView(card);
-  }
 }
 
 function renderPills(){
@@ -4227,7 +4145,7 @@ function attachSwipeRating(card, r, refreshBadge){
       saveState();
       if(refreshBadge) refreshBadge();
     }else if(wasTap){
-      handleCardTap(card);
+      setCardExpanded(card, !card.classList.contains("expanded"));
     }
     startX=null; startY=null; dx=0; axis=null;
   };
@@ -4317,7 +4235,7 @@ function recipeCard(r, onChange, opts={}){
     </div>
   `;
   if(expandable){
-    const toggle = (e)=>{ if(e) e.stopPropagation(); handleCardTap(card); };
+    const toggle = (e)=>{ if(e) e.stopPropagation(); setCardExpanded(card, !card.classList.contains("expanded")); };
     card.addEventListener("keydown", (e)=>{
       if((e.key==="Enter" || e.key===" ") && e.target===card){ e.preventDefault(); toggle(); }
     });
@@ -5391,8 +5309,7 @@ document.getElementById("customTileSaveBtn").addEventListener("click", ()=>{
   addLog("pantry_add", `Dodano własny produkt: ${name} (${customTileCat})`);
   saveState();
   document.getElementById("customTileModalOverlay").classList.remove("show");
-  renderPantry();
-  if(document.getElementById("view-shop").classList.contains("active")) renderShop();
+  renderPantry(); renderShop(); renderRecipes();
   toast("Dodano do spiżarni");
 });
 document.getElementById("customTileModalClose").addEventListener("click", ()=> document.getElementById("customTileModalOverlay").classList.remove("show"));
@@ -5529,8 +5446,7 @@ function openTileAction(canonName, catLabel){
   delBtn.addEventListener("click", ()=>{
     resetTile(canonName);
     document.getElementById("tileActionOverlay").classList.remove("show");
-    renderPantry();
-  if(document.getElementById("view-shop").classList.contains("active")) renderShop();
+    renderPantry(); renderShop(); renderRecipes();
   });
   body.appendChild(delBtn);
   if(state.customTiles[canonName]){
@@ -5546,8 +5462,7 @@ function openTileAction(canonName, catLabel){
       delete state.pantryUnitOverride[canonName];
       saveState();
       document.getElementById("tileActionOverlay").classList.remove("show");
-      renderPantry();
-  if(document.getElementById("view-shop").classList.contains("active")) renderShop();
+      renderPantry(); renderShop(); renderRecipes();
       toast("Usunięto kafelek");
     });
     body.appendChild(delTileBtn);
@@ -5565,8 +5480,7 @@ function showUnitPicker(canonName){
     b.addEventListener("click", ()=>{
       changeTileUnit(canonName, cat);
       document.getElementById("tileActionOverlay").classList.remove("show");
-      renderPantry();
-  if(document.getElementById("view-shop").classList.contains("active")) renderShop();
+      renderPantry(); renderShop(); renderRecipes();
       toast("Jednostka zmieniona — stan wyzerowany, dodaj ponownie kliknięciem");
     });
     body.appendChild(b);
@@ -5585,8 +5499,7 @@ function showCategoryPicker(canonName){
     b.addEventListener("click", ()=>{
       changeTileCategory(canonName, cat);
       document.getElementById("tileActionOverlay").classList.remove("show");
-      renderPantry();
-  if(document.getElementById("view-shop").classList.contains("active")) renderShop();
+      renderPantry(); renderShop(); renderRecipes();
       toast("Kategoria zmieniona — stan wyzerowany, dodaj ponownie kliknięciem");
     });
     body.appendChild(b);
@@ -5654,16 +5567,7 @@ function renderPantry(){
         const rect = tile.getBoundingClientRect();
         const dir = (e.clientY - rect.top) < rect.height/2 ? 1 : -1;
         tileTapDelta(it.name, it.cat, dir);
-        // Re-rendering the (invisible, off-screen) 229-recipe Recipes view
-        // and the Shopping view on EVERY single pantry tap was the actual
-        // cause of "a few taps are fine, then it stalls" reported by the
-        // user (2026-08-11) — each tap did three full re-renders no matter
-        // which view was showing. Only the currently-visible view needs to
-        // update immediately; the others catch up lazily on their own next
-        // entry (see switchView, and renderShop's own "only if active"
-        // caller elsewhere for the same reasoning).
-        renderPantry();
-        if(document.getElementById("view-shop").classList.contains("active")) renderShop();
+        renderPantry(); renderShop(); renderRecipes();
       });
       grid.appendChild(tile);
     });
@@ -6911,26 +6815,25 @@ if(forceUpdateBtn){
 (function(){
   const headerEl = document.querySelector("header.app-top");
   if(!headerEl) return;
-  // Near-top-only (2026-08-11, on explicit user request, reverting the
-  // direction-based "scroll up re-shows it anywhere" behavior from before):
-  // the header only auto-expands within NEAR_TOP px of the very top of the
-  // Recipes list; anywhere below that it stays collapsed regardless of
-  // scroll direction, freeing up screen space for the list. The only way to
-  // see it again while scrolled down is the manual toggle (tapping the
-  // title row) — see toggleHeaderCollapsed() below, which now suspends auto
-  // behavior on EITHER manual action (not just manual collapse), so a
-  // manual expand while scrolled down actually sticks instead of being
-  // immediately re-collapsed by the very next scroll event.
+  // Direction-based, like the show/hide toolbar in most apps (Gmail,
+  // Twitter, ...): scrolling down hides it, scrolling up shows it again —
+  // wherever you are in a long list, not only within a few px of the very
+  // top. A pure "am I near the top" threshold (what this used to be) only
+  // ever shows the header at the literal top of the page, which is nearly
+  // never true on a 50+ recipe list — that's what was reported as "won't
+  // expand unless I'm at the very top". Also always show near the top
+  // itself (NEAR_TOP), so landing back at y=0 is never ambiguous.
   // Reading window.scrollY here is reliable now that the header opts out of
   // the browser's scroll anchoring (see the `overflow-anchor:none` on
-  // header.app-top) — that anchoring, not the show/hide logic itself, was
-  // the real cause of an earlier flicker/stuck bug.
-  const NEAR_TOP = 60;
+  // header.app-top) — that anchoring, not the direction logic itself, was
+  // the real cause of the earlier flicker/stuck bugs.
+  const NEAR_TOP = 60, DELTA = 4;
+  let lastY = window.scrollY;
   function applyState(){
     // Only the Recipes view auto-shows/hides on scroll; other views default
     // to hidden and are only expanded via the manual toggle button. Also
-    // back off entirely once the user has manually toggled it — that's a
-    // deliberate choice, not something scrolling should silently undo.
+    // back off entirely once the user has manually collapsed it — that's a
+    // deliberate choice, not something a scroll-up should silently undo.
     const recipesView = document.getElementById("view-recipes");
     if(!recipesView || !recipesView.classList.contains("active")) return;
     if(headerAutoSuspended) return;
@@ -6938,9 +6841,12 @@ if(forceUpdateBtn){
     const isCollapsed = headerEl.classList.contains("collapsed");
     if(y < NEAR_TOP){
       if(isCollapsed) headerEl.classList.remove("collapsed");
-    }else{
+    }else if(y - lastY > DELTA){
       if(!isCollapsed) headerEl.classList.add("collapsed");
+    }else if(lastY - y > DELTA){
+      if(isCollapsed) headerEl.classList.remove("collapsed");
     }
+    lastY = y;
   }
   let ticking = false, idleTimer = null;
   window.addEventListener("scroll", ()=>{
@@ -6956,15 +6862,13 @@ if(forceUpdateBtn){
     idleTimer = setTimeout(applyState, 150);
   }, {passive:true});
   function toggleHeaderCollapsed(){
+    const collapsing = !headerEl.classList.contains("collapsed");
     headerEl.classList.toggle("collapsed");
     // Only meaningful on Recipes (elsewhere there's no auto-behavior to
-    // fight in the first place): EITHER manual action now freezes the
-    // near-top-only auto behavior above, not just manual collapse — with a
-    // "only near the very top" rule, an unfrozen manual expand while
-    // scrolled down would just get silently undone by the very next scroll
-    // event, making "force it open" meaningless. Auto behavior resumes
-    // fresh next time Recipes is (re)entered (switchView resets this flag).
-    headerAutoSuspended = true;
+    // fight in the first place): manually collapsing freezes auto-show
+    // until the user manually expands it again; manually expanding hands
+    // control back to the normal scroll-driven behavior.
+    headerAutoSuspended = collapsing;
   }
   // Tapping anywhere on the title row (app name / subtle chevron / profile
   // line) toggles the header — there's no dedicated boxed button for this

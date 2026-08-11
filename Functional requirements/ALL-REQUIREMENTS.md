@@ -184,13 +184,14 @@ Filtr progu oceny pokazuje wyłącznie przepisy, których ocena gwiazdkowa (⭐ 
 **Status:** Zaimplementowane
 
 ## Opis
-Każdy przepis wyświetlany jest jako karta z nazwą, czasem przygotowania, kalorycznością i skrótowymi znacznikami (np. podwyższony IG, dopasowanie do celu). Domyślnie karta jest zwinięta; stuknięcie w kartę rozwija pełną listę składników, sposób przygotowania i przyciski akcji.
+Każdy przepis wyświetlany jest jako karta z nazwą, czasem przygotowania, kalorycznością i skrótowymi znacznikami (np. podwyższony IG, dopasowanie do celu). Domyślnie karta jest zwinięta. Rozwijanie jest dwuetapowe: pierwsze stuknięcie w zwiniętą kartę WYŁĄCZNIE przewija ją do widoku (wyśrodkowuje), nie rozwijając jej jeszcze — dopiero drugie stuknięcie tej samej, już wyśrodkowanej karty faktycznie rozwija pełną listę składników, sposób przygotowania i przyciski akcji (i ponownie ją pozycjonuje). Zwinięcie rozwiniętej karty z powrotem nadal działa jednym, natychmiastowym stuknięciem — dwuetapowość dotyczy wyłącznie otwierania.
 
 ## Kryteria akceptacji
 - Karta w stanie zwiniętym pokazuje tylko nagłówek i podstawowe metadane.
 - Rozwinięcie karty odbywa się WYŁĄCZNIE przez wyraźne, stacjonarne stuknięcie — nie przez przypadkowe zatrzymanie przewijania listy (patrz historia rewizji poniżej i FR-44).
+- Pierwsze stuknięcie zwiniętej karty przewija ją do widoku, ale jej NIE rozwija. Drugie stuknięcie tej samej karty (bez stuknięcia innej karty pomiędzy) rozwija ją. Stuknięcie innej, zwiniętej karty pomiędzy tymi dwoma stuknięciami traktuje TĘ nową kartę jako pierwsze stuknięcie (nie rozwija poprzednio dotykanej).
 - Tylko jedna karta na liście może być rozwinięta jednocześnie.
-- Po rozwinięciu karty ekran automatycznie przewija się tak, żeby cała rozwinięta karta wylądowała na środku widocznego obszaru — użytkownik nie musi ręcznie doprzewijać, żeby zobaczyć składniki i sposób przygotowania. Przewinięcie następuje PO zakończeniu animacji rozwijania karty (nie w trakcie), żeby wyśrodkowanie trafiało na docelową, już powiększoną wysokość karty, a nie na jej wysokość sprzed rozwinięcia.
+- Po rozwinięciu karty ekran automatycznie przewija się tak, żeby cała rozwinięta karta wylądowała na środku widocznego obszaru — użytkownik nie musi ręcznie doprzewijać, żeby zobaczyć składniki i sposób przygotowania. Przewinięcie następuje PO zakończeniu animacji rozwijania karty (nie w trakcie), żeby wyśrodkowanie trafiało na docelową, już powiększoną wysokość karty, a nie na jej wysokość sprzed rozwinięcia. Jeśli rozwinięta karta jest WYŻSZA niż widoczny obszar ekranu, wyśrodkowanie zastępowane jest wyrównaniem górnej krawędzi karty do góry widoku (samo wyśrodkowanie ucinałoby wtedy tytuł/początek karty poza ekranem).
 
 ## Uwagi
 Zrewidowane w rundzie z 2026-08-03: pierwotna wersja pozwalała, by dotknięcie kończące przewijanie listy (bardzo mały ruch palca przy jednoczesnym przewinięciu strony przez inercję) było błędnie odczytane jako stuknięcie i rozwijało kartę, co powodowało 'skakanie' ekranu. Naprawiono porównując pozycję przewijania strony w momencie dotknięcia i puszczenia — jeśli strona przewinęła się w tym czasie, gest NIE liczy się jako stuknięcie, nawet jeśli sam palec poruszył się nieznacznie. Patrz też FR-44.
@@ -199,6 +200,7 @@ Zrewidowane w rundzie z 2026-08-03: pierwotna wersja pozwalała, by dotknięcie 
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-03): Doprecyzowano zachowanie na podstawie zgłoszonej poprawki — patrz sekcja "Uwagi" powyżej.
 - **v3** (2026-08-08): Dodano automatyczne wyśrodkowywanie rozwiniętej karty na ekranie, na życzenie użytkownika ("karta z przepisem na którą klikniemy [powinna] wyśrodkowywać się na ekranie... użytkownik nie musi sam jej przesuwać").
+- **v4** (2026-08-11): Rozbito otwieranie na dwa etapy, na wyraźną prośbę użytkownika ("zmień żeby wysrodkowywalo kafelek dopiero po kliknięciu na niego a dopiero po drugim kliknięciu żeby go rozwijało i wysrodkowywalo albo jak się nie mieści na ekranie to żeby był wyświetlony od góry") — pierwsze stuknięcie tylko centruje, drugie rozwija; dodano też wariant "wyrównaj do góry" dla kart wyższych niż ekran, zamiast zawsze centrować (co ucinałoby górę zbyt wysokiej karty). Zamknięcie nadal jednym stuknięciem.
 
 ---
 
@@ -660,9 +662,13 @@ Zakładka Spiżarnia pokazuje kafelki produktów pogrupowane w kategorie (Nabia�
 - Siatka kafelków wypełnia całą dostępną szerokość ekranu, bez dużej pustej przestrzeni po prawej stronie ostatniego kafelka w wierszu.
 - Kafelki w tym samym wierszu mają równą szerokość niezależnie od liczby kolumn wynikającej z szerokości ekranu.
 
+## Uwagi
+Zgłoszony 2026-08-11: użytkownik zgłosił, że aplikacja "zacina się" po dodaniu kilku produktów do spiżarni z rzędu — pierwsze dotknięcia działały, kolejne przestawały reagować na chwilę. Przyczyna: dotknięcie kafelka spiżarni odświeżało (renderPantry/renderShop/renderRecipes) TRZY pełne widoki na raz, w tym listę 229+ przepisów i listę zakupów, nawet gdy użytkownik wcale na nie akurat nie patrzył — kilka szybkich dotknięć kumulowało ten koszt i blokowało główny wątek na chwilę. Naprawione: dotknięcie kafelka odświeża teraz tylko faktycznie widoczne widoki; pozostałe (Przepisy, Zakupy) odświeżają się same przy najbliższym wejściu na tę zakładkę zamiast na każde dotknięcie kafelka. Zweryfikowane bezpośrednio w przeglądarce (podmiana funkcji renderujących w celu policzenia wywołań) — jedno dotknięcie kafelka spiżarni: 0 wywołań renderRecipes/renderShop (wcześniej: po 1 każde, na KAŻDE dotknięcie).
+
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-03): Doprecyzowano układ siatki kafelków na pełną szerokość ekranu (zamiast luźnego zawijania o stałej szerokości) — patrz Opis i Kryteria akceptacji.
+- **v3** (2026-08-11): Naprawiono realny błąd wydajności powodujący zacinanie się aplikacji przy kilku szybkich dotknięciach kafelków z rzędu — patrz sekcja "Uwagi" powyżej. Brak zmiany zachowania funkcjonalnego, wyłącznie poprawka wydajności.
 
 ---
 
@@ -940,13 +946,17 @@ Zrewidowane 2026-08-03: pierwotna wersja paska pigułek kategorii nie ukrywała 
 **Status:** Zaimplementowane
 
 ## Opis
-Na widoku Przepisy nagłówek chowa się przy przewijaniu w dół i pokazuje przy przewijaniu w górę (lub blisko samej góry strony). Na pozostałych zakładkach nagłówek jest domyślnie zwinięty i nie reaguje automatycznie na przewijanie.
+Na widoku Przepisy nagłówek pokazuje się automatycznie WYŁĄCZNIE blisko samej góry listy (kilkadziesiąt pikseli od y=0). Gdziekolwiek niżej zostaje cały czas schowany, niezależnie od kierunku przewijania — przewinięcie w górę, ale nie z powrotem do samej góry, już go NIE pokazuje. Jedyny sposób, żeby zobaczyć nagłówek niżej na liście, to ręczne rozwinięcie (patrz FR-45). Na pozostałych zakładkach nagłówek jest domyślnie zwinięty i nie reaguje automatycznie na przewijanie w ogóle.
 
 ## Kryteria akceptacji
 - Wejście na zakładkę Przepisy zawsze resetuje nagłówek do stanu rozwiniętego i wznawia normalne zachowanie automatyczne, kasując wcześniejsze ręczne zablokowanie (patrz FR-45).
+- Przewinięcie w dół poza strefę bliską góry chowa nagłówek.
+- Przewinięcie w górę, które NIE sięga z powrotem strefy bliskiej góry, nie przywraca nagłówka — nie ma już "pokaż na przewinięcie w górę gdziekolwiek na liście".
+- Powrót do samej góry listy (y bliskie 0) zawsze pokazuje nagłówek ponownie, automatycznie, bez potrzeby ręcznej interwencji.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-11): Zmieniono z zachowania kierunkowego (pokaż przy przewinięciu w górę gdziekolwiek na liście) na "tylko blisko samej góry", na wyraźną prośbę użytkownika ("górny header nawet na stronie głównej z przepisami niech tylko rozwijają się na górze listy z przepisami jak już się jest niżej to niech będzie cały czas schowany dopóki użytkownik sam nie wymusi rozwinięcia"). Kierunkowe zachowanie (nieopisane wcześniej osobną rewizją tego dokumentu, tylko komentarzem w kodzie) samo było wcześniejszą, świadomą odpowiedzią na zgłoszenie "nie rozwija się, chyba że jestem na samej górze" — użytkownik zdecydował się teraz na odwrót, świadomie akceptując, że nagłówek nie pokaże się automatycznie niżej na liście.
 
 ---
 
@@ -956,12 +966,13 @@ Na widoku Przepisy nagłówek chowa się przy przewijaniu w dół i pokazuje prz
 **Status:** Zaimplementowane
 
 ## Opis
-Nagłówek można ręcznie zwinąć/rozwinąć dotknięciem całego paska z nazwą aplikacji (poza samymi przyciskami-ikonami w rogu, które zachowują swoje własne działanie). Zamiast osobnego, oprawionego w kwadrat przycisku strzałki, stan zwinięcia sygnalizuje subtelna strzałeczka (chevron) osadzona bezpośrednio przy nazwie aplikacji w nagłówku — obraca się o 180° w zależności od stanu, nie stanowi osobnego, oddzielnie klikalnego elementu. Ręczne zwinięcie zamraża automatyczne pokazywanie-na-przewijaniu (FR-44), dopóki użytkownik sam nie rozwinie nagłówka ponownie albo nie wejdzie na zakładkę Przepisy od nowa.
+Nagłówek można ręcznie zwinąć/rozwinąć dotknięciem całego paska z nazwą aplikacji (poza samymi przyciskami-ikonami w rogu, które zachowują swoje własne działanie). Zamiast osobnego, oprawionego w kwadrat przycisku strzałki, stan zwinięcia sygnalizuje subtelna strzałeczka (chevron) osadzona bezpośrednio przy nazwie aplikacji w nagłówku — obraca się o 180° w zależności od stanu, nie stanowi osobnego, oddzielnie klikalnego elementu. KAŻDA ręczna zmiana (zarówno zwinięcie, jak i rozwinięcie) zamraża automatyczne pokazywanie/chowanie na przewijaniu (FR-44), dopóki użytkownik sam nie zmieni tego ponownie ręcznie albo nie wejdzie na zakładkę Przepisy od nowa — inaczej ręczne rozwinięcie niżej na liście (gdzie automatyka z FR-44 domyślnie chce nagłówek schowany) zostałoby natychmiast cofnięte przez kolejne przewinięcie, co czyniłoby "wymuszenie rozwinięcia" bezcelowym.
 
 ## Kryteria akceptacji
 - Dotknięcie ikon w rogu nagłówka (⚙️ ustawienia, ➕ szybkie dodawanie) NIGDY nie uruchamia dodatkowo zwijania/rozwijania paska nazwy pod spodem.
 - Strzałeczka przy nazwie aplikacji wizualnie odzwierciedla aktualny stan (obrócona, gdy nagłówek zwinięty), ale sama nie jest osobnym przyciskiem — kliknięcie działa przez cały pasek nazwy zgodnie z powyższym opisem.
 - Otwarcie i zamknięcie dowolnego okienka modalnego (również przyciskiem „X” w rogu okienka) NIE cofa ręcznego zwinięcia nagłówka.
+- Ręczne rozwinięcie nagłówka podczas przewinięcia niżej na liście przepisów (gdzie FR-44's automatyka domyślnie trzyma go schowanym) zostaje widoczne i NIE jest natychmiast cofane przez kolejne przewinięcie — trwa, dopóki użytkownik sam go nie zwinie albo nie wróci do zakładki Przepisy od nowa.
 
 ## Uwagi
 Zrewidowane 2026-08-03 (v2): znaleziono i naprawiono błąd, w którym otwarcie okienka „ℹ️” (FR-12) potrafiło samoczynnie rozwinąć ręcznie zwinięty nagłówek. Ówczesną łatką było zablokowanie przewijania tła strony (`overflow-y:hidden`) na czas otwartego okienka — adresowała ona wiarygodny, ale nietrafny scenariusz ("przeciekające" przewijanie spod okienka uruchamiające automatykę z FR-44).
@@ -972,6 +983,7 @@ Zrewidowane ponownie 2026-08-03 (v3): usterka nadal występowała przy zamykaniu
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-03): Doprecyzowano zachowanie na podstawie zgłoszonej poprawki (blokada przewijania tła) — patrz sekcja "Uwagi" powyżej.
 - **v3** (2026-08-03): Usunięto osobny, oprawiony przycisk zwijania/rozwijania na rzecz subtelnej strzałeczki przy nazwie aplikacji; opisano prawdziwą przyczynę ponownego rozwijania nagłówka po zamknięciu okienka przyciskiem „X” oraz jej ostateczną poprawkę — patrz sekcja "Uwagi" powyżej.
+- **v4** (2026-08-11): Rozszerzono "zamrożenie automatyki" z samego ręcznego zwinięcia na KAŻDĄ ręczną zmianę (też rozwinięcie) — konieczna konsekwencja FR-44/v2 (auto-pokazywanie zawężone do "tylko blisko samej góry"): bez tego rozszerzenia ręczne rozwinięcie niżej na liście zostałoby natychmiast cofnięte przez najbliższe przewinięcie, bo automatyka i tak chciałaby tam nagłówek schowany.
 
 ---
 
@@ -1874,6 +1886,7 @@ Ponieważ te pola (zwłaszcza lista zakupów i planer) mogą być edytowane niez
 - Okienko synchronizacji NIE zawiera osobnej, surowej listy wszystkich dodanych/usuniętych/zmienionych pozycji pogrupowanej po polu — każda zmieniona rzecz to dokładnie jedna czytelna pozycja z różnicą „u mnie” vs „w chmurze”.
 - Po zastosowaniu scalenia (z ewentualnymi ręcznymi poprawkami z okienka sprzeczności) urządzenie odsyła scalony wynik do chmury, żeby oba urządzenia zgadzały się co do finalnego stanu.
 - Zmiana z chmury bez prawdziwej sprzeczności (żadna lokalna edycja tej samej pozycji) NIE otwiera okienka „🔄 Synchronizacja z chmury" — scala się automatycznie, z samym toastem „☁️ Zsynchronizowano dane z chmury" jako feedbackiem. Okienko otwiera się WYŁĄCZNIE gdy `conflicts.length>0`.
+- W pasku nagłówka (obok ikony ustawień) widoczne jest małe kółeczko synchronizacji, WYŁĄCZNIE na koncie zalogowanym na prawdziwe konto: kręci się, gdy trwa zapis do chmury LUB czeka w kolejce (debounce), znika, gdy nie ma żadnej oczekującej/trwającej synchronizacji, i zmienia kolor na czerwonawy, jeśli ostatnia próba synchronizacji się nie powiodła. Wylogowanie/przejście na konto anonimowe zawsze je chowa, nawet jeśli akurat była w toku.
 
 ## Uwagi
 Świadomie POZA zakresem: prawdziwie jednoczesna edycja (dwa urządzenia online w tej samej chwili, edytujące dokładnie to samo pole) może w rzadkich przypadkach nadal wygenerować krótkotrwałą niespójność, zanim obie strony się zsynchronizują — to nie jest pełnoprawna baza danych z transakcjami, tylko scalanie oparte na porównaniu trzech snapshotów przy każdej zmianie dokumentu. Dla użytku 1-2 osobowego gospodarstwa domowego to wystarczające; prawdziwie współbieżna edycja wielu osób tej samej wspólnej listy to docelowo zadanie dla modelu `households/*` (patrz `docs/FIREBASE_MIGRATION_PLAN.md`, wciąż niezaimplementowany).
@@ -1952,6 +1965,16 @@ Rzeczywiste działanie między dwoma prawdziwymi urządzeniami wymaga weryfikacj
   nie wysłanego), zamiast bezwarunkowo po KAŻDEJ odebranej zmianie, co
   wcześniej samo w sobie już wystarczało do podtrzymania pętli niezależnie
   od tego, czy cokolwiek naprawdę się zmieniło.
+- **v6** (2026-08-11): Dodano widoczny wskaźnik trwającej synchronizacji
+  (małe kółeczko w pasku nagłówka) na wyraźną prośbę użytkownika
+  ("dokoduj małe kręcące się kółeczko gdzieś na górze na pasku
+  informujące o trwającej synchronizacji żeby było widać kiedy aplikacja
+  jest online i up to date") — zgłoszoną przy okazji opisu spowolnienia
+  po dodaniu produktu do spiżarni (patrz FR-28's własna notatka o
+  rzeczywistej przyczynie tamtego spowolnienia — samego mechanizmu
+  synchronizacji akurat nie dotyczyła, ale wskaźnik i tak jest
+  użyteczny do odróżnienia "trwa synchronizacja" od innych przyczyn
+  chwilowego opóźnienia w przyszłości).
 
 ---
 

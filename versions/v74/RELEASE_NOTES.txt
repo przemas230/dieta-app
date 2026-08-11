@@ -1,0 +1,39 @@
+Wersja 74 (2026-08-11)
+
+Trzy poprawki użyteczności zgłoszone przez użytkownika, wszystkie w wersji
+webowej (index.html):
+
+- Karty przepisów: dotknięcie zwiniętej karty przepisu teraz TYLKO
+  przewija ją do widoku (wyśrodkowuje) — nie rozwija jej jeszcze. Dopiero
+  DRUGIE dotknięcie tej samej karty ją rozwija i ponownie ją pozycjonuje —
+  jeśli rozwinięta karta nie mieści się w całości na ekranie, zamiast
+  wyśrodkowywać (co obcinałoby górę karty), wyrównuje ją do góry widoku, tak
+  żeby tytuł i składniki były od razu widoczne. Zwinięcie rozwiniętej karty
+  nadal działa jednym dotknięciem.
+- Górny nagłówek na liście przepisów: wcześniej chowanie/pokazywanie
+  nagłówka zależało od KIERUNKU przewijania (przewiń w górę = pokaż,
+  gdziekolwiek na liście). Teraz nagłówek pokazuje się automatycznie
+  WYŁĄCZNIE blisko samej góry listy — gdziekolwiek niżej zostaje cały czas
+  schowany, niezależnie od kierunku przewijania, dopóki użytkownik sam nie
+  wymusi rozwinięcia dotknięciem paska tytułu. Ręczne rozwinięcie w takiej
+  sytuacji teraz też faktycznie zostaje rozwinięte (nie jest już natychmiast
+  cofane przez kolejne przewinięcie).
+- Naprawiono realny problem z zacinaniem się aplikacji po dodaniu produktu
+  do spiżarni: każde dotknięcie kafelka spiżarni odświeżało PEŁNĄ listę
+  229+ przepisów i listę zakupów w tle, nawet gdy te widoki wcale nie były
+  akurat widoczne — po kilku szybkich dotknięciach z rzędu to się kumulowało
+  i aplikacja przestawała reagować na chwilę. Teraz odświeżają się tylko
+  widoki faktycznie aktualnie widoczne; pozostałe odświeżają się same, gdy
+  użytkownik faktycznie na nie przejdzie.
+- Dodano małe kółeczko synchronizacji w pasku nagłówka (obok ikony
+  ustawień) — widoczne tylko na koncie zalogowanym na prawdziwe konto,
+  kręci się, gdy trwa (lub czeka w kolejce) zapis do chmury, znika, gdy
+  wszystko jest zsynchronizowane, i zmienia kolor na czerwonawy, jeśli
+  ostatnia synchronizacja się nie powiodła.
+
+Wszystkie cztery zmiany zweryfikowane bezpośrednio w przeglądarce
+(symulacje dotknięć/przewijania oraz podmiana funkcji renderujących w celu
+policzenia wywołań), nie tylko odczytem kodu. Świadomie tylko web w tej
+turze (na wyraźną prośbę użytkownika, by najpierw naprawić użyteczność
+istniejącej aplikacji) — port do Androida odnotowany jako zaległy w
+android/PARITY.md. Service Worker v47→v48.
