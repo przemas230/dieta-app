@@ -10,7 +10,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,6 +63,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -610,6 +613,33 @@ private fun RecipeListWithScrollToTop(
             listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > thresholdPx
         }
     }
+    // FR-3: hoisted here (not a local `remember` inside each RecipeCard) so
+    // only ONE card can be expanded at a time, per the FR's own acceptance
+    // criterion -- expanding a second card auto-collapses whichever one was
+    // open. Also lives outside the per-item composable so it survives that
+    // item scrolling out of the LazyColumn's composition window and back.
+    var expandedRecipeId by remember { mutableStateOf<String?>(null) }
+    // FR-3/v3: auto-centers the just-expanded card in the viewport, since the
+    // card's collapsible body isn't behind an AnimatedVisibility/
+    // animateContentSize (it's a plain `if(expanded)`, so there's no
+    // in-flight animation to wait out -- the layout pass after this
+    // recomposition already reflects the card's new, taller measured size
+    // by the time this LaunchedEffect's coroutine runs).
+    LaunchedEffect(expandedRecipeId) {
+        val id = expandedRecipeId ?: return@LaunchedEffect
+        // Reading listState.layoutInfo immediately here would still see the
+        // PRE-toggle (collapsed) item height -- this LaunchedEffect's
+        // coroutine can resume before Compose's layout phase has re-measured
+        // the now-expanded item. Waiting two vsync frames reliably gets past
+        // both the recomposition and the following layout pass.
+        withFrameNanos {}
+        withFrameNanos {}
+        val itemInfo = listState.layoutInfo.visibleItemsInfo.find { it.key == id } ?: return@LaunchedEffect
+        val viewportHeight = listState.layoutInfo.viewportSize.height
+        val itemCenter = itemInfo.offset + itemInfo.size / 2
+        val delta = (itemCenter - viewportHeight / 2).toFloat()
+        if (reducedMotion) listState.scrollBy(delta) else listState.animateScrollBy(delta)
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -677,6 +707,10 @@ private fun RecipeListWithScrollToTop(
                     onDeleteCustomRecipe = { viewModel.removeCustomRecipe(recipe.id) },
                     isFavorite = recipe.id in favoriteRecipeIds,
                     onToggleFavorite = { onToggleFavoriteRecipe(recipe.id) },
+                    isExpanded = recipe.id == expandedRecipeId,
+                    onToggleExpanded = {
+                        expandedRecipeId = if (expandedRecipeId == recipe.id) null else recipe.id
+                    },
                 )
             }
         }
@@ -725,8 +759,10 @@ private fun RecipeCard(
     onDeleteCustomRecipe: () -> Unit,
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
+    isExpanded: Boolean,
+    onToggleExpanded: () -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    val expanded = isExpanded
     var showInfoDialog by remember { mutableStateOf(false) }
     var showCookHistory by remember { mutableStateOf(false) }
     var showPantryCheck by remember { mutableStateOf(false) }
@@ -810,7 +846,7 @@ private fun RecipeCard(
                         swipeCoroutineScope.launch { offsetX.snapTo(offsetX.value + dragAmount) }
                     }
                 }
-                .clickable { expanded = !expanded },
+                .clickable { onToggleExpanded() },
         ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
             if (themeId == "metro") {
