@@ -1,0 +1,25 @@
+Wersja 73 (2026-08-11)
+
+- Naprawiono poważny błąd wersji webowej: po JAKIEJKOLWIEK zmianie w
+  aplikacji (dowolna edycja — profil, spiżarnia, przepis, cokolwiek), gdy
+  użytkownik był zalogowany na prawdziwe konto, aplikacja wpadała w
+  nieskończoną pętlę synchronizacji z chmurą. Każdy zapis do Firestore
+  natychmiast odbijał się z powrotem jako "zmiana zdalna" (bo Firestore
+  informuje nasłuchujący dokument o WŁASNYM, jeszcze niepotwierdzonym
+  zapisie tego samego urządzenia), co uruchamiało kolejny zapis, co znów się
+  odbijało — i tak bez końca, co ~1,5 sekundy, na zawsze, aż karta
+  przeglądarki stawała się coraz bardziej zamulona i w końcu przestawała
+  reagować ("zacina się, potem się zawiesza, nie da się nic zrobić").
+- Poprawka: (1) własny, jeszcze niepotwierdzony przez serwer zapis tego
+  urządzenia (`snapshot.metadata.hasPendingWrites`) jest teraz od razu
+  pomijany zamiast trafiać do scalania — to samo zabezpieczenie, które
+  natywna aplikacja Android miała od początku; (2) po zastosowaniu
+  scalenia aplikacja wysyła kolejną synchronizację do chmury TYLKO wtedy,
+  gdy scalony wynik faktycznie różni się od tego, co właśnie przyszło z
+  chmury (czyli gdy lokalnie było coś, czego chmura jeszcze nie miała) —
+  wcześniej wysyłała zawsze, bezwarunkowo, po każdej odebranej zmianie,
+  nawet gdy nie było czego wysyłać.
+- Wersja natywna (Android) nie miała tego błędu — jej mechanizm synchronizacji
+  (CloudSyncCoordinator.kt) już wcześniej pomijał własne niepotwierdzone
+  zapisy z dokładnie tego samego powodu, więc ta poprawka dotyczy wyłącznie
+  index.html.

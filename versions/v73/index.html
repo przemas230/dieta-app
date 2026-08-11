@@ -2796,18 +2796,8 @@ function applyRemoteSyncedState(data){
   }
   const {merged, conflicts, remoteChanges} = computeMergedSyncState(data);
   let changed = false;
-  // Tracks whether the MERGED result actually differs from what the cloud
-  // just sent -- i.e. whether this device had something local the cloud
-  // doesn't have yet. Only true in that case is there anything worth
-  // pushing back; unconditionally re-pushing after every applied snapshot
-  // (the previous behavior) meant even a plain, unchanged echo of this
-  // device's own write scheduled ANOTHER push, which echoed again, forever
-  // -- see the hasPendingWrites guard in attachUserDocListener above, which
-  // closes the other half of that same loop.
-  let needsRePush = false;
   Object.keys(merged).forEach(k=>{
     if(!deepEqualJson(merged[k], state[k])){ state[k] = merged[k]; changed = true; }
-    if(!deepEqualJson(merged[k], data[k])) needsRePush = true;
   });
   state._lastSyncedSnapshot = pickSyncedKeys(data);
   try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
@@ -2818,7 +2808,7 @@ function applyRemoteSyncedState(data){
   // Any local-only changes folded into the merge (or conflicts resolved
   // in the user's favor below) need to reach the cloud too, so both
   // sides converge instead of one silently reverting on the next sync.
-  if(needsRePush) scheduleCloudPush();
+  scheduleCloudPush();
   // Show the review modal ONLY for genuine conflicts (both sides changed
   // the same thing) -- a routine remote-only change (someone on another
   // device used up milk, updated their weight, ticked a shopping item...)
@@ -2859,13 +2849,6 @@ function attachUserDocListener(uid){
   detachUserDocListener();
   userDocListenerUid = uid;
   userDocUnsubscribe = fbDb.collection("users").doc(uid).onSnapshot(snap=>{
-    // Fast path for the SDK's own optimistic local-cache echo of a write
-    // THIS device just made (fires immediately, before the server has even
-    // acknowledged it) -- without this, every push looked like an incoming
-    // remote change, which (see applyRemoteSyncedState below) could
-    // schedule another push, which echoed again, forever. Same guard the
-    // Android port (CloudSyncCoordinator.kt) already had from the start.
-    if(snap.metadata.hasPendingWrites) return;
     if(!snap.exists){ pushStateToCloud(); return; }
     applyRemoteSyncedState(snap.data());
   }, err=> console.warn("Błąd nasłuchiwania synchronizacji z chmurą.", err));
