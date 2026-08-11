@@ -1352,7 +1352,15 @@
     </div>
 
     <div class="card">
-      <h3 style="margin:0 0 6px; font-size:14.5px;">📆 Dzisiaj — co zjadłam</h3>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px;">
+        <h3 style="margin:0; font-size:14.5px;" id="trackerDayTitle">📆 Dzisiaj — co zjadłam</h3>
+        <div style="display:flex; align-items:center; gap:4px;">
+          <button type="button" class="btn ghost" id="trackerPrevDayBtn" style="padding:4px 8px; font-size:13px;" title="Poprzedni dzień">◀</button>
+          <input type="date" id="trackerDayInput" style="border:1px solid var(--line); border-radius:8px; padding:4px 6px; font-size:12px;">
+          <button type="button" class="btn ghost" id="trackerNextDayBtn" style="padding:4px 8px; font-size:13px;" title="Następny dzień">▶</button>
+        </div>
+      </div>
+      <div class="hint-text" style="margin:0 0 8px;" id="trackerPastDayHint"></div>
       <div id="todayTracker"></div>
     </div>
 
@@ -6410,6 +6418,65 @@ function renderWeights(){
   info.style.cssText = "margin-top:8px; font-size:12.5px; color:var(--muted);";
   info.textContent = toGo > 0 ? `Zostało ${toGo} kg do celu (${target} kg).` : "Cel osiągnięty! 🎉";
   list.appendChild(info);
+  renderWeightEditList(sorted);
+}
+// On explicit user request ("dodaj mozliwośc edytowania postępu wagi jak
+// się wpisze zła wage to daj jakieś okno edycjy do zmiany wartości
+// wpisanych") -- lets a wrongly-typed past entry be corrected or removed,
+// not just appended-over. Newest first, capped to the last 15 so this
+// doesn't grow unbounded for someone tracking daily for months.
+function renderWeightEditList(sorted){
+  const list = document.getElementById("weightList");
+  const editList = document.createElement("div");
+  editList.className = "weight-edit-list";
+  editList.style.cssText = "margin-top:10px;";
+  const recentForEdit = [...sorted].reverse().slice(0, 15);
+  recentForEdit.forEach(w=>{
+    const dateLabel = new Date(w.date+"T00:00:00").toLocaleDateString('pl-PL', {day:'2-digit', month:'2-digit', year:'numeric'});
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid var(--line); font-size:13px;";
+    row.innerHTML = `<span>${dateLabel}: <strong>${w.kg} kg</strong></span>
+      <span style="display:flex; gap:4px;">
+        <button type="button" class="btn ghost" style="padding:4px 8px; font-size:12px;" data-edit>✏️</button>
+        <button type="button" class="btn ghost" style="padding:4px 8px; font-size:12px; color:var(--danger);" data-del>🗑</button>
+      </span>`;
+    row.querySelector("[data-edit]").addEventListener("click", ()=>{
+      row.innerHTML = "";
+      row.style.cssText = "display:flex; align-items:center; gap:4px; padding:6px 0; border-bottom:1px solid var(--line); font-size:13px;";
+      const label = document.createElement("span");
+      label.textContent = `${dateLabel}:`;
+      const input = document.createElement("input");
+      input.type = "number"; input.step = "0.1"; input.value = w.kg;
+      input.style.cssText = "width:80px; border:1px solid var(--line); border-radius:8px; padding:4px 8px; font-size:13px; margin-left:6px;";
+      const saveBtn = document.createElement("button");
+      saveBtn.type = "button"; saveBtn.className = "btn primary";
+      saveBtn.style.cssText = "padding:4px 10px; font-size:12px; margin-left:6px;";
+      saveBtn.textContent = "Zapisz";
+      const cancelBtn = document.createElement("button");
+      cancelBtn.type = "button"; cancelBtn.className = "btn ghost";
+      cancelBtn.style.cssText = "padding:4px 10px; font-size:12px; margin-left:4px;";
+      cancelBtn.textContent = "Anuluj";
+      row.append(label, input, saveBtn, cancelBtn);
+      input.focus(); input.select();
+      saveBtn.addEventListener("click", ()=>{
+        const val = parseFloat(String(input.value).replace(",", "."));
+        if(!val || val<30 || val>250){ toast("Podaj prawidłową wagę"); return; }
+        const entry = state.weights.find(x=>x.date===w.date);
+        if(entry) entry.kg = val;
+        saveState(); renderWeights();
+        toast("Zaktualizowano wagę");
+      });
+      cancelBtn.addEventListener("click", ()=> renderWeights());
+    });
+    row.querySelector("[data-del]").addEventListener("click", ()=>{
+      if(!confirm(`Usunąć wpis wagi z ${dateLabel}?`)) return;
+      state.weights = state.weights.filter(x=>x.date!==w.date);
+      saveState(); renderWeights();
+      toast("Usunięto wpis wagi");
+    });
+    editList.appendChild(row);
+  });
+  list.appendChild(editList);
 }
 
 let kcalHistoryChartInstance = null;
@@ -6714,6 +6781,11 @@ function dateStrDaysAgo(n){
   d.setDate(d.getDate()-n);
   return d.toISOString().slice(0,10);
 }
+function addDaysToDateStr(dateStr, delta){
+  const d = new Date(dateStr+"T00:00:00");
+  d.setDate(d.getDate()+delta);
+  return d.toISOString().slice(0,10);
+}
 // Consecutive days (counting back from today) where eaten kcal is recorded
 // and lands within 15% of that day's target — today itself doesn't break
 // the streak just for being in progress, it's simply not counted until it
@@ -6751,17 +6823,41 @@ function calcWaterStreak(){
   return streak;
 }
 
+// The tracker card used to only ever operate on todayStr(). On explicit
+// user request ("tak samo historie kalorii żeby można było edytować
+// wstecz") it's now date-navigable -- trackerViewDate holds whichever day
+// is currently shown, defaulting to today on load. Every function this
+// tracker calls (setEaten/isEaten/plannedRecipeFor/buildSnackAddForm/
+// removeSnack/dailyEatenKcal) already took a `date` parameter rather than
+// hardcoding "today" internally, so no changes were needed there -- only
+// this rendering function and its date-nav controls.
+let trackerViewDate = todayStr();
 function renderTodayTracker(){
   const box = document.getElementById("todayTracker");
-  const polIndex = polIndexForDate(todayStr());
-  const dayMeals = state.planner[polIndex] || {};
+  const dateInput = document.getElementById("trackerDayInput");
+  const titleEl = document.getElementById("trackerDayTitle");
+  const hintEl = document.getElementById("trackerPastDayHint");
+  const nextBtn = document.getElementById("trackerNextDayBtn");
   const today = todayStr();
-  state.eaten[today] = state.eaten[today] || {};
+  // Never allow navigating into the future -- there's nothing to track yet.
+  if(trackerViewDate > today) trackerViewDate = today;
+  const viewDate = trackerViewDate;
+  if(dateInput) dateInput.value = viewDate;
+  if(nextBtn) nextBtn.disabled = viewDate >= today;
+  const isToday = viewDate === today;
+  if(titleEl){
+    const label = new Date(viewDate+"T00:00:00").toLocaleDateString('pl-PL', {day:'2-digit', month:'2-digit', year:'numeric'});
+    titleEl.textContent = isToday ? "📆 Dzisiaj — co zjadłam" : `📆 ${label} — co zjadłam`;
+  }
+  if(hintEl) hintEl.textContent = isToday ? "" : "Edytujesz wcześniejszy dzień — zmiany od razu przeliczają historię kalorii poniżej.";
+  const polIndex = polIndexForDate(viewDate);
+  const dayMeals = state.planner[polIndex] || {};
+  state.eaten[viewDate] = state.eaten[viewDate] || {};
   box.innerHTML = "";
   const t = calcTargets(state.profile);
   CATS.forEach(c=>{
-    const r = plannedRecipeFor(today, c.id);
-    const checked = isEaten(today, c.id);
+    const r = plannedRecipeFor(viewDate, c.id);
+    const checked = isEaten(viewDate, c.id);
     const row = document.createElement("label");
     row.className = "toggle-row";
     row.style.marginBottom = "10px";
@@ -6769,7 +6865,7 @@ function renderTodayTracker(){
       <span>${c.icon} ${c.label}: ${r ? r.name + " (" + r.kcal + " kcal)" : "— nie zaplanowano w Planerze —"}</span>`;
     if(r){
       row.querySelector("input").addEventListener("change", e=>{
-        setEaten(today, c.id, e.target.checked);
+        setEaten(viewDate, c.id, e.target.checked);
         saveState(); renderTodayTracker(); renderHeader();
       });
     }
@@ -6779,28 +6875,44 @@ function renderTodayTracker(){
   // snacks
   const snackList = document.createElement("div");
   snackList.style.cssText = "margin-top:6px;";
-  (state.eaten[today].snacks||[]).forEach(s=>{
+  (state.eaten[viewDate].snacks||[]).forEach(s=>{
     const row = document.createElement("div");
     row.style.cssText = "display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid var(--line); font-size:13px;";
     row.innerHTML = `<span>🍪 ${s.name} <span style="color:var(--muted);">(${s.kcal} kcal)</span></span><button type="button" style="border:none; background:none; color:var(--danger); font-size:16px; cursor:pointer; line-height:1;">×</button>`;
     row.querySelector("button").addEventListener("click", ()=>{
-      removeSnack(today, s.id);
+      removeSnack(viewDate, s.id);
       saveState(); renderTodayTracker(); renderHeader();
     });
     snackList.appendChild(row);
   });
   box.appendChild(snackList);
 
-  const snackForm = buildSnackAddForm(today, ()=>{ renderTodayTracker(); renderHeader(); });
+  const snackForm = buildSnackAddForm(viewDate, ()=>{ renderTodayTracker(); renderHeader(); });
   box.appendChild(snackForm);
 
-  const eatenKcal = dailyEatenKcal(today);
+  const eatenKcal = dailyEatenKcal(viewDate);
   const info = document.createElement("div");
   const pct = t.daily ? Math.round(eatenKcal/t.daily*100) : 0;
   info.style.cssText = "font-size:12.5px; color:var(--muted); margin-top:10px;";
-  info.textContent = `Zjedzono dziś: ${eatenKcal} / ${t.daily} kcal (${pct}%).`;
+  info.textContent = `${isToday ? "Zjedzono dziś" : "Zjedzono tego dnia"}: ${eatenKcal} / ${t.daily} kcal (${pct}%).`;
   box.appendChild(info);
 }
+document.getElementById("trackerDayInput").addEventListener("change", e=>{
+  const val = e.target.value;
+  if(!val) return;
+  trackerViewDate = val > todayStr() ? todayStr() : val;
+  renderTodayTracker();
+});
+document.getElementById("trackerPrevDayBtn").addEventListener("click", ()=>{
+  trackerViewDate = addDaysToDateStr(trackerViewDate, -1);
+  renderTodayTracker();
+});
+document.getElementById("trackerNextDayBtn").addEventListener("click", ()=>{
+  const next = addDaysToDateStr(trackerViewDate, 1);
+  if(next > todayStr()) return;
+  trackerViewDate = next;
+  renderTodayTracker();
+});
 
 function renderStreaks(){
   const box = document.getElementById("streaksBox");

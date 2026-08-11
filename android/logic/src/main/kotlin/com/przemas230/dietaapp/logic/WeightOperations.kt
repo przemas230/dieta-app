@@ -13,6 +13,15 @@ object WeightOperations {
 
     fun sortedByDate(entries: List<WeightEntry>): List<WeightEntry> = entries.sortedBy { it.dateStr }
 
+    /** Corrects a mistyped past entry in place (matched by date). Returns null (caller shows "Podaj prawidłową wagę") if kg is outside [30, 250]. No-op (returns entries unchanged) if no entry exists for that date. */
+    fun editWeight(entries: List<WeightEntry>, dateStr: String, kg: Double): List<WeightEntry>? {
+        if (kg < 30.0 || kg > 250.0) return null
+        return entries.map { if (it.dateStr == dateStr) it.copy(kg = kg) else it }
+    }
+
+    fun removeWeight(entries: List<WeightEntry>, dateStr: String): List<WeightEntry> =
+        entries.filterNot { it.dateStr == dateStr }
+
     /** How many kg left to the target -- positive means still above it, negative/zero means goal reached. Null if there's no entry yet. */
     fun kgToGo(entries: List<WeightEntry>, targetKg: Double): Double? {
         val last = sortedByDate(entries).lastOrNull() ?: return null

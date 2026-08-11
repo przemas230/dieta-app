@@ -41,4 +41,30 @@ class WeightOperationsTest {
     fun `kgToGo is null with no entries`() {
         assertNull(WeightOperations.kgToGo(emptyList(), 62.0))
     }
+
+    @Test
+    fun `editWeight corrects a mistyped past entry`() {
+        val entries = listOf(WeightEntry("2026-08-09", 70.0), WeightEntry("2026-08-10", 999.0))
+        val result = WeightOperations.editWeight(entries, "2026-08-10", 69.5)
+        assertEquals(listOf(WeightEntry("2026-08-09", 70.0), WeightEntry("2026-08-10", 69.5)), result)
+    }
+
+    @Test
+    fun `editWeight rejects out-of-range values`() {
+        val entries = listOf(WeightEntry("2026-08-10", 70.0))
+        assertNull(WeightOperations.editWeight(entries, "2026-08-10", 29.9))
+        assertNull(WeightOperations.editWeight(entries, "2026-08-10", 250.1))
+    }
+
+    @Test
+    fun `editWeight is a no-op for a date with no entry`() {
+        val entries = listOf(WeightEntry("2026-08-10", 70.0))
+        assertEquals(entries, WeightOperations.editWeight(entries, "2026-08-09", 69.5))
+    }
+
+    @Test
+    fun `removeWeight drops only the matching date`() {
+        val entries = listOf(WeightEntry("2026-08-09", 70.0), WeightEntry("2026-08-10", 69.5))
+        assertEquals(listOf(WeightEntry("2026-08-09", 70.0)), WeightOperations.removeWeight(entries, "2026-08-10"))
+    }
 }

@@ -22,6 +22,17 @@ class WeightViewModel : ViewModel() {
         return true
     }
 
+    /** On explicit user request: corrects a wrongly-typed past entry instead of only ever being able to add new ones. Returns false (caller shows "Podaj prawidłową wagę") if kg is outside the valid range. */
+    fun editWeight(dateStr: String, kg: Double): Boolean {
+        val result = WeightOperations.editWeight(_entries.value, dateStr, kg) ?: return false
+        _entries.value = result
+        return true
+    }
+
+    fun removeWeight(dateStr: String) {
+        _entries.value = WeightOperations.removeWeight(_entries.value, dateStr)
+    }
+
     /** Used by LocalStateStore on app startup to restore the weight log saved on a previous run. */
     fun replaceAll(entries: List<WeightEntry>) {
         _entries.value = entries

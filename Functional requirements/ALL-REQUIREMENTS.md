@@ -68,6 +68,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-41: Historia kalorii z bilansem tygodniowym](#fr-41-historia-kalorii-z-bilansem-tygodniowym)
 - [FR-42: Serie (streaks) i historia aktywności](#fr-42-serie-streaks-i-historia-aktywności)
 - [FR-60: Warunkowe wyświetlanie „Złotych zasad przy Hashimoto i insulinooporności”](#fr-60-warunkowe-wyświetlanie-złotych-zasad-przy-hashimoto-i-insulinooporności)
+- [FR-83: Edycja wcześniej wpisanej wagi i historii kalorii](#fr-83-edycja-wcześniej-wpisanej-wagi-i-historii-kalorii)
 
 ### Nagłówek i nawigacja
 - [FR-43: Pasek filtrów i kategorii przyklejony pod nagłówkiem](#fr-43-pasek-filtrów-i-kategorii-przyklejony-pod-nagłówkiem)
@@ -2183,5 +2184,41 @@ Android: karta „🔄 Aktualizacja aplikacji” w Ustawieniach już od wcześni
   było faktycznie zobaczyć czy był update"). Zaimplementowane na web
   (`versions/v77/`, Service Worker v50→v51); Android już to miał
   (`AppUpdateCard` w `SettingsScreen.kt`), więc tylko udokumentowane.
+
+---
+
+# FR-83: Edycja wcześniej wpisanej wagi i historii kalorii
+
+**Obszar:** Postęp
+**Status:** Zaimplementowane (waga: web + Android; historia kalorii: web — Android świadomie odłożone, patrz Uwagi)
+
+## Opis
+Do tej pory zarówno wpisy wagi (FR-40), jak i dziennik zjedzonych posiłków (FR-33/34/36/41/42) dało się tylko DODAWAĆ — pomyłkę we wpisanej wartości można było naprawić jedynie nadpisując wpis z DZISIEJSZĄ datą, bez możliwości poprawienia błędu z wcześniejszego dnia ani cofnięcia się do przeszłości w ogóle.
+
+**Waga**: pod wykresem w karcie „⚖️ Postęp wagi” lista ostatnich wpisów (do 15, od najnowszego), każdy z przyciskiem ✏️ (edycja wartości w tym samym miejscu, bez osobnego okna) i 🗑 (usunięcie, z potwierdzeniem). Edycja waliduje tak samo jak dodawanie (30-250 kg).
+
+**Historia kalorii (web)**: karta „📆 Dzisiaj — co zjadłam” dostała nawigację dat (◀ / pole daty / ▶, zablokowane na przyszłość) — wybranie wcześniejszego dnia pokazuje DOKŁADNIE ten sam formularz (checkboxy zaplanowanych posiłków + lista przekąsek z możliwością dodania/usunięcia), tylko dla wybranej daty zamiast dzisiejszej. Wykres „📈 Historia kalorii” poniżej odzwierciedla zmiany natychmiast, bo oba czytają z tego samego `state.eaten[data]`.
+
+## Kryteria akceptacji
+- Zmiana wartości istniejącego wpisu wagi na inny dzień nie tworzy duplikatu ani nie usuwa pozostałych wpisów.
+- Usunięcie wpisu wagi wymaga potwierdzenia.
+- (Web) Cofnięcie się na wcześniejszy dzień w karcie „co zjadłam” pokazuje stan TEGO dnia (nie dzisiejszego), a zaznaczenie/odznaczenie posiłku lub dodanie/usunięcie przekąski zapisuje się pod właściwą datą, nie pod dzisiejszą.
+- (Web) Nie da się przejść do dnia w przyszłości (przycisk „▶”/pole daty zablokowane na dzisiaj jako maksimum).
+- (Web) Powrót do dzisiejszego dnia po edycji wcześniejszego pokazuje dzisiejszy stan bez żadnych zmian wprowadzonych przy edycji innego dnia.
+
+## Uwagi
+Android ma dziś tylko WAGĘ w pełni zaportowaną. Historia kalorii na Androidzie architektonicznie NIE wspiera edycji wstecz bez większej przebudowy: `EatenViewModel._entries` trzyma stan WYŁĄCZNIE per kategoria posiłku (zawsze "dzisiaj"), a `_kcalHistory` to tylko POCHODNA suma dzienna, bez zapisanych pojedynczych zaznaczeń/przekąsek dla przeszłych dni — w odróżnieniu od web'a, gdzie `state.eaten[data]` od zawsze przechowuje pełny, edytowalny stan PER DATA. Dodanie tego wymagałoby zmiany kształtu `EatenEntry`/`_entries` na mapę data→kategoria→wpis, aktualizacji `EatenOperations`, `CloudSyncCoordinator`'s kodeka pola "eaten" i ekranu, który dziś renderuje tylko "dzisiaj" — porównywalne rozmiarem do osobnego, dedykowanego FR, świadomie odłożone zamiast pospiesznej, niedotestowanej przebudowy modelu danych w tej samej turze co inne zmiany (patrz CLAUDE.md o niepiętrzeniu wielu niezweryfikowanych kroków w Kotlinie na raz).
+
+## Historia rewizji
+- **v1** (2026-08-11): Pierwsza wersja wymagania, na życzenie użytkownika
+  ("dodaj mozliwośc edytowania postępu wagi jak się wpisze zła wage to daj
+  jakieś okno edycjy do zmiany wartości wpisanych, tak samo historie
+  kalorii żeby można było edytować wstecz"). Waga zaimplementowana na obu
+  platformach, zweryfikowana bezpośrednio (Android: emulator, edycja
+  07.08.2026 z 73 na inną wartość zadziałała inline; web: `javascript_tool`
+  w przeglądarce). Historia kalorii zaimplementowana na web (nawigacja dat
+  w karcie trackera), zweryfikowana bezpośrednio w przeglądarce (dodanie
+  przekąski do 2026-08-09 poprawnie odizolowane od stanu dzisiejszego dnia)
+  — Android świadomie odłożony, patrz Uwagi.
 
 ---

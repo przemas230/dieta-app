@@ -151,7 +151,13 @@ fun PostepScreen(
         }
         Spacer(modifier = Modifier.height(12.dp))
 
-        WeightCard(entries = weightEntries, targetKg = profile.targetWeightKg, onAddWeight = weightViewModel::addWeight)
+        WeightCard(
+            entries = weightEntries,
+            targetKg = profile.targetWeightKg,
+            onAddWeight = weightViewModel::addWeight,
+            onEditWeight = weightViewModel::editWeight,
+            onRemoveWeight = weightViewModel::removeWeight,
+        )
         Spacer(modifier = Modifier.height(12.dp))
 
         KcalHistoryCard(kcalHistory = kcalHistory, dailyTarget = dailyTarget, today = today)
@@ -328,7 +334,13 @@ private fun formatKg(value: Double): String =
     if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()
 
 @Composable
-private fun WeightCard(entries: List<WeightEntry>, targetKg: Double, onAddWeight: (Double) -> Boolean) {
+private fun WeightCard(
+    entries: List<WeightEntry>,
+    targetKg: Double,
+    onAddWeight: (Double) -> Boolean,
+    onEditWeight: (String, Double) -> Boolean,
+    onRemoveWeight: (String) -> Unit,
+) {
     var input by remember { mutableStateOf("") }
     var error by remember { mutableStateOf(false) }
     val sorted = remember(entries) { WeightOperations.sortedByDate(entries) }
@@ -386,6 +398,70 @@ private fun WeightCard(entries: List<WeightEntry>, targetKg: Double, onAddWeight
                     "Cel osiągnięty! 🎉"
                 }
                 Text(info, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(10.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    sorted.asReversed().take(15).forEach { entry ->
+                        WeightEntryRow(entry, onEditWeight, onRemoveWeight)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** On explicit user request ("dodaj mozliwośc edytowania postępu wagi jak się wpisze zła wage to daj jakieś okno edycjy") -- lets a wrongly-typed past entry be corrected or removed, not just appended-over. Port of index.html's inline weight-edit-list rows. */
+@Composable
+private fun WeightEntryRow(entry: WeightEntry, onEditWeight: (String, Double) -> Boolean, onRemoveWeight: (String) -> Unit) {
+    var editing by remember(entry.dateStr) { mutableStateOf(false) }
+    var showDeleteConfirm by remember(entry.dateStr) { mutableStateOf(false) }
+    val dateLabel = remember(entry.dateStr) {
+        runCatching { LocalDate.parse(entry.dateStr).format(DateTimeFormatter.ofPattern("dd.MM.yyyy")) }.getOrDefault(entry.dateStr)
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Usunąć wpis wagi?") },
+            text = { Text("Usunąć wpis wagi z $dateLabel?") },
+            confirmButton = { TextButton(onClick = { onRemoveWeight(entry.dateStr); showDeleteConfirm = false }) { Text("Usuń") } },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Anuluj") } },
+        )
+    }
+
+    if (editing) {
+        var editInput by remember(entry.dateStr) { mutableStateOf(formatKg(entry.kg)) }
+        var editError by remember(entry.dateStr) { mutableStateOf(false) }
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+            Text("$dateLabel:", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(end = 6.dp))
+            OutlinedTextField(
+                value = editInput,
+                onValueChange = { editInput = it; editError = false },
+                singleLine = true,
+                modifier = Modifier.width(90.dp),
+            )
+            TextButton(onClick = {
+                val kg = editInput.trim().replace(',', '.').toDoubleOrNull()
+                if (kg != null && onEditWeight(entry.dateStr, kg)) editing = false else editError = true
+            }) { Text("Zapisz") }
+            TextButton(onClick = { editing = false }) { Text("Anuluj") }
+        }
+        if (editError) {
+            Text(
+                "Podaj prawidłową wagę (30-250 kg)",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    } else {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        ) {
+            Text("$dateLabel: ${formatKg(entry.kg)} kg", style = MaterialTheme.typography.bodySmall)
+            Row {
+                TextButton(onClick = { editing = true }) { Text("✏️") }
+                TextButton(onClick = { showDeleteConfirm = true }) { Text("🗑") }
             }
         }
     }

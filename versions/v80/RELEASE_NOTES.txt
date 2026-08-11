@@ -1,0 +1,25 @@
+Wersja 80 (2026-08-11)
+
+Nowa funkcja na wyraźną prośbę użytkownika (FR-83): do tej pory zarówno
+wpisy wagi, jak i dziennik zjedzonych posiłków dało się tylko DODAWAĆ —
+błąd we wpisanej wartości dało się poprawić tylko nadpisując wpis z
+DZISIEJSZĄ datą, bez możliwości cofnięcia się do przeszłości.
+
+- Waga (web + Android): pod wykresem w karcie „Postęp wagi” lista
+  ostatnich wpisów z przyciskami ✏️ (edycja wartości w miejscu, bez
+  osobnego okna) i 🗑 (usunięcie, z potwierdzeniem).
+- Historia kalorii (web): karta „Dzisiaj — co zjadłam” dostała nawigację
+  dat (◀ / pole daty / ▶, zablokowane na przyszłość) — wybranie
+  wcześniejszego dnia pokazuje ten sam formularz zaznaczania posiłków i
+  przekąsek, tylko dla wybranej daty. Android: świadomie odłożone —
+  wymagałoby przebudowy modelu danych (EatenViewModel dziś trzyma tylko
+  "dzisiaj"), nie tylko UI jak przy wadze. Pełne uzasadnienie w
+  Functional requirements/FR-83.md.
+
+Zweryfikowane: Android — nowe testy JUnit (WeightOperationsTest) +
+bezpośrednio na emulatorze (edycja wpisu wagi zadziałała poprawnie).
+Web — bezpośrednio w przeglądarce przez javascript_tool: dodanie
+przekąski do wcześniejszej daty poprawnie odizolowane od stanu
+dzisiejszego dnia.
+
+Service Worker: v53 → v54. Android: 48/"0.1.47" → 49/"0.1.48".
