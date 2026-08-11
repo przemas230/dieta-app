@@ -748,12 +748,32 @@ private fun HeaderKcalPanel(
                 PlannerOperations.PLANNER_CATEGORIES.forEach { category ->
                     val meal = todayMeals[category.id]
                     val recipe = meal?.let { recipesById[it.recipeId] }
+                    // Real bug fixed 2026-08-11 ("Domowy batonik... pokazuje
+                    // inna kalorycznosc w przepisach a inna... na kolku ktore
+                    // liczy dzienne spozycie"): this used to pass `recipe?.kcal`
+                    // -- the recipe's BASE, unscaled kcal -- straight into the
+                    // eaten-toggle, ignoring `meal.scale` (FR-20's portion
+                    // scaling) entirely. PlannerScreen's own "Razem" day total
+                    // already correctly uses PlannerOperations.scaledKcal(recipe,
+                    // meal.scale) for the exact same data, and index.html's
+                    // equivalent (plannedRecipeFor -> scaleRecipe(base,
+                    // getPlannerScale(...)).kcal) has always captured the SCALED
+                    // value -- so a portion scaled to, say, 1.3x correctly logged
+                    // 1.3x the kcal as eaten on web, but only the un-scaled 1x
+                    // amount on Android, silently undercounting (or overcounting)
+                    // the daily ring/"Zjedzone" total for every scaled meal.
+                    val eatenKcal = if (recipe != null && meal != null) {
+                        PlannerOperations.scaledKcal(recipe, meal.scale)
+                    } else {
+                        null
+                    }
                     KcalMealRow(
                         category = category,
                         targetKcal = kcalTargets.forCategory(category.id) ?: 0,
                         recipe = recipe,
+                        recipeKcal = eatenKcal,
                         eaten = EatenOperations.isEaten(eatenEntries, category.id),
-                        onToggle = { onToggleEaten(category.id, recipe?.kcal, recipe?.name) },
+                        onToggle = { onToggleEaten(category.id, eatenKcal, recipe?.name) },
                     )
                 }
             }
@@ -802,6 +822,13 @@ private fun KcalMealRow(
     category: PlannerCategory,
     targetKcal: Int,
     recipe: Recipe?,
+    // The recipe's OWN kcal for this specific planned portion (already
+    // scaled by meal.scale -- see the bugfix note at the call site). Shown
+    // next to the dish name so it's visible when it differs from the
+    // recipe's base kcal shown on its card in Przepisy -- and from
+    // `targetKcal` above, which is this meal SLOT's calorie budget, a
+    // different number entirely, not this specific recipe's calorie count.
+    recipeKcal: Int?,
     eaten: Boolean,
     onToggle: () -> Unit,
 ) {
@@ -849,7 +876,7 @@ private fun KcalMealRow(
             )
             if (recipe != null) {
                 Text(
-                    recipe.name,
+                    if (recipeKcal != null) "${recipe.name} ($recipeKcal kcal)" else recipe.name,
                     color = Color.White.copy(alpha = if (eaten) 0.55f else 0.72f),
                     fontSize = 9.sp,
                     textDecoration = if (eaten) TextDecoration.LineThrough else TextDecoration.None,
