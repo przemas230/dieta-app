@@ -1,5 +1,7 @@
 package com.przemas230.dietaapp.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,7 +37,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.przemas230.dietaapp.data.PlannedMeal
@@ -77,6 +81,12 @@ fun PlannerScreen(plannerViewModel: PlannerViewModel, profileViewModel: ProfileV
 
     var slotPicker by remember { mutableStateOf<Pair<Int, String>?>(null) }
     var pendingConfirm by remember { mutableStateOf<PendingConfirm?>(null) }
+    // 2026-08-11 (user request, "dodaj możliwość podglądnięcia przepisu z
+    // poziomu planera"): (recipe, portion scale) for the currently open
+    // preview, see RecipePreviewDialog. Scale is carried alongside the
+    // recipe so ingredients/kcal shown match the ACTUAL planned portion,
+    // not the recipe's base 1x amounts.
+    var previewRecipe by remember { mutableStateOf<Pair<Recipe, Double>?>(null) }
 
     LazyColumn(
         contentPadding = PaddingValues(12.dp),
@@ -107,6 +117,7 @@ fun PlannerScreen(plannerViewModel: PlannerViewModel, profileViewModel: ProfileV
                     plannerViewModel.setScale(day, cat, PlannerOperations.nextScaleStep(currentScale))
                 },
                 onRegenerateSlot = { cat -> plannerViewModel.regenerateSlot(day, cat, profile) },
+                onPreviewClick = { recipe, scale -> previewRecipe = recipe to scale },
                 prepAheadFor = { cat -> PlannerOperations.prepAheadSuggestion(weekPlan, day, cat, recipesById) },
                 onApplyPrepAhead = { cat, recipeId -> plannerViewModel.planLeftover(day, cat, recipeId) },
                 onRandomizeDay = {
@@ -151,6 +162,10 @@ fun PlannerScreen(plannerViewModel: PlannerViewModel, profileViewModel: ProfileV
         )
     }
 
+    previewRecipe?.let { (recipe, scale) ->
+        RecipePreviewDialog(recipe = recipe, scale = scale, onDismiss = { previewRecipe = null })
+    }
+
     val confirm = pendingConfirm
     if (confirm != null) {
         AlertDialog(
@@ -182,6 +197,7 @@ private fun DayCard(
     onSlotClick: (cat: String) -> Unit,
     onScaleClick: (cat: String, currentScale: Double) -> Unit,
     onRegenerateSlot: (cat: String) -> Unit,
+    onPreviewClick: (recipe: Recipe, scale: Double) -> Unit,
     prepAheadFor: (cat: String) -> Recipe?,
     onApplyPrepAhead: (cat: String, recipeId: String) -> Unit,
     onRandomizeDay: () -> Unit,
@@ -217,6 +233,14 @@ private fun DayCard(
                     }
                     if (recipe != null && meal != null) {
                         Spacer(modifier = Modifier.width(4.dp))
+                        // 2026-08-11 (user request): preview ingredients/
+                        // method without leaving the planner or changing
+                        // the slot -- separate from onSlotClick (which
+                        // opens the CHANGE-recipe picker) so tapping either
+                        // does exactly one clearly distinct thing.
+                        TextButton(onClick = { onPreviewClick(recipe, meal.scale) }) {
+                            Text("👁️")
+                        }
                         TextButton(onClick = { onScaleClick(category.id, meal.scale) }) {
                             Text(formatScale(meal.scale))
                         }
@@ -272,6 +296,68 @@ private fun DayCard(
 /** "1×"/"1.5×" -- matches index.html's String(scale).replace(".", ","), but with a dot since this is Polish-locale-agnostic UI text either way. */
 private fun formatScale(scale: Double): String =
     (if (scale == scale.toLong().toDouble()) scale.toLong().toString() else scale.toString()) + "×"
+
+/**
+ * 2026-08-11 (user request, "dodaj możliwość podglądnięcia przepisu z
+ * poziomu planera... żeby wyświetliło kartę jak na karcie z przepisami"):
+ * read-only preview -- ingredients (scaled to the ACTUAL planned portion,
+ * `PlannerOperations.scaleIngredients`/`scaledKcal`, not the recipe's base
+ * 1x amounts) and preparation method, plus the same "tap title -> Google
+ * search" idiom `RecipeListScreen.kt`'s `RecipeCardBody` already uses
+ * (`ACTION_VIEW` + `google.com/search?q=`). Deliberately NOT a reuse of
+ * `RecipeCard`/`RecipeCardBody` -- those are tightly coupled to
+ * RecipeListScreen's own ViewModels (swipe-rate, pantry-check, reviews,
+ * comments, favorites) that make no sense to fake from here; this is a
+ * lighter, planner-scoped subset of the same content.
+ */
+@Composable
+private fun RecipePreviewDialog(recipe: Recipe, scale: Double, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val scaledIngredients = remember(recipe, scale) { PlannerOperations.scaleIngredients(recipe.ingredients, scale) }
+    val kcal = remember(recipe, scale) { PlannerOperations.scaledKcal(recipe, scale) }
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        recipe.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        textDecoration = TextDecoration.Underline,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                val query = Uri.encode("${recipe.name} przepis")
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=$query")),
+                                )
+                            },
+                    )
+                    TextButton(onClick = onDismiss) { Text("✕") }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "⏱ ${recipe.time}   🔥 $kcal kcal" + if (scale != 1.0) "  (porcja ${formatScale(scale)})" else "",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Składniki", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                scaledIngredients.forEach { line ->
+                    Text("• $line", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 2.dp))
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Przygotowanie", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(recipe.method, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
 
 /**
  * Recipe picker for one Planer slot -- port of index.html's
