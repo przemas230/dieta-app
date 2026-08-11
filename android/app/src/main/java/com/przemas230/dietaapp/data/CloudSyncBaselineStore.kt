@@ -26,6 +26,19 @@ import android.content.Context
  * Scoped by uid (stored alongside the fields) so switching accounts on the
  * same device starts with a clean baseline instead of comparing against a
  * previous account's data.
+ *
+ * **Bug fixed 2026-08-11** ("za każdym razem wraca mi jakaś defaultowa
+ * dieta, mimo że jestem zalogowany do konta Google"): [clear] didn't exist,
+ * so "Wyczyść dane lokalne" (FR-79, MainActivity's `onClearLocalData`) reset
+ * every ViewModel back to fresh-install defaults but left this file
+ * untouched. On the next sign-in to the SAME account, the persisted baseline
+ * still held the account's real (pre-clear) data, so CloudSyncCoordinator's
+ * pull condition (`incoming != lastKnownFields[key]`) saw the incoming
+ * snapshot matching what it already "knew" and never re-applied it onto the
+ * now-default local state -- permanently, since nothing ever invalidated
+ * that baseline again on its own. index.html avoids this by nulling its
+ * equivalent (`state._lastSyncedSnapshot`) on every sign-out; [clear] is
+ * that same reset for Android, wired into `onClearLocalData`.
  */
 object CloudSyncBaselineStore {
     private const val FILE_NAME = "cloud_sync_baseline.json"
@@ -39,5 +52,10 @@ object CloudSyncBaselineStore {
 
     fun save(context: Context, uid: String, fields: Map<String, Any?>) {
         LocalStateStore.save(context, mapOf("uid" to uid, "fields" to fields), FILE_NAME)
+    }
+
+    /** Wipes the on-device baseline entirely -- called when local data is deliberately reset, so a future sign-in (even to the same account) treats Firestore's data as genuinely new instead of "already known". */
+    fun clear(context: Context) {
+        LocalStateStore.delete(context, FILE_NAME)
     }
 }

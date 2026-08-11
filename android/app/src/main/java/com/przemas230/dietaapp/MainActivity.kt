@@ -67,9 +67,11 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import com.przemas230.dietaapp.data.CloudSyncBaselineStore
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -215,6 +217,7 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Double, themeViewModel: ThemeViewModel) {
+    val context = LocalContext.current
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -435,7 +438,28 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                         IconButton(onClick = {
                             focusManager.clearFocus()
                             keyboardController?.hide()
-                            navController.navigate(Screen.Settings.route) { launchSingleTop = true }
+                            // Bug fixed 2026-08-11 ("z Ustawień kliknięcie karty
+                            // Przepisy nie przełącza, trzeba wstecz"): this used
+                            // to navigate here with no popUpTo at all, so Ustawienia
+                            // got pushed on top of whatever bottom tab was current
+                            // instead of sitting at the same back-stack level as the
+                            // tabs themselves. From there, tapping a bottom-nav tab
+                            // whose target happened to be the start destination
+                            // (Przepisy) -- reached via that same popUpTo(start){
+                            // saveState=true}+launchSingleTop+restoreState combo --
+                            // could land back on an entry that was never actually
+                            // popped off underneath Ustawienia, leaving it visibly
+                            // stuck until a manual Back press did the pop instead.
+                            // Using the identical popUpTo/singleTop/restoreState
+                            // pattern as BOTTOM_NAV_SCREENS below puts Ustawienia at
+                            // the same stack depth as every tab, so switching away
+                            // from it behaves exactly like switching between any two
+                            // tabs (already correct) instead of a special case.
+                            navController.navigate(Screen.Settings.route) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }) {
                             Icon(Screen.Settings.icon, contentDescription = Screen.Settings.label)
                         }
@@ -552,6 +576,17 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                         // ViewModel to fresh-install defaults. LocalPersistenceCoordinator
                         // picks up each of these changes and re-saves the (now
                         // empty) state on its own, so no separate file-delete needed.
+                        //
+                        // The cloud-sync baseline IS explicitly cleared here (bug
+                        // fixed 2026-08-11, see CloudSyncBaselineStore's doc comment):
+                        // without this, a later sign-in to the SAME account would
+                        // find CloudSyncCoordinator's persisted baseline already
+                        // "agreeing" with Firestore's real data, so the pull
+                        // condition would treat the incoming snapshot as already-
+                        // known and never re-apply it over these now-default
+                        // ViewModels -- permanently, since nothing else invalidates
+                        // that baseline.
+                        CloudSyncBaselineStore.clear(context)
                         profileViewModel.resetToDefault()
                         profileViewModel.setDisplayName("")
                         pantryViewModel.replaceAll(emptyMap())

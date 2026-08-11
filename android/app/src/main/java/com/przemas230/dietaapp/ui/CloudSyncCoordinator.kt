@@ -184,6 +184,24 @@ private fun decodeBaselineFields(raw: Map<String, Any?>): Map<String, Any?> =
  * restarts, they didn't), so keeping them around was redundant risk, not
  * safety margin.
  *
+ * **Sixth change 2026-08-11** ("za każdym razem wraca mi jakaś defaultowa
+ * dieta, mimo że jestem zalogowany do konta Google"): the persisted
+ * baseline from the Fifth change could itself go stale relative to the
+ * ViewModels/local state it's meant to describe, in two ways, both now
+ * fixed: (a) [CloudSyncBaselineStore] had no way to be invalidated, so
+ * MainActivity's "Wyczyść dane lokalne" (FR-79) reset every ViewModel to
+ * fresh-install defaults but left the baseline holding the account's real
+ * (pre-clear) data -- the next sign-in to the SAME account then saw the
+ * incoming Firestore snapshot as "already known" and never re-applied it,
+ * permanently; fixed by clearing the baseline there too (see
+ * [CloudSyncBaselineStore]'s own doc comment). (b) the baseline save below
+ * had no debounce while [LocalPersistenceCoordinator]'s save of the exact
+ * same pulled value is debounced 500ms, so a process death in that window
+ * right after a pull could leave the baseline matching Firestore's real
+ * data while the on-disk local state still held the pre-pull value --
+ * fixed by delaying the baseline save to lag behind, instead of race
+ * ahead of, the local-state write.
+ *
  * There is still no conflict dialog: if two devices genuinely edit the SAME
  * field before either sees the other's change, whichever push reaches the
  * Firestore server last simply wins for that field, silently -- an
@@ -293,8 +311,22 @@ fun CloudSyncCoordinator(
     // start doesn't start from empty again (see class doc, "Fifth change").
     // Also fires once right after the initial load above, harmlessly
     // re-saving what was just read.
+    //
+    // Delayed to lag behind LocalPersistenceCoordinator's 500ms debounced
+    // save of the same pulled value (bug fixed 2026-08-11, part of "za
+    // każdym razem wraca mi jakaś defaultowa dieta"): a pulled Firestore
+    // value updates a ViewModel AND lastKnownFields in the same tick, but
+    // without this delay the baseline write (no debounce) could reach disk
+    // before the ViewModel's own 500ms-debounced local-state write did. If
+    // the process died in that window, the next cold start restored the
+    // ViewModel from the OLD (pre-pull) local-state file while the baseline
+    // already matched the NEW value -- so the next snapshot looked
+    // "already known" and was never re-applied, permanently. Matching (and
+    // slightly exceeding) the 500ms debounce here means the local-state
+    // write reliably wins the race instead.
     LaunchedEffect(uid, baselineLoaded, lastKnownFields) {
         if (uid == null || !baselineLoaded) return@LaunchedEffect
+        delay(600)
         withContext(Dispatchers.IO) { CloudSyncBaselineStore.save(context, uid, encodeBaselineFields(lastKnownFields)) }
     }
 

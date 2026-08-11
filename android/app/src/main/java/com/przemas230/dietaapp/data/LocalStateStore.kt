@@ -47,6 +47,15 @@ object LocalStateStore {
         }
     }
 
+    /** Deletes the given file if present -- used by CloudSyncBaselineStore.clear() so a stale on-disk baseline can't outlive an intentional local-data reset. */
+    fun delete(context: Context, fileName: String = FILE_NAME) {
+        try {
+            File(context.filesDir, fileName).delete()
+        } catch (e: Exception) {
+            // Nothing to do -- worst case the file lingers and gets overwritten next save.
+        }
+    }
+
     private fun mapToJson(map: Map<*, *>): JSONObject {
         val obj = JSONObject()
         map.forEach { (k, v) -> obj.put(k.toString(), anyToJson(v)) }
