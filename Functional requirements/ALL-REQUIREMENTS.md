@@ -765,10 +765,65 @@ funkcja nigdy nie została rozpoczęta (patrz `android/PARITY.md`) — pozostaje
 **Status:** Zaimplementowane
 
 ## Opis
-Lista składników na karcie przepisu pokazuje, które pozycje są już w spiżarni. Osobny przycisk „💡 Pomysł na danie z ulubionych składników” proponuje przepis maksymalizujący liczbę użytych ulubionych/posiadanych składników.
+Lista składników na karcie przepisu pokazuje, które pozycje są już w spiżarni.
+
+Osobne wejście „💡 Pomysł na danie z ulubionych składników” proponuje danie
+na podstawie ulubionych składników użytkownika:
+- **Web (bez zmian):** przycisk inline pod paskiem filtrów, otwiera okno z
+  wygenerowanym z 2 losowych ulubionych składników szablonowym tekstem
+  (np. „Sałatka z {a} i {b}”), z możliwością wylosowania innej propozycji
+  bez zamykania okna.
+- **Android (od 2026-08-11, v2):** floating przycisk „💡” widoczny WYŁĄCZNIE
+  na karcie Przepisy (zastąpił dawny przycisk inline). Po kliknięciu:
+  1. Jeśli użytkownik nie ma żadnych ulubionych składników — komunikat z
+     instrukcją, jak je zaznaczyć (gwiazdka ☆ przy składniku w przepisie).
+  2. W przeciwnym razie: najpierw pytanie o typ posiłku (Śniadanie / Obiad /
+     Kolacja / Deser).
+  3. Po wyborze: dobiera do 5 ulubionych składników, ZRÓŻNICOWANYCH pod
+     względem kategorii — z każdej kategorii innej niż Warzywa/Owoce bierze
+     co najwyżej JEDEN składnik (żeby nie wyszło danie z samych różnych
+     kasz albo z samych różnych mąk), natomiast z Warzyw i Owoców może
+     wziąć dowolnie wiele (dopuszczalna np. sałatka z kilku warzyw albo
+     deser z kilku owoców). Jeśli ulubione składniki nie obejmują
+     wystarczająco zróżnicowanych kategorii, żeby dobrać 5 — zwraca mniej,
+     zamiast łamać regułę różnorodności.
+  4. Otwiera wyszukiwanie Google (`https://www.google.com/search?q=...`,
+     ten sam mechanizm co dotknięcie tytułu przepisu) z zapytaniem „przepis
+     na {posiłek} z {lista składników}”.
+
+## Kryteria akceptacji
+- Web: bez zmian względem v1 — przycisk inline, min. 2 ulubione składniki
+  wymagane, tekst szablonowy, reroll bez zamykania okna.
+- Android: floating „💡” widoczny tylko na Przepisach, znika na innych
+  kartach. Dialog zawsze pyta o posiłek PRZED wygenerowaniem propozycji
+  (nie odwrotnie). Żadna kategoria inna niż Warzywa/Owoce nie występuje
+  więcej niż raz w wybranych składnikach. Kliknięcie typu posiłku od razu
+  otwiera przeglądarkę z wyszukiwaniem Google i zamyka dialog.
+
+## Uwagi
+Świadoma, udokumentowana rozbieżność web/Android (patrz `android/PARITY.md`)
+— użytkownik poprosił o tę zmianę wyłącznie w sesji dotyczącej Kotlina;
+port analogicznej zmiany do `index.html` pozostaje do rozważenia w
+osobnej turze.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-11, Android): Na życzenie użytkownika, przycisk inline
+  zastąpiony floating przyciskiem „💡” widocznym tylko na Przepisach;
+  algorytm zmieniony z „2 losowe składniki + szablonowy tekst” na „do 5
+  składników zróżnicowanych po kategoriach + wyszukiwanie Google”, z
+  pytaniem o typ posiłku (Śniadanie/Obiad/Kolacja/Deser) PRZED
+  wygenerowaniem propozycji. Nowa logika w `logic/.../FavoriteDishSearch.kt`
+  (zastąpił `DishIdeaGenerator.kt`, usunięty razem z testem), z testami
+  JUnit (`FavoriteDishSearchTest.kt`) sprawdzającymi m.in. że żadna
+  kategoria poza Warzywa/Owoce nie pojawia się więcej niż raz. Nowy
+  `ui/FavoriteDishIdeaDialog.kt`, floating FAB dodany w `MainActivity.kt`
+  obok istniejącego "➕" (gated na `Screen.Recipes.route`). Web NIE
+  zmieniony w tej turze — patrz Uwagi. `./gradlew :app:assembleDebug
+  :app:testDebugUnitTest :logic:test` przechodzi. **Nie zweryfikowane na
+  żywo** — wymaga sprawdzenia w Android Studio (dodać kilka ulubionych
+  składników z różnych kategorii, dotknąć 💡, wybrać posiłek, potwierdzić
+  że otwiera się przeglądarka z sensownym zapytaniem).
 
 ---
 

@@ -113,6 +113,7 @@ import com.przemas230.dietaapp.ui.AuthViewModel
 import com.przemas230.dietaapp.ui.CloudSyncCoordinator
 import com.przemas230.dietaapp.ui.CommunityCoordinator
 import com.przemas230.dietaapp.ui.EatenViewModel
+import com.przemas230.dietaapp.ui.FavoriteDishIdeaDialog
 import com.przemas230.dietaapp.ui.FavoriteIngredientsViewModel
 import com.przemas230.dietaapp.ui.PantryScreen
 import com.przemas230.dietaapp.ui.PantryViewModel
@@ -392,6 +393,9 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     val eatenEntries by eatenViewModel.entries.collectAsState()
     val snacks by eatenViewModel.snacks.collectAsState()
     var showQuickAddDialog by remember { mutableStateOf(false) }
+    // FR-32/v2: floating "💡" on Przepisy -- see FavoriteDishIdeaDialog.
+    var showFavoriteDishIdeaDialog by remember { mutableStateOf(false) }
+    val favIngredientsForIdea by favoriteIngredientsViewModel.favorites.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
     val allRecipes by plannerViewModel.allRecipes.collectAsState()
     val recipesById = remember(allRecipes) { allRecipes.associateBy { it.id } }
@@ -567,6 +571,14 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     Text("➕")
                 }
             }
+            // FR-32/v2 (2026-08-11): floating dish-idea search, Przepisy only
+            // -- replaces the old inline "💡 Pomysł na danie" button, see
+            // FavoriteDishIdeaDialog's doc comment.
+            if (currentRoute == Screen.Recipes.route) {
+                FloatingActionButton(onClick = { showFavoriteDishIdeaDialog = true }) {
+                    Text("💡")
+                }
+            }
         },
     ) { padding ->
         NavHost(
@@ -666,6 +678,12 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                 eatenViewModel.addSnack(name, kcal)
                 showQuickAddDialog = false
             },
+        )
+    }
+    if (showFavoriteDishIdeaDialog) {
+        FavoriteDishIdeaDialog(
+            favIngredients = favIngredientsForIdea,
+            onDismiss = { showFavoriteDishIdeaDialog = false },
         )
     }
 }

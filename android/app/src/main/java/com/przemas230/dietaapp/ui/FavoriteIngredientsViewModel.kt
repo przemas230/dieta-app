@@ -8,9 +8,9 @@ import kotlinx.coroutines.flow.asStateFlow
 /**
  * FR-32: canon ingredient names starred by the user (index.html's
  * state.favIngredients) -- drives both the "have it" highlight on recipe
- * ingredient lists and DishIdeaGenerator's dish-idea suggestions. Local,
- * in-memory state, same as the rest of the app's data before step 6
- * (persistence).
+ * ingredient lists and FavoriteDishSearch's floating-lightbulb dish-idea
+ * search. Local, in-memory state, same as the rest of the app's data before
+ * step 6 (persistence).
  */
 class FavoriteIngredientsViewModel : ViewModel() {
     private val _favorites = MutableStateFlow<Set<String>>(emptySet())

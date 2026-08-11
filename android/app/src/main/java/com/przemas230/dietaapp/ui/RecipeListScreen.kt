@@ -93,7 +93,6 @@ import com.przemas230.dietaapp.data.RecipeReview
 import com.przemas230.dietaapp.logic.CATEGORIES
 import com.przemas230.dietaapp.logic.CustomRecipeOperations
 import com.przemas230.dietaapp.logic.DailyCalorieTargets
-import com.przemas230.dietaapp.logic.DishIdeaGenerator
 import com.przemas230.dietaapp.logic.IngredientCanon
 import com.przemas230.dietaapp.logic.IngredientMacroEstimation
 import com.przemas230.dietaapp.logic.Micronutrients
@@ -152,7 +151,6 @@ fun RecipeListScreen(
     val profile by profileViewModel.profile.collectAsState()
     val favIngredients by favoriteIngredientsViewModel.favorites.collectAsState()
     val favoriteRecipeIds by viewModel.favoriteRecipes.collectAsState()
-    var showIdeaDialog by remember { mutableStateOf(false) }
     LaunchedEffect(profile.glutenFree, profile.lactoseFree) {
         viewModel.setDietaryFilters(profile.glutenFree, profile.lactoseFree)
     }
@@ -304,17 +302,6 @@ fun RecipeListScreen(
         }
         }
 
-        // FR-32: dish-name inspiration generated from the user's starred
-        // ("have it" ☆/★) ingredients -- port of index.html's ideaBtn.
-        OutlinedButton(
-            onClick = { showIdeaDialog = true },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-        ) {
-            Text("💡 Pomysł na danie z ulubionych składników")
-        }
-
         // FR-66: opens a form to add a fully-custom recipe (own ingredients,
         // method, kcal) -- port of index.html's "➕ Dodaj swój przepis".
         OutlinedButton(
@@ -360,13 +347,6 @@ fun RecipeListScreen(
         }
     }
 
-    if (showIdeaDialog) {
-        DishIdeaDialog(
-            initialCat = selectedCategory,
-            favorites = favIngredients,
-            onDismiss = { showIdeaDialog = false },
-        )
-    }
     if (showAddRecipeDialog) {
         AddCustomRecipeDialog(
             initialCat = selectedCategory,
@@ -551,60 +531,6 @@ private fun AddCustomRecipeDialog(
                         val result = onAdd(input)
                         if (result == null) onDismiss() else error = result
                     }) { Text("Dodaj") }
-                }
-            }
-        }
-    }
-}
-
-/**
- * FR-32: "💡 Pomysł na danie z ulubionych składników" -- port of
- * index.html's ideaModalOverlay/renderIdea. Re-rolls a new random idea
- * (same category) on "🔄 Losuj inny pomysł" without closing the dialog.
- */
-@Composable
-private fun DishIdeaDialog(initialCat: String, favorites: Set<String>, onDismiss: () -> Unit) {
-    var idea by remember(favorites) { mutableStateOf(DishIdeaGenerator.generate(initialCat, favorites)) }
-    Dialog(onDismissRequest = onDismiss) {
-        Card(modifier = Modifier.widthIn(max = 480.dp)) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "💡 Pomysł na danie",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextButton(onClick = onDismiss) { Text("✕") }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                val currentIdea = idea
-                if (currentIdea == null) {
-                    Text(
-                        "Potrzeba co najmniej 2 ulubionych składników — zaznacz gwiazdką ☆ przy składnikach w przepisach.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                } else {
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(currentIdea.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(currentIdea.method, style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Button(
-                        onClick = { idea = DishIdeaGenerator.generate(initialCat, favorites) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("🔄 Losuj inny pomysł")
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        "Wygenerowane z Twoich ulubionych składników: ${currentIdea.aClean}, ${currentIdea.bClean}.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
             }
         }
