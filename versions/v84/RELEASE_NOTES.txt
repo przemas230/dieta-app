@@ -1,0 +1,33 @@
+Wersja v84 (2026-08-22)
+
+Trzy realne błędy naprawione podczas manualnego przejścia szczegółowej
+checklisty testowej (web/index.html wyłącznie, wersja Android nie dotyczy
+tych zmian):
+
+1. Cofnięcie wpisu "Zrobione" w historii gotowania mogło dolać do spiżarni
+   więcej, niż w niej było przed ugotowaniem, jeśli zapasu danego składnika
+   nie starczało na cały przepis (np. miałeś 0.5 garści szpinaku, przepis
+   wymagał 1 -- po ugotowaniu i cofnięciu w spiżarni było 1, a nie 0.5).
+   Teraz cofnięcie przywraca dokładnie tyle, ile faktycznie zostało odjęte,
+   nie pełną ilość z przepisu.
+
+2. Własne produkty dodane do spiżarni bez polskich znaków (np. "brokul"
+   zamiast "brokuł") nie łączyły się z tym samym składnikiem z przepisów --
+   powstawały dwa niepowiązane wpisy, przez co odejmowanie po ugotowaniu i
+   znacznik "masz w spiżarni" na liście zakupów nie działały poprawnie.
+   Teraz takie nazwy poprawnie dopasowują się do istniejącego produktu.
+
+3. Planer -- zarówno losowanie (cały tydzień, pojedynczy dzień, pojedynczy
+   posiłek), jak i ręczny wybór dania ze slotu -- całkowicie ignorował
+   przełączniki "bez glutenu"/"bez laktozy" z Ustawień. Filtry działały
+   tylko w widoku Przepisy. Teraz Planer respektuje oba filtry wszędzie, tak
+   samo jak Przepisy.
+
+Przy okazji poprawiono mylący opis (tooltip) przycisku "✅ Zrobione", który
+sugerował coś przeciwnego niż faktyczne działanie przycisku.
+
+Wszystkie trzy błędy znalezione i zweryfikowane bezpośrednio w przeglądarce
+(stan spiżarni/planera przed i po każdej akcji), zero błędów w konsoli.
+Service Worker bez zmian (CACHE_NAME zostaje v57 -- te poprawki nie
+wymagają wymuszenia świeżego pobrania dla użytkowników, bo nie zmieniają
+struktury zapisanych danych, tylko logikę ich przetwarzania).

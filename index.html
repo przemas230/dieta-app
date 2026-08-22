@@ -1720,7 +1720,40 @@ const CANON_INFO = {"jogurt bez laktozy": {"cat": "Nabiał", "emoji": "🥛"}, "
 "kabanos": {"cat": "Mięso, ryby, jajka", "emoji": "🌭"}, "parówka": {"cat": "Mięso, ryby, jajka", "emoji": "🌭"},
 "kanapka": {"cat": "Inne", "emoji": "🥪"}, "tost": {"cat": "Inne", "emoji": "🍞"}, "orzechy włoskie": {"cat": "Strączki i orzechy", "emoji": "🥜"}};
 const PANTRY_CAT_ORDER = ["Nabiał", "Warzywa", "Owoce", "Mięso, ryby, jajka", "Strączki i orzechy", "Pieczywo i zboża", "Przyprawy"];
-function pantryCanon(rawCoreName){ return RAW_TO_CANON[rawCoreName] || rawCoreName; }
+// Bugfix 2026-08-22: pantryCanon() only ever did an EXACT string lookup, so
+// a name typed without Polish diacritics (e.g. custom product "brokul"
+// instead of "brokuł", or a snack name someone typed in a hurry) never
+// matched the existing canonical tile with correct diacritics -- silently
+// creating a disconnected duplicate that "masz w spiżarni"/shopping-list
+// matching/cook-time deduction could never see (found via manual QA pass,
+// diacritics is a known recurring bug class in this app's ingredient
+// matching). Builds a lazy, memoized index of diacritics-folded name ->
+// real canonical name from every RAW_TO_CANON value and CANON_INFO key (the
+// two places canonical names actually live), used ONLY as a fallback when
+// the exact lookup misses -- exact matches (the overwhelming common case)
+// are completely unaffected.
+function foldDiacritics(s){
+  return s.replace(/[ąćęłńóśźż]/g, ch => ({ą:"a",ć:"c",ę:"e",ł:"l",ń:"n",ó:"o",ś:"s",ź:"z",ż:"z"}[ch] || ch));
+}
+let _foldedCanonIndex = null;
+function foldedCanonIndex(){
+  if(_foldedCanonIndex) return _foldedCanonIndex;
+  _foldedCanonIndex = {};
+  Object.values(RAW_TO_CANON).forEach(canon=>{
+    const key = foldDiacritics(canon);
+    if(!_foldedCanonIndex[key]) _foldedCanonIndex[key] = canon;
+  });
+  Object.keys(CANON_INFO).forEach(canon=>{
+    const key = foldDiacritics(canon);
+    if(!_foldedCanonIndex[key]) _foldedCanonIndex[key] = canon;
+  });
+  return _foldedCanonIndex;
+}
+function pantryCanon(rawCoreName){
+  if(RAW_TO_CANON[rawCoreName]) return RAW_TO_CANON[rawCoreName];
+  const foldedMatch = foldedCanonIndex()[foldDiacritics(rawCoreName)];
+  return foldedMatch || rawCoreName;
+}
 // Polish noun declension by count, for canonical pantry items that are
 // genuinely counted piece-by-piece (not spice-level or weight/volume
 // tracked) — one/few/many per the standard Polish plural-agreement rule
@@ -4632,7 +4665,7 @@ function recipeCard(r, onChange, opts={}){
     </div></div>
     <div class="card-actions">
       <button class="add-btn ${added?'on':''}" data-add="${r.id}">${added?'✓ Na liście zakupów':'🛒 Dodaj do listy zakupów'}</button>
-      <button class="plan-btn" data-cook="${r.id}" title="Kliknij: oznacz jako zrobione. Przytrzymaj: historia i oceny" style="-webkit-user-select:none; user-select:none; touch-action:manipulation;">✅ Zrobione${cookEntries.length?` (${cookEntries.length}×)`:""}</button>
+      <button class="plan-btn" data-cook="${r.id}" title="Otwiera historię gotowania — stąd oznaczysz dzisiejsze wykonanie i ocenisz danie" style="-webkit-user-select:none; user-select:none; touch-action:manipulation;">✅ Zrobione${cookEntries.length?` (${cookEntries.length}×)`:""}</button>
       <button class="plan-btn" data-schedule="${r.id}">📅 Zaplanuj</button>
       ${r.source==="custom" ? `<button class="plan-btn" data-delete-recipe="${r.id}" title="Usuń swój przepis">🗑️ Usuń</button>` : ""}
     </div>
@@ -4749,9 +4782,9 @@ function formatDatePl(iso){
   return d.toLocaleDateString('pl-PL', {day:'2-digit', month:'2-digit', year:'numeric'});
 }
 function markRecipeCookedToday(r, onChange){
-  subtractRecipeFromPantry(r);
+  const subtracted = subtractRecipeFromPantry(r);
   state.cooked[r.id] = state.cooked[r.id] || [];
-  state.cooked[r.id].push({date:new Date().toISOString()});
+  state.cooked[r.id].push({date:new Date().toISOString(), subtracted});
   saveState(); renderPantry();
   if(onChange) onChange();
   toast("Odjęto składniki ze spiżarni");
@@ -4806,7 +4839,11 @@ function renderCookHistoryBody(r, onChange){
     `;
     row.querySelector(".ch-del").addEventListener("click", ()=>{
       if(!confirm("Usunąć ten wpis o zrobieniu dania? Odjęte wcześniej składniki wrócą do spiżarni.")) return;
-      restoreRecipeToPantry(r);
+      // Entries saved after the 2026-08-22 fix carry exactly what was taken
+      // (see restoreSubtractedToPantry's comment); older entries fall back
+      // to the previous, less precise full-recipe-amount restore.
+      if(entry.subtracted) restoreSubtractedToPantry(entry.subtracted, r.name);
+      else restoreRecipeToPantry(r);
       state.cooked[r.id].splice(idx,1);
       saveState();
       renderCookHistoryBody(r, onChange);
@@ -5615,15 +5652,29 @@ function buildPantryTag(item){
 function effectiveUnitCat(canonName){
   return state.pantryUnitOverride[canonName] || TILE_UNIT_CAT[canonName] || "count";
 }
+// Bugfix 2026-08-22 (found via manual QA pass, real data-integrity bug):
+// this used to clamp at 0 when stock was insufficient (Math.max(0, entry.qty
+// - baseQty)) but restoreRecipeToPantry always added back the FULL recipe
+// amount on undo -- so cooking a dish you didn't quite have enough of, then
+// undoing it, left MORE stock than before ever cooking (e.g. 0.5 handful
+// szpinak -> cook -> clamped to 0 -> undo -> +1 handful -> ends at 1, not
+// the original 0.5). Now returns exactly what it actually took per
+// ingredient (which can be less than the recipe calls for) so the caller
+// can restore THAT exact amount on undo instead of the recipe's nominal
+// ingredient list -- see restoreSubtractedToPantry.
 function subtractRecipeFromPantry(r){
   const changes = [];
+  const subtracted = [];
   r.ingredients.forEach(ing=>{
     const {baseQty, unitCat, name} = parseIngredient(ing);
     const canon = pantryCanon(name);
     const entry = state.pantry[canon];
     if(!entry || entry.type!=="product" || entry.unitCat!==unitCat) return;
+    const before = entry.qty;
     const remaining = Math.max(0, entry.qty - baseQty);
     entry.qty = Math.round(remaining*100)/100;
+    const actuallyTaken = Math.round((before - entry.qty)*100)/100;
+    if(actuallyTaken > 0) subtracted.push({canon, unitCat, amount: actuallyTaken});
     changes.push(`${canon}: → ${formatQty(unitCat, entry.qty)}`);
   });
   if(changes.length){
@@ -5631,7 +5682,29 @@ function subtractRecipeFromPantry(r){
   }else{
     addLog("cook_subtract", `Ugotowano „${r.name}" — brak dopasowanych pozycji w spiżarni do odjęcia (sprawdź jednostkę kafelka)`);
   }
+  return subtracted;
 }
+// Restores EXACTLY the amounts a matching subtractRecipeFromPantry call
+// actually took (see its own comment above) -- NOT the recipe's nominal
+// ingredient list, so undoing a cook that ran into insufficient stock can
+// never leave the pantry with more than it had before cooking.
+function restoreSubtractedToPantry(subtracted, recipeName){
+  const changes = [];
+  (subtracted||[]).forEach(({canon, unitCat, amount})=>{
+    const entry = state.pantry[canon];
+    if(!entry || entry.type!=="product" || entry.unitCat!==unitCat) return;
+    entry.qty = Math.round((entry.qty + amount)*100)/100;
+    changes.push(`${canon}: → ${formatQty(unitCat, entry.qty)}`);
+  });
+  if(changes.length){
+    addLog("pantry_add", `Cofnięto wpis „${recipeName}" — przywrócono w spiżarni: ${changes.join("; ")}`);
+  }
+}
+// Kept only as a fallback for cooked-history entries saved BEFORE this fix,
+// which have no recorded `subtracted` list to restore exactly -- the best
+// available option for that old data is the previous (imperfect) behavior
+// of adding back the full recipe amount, rather than silently restoring
+// nothing. New entries always use restoreSubtractedToPantry instead.
 function restoreRecipeToPantry(r){
   const changes = [];
   r.ingredients.forEach(ing=>{
@@ -6129,7 +6202,30 @@ function allRecipes(){
   return out;
 }
 function findRecipeById(id){ return allRecipes().find(x=>x.id===id); }
-function recipesByCat(cat){ return allRecipes().filter(r=>r.cat===cat); }
+// Bugfix 2026-08-22 (Critical, found via manual QA pass): every Planer
+// recipe pool (whole-week/single-day/single-slot auto-generation via
+// fittingPool, AND the manual "pick a dish for this slot" list) is built
+// from this function, but until this fix it never applied the profile's
+// glutenFree/lactoseFree toggles -- only the Przepisy tab's own list
+// filtering did (see its isGlutenFree/isLactoseFree .filter() calls). So a
+// user with "Ukryj dania zawierające gluten" ON could still get a
+// gluten-containing dish planned by "🎲 Wygeneruj losowo cały tydzień", a
+// single-slot "🔁", or by picking manually -- the exact same predicates
+// Przepisy already trusts, just never reused here.
+function recipesByCat(cat){
+  const all = allRecipes().filter(r=>r.cat===cat);
+  let out = all;
+  if(state.profile.glutenFree) out = out.filter(isGlutenFree);
+  if(state.profile.lactoseFree) out = out.filter(isLactoseFree);
+  // Every callsite (fittingPool, the manual slot picker) assumes this never
+  // returns empty for a category that has ANY recipes at all -- several
+  // don't guard against an empty array and would throw. With the current
+  // recipe database every category has plenty of dishes matching both
+  // filters at once, so this never actually triggers, but it's a cheap
+  // guardrail against a stricter/smaller future database silently crashing
+  // the Planer instead of just (rarely) surfacing a non-compliant dish.
+  return out.length ? out : all;
+}
 
 // Rough reheats-well heuristic, used to proactively suggest carrying a dish
 // over to the next day instead of hand-tagging all 229 recipes: one-pot /
