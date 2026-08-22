@@ -735,16 +735,16 @@ private fun RecipeModerationCard(authViewModel: AuthViewModel, moderationViewMod
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = {
                                 scope.launch {
-                                    approveRecipe(recipe.id).onFailure {
-                                        Toast.makeText(context, "Nie udało się zatwierdzić: ${it.message}", Toast.LENGTH_LONG).show()
-                                    }
+                                    approveRecipe(recipe.id)
+                                        .onSuccess { Toast.makeText(context, "✅ Zatwierdzono", Toast.LENGTH_SHORT).show() }
+                                        .onFailure { Toast.makeText(context, "Nie udało się zatwierdzić: ${it.message}", Toast.LENGTH_LONG).show() }
                                 }
                             }) { Text("✅ Zatwierdź") }
                             OutlinedButton(onClick = {
                                 scope.launch {
-                                    rejectRecipe(recipe.id).onFailure {
-                                        Toast.makeText(context, "Nie udało się odrzucić: ${it.message}", Toast.LENGTH_LONG).show()
-                                    }
+                                    rejectRecipe(recipe.id)
+                                        .onSuccess { Toast.makeText(context, "❌ Odrzucono", Toast.LENGTH_SHORT).show() }
+                                        .onFailure { Toast.makeText(context, "Nie udało się odrzucić: ${it.message}", Toast.LENGTH_LONG).show() }
                                 }
                             }) { Text("❌ Odrzuć") }
                         }
