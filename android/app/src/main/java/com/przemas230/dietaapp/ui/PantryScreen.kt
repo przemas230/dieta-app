@@ -2,6 +2,7 @@ package com.przemas230.dietaapp.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -86,6 +87,14 @@ fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityL
     val grouped = remember(tileNames, items) {
         tileNames.groupBy { name -> items[name]?.category ?: PantryTiles.categoryAndEmoji(name).first }
     }
+    // FR-87: motyw "Klinika" -- kategorie jako akordeon (stukniecie w
+    // naglowek zwija/rozwija). Domyslnie wszystkie rozwiniete, wiec nic sie
+    // nie zmienia wizualnie dopoki uzytkownik czegos nie zwinie. PantryTile/
+    // AddOwnTile (gesty dodawania/odejmowania, long-press menu) sa
+    // CALKOWICIE nietkniete -- tylko to, ktore kategorie w ogole trafiaja do
+    // LazyVerticalGrid, sie zmienia.
+    val isClinic = LocalDietaThemeId.current == "clinic"
+    var expandedCategories by remember { mutableStateOf(PantryTiles.CATEGORY_ORDER.toSet()) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -109,30 +118,73 @@ fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityL
             PantryTiles.CATEGORY_ORDER.forEach { category ->
                 val names = grouped[category].orEmpty()
                 if (names.isEmpty() && category == PantryCategory.INNE) return@forEach
+                val isExpanded = !isClinic || category in expandedCategories
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    Text(
-                        category.label,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp, bottom = 2.dp)
+                            .then(
+                                if (isClinic) {
+                                    Modifier.clickable {
+                                        expandedCategories = if (category in expandedCategories) {
+                                            expandedCategories - category
+                                        } else {
+                                            expandedCategories + category
+                                        }
+                                    }
+                                } else {
+                                    Modifier
+                                },
+                            ),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            category.label,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (isClinic) {
+                            Text(
+                                "${names.size}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(end = 6.dp),
+                            )
+                            Text(if (isExpanded) "⌃" else "⌄", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
                 }
-                gridItems(names, key = { it }) { name ->
-                    val entry = items[name]
-                    val (_, emoji) = PantryTiles.categoryAndEmoji(name)
-                    val unitCat = unitCats[name] ?: "count"
-                    PantryTile(
-                        name = name,
-                        emoji = emoji,
-                        entry = entry,
-                        onTap = { dir ->
-                            viewModel.tileTapDelta(name, category, unitCat, dir)
-                            activityLogViewModel.log("pantry_add", "Spiżarnia: $name (${if (dir > 0) "+" else "-"}1)")
-                        },
-                        onLongPress = { if (entry != null) actionTarget = name to category },
-                    )
+                if (isExpanded) {
+                    if (names.isEmpty()) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Text(
+                                "Brak produktów",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 8.dp),
+                            )
+                        }
+                    } else {
+                        gridItems(names, key = { it }) { name ->
+                            val entry = items[name]
+                            val (_, emoji) = PantryTiles.categoryAndEmoji(name)
+                            val unitCat = unitCats[name] ?: "count"
+                            PantryTile(
+                                name = name,
+                                emoji = emoji,
+                                entry = entry,
+                                onTap = { dir ->
+                                    viewModel.tileTapDelta(name, category, unitCat, dir)
+                                    activityLogViewModel.log("pantry_add", "Spiżarnia: $name (${if (dir > 0) "+" else "-"}1)")
+                                },
+                                onLongPress = { if (entry != null) actionTarget = name to category },
+                            )
+                        }
+                    }
+                    item { AddOwnTile(onClick = { addTileCategory = category }) }
                 }
-                item { AddOwnTile(onClick = { addTileCategory = category }) }
             }
         }
     }

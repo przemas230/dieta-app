@@ -8,10 +8,15 @@ import org.junit.jupiter.api.Test
 class AppThemesTest {
 
     @Test
-    fun `has exactly the 11 themes from index_html, in the same order`() {
+    fun `has the 11 themes from index_html in the same order, plus the Android-only Klinika theme`() {
+        // FR-87: "clinic" is a deliberate, documented exception to the
+        // otherwise 1:1 index.html parity (see android/PARITY.md's FR-87
+        // note) -- it's the only theme with its own font/shape treatment,
+        // not just a ported palette, so it doesn't have a web counterpart
+        // (yet). Every other id below must still match index.html exactly.
         val ids = AppThemes.ALL.map { it.id }
         assertEquals(
-            listOf("teal", "light", "pink", "dark", "harvest", "citrus", "mint", "berry", "polaroid", "fluent", "metro"),
+            listOf("teal", "light", "pink", "dark", "harvest", "citrus", "mint", "berry", "polaroid", "fluent", "metro", "clinic"),
             ids,
         )
     }

@@ -127,6 +127,16 @@ object AppThemes {
             bg = 0xFFF0F0F0, card = 0xFFFFFFFF, text = 0xFF1D1D1D, muted = 0xFF6B6B6B, line = 0xFFDADADA,
             danger = 0xFFE51400, dangerPale = 0xFFFBE0DC, starOff = 0xFFD2D2D2, isDark = false,
         ),
+        // FR-87: motyw "Klinika" -- jedyny, ktory ma tez wlasny font i uklad
+        // (nie tylko paleta), patrz android/app/.../ui/theme/ClinicTheme.kt.
+        AppThemeDef(
+            id = "clinic", label = "Klinika", swatch = 0xFF5B9279, metaColor = 0xFF5B9279,
+            teal = 0xFF5B9279, tealDark = 0xFF3E6B57, tealPale = 0xFFE3F2EC,
+            honey = 0xFF6B8CAE, honeyPale = 0xFFE7EEF5, honeyDark = 0xFF3E5A75,
+            plum = 0xFF7FB6A6, plumPale = 0xFFEAF5F1,
+            bg = 0xFFF8FAF9, card = 0xFFFFFFFF, text = 0xFF1F2937, muted = 0xFF6B7280, line = 0xFFE5E7EB,
+            danger = 0xFFEF4444, dangerPale = 0xFFFDECEC, starOff = 0xFFD1D5DB, isDark = false,
+        ),
     )
 
     fun byId(id: String): AppThemeDef = ALL.find { it.id == id } ?: ALL.first { it.id == DEFAULT_ID }

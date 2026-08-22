@@ -1,8 +1,10 @@
 package com.przemas230.dietaapp.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,10 +12,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -26,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
@@ -40,6 +46,7 @@ import com.przemas230.dietaapp.logic.HistoryOperations
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.WaterOperations
 import com.przemas230.dietaapp.logic.WeightOperations
+import com.przemas230.dietaapp.ui.theme.LocalDietaThemeId
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -77,6 +84,10 @@ fun PostepScreen(
     val activityLog by activityLogViewModel.entries.collectAsState()
     val today = remember { LocalDate.now(ZoneOffset.UTC) }
     val dailyTarget = remember(profile) { ProfileCalculations.calcTargets(profile).daily }
+    // FR-87: motyw "Klinika" -- kropki wody jako pelne kolka + przyciski
+    // +/-, kafelek wagi z delta 30-dniowa. Ten sam WaterViewModel.setCount/
+    // WeightOperations co reszta motywow, zero nowej logiki.
+    val isClinic = LocalDietaThemeId.current == "clinic"
 
     Column(
         modifier = Modifier
@@ -132,17 +143,40 @@ fun PostepScreen(
             Column(modifier = Modifier.padding(14.dp)) {
                 Text("💧 Nawodnienie dzisiaj", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
                 Spacer(modifier = Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    for (i in 0 until WaterOperations.MAX_LEVEL) {
-                        Text(
-                            if (i < waterCount) "💧" else "⚪",
-                            fontSize = 26.sp,
-                            modifier = Modifier.clickable { waterViewModel.tapDroplet(i) },
-                        )
+                if (isClinic) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = { waterViewModel.setCount((waterCount - 1).coerceAtLeast(0)) }) { Text("–") }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+                        ) {
+                            for (i in 0 until WaterOperations.MAX_LEVEL) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(22.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (i < waterCount) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                        )
+                                        .clickable { waterViewModel.tapDroplet(i) },
+                                )
+                            }
+                        }
+                        TextButton(onClick = { waterViewModel.setCount((waterCount + 1).coerceAtMost(WaterOperations.MAX_LEVEL)) }) { Text("+") }
+                    }
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        for (i in 0 until WaterOperations.MAX_LEVEL) {
+                            Text(
+                                if (i < waterCount) "💧" else "⚪",
+                                fontSize = 26.sp,
+                                modifier = Modifier.clickable { waterViewModel.tapDroplet(i) },
+                            )
+                        }
                     }
                 }
                 Text(
-                    "$waterCount/${WaterOperations.MAX_LEVEL} szklanek",
+                    "$waterCount/${WaterOperations.MAX_LEVEL} szklanek — cel dzienny",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 6.dp),
@@ -154,6 +188,7 @@ fun PostepScreen(
         WeightCard(
             entries = weightEntries,
             targetKg = profile.targetWeightKg,
+            isClinic = isClinic,
             onAddWeight = weightViewModel::addWeight,
             onEditWeight = weightViewModel::editWeight,
             onRemoveWeight = weightViewModel::removeWeight,
@@ -337,6 +372,7 @@ private fun formatKg(value: Double): String =
 private fun WeightCard(
     entries: List<WeightEntry>,
     targetKg: Double,
+    isClinic: Boolean,
     onAddWeight: (Double) -> Boolean,
     onEditWeight: (String, Double) -> Boolean,
     onRemoveWeight: (String) -> Unit,
@@ -345,6 +381,26 @@ private fun WeightCard(
     var error by remember { mutableStateOf(false) }
     val sorted = remember(entries) { WeightOperations.sortedByDate(entries) }
     val toGo = remember(entries, targetKg) { WeightOperations.kgToGo(entries, targetKg) }
+    // FR-87: zmiana wagi w ostatnich ~30 dniach dla bento kafelka Klinika --
+    // wyliczona lokalnie z juz zaladowanych `sorted` (data-level porownanie
+    // dat wpisow), nie nowa funkcja logiki.
+    val last30dChange = remember(sorted) {
+        if (sorted.size < 2) {
+            null
+        } else {
+            val latest = sorted.last()
+            val latestDate = runCatching { LocalDate.parse(latest.dateStr) }.getOrNull()
+            val baseline = if (latestDate != null) {
+                sorted.lastOrNull { e ->
+                    val d = runCatching { LocalDate.parse(e.dateStr) }.getOrNull()
+                    d != null && d <= latestDate.minusDays(30)
+                } ?: sorted.first()
+            } else {
+                sorted.first()
+            }
+            latest.kg - baseline.kg
+        }
+    }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -354,6 +410,15 @@ private fun WeightCard(
                 style = MaterialTheme.typography.titleSmall,
             )
             Spacer(modifier = Modifier.height(8.dp))
+            if (isClinic && sorted.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    WeightBentoTile("${formatKg(sorted.last().kg)} kg", "Aktualnie", Modifier.weight(1f))
+                    val changeLabel = last30dChange?.let { (if (it > 0) "+" else "") + formatKg(it) + " kg" } ?: "—"
+                    WeightBentoTile(changeLabel, "Zmiana (30 dni)", Modifier.weight(1f))
+                    WeightBentoTile("${formatKg(targetKg)} kg", "Cel", Modifier.weight(1f))
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = input,
@@ -405,6 +470,25 @@ private fun WeightCard(
                     }
                 }
             }
+        }
+    }
+}
+
+/** FR-87: bento kafelek dla nagłówka WeightCard w motywie "Klinika". */
+@Composable
+private fun WeightBentoTile(value: String, label: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

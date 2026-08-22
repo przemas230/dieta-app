@@ -191,6 +191,10 @@ fun RecipeListScreen(
     var onlyLiked by remember { mutableStateOf(false) }
     val macroTargets = remember(profile) { ProfileCalculations.calcMacroTargets(profile) }
     val kcalTargets = remember(profile) { ProfileCalculations.calcTargets(profile) }
+    // FR-87: motyw "Klinika" pokazuje kategorie jako od razu widoczny rząd
+    // chipów zamiast panelu rozwijanego stukiem -- ten sam selectedCategory/
+    // viewModel.selectCategory co reszta motywów, tylko inny układ.
+    val isClinic = LocalDietaThemeId.current == "clinic"
     // FR-72: the 🎯 badge means nothing before the user has entered real
     // profile data, so it's withheld entirely (not computed off the
     // internal placeholder Profile()) until profile.configured -- port of
@@ -237,6 +241,21 @@ fun RecipeListScreen(
         // collapsed by default, shows the currently selected category in its
         // own collapsed header row so switching categories is still visible
         // at a glance even collapsed.
+        if (isClinic) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+            ) {
+                items(CATEGORIES) { category ->
+                    FilterChip(
+                        selected = category.id == selectedCategory,
+                        onClick = { viewModel.selectCategory(category.id) },
+                        label = { Text("${category.emoji} ${category.label}") },
+                        shape = MaterialTheme.shapes.extraLarge,
+                    )
+                }
+            }
+        } else {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
             val currentCategory = CATEGORIES.find { it.id == selectedCategory }
             Row(
@@ -266,6 +285,7 @@ fun RecipeListScreen(
                     }
                 }
             }
+        }
         }
         AnimatedVisibility(visible = headerExpanded) {
         Column {

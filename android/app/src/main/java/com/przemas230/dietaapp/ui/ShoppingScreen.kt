@@ -22,6 +22,9 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
@@ -45,6 +48,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -61,6 +66,7 @@ import com.przemas230.dietaapp.logic.ShoppingDayCard
 import com.przemas230.dietaapp.logic.ShoppingDayStrip
 import com.przemas230.dietaapp.logic.ShoppingDisplay
 import com.przemas230.dietaapp.logic.ShoppingOperations
+import com.przemas230.dietaapp.ui.theme.LocalDietaThemeId
 import java.util.Calendar
 
 /**
@@ -90,6 +96,9 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
     // 2026-08-11: which planner day(s) need each item, so the user can shop
     // for just "today + jutro" and stop -- see ShoppingOperations.computeIngredientDays.
     val ingredientDays = remember(items, weekPlan, recipesById) { ShoppingOperations.computeIngredientDays(items, weekPlan, recipesById) }
+    // FR-87: motyw "Klinika" pokazuje wiersz z kolorowym badge kategorii
+    // (IngredientCanon.CANON_INFO.cat -- dane juz istnieja, zero nowej logiki).
+    val isClinic = LocalDietaThemeId.current == "clinic"
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -172,11 +181,22 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
         }
 
         if (items.isEmpty()) {
-            Text(
-                "Lista zakupów jest pusta — dodaj składniki zaznaczając przepisy w zakładce Przepisy 🍽 lub przyciskiem w Planerze.",
-                modifier = Modifier.padding(24.dp),
-                style = MaterialTheme.typography.bodyMedium,
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                if (isClinic) {
+                    Text("🛒", fontSize = 40.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Brak pozycji na liście", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+                Text(
+                    "Lista zakupów jest pusta — dodaj składniki zaznaczając przepisy w zakładce Przepisy 🍽 lub przyciskiem w Planerze.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                )
+            }
         } else if (tileView) {
             val sorted = remember(items) { items.entries.sortedBy { it.value.name } }
             LazyVerticalGrid(columns = GridCells.Fixed(3), contentPadding = PaddingValues(12.dp)) {
@@ -193,12 +213,21 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
             val sorted = remember(items) { items.entries.sortedBy { it.value.name } }
             LazyColumn(contentPadding = PaddingValues(12.dp)) {
                 items(sorted, key = { it.key }) { (key, item) ->
-                    ShoppingRow(
-                        item = item,
-                        dayLabel = ShoppingOperations.formatIngredientDays(ingredientDays[key], todayIdx),
-                        onToggle = { viewModel.toggleChecked(key) },
-                        onRemove = { viewModel.removeItem(key) },
-                    )
+                    if (isClinic) {
+                        ShoppingRowClinic(
+                            item = item,
+                            dayLabel = ShoppingOperations.formatIngredientDays(ingredientDays[key], todayIdx),
+                            onToggle = { viewModel.toggleChecked(key) },
+                            onRemove = { viewModel.removeItem(key) },
+                        )
+                    } else {
+                        ShoppingRow(
+                            item = item,
+                            dayLabel = ShoppingOperations.formatIngredientDays(ingredientDays[key], todayIdx),
+                            onToggle = { viewModel.toggleChecked(key) },
+                            onRemove = { viewModel.removeItem(key) },
+                        )
+                    }
                 }
             }
         }
@@ -360,6 +389,66 @@ private fun ShoppingRow(item: ShoppingItem, dayLabel: String = "", onToggle: () 
             }
             IconButton(onClick = onRemove) {
                 Icon(Icons.Filled.Delete, contentDescription = "Usuń")
+            }
+        }
+    }
+}
+
+/** FR-87: bento-wariant dla motywu "Klinika" -- ten sam stan/callbacki co ShoppingRow, plus kolorowy badge kategorii (IngredientCanon.CANON_INFO.cat). */
+private val CATEGORY_BADGE_COLORS = mapOf(
+    "Nabiał" to Color(0xFFE7EEF5),
+    "Warzywa" to Color(0xFFE3F2EC),
+    "Owoce" to Color(0xFFFBEFE1),
+    "Mięso" to Color(0xFFF7E3E3),
+    "Ryby" to Color(0xFFE1F0F5),
+    "Produkty zbożowe" to Color(0xFFF3EDE1),
+    "Orzechy i nasiona" to Color(0xFFEFE7D8),
+    "Przyprawy" to Color(0xFFF1E7F5),
+    "Napoje" to Color(0xFFE1F5F2),
+    "Inne" to Color(0xFFEDEDED),
+)
+
+@Composable
+private fun ShoppingRowClinic(item: ShoppingItem, dayLabel: String = "", onToggle: () -> Unit, onRemove: () -> Unit) {
+    val category = IngredientCanon.CANON_INFO[item.name]?.cat
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = if (item.checked) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surface),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                Checkbox(checked = item.checked, onCheckedChange = { onToggle() })
+                Column(modifier = Modifier.weight(1f)) {
+                    val qtyLabel = ShoppingDisplay.formatQty(item.unitCat, item.quantity)
+                    val displayName = ShoppingDisplay.displayName(item.name, item.unitCat, item.quantity)
+                    Text(
+                        "$qtyLabel $displayName$dayLabel",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
+                        color = if (item.checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                    )
+                    if (category != null) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(CATEGORY_BADGE_COLORS[category] ?: MaterialTheme.colorScheme.surfaceVariant)
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                        ) {
+                            Text(category, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+            IconButton(onClick = onRemove) {
+                Icon(Icons.Filled.Delete, contentDescription = "Usuń", tint = MaterialTheme.colorScheme.error)
             }
         }
     }
