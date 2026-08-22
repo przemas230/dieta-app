@@ -1,5 +1,6 @@
 package com.przemas230.dietaapp.ui
 
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -75,22 +76,22 @@ fun RecipeModerationCoordinator(authViewModel: AuthViewModel, viewModel: RecipeM
     }
 }
 
-/** Best-effort, see [RecipeModerationCoordinator]'s doc comment -- a denied write (rule not pasted yet) is silently ignored rather than crashing. */
-suspend fun approveRecipe(recipeId: String) {
-    try {
-        FirebaseFirestore.getInstance().collection("recipes").document(recipeId)
-            .update("status", "approved").await()
-    } catch (e: Exception) {
-        // Best-effort, see doc comment.
-    }
-}
+/**
+ * Returns the failure (e.g. `PERMISSION_DENIED` when the Firestore rule from
+ * `docs/FIREBASE_MIGRATION_PLAN.md` hasn't been pasted into the console yet)
+ * instead of swallowing it -- a silent catch here made denied writes
+ * indistinguishable from "the tap didn't register" from the moderator's POV.
+ * See [RecipeModerationCard] for how the caller surfaces this to the user.
+ */
+suspend fun approveRecipe(recipeId: String): Result<Unit> = runCatching {
+    FirebaseFirestore.getInstance().collection("recipes").document(recipeId)
+        .update("status", "approved").await()
+    Unit
+}.onFailure { Log.w("RecipeModeration", "approveRecipe($recipeId) failed", it) }
 
 /** Sets `status = "rejected"` rather than deleting -- keeps the doc around so the author's "Moje przepisy" card can show why it didn't get published. */
-suspend fun rejectRecipe(recipeId: String) {
-    try {
-        FirebaseFirestore.getInstance().collection("recipes").document(recipeId)
-            .update("status", "rejected").await()
-    } catch (e: Exception) {
-        // Best-effort, see doc comment.
-    }
-}
+suspend fun rejectRecipe(recipeId: String): Result<Unit> = runCatching {
+    FirebaseFirestore.getInstance().collection("recipes").document(recipeId)
+        .update("status", "rejected").await()
+    Unit
+}.onFailure { Log.w("RecipeModeration", "rejectRecipe($recipeId) failed", it) }

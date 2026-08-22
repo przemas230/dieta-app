@@ -1,6 +1,7 @@
 package com.przemas230.dietaapp.ui
 
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -709,6 +710,7 @@ private fun RecipeModerationCard(authViewModel: AuthViewModel, moderationViewMod
     if ((authState as? AuthState.SignedIn)?.email != RECIPE_MODERATOR_EMAIL) return
     val pending by moderationViewModel.pendingRecipes.collectAsState()
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -731,8 +733,20 @@ private fun RecipeModerationCard(authViewModel: AuthViewModel, moderationViewMod
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { scope.launch { approveRecipe(recipe.id) } }) { Text("✅ Zatwierdź") }
-                            OutlinedButton(onClick = { scope.launch { rejectRecipe(recipe.id) } }) { Text("❌ Odrzuć") }
+                            Button(onClick = {
+                                scope.launch {
+                                    approveRecipe(recipe.id).onFailure {
+                                        Toast.makeText(context, "Nie udało się zatwierdzić: ${it.message}", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            }) { Text("✅ Zatwierdź") }
+                            OutlinedButton(onClick = {
+                                scope.launch {
+                                    rejectRecipe(recipe.id).onFailure {
+                                        Toast.makeText(context, "Nie udało się odrzucić: ${it.message}", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            }) { Text("❌ Odrzuć") }
                         }
                     }
                 }
