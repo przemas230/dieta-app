@@ -2866,14 +2866,19 @@ reszta motywów — zero zmian logiki):
 - (Web) Przewinięcie listy przepisów przy aktywnej Klinice poprawnie zwija
   nagłówek (bez pustej, czarnej dziury zamiast niego — patrz Historia
   rewizji).
+- (Web) Planer/Zakupy/Postęp/Spiżarnia dają przy aktywnej Klinice ten sam
+  układ co Android (bento paski, kolorowe badge kategorii, akordeon
+  kategorii spiżarni, licznik wody jako kółka +/-); pozostałych 11 motywów
+  te ekrany bajt-w-bajt niezmienione.
 - `./gradlew :app:assembleDebug :logic:test` przechodzi.
 
 ## Uwagi
 v1-v3 były świadomą, udokumentowaną rozbieżnością web/Android — funkcja
 dodana wyłącznie w sesjach dotyczących Kotlina, `index.html` nie miał
-odpowiednika motywu „Klinika”. Doportowane na web w v4 (patrz Historia
-rewizji) — od teraz web i Android mają dokładnie tę samą paletę/fonty/
-naglówek-kartę/pływający pasek dla obu wariantów Klinika.
+odpowiednika motywu „Klinika”. Doportowane na web w v4 (paleta/fonty/
+naglówek-kartę/pływający pasek) i v5 (pozostałe 4 bespoke layouty: Planer,
+Zakupy, Postęp, Spiżarnia) — od teraz web i Android mają dokładnie ten sam
+wygląd Klinika/Klinika (noc) na wszystkich 5 zakładkach.
 
 Paleta v2 (2026-08-23) i "pływający" pasek nawigacji zostały wyciągnięte z
 zewnętrznego, wygenerowanego przez Lovable projektu `diet-chef-pro-75`
@@ -2963,5 +2968,30 @@ się zgadzać z web co do joty.
   zasada), backup pre-edit `index.html`/`sw.js` w `versions/v86/`.
   Zweryfikowane bezpośrednio w przeglądarce (lokalny serwer, oba warianty,
   w tym scroll-collapse po naprawie) — nie tylko kompilacją/kodem.
-
----
+- **v5** (2026-08-23, Web): Po zatwierdzeniu v4 użytkownik poprosił o
+  dokończenie portu ("kontynuuj resztę rzeczy" → "Tak, doportuj wszystkie 4
+  układy na web"). `index.html`: `renderPlannerBento()`/`.clinic-bento`/
+  `.bento-tile` (reużyte też przez Postęp) — pasek celu dziennego nad
+  listą dni Planera, karty dni przełączone na wariant `.cdc-*` z awatarem/
+  odznaką „Dziś”/kcal (klik odznaki skali/regeneracji ma `e.stopPropagation
+  ()`, żeby nie otwierał też pickera dnia — DOM nie konsumuje zdarzeń
+  automatycznie jak zagnieżdżone `clickable` w Compose). `clinicCatBadge()`
+  w `renderShop()` — kolorowy badge kategorii pod nazwą produktu z tego
+  samego `CANON_INFO.cat`, którego web już używał dla kafelków spiżarni
+  (zero nowej kategoryzacji); przekreślenie zaznaczonej pozycji celowo
+  dotyka tylko tekstu (`.label-text`), nie odznaki. `renderWater()` —
+  gałąź Klinika renderuje rząd kółek z przyciskami –/+ (`setWaterCount()`,
+  wydzielone z powtarzającej się logiki zapis+rerender+powiadomienie)
+  zamiast rzędu emoji kropelek. `renderWeightBento()` w `renderWeights()` —
+  3 kafelki (Aktualnie/Zmiana 30 dni/Cel), zmiana 30-dniowa liczona tą samą
+  metodą co `PostepScreen.kt` (najstarszy wpis odległy o ≥30 dni od
+  najnowszego, albo pierwszy wpis jeśli historia krótsza). `renderPantry()`
+  — nagłówki kategorii jako akordeon (`clinicCollapsedPantryCats` — Set w
+  pamięci, nie w `state`, jak `remember` po stronie Androida), z licznikiem
+  pozycji i strzałką ⌃/⌄; domyślnie wszystko rozwinięte, więc nic się nie
+  zmienia wizualnie, dopóki ktoś czegoś nie zwinie. Każdy z 4 fragmentów
+  zweryfikowany bezpośrednio w przeglądarce (lokalny serwer + claude-in-
+  chrome) w obu wariantach Klinika, w tym realne interakcje (klik plusa
+  nawodnienia, zwinięcie kategorii spiżarni, wybór dania w pickerze
+  Planera) — nie tylko wizualnie statycznie. `CACHE_NAME` podniesiony na
+  `dieta-app-v87`, backup pre-edit `index.html`/`sw.js` w `versions/v87/`.

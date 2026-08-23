@@ -715,6 +715,121 @@
   }
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) nav.bottom button.active .ic i{ color:#fff; }
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) nav.bottom button::after{ display:none; }
+  /* FR-87/v5: Klinika's Planer -- bento target strip + redesigned day cards,
+     port of PlannerScreen.kt's DailyTargetBento/DayCardClinic. Every other
+     theme's .day-card/.slot-row markup (still rendered for them by
+     renderPlanner()) is completely untouched by these rules. */
+  .clinic-bento:empty{ display:none; }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .clinic-bento{
+    display:flex; gap:8px; margin-bottom:12px;
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .bento-tile{
+    flex:1; background:var(--card); border-radius:20px; padding:14px 4px;
+    text-align:center; box-shadow:0 1px 2px rgba(0,0,0,.05), 0 4px 12px rgba(0,0,0,.04);
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .bento-value{
+    font-family:var(--font-heading); font-weight:700; font-size:16px; color:var(--teal);
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .bento-label{
+    font-size:9.5px; color:var(--muted); margin-top:2px;
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .clinic-day-card{ border-radius:22px; }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-head{
+    display:flex; align-items:center; gap:8px; margin-bottom:10px;
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-head h4{ margin:0; flex:1; min-width:0; }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-badge{
+    font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px; white-space:nowrap; flex:0 0 auto;
+  }
+  [data-theme="clinic"] .cdc-badge.today{ background:var(--teal-pale); color:var(--teal-dark); }
+  [data-theme="clinic_dark"] .cdc-badge.today{ background:var(--teal-pale); color:var(--text); }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-badge.kcal{ background:var(--plum-pale); color:var(--plum); }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-row{
+    display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:16px;
+    cursor:pointer; margin-bottom:4px;
+  }
+  [data-theme="clinic"] .cdc-row{ background:rgba(0,0,0,.03); }
+  [data-theme="clinic_dark"] .cdc-row{ background:rgba(255,255,255,.05); }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-avatar{
+    width:34px; height:34px; border-radius:50%; background:var(--teal-pale);
+    display:flex; align-items:center; justify-content:center; font-size:16px; flex:0 0 auto;
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-text{
+    flex:1; min-width:0; display:flex; flex-direction:column;
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-cat{ font-size:10px; color:var(--muted); }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-dish{
+    font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-scale{
+    font-size:11px; color:var(--muted); padding:2px 6px; flex:0 0 auto; cursor:pointer;
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-regen{
+    border:none; background:none; font-size:15px; cursor:pointer; flex:0 0 auto; padding:2px 4px;
+  }
+  /* FR-87/v6: Klinika's Zakupy -- colored category badge per item, port of
+     ShoppingScreen.kt's ShoppingRowClinic (IngredientCanon.CANON_INFO.cat --
+     same CANON_INFO source-of-truth the web app already keeps for pantry
+     emoji, zero new categorization logic). */
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .shop-item{
+    border:none; border-radius:18px; align-items:flex-start;
+    box-shadow:0 1px 2px rgba(0,0,0,.05), 0 4px 12px rgba(0,0,0,.04);
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .shop-item input[type=checkbox]{ margin-top:2px; }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .shop-item .label{
+    display:flex; flex-direction:column; align-items:flex-start; gap:5px;
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .shop-item.checked .label-text{
+    text-decoration:line-through; color:var(--muted);
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .shop-cat-badge{
+    font-size:10px; font-weight:700; padding:2px 9px; border-radius:999px; color:var(--muted);
+  }
+  [data-theme="clinic"] .shop-cat-badge[data-cat="nabial"]{background:#E7EEF5;}
+  [data-theme="clinic"] .shop-cat-badge[data-cat="warzywa"]{background:#E3F2EC;}
+  [data-theme="clinic"] .shop-cat-badge[data-cat="owoce"]{background:#FBEFE1;}
+  [data-theme="clinic"] .shop-cat-badge[data-cat="mieso"]{background:#F7E3E3;}
+  [data-theme="clinic"] .shop-cat-badge[data-cat="straczki"]{background:#EFE7D8;}
+  [data-theme="clinic"] .shop-cat-badge[data-cat="pieczywo"]{background:#F3EDE1;}
+  [data-theme="clinic"] .shop-cat-badge[data-cat="przyprawy"]{background:#F1E7F5;}
+  [data-theme="clinic_dark"] .shop-cat-badge[data-cat="nabial"]{background:#22303F;}
+  [data-theme="clinic_dark"] .shop-cat-badge[data-cat="warzywa"]{background:#1D3425;}
+  [data-theme="clinic_dark"] .shop-cat-badge[data-cat="owoce"]{background:#392A1E;}
+  [data-theme="clinic_dark"] .shop-cat-badge[data-cat="mieso"]{background:#3A2020;}
+  [data-theme="clinic_dark"] .shop-cat-badge[data-cat="straczki"]{background:#332C1E;}
+  [data-theme="clinic_dark"] .shop-cat-badge[data-cat="pieczywo"]{background:#332D22;}
+  [data-theme="clinic_dark"] .shop-cat-badge[data-cat="przyprawy"]{background:#2E2436;}
+  .clinic-shop-empty-emoji{ font-size:40px; line-height:1; margin-bottom:8px; }
+  .clinic-shop-empty-title{ font-family:var(--font-heading); font-weight:700; font-size:16px; margin-bottom:4px; }
+  /* FR-87/v7: Klinika's Postęp -- +/- circle-row water widget (port of
+     PostepScreen.kt's isClinic branch in the water Card) and a 3-tile bento
+     strip above the weight input (port of WeightBentoTile), reusing the
+     same .clinic-bento/.bento-tile classes the Planer port already added. */
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .water-row{
+    align-items:center; gap:4px; flex-wrap:nowrap;
+  }
+  .clinic-water-btn{
+    border:none; background:none; font-size:18px; font-weight:700; color:var(--text);
+    width:30px; height:30px; flex:0 0 auto; cursor:pointer; border-radius:50%;
+  }
+  .clinic-water-btn:active{ background:var(--line); }
+  .clinic-water-circles{ display:flex; gap:6px; flex-wrap:wrap; flex:1; padding:0 4px; }
+  .clinic-water-circle{
+    width:22px; height:22px; border-radius:50%; background:var(--line); cursor:pointer;
+    transition:transform var(--dur-fast) var(--ease);
+  }
+  .clinic-water-circle:active{ transform:scale(.85); }
+  .clinic-water-circle.filled{ background:var(--teal); }
+  /* FR-87/v8: Klinika's Spiżarnia -- category headers become an accordion
+     (tap collapses/expands), port of PantryScreen.kt's isClinic branch.
+     Default state (nothing collapsed yet) looks IDENTICAL to every other
+     theme -- only tapping a header changes what's visible. */
+  .clinic-accordion-head{
+    display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none;
+  }
+  .clinic-accordion-head .pgt-label{ flex:1; }
+  .clinic-accordion-head .pgt-count{ font-size:11px; color:var(--muted); font-weight:600; }
+  .clinic-accordion-head .pgt-chevron{ font-size:12px; color:var(--muted); }
   .card-head{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
   .card-head h3{margin:0; font-size:15.5px; line-height:1.3; min-width:0;}
   .card-head-side{display:flex; flex-direction:column; align-items:center; gap:5px; flex:0 0 auto;}
@@ -1283,6 +1398,7 @@
     <div class="shop-actions" style="margin-top:0;">
       <button class="btn primary" id="autoPlanBtn">🎲 Wygeneruj losowo cały tydzień</button>
     </div>
+    <div id="plannerBento" class="clinic-bento"></div>
     <div id="plannerDays"></div>
   </section>
 
@@ -1474,6 +1590,7 @@
 
     <div class="card">
       <h3 style="margin:0 0 6px; font-size:14.5px;" id="weightGoalTitle">⚖️ Postęp wagi (cel: 62 kg)</h3>
+      <div id="weightBento" class="clinic-bento"></div>
       <div class="weight-input-row">
         <input type="number" step="0.1" id="weightInput" placeholder="Dzisiejsza waga, np. 66.4">
         <button class="btn primary" style="flex:0 0 auto;" id="addWeightBtn">Dodaj</button>
@@ -5501,14 +5618,28 @@ function formatIngredientDays(dayIndexSet){
   const sundayNote = dayIndexSet.has(SUNDAY_DAY_INDEX) ? " — sklepy nieczynne, kup wcześniej" : "";
   return ` (${labels.join(", ")}${sundayNote})`;
 }
+const CLINIC_CAT_SLUG = {
+  "Nabiał":"nabial", "Warzywa":"warzywa", "Owoce":"owoce",
+  "Mięso, ryby, jajka":"mieso", "Strączki i orzechy":"straczki",
+  "Pieczywo i zboża":"pieczywo", "Przyprawy":"przyprawy",
+};
+function clinicCatBadge(canonName){
+  const cat = (CANON_INFO[canonName] || {}).cat;
+  if(!cat) return "";
+  const slug = CLINIC_CAT_SLUG[cat] || "inne";
+  return `<span class="shop-cat-badge" data-cat="${slug}">${cat}</span>`;
+}
 function renderShop(){
   renderShopDayStrip();
   const box = document.getElementById("shopList");
   box.innerHTML = "";
+  const isClinic = state.theme==="clinic" || state.theme==="clinic_dark";
   const keys = Object.keys(state.shopping);
   document.getElementById("shopCount").textContent = keys.length + " pozycji";
   if(keys.length===0){
-    box.innerHTML = `<div class="empty">Lista jest pusta — dodaj składniki zaznaczając przepisy w zakładce Przepisy 🍽 lub przyciskiem w Planerze.</div>`;
+    box.innerHTML = isClinic
+      ? `<div class="empty"><div class="clinic-shop-empty-emoji">🛒</div><div class="clinic-shop-empty-title">Brak pozycji na liście</div>Lista zakupów jest pusta — dodaj składniki zaznaczając przepisy w zakładce Przepisy 🍽 lub przyciskiem w Planerze.</div>`
+      : `<div class="empty">Lista jest pusta — dodaj składniki zaznaczając przepisy w zakładce Przepisy 🍽 lub przyciskiem w Planerze.</div>`;
     return;
   }
   const ingredientDays = computeIngredientDays();
@@ -5531,7 +5662,10 @@ function renderShop(){
       const qtyLabel = formatQty(item.unitCat, item.qty);
       const displayName = shopDisplayName(item.name, item.unitCat, item.qty);
       const dayLabel = formatIngredientDays(ingredientDays[item.key]);
-      row.innerHTML = `<input type="checkbox" ${item.checked?'checked':''}><span class="label">${qtyLabel} ${displayName}${dayLabel}</span>${buildPantryTag(item)}`;
+      const labelInner = isClinic
+        ? `<span class="label-text">${qtyLabel} ${displayName}${dayLabel}</span>${clinicCatBadge(item.name)}`
+        : `${qtyLabel} ${displayName}${dayLabel}`;
+      row.innerHTML = `<input type="checkbox" ${item.checked?'checked':''}><span class="label">${labelInner}</span>${buildPantryTag(item)}`;
       row.querySelector("input").addEventListener("change", e=>{
         state.shopping[item.key].checked = e.target.checked;
         saveState(); renderShop();
@@ -6177,9 +6311,11 @@ document.getElementById("tileActionOverlay").addEventListener("click", (e)=>{
   if(e.target===document.getElementById("tileActionOverlay")) e.target.classList.remove("show");
 });
 
+const clinicCollapsedPantryCats = new Set();
 function renderPantry(){
   const box = document.getElementById("pantryTiles");
   box.innerHTML = "";
+  const isClinic = state.theme==="clinic" || state.theme==="clinic_dark";
   const tileNames = new Set(buildPantryTileList());
   Object.keys(state.customTiles).forEach(k=> tileNames.add(k));
   const byCat = {};
@@ -6191,10 +6327,21 @@ function renderPantry(){
   PANTRY_CAT_ORDER.concat(["Inne"]).forEach(cat=>{
     const items = byCat[cat] || [];
     if(items.length===0 && cat==="Inne") return;
+    const isExpanded = !isClinic || !clinicCollapsedPantryCats.has(cat);
     const title = document.createElement("div");
-    title.className = "pantry-group-title";
-    title.textContent = cat;
+    title.className = "pantry-group-title" + (isClinic ? " clinic-accordion-head" : "");
+    if(isClinic){
+      title.innerHTML = `<span class="pgt-label">${cat}</span><span class="pgt-count">${items.length}</span><span class="pgt-chevron">${isExpanded ? "⌃" : "⌄"}</span>`;
+      title.addEventListener("click", ()=>{
+        if(clinicCollapsedPantryCats.has(cat)) clinicCollapsedPantryCats.delete(cat);
+        else clinicCollapsedPantryCats.add(cat);
+        renderPantry();
+      });
+    } else {
+      title.textContent = cat;
+    }
     box.appendChild(title);
+    if(!isExpanded) return;
     const grid = document.createElement("div");
     grid.className = "tile-grid";
     items.sort((a,b)=>a.name.localeCompare(b.name,'pl')).forEach(it=>{
@@ -6374,13 +6521,38 @@ function isPrepAheadFriendly(r){
   const n = r.name.toLowerCase();
   return MEAL_PREP_KEYWORDS.some(k=>n.includes(k));
 }
+// FR-87/v5: "Klinika" (dzień i noc) gets a bento target strip above the week
+// and a redesigned day card -- port of PlannerScreen.kt's DailyTargetBento/
+// DayCardClinic (Android). Every OTHER theme's markup/behavior below is
+// byte-for-byte what it was before this change; the two render paths share
+// all the same per-slot data (chosenRecipe/scaleLabel/pickLabel/
+// prepSuggestHtml) and event-wiring attribute selectors, only the HTML
+// template differs.
+function renderPlannerBento(){
+  const box = document.getElementById("plannerBento");
+  const isClinic = state.theme==="clinic" || state.theme==="clinic_dark";
+  if(!isClinic){ box.innerHTML = ""; return; }
+  const t = calcTargets(state.profile);
+  const m = calcMacroTargets(state.profile).daily;
+  const tiles = [
+    {value:t.daily, label:"kcal / dzień"},
+    {value:m.protein+"g", label:"białko"},
+    {value:m.fat+"g", label:"tłuszcz"},
+    {value:m.carbs+"g", label:"węgle"},
+  ];
+  box.innerHTML = tiles.map(x=>`<div class="bento-tile"><div class="bento-value">${x.value}</div><div class="bento-label">${x.label}</div></div>`).join("");
+}
 function renderPlanner(){
+  renderPlannerBento();
+  const isClinic = state.theme==="clinic" || state.theme==="clinic_dark";
+  const jsDay = new Date().getDay();
+  const todayIdx = jsDay===0 ? 6 : jsDay-1;
   const box = document.getElementById("plannerDays");
   box.innerHTML = "";
   DAYS.forEach((day,di)=>{
     state.planner[di] = state.planner[di] || {};
     const card = document.createElement("div");
-    card.className = "day-card";
+    card.className = isClinic ? "day-card clinic-day-card" : "day-card";
     let total = 0;
     const prevDi = (di + 6) % 7;
     const rowsHtml = CATS.map(c=>{
@@ -6407,6 +6579,17 @@ function renderPlanner(){
           </div>`;
         }
       }
+      if(isClinic){
+        return `<div class="cdc-row" data-pick-day="${di}" data-pick-cat="${c.id}" title="${isLeftover?'Resztki z wcześniej ugotowanej większej porcji':''}">
+          <span class="cdc-avatar">${c.icon}</span>
+          <span class="cdc-text">
+            <span class="cdc-cat">${c.label}</span>
+            <span class="cdc-dish">${pickLabel}</span>
+          </span>
+          ${baseRecipe?`<span class="cdc-scale" data-scale-day="${di}" data-scale-cat="${c.id}" title="Wielkość porcji — kliknij, by zmienić">${scaleLabel}</span>`:""}
+          <button class="cdc-regen" data-regen-day="${di}" data-regen-cat="${c.id}" title="Losuj inne danie">🔁</button>
+        </div>${prepSuggestHtml}`;
+      }
       return `<div class="slot-row">
         <label>${c.icon} ${c.label}</label>
         <button class="slot-pick" data-pick-day="${di}" data-pick-cat="${c.id}" title="${isLeftover?'Resztki z wcześniej ugotowanej większej porcji':''}">${pickLabel}</button>
@@ -6414,13 +6597,17 @@ function renderPlanner(){
         <button class="regen-btn" data-regen-day="${di}" data-regen-cat="${c.id}" title="Losuj inne danie">🔁</button>
       </div>${prepSuggestHtml}`;
     }).join("");
-    card.innerHTML = `<h4>${day}</h4>${rowsHtml}<div class="day-total">Razem: ${total} kcal</div>
+    const headHtml = isClinic
+      ? `<div class="cdc-head"><h4>${day}</h4>${di===todayIdx?'<span class="cdc-badge today">Dziś</span>':''}<span class="cdc-badge kcal">${total} / ${calcTargets(state.profile).daily} kcal</span></div>`
+      : `<h4>${day}</h4>`;
+    const totalHtml = isClinic ? "" : `<div class="day-total">Razem: ${total} kcal</div>`;
+    card.innerHTML = `${headHtml}${rowsHtml}${totalHtml}
       <button class="plan-btn" style="width:100%; margin-top:8px;" data-day-add="${di}">🛒 Dodaj składniki z tego dnia do listy zakupów</button>
       <div class="shop-actions" style="margin:8px 0 0;">
         <button class="btn ghost" style="flex:1; font-size:12px;" data-day-random="${di}">🎲 Losuj ten dzień</button>
         <button class="btn ghost" style="flex:1; font-size:12px;" data-day-clear="${di}">🗑️ Wyczyść ten dzień</button>
       </div>`;
-    card.querySelectorAll(".slot-pick").forEach(btn=>{
+    card.querySelectorAll("[data-pick-day]").forEach(btn=>{
       btn.addEventListener("click", ()=> openPlannerModal(btn.dataset.pickDay, btn.dataset.pickCat));
     });
     card.querySelectorAll("[data-prep-apply]").forEach(btn=>{
@@ -6460,8 +6647,15 @@ function renderPlanner(){
       saveState(); renderPlanner(); renderHeader();
       toast(`Wyczyszczono plan na ${day}`);
     });
-    card.querySelectorAll(".scale-btn").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
+    card.querySelectorAll("[data-scale-day]").forEach(btn=>{
+      // stopPropagation: for Klinika's .cdc-row, this element is NESTED
+      // inside the row's own "open picker" click target (see [data-pick-
+      // day] above) -- port of Compose's nested-clickable-consumes-the-tap
+      // behavior, which plain DOM click bubbling doesn't give you for free.
+      // Harmless for every other theme's sibling <button>, which was never
+      // inside anything else listening for clicks anyway.
+      btn.addEventListener("click", (e)=>{
+        e.stopPropagation();
         const d = btn.dataset.scaleDay, c = btn.dataset.scaleCat;
         setPlannerScale(d, c, nextScaleStep(getPlannerScale(d, c)));
         saveState(); renderPlanner(); renderHeader();
@@ -6484,8 +6678,9 @@ function renderPlanner(){
       if(added===0 && empty===4){ toast("Ten dzień nie ma jeszcze wybranych dań"); }
       else toast(`Dodano składniki z ${added} dań ze dnia ${day}${already?` (${already} już było na liście)`:""}`);
     });
-    card.querySelectorAll(".regen-btn").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
+    card.querySelectorAll("[data-regen-day]").forEach(btn=>{
+      btn.addEventListener("click", (e)=>{
+        e.stopPropagation();
         const d = btn.dataset.regenDay, c = btn.dataset.regenCat;
         const pool = fittingPool(c, state.profile);
         const current = (state.planner[d]||{})[c];
@@ -6680,23 +6875,43 @@ function cupIconSvg(filled, size){
   </svg>`;
 }
 
+function setWaterCount(n){
+  state.water.count = Math.max(0, Math.min(8, n));
+  state.waterHistory[state.water.date] = state.water.count;
+  saveState(); renderWater();
+  if(document.getElementById("headerWaterRow")) renderHeaderWater();
+  updateWaterRing();
+  refreshWaterNotification();
+}
 function renderWater(){
   const row = document.getElementById("waterRow");
   if(state.water.date !== todayStr()){ state.water = {date:todayStr(), count:0}; saveState(); }
   row.innerHTML = "";
-  for(let i=0;i<8;i++){
-    const cup = document.createElement("div");
-    cup.className = "cup" + (i < state.water.count ? " full":"");
-    cup.innerHTML = cupIconSvg(i < state.water.count);
-    cup.addEventListener("click", ()=>{
-      state.water.count = (state.water.count === i+1) ? i : i+1;
-      state.waterHistory[state.water.date] = state.water.count;
-      saveState(); renderWater();
-      if(document.getElementById("headerWaterRow")) renderHeaderWater();
-      updateWaterRing();
-      refreshWaterNotification();
-    });
-    row.appendChild(cup);
+  const isClinic = state.theme==="clinic" || state.theme==="clinic_dark";
+  if(isClinic){
+    const minus = document.createElement("button");
+    minus.type = "button"; minus.className = "clinic-water-btn"; minus.textContent = "–";
+    minus.addEventListener("click", ()=> setWaterCount(state.water.count - 1));
+    const circles = document.createElement("div");
+    circles.className = "clinic-water-circles";
+    for(let i=0;i<8;i++){
+      const c = document.createElement("div");
+      c.className = "clinic-water-circle" + (i < state.water.count ? " filled" : "");
+      c.addEventListener("click", ()=> setWaterCount(state.water.count === i+1 ? i : i+1));
+      circles.appendChild(c);
+    }
+    const plus = document.createElement("button");
+    plus.type = "button"; plus.className = "clinic-water-btn"; plus.textContent = "+";
+    plus.addEventListener("click", ()=> setWaterCount(state.water.count + 1));
+    row.appendChild(minus); row.appendChild(circles); row.appendChild(plus);
+  } else {
+    for(let i=0;i<8;i++){
+      const cup = document.createElement("div");
+      cup.className = "cup" + (i < state.water.count ? " full":"");
+      cup.innerHTML = cupIconSvg(i < state.water.count);
+      cup.addEventListener("click", ()=> setWaterCount(state.water.count === i+1 ? i : i+1));
+      row.appendChild(cup);
+    }
   }
   document.getElementById("waterLabel").textContent = state.water.count + " / 8 szklanek (~" + (state.water.count*250) + " ml z 2000 ml celu)";
   const btn = document.getElementById("enableWaterNotifBtn");
@@ -6710,6 +6925,33 @@ function hexToRgba(hex, alpha){
   const r = parseInt(full.substring(0,2),16), g = parseInt(full.substring(2,4),16), b = parseInt(full.substring(4,6),16);
   return `rgba(${r},${g},${b},${alpha})`;
 }
+function formatKgClinic(v){
+  return Number.isInteger(v) ? String(v) : v.toFixed(1);
+}
+function renderWeightBento(sorted){
+  const box = document.getElementById("weightBento");
+  const isClinic = state.theme==="clinic" || state.theme==="clinic_dark";
+  if(!isClinic || sorted.length===0){ box.innerHTML = ""; return; }
+  const latest = sorted[sorted.length-1];
+  let changeLabel = "—";
+  if(sorted.length >= 2){
+    const latestDate = new Date(latest.date);
+    let baseline = null;
+    for(let i=sorted.length-1; i>=0; i--){
+      const diffDays = (latestDate - new Date(sorted[i].date)) / 86400000;
+      if(diffDays >= 30){ baseline = sorted[i]; break; }
+    }
+    if(!baseline) baseline = sorted[0];
+    const change = latest.kg - baseline.kg;
+    changeLabel = (change > 0 ? "+" : "") + formatKgClinic(change) + " kg";
+  }
+  const tiles = [
+    {value: formatKgClinic(latest.kg)+" kg", label:"Aktualnie"},
+    {value: changeLabel, label:"Zmiana (30 dni)"},
+    {value: formatKgClinic(state.profile.targetWeight)+" kg", label:"Cel"},
+  ];
+  box.innerHTML = tiles.map(x=>`<div class="bento-tile"><div class="bento-value">${x.value}</div><div class="bento-label">${x.label}</div></div>`).join("");
+}
 function renderWeights(){
   const list = document.getElementById("weightList");
   list.innerHTML = "";
@@ -6717,9 +6959,11 @@ function renderWeights(){
   if(state.weights.length===0){
     list.innerHTML = `<div class="empty">Brak wpisów — dodaj pierwszą wagę powyżej.</div>`;
     if(weightChartInstance){ weightChartInstance.destroy(); weightChartInstance = null; }
+    renderWeightBento([]);
     return;
   }
   const sorted = [...state.weights].sort((a,b)=>a.date.localeCompare(b.date));
+  renderWeightBento(sorted);
   const recent = sorted.slice(-30);
   const labels = recent.map(w=>w.date.slice(5));
   const data = recent.map(w=>w.kg);

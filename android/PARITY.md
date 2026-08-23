@@ -98,7 +98,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-81 | Propozycja przeliczenia planu i listy zakupów po zapisaniu profilu | ✅ | ✅ zaimplementowane 2026-08-11 tego samego dnia co web, zweryfikowane na żywo na emulatorze (patrz uwagi niżej) |
 | FR-82 | Widoczna wersja aplikacji w Ustawieniach | ✅ | ✅ Android miał to już od wcześniej (`AppUpdateCard`'s „Zainstalowana wersja: X”) — FR dopisany 2026-08-11 tylko formalnie, bez zmian w Kotlinie |
 | FR-83 | Edycja wcześniej wpisanej wagi i historii kalorii | ✅ (waga) / ✅ (historia kalorii) | ✅ waga (edycja+usuwanie inline, zweryfikowane na emulatorze) / ✅ historia kalorii doportowana i zweryfikowana na emulatorze 2026-08-23 (przebudowa `EatenViewModel`/`EatenEntry` na `EatenDay` per-data, patrz uwagi FR-83.md i notatka niżej) |
-| FR-87 | Motyw „Klinika” — czcionka i układ, nie tylko kolory | ✅ v4 (2026-08-23): doportowane z Androida — oba warianty (`clinic`/`clinic_dark`), ta sama paleta/fonty/nagłówek-karta/pływający pasek, zweryfikowane bezpośrednio w przeglądarce (patrz uwagi niżej) | ✅ v3 (2026-08-23): nagłówek (kółko kalorii + posiłki) przebudowany na uniesioną kartę na jasnym/ciemnym tle (nie tylko przefarbowany blok), + nowy 13. motyw „Klinika (noc)” (`clinic_dark`) — oba warianty zweryfikowane na żywo na emulatorze (patrz uwagi niżej) |
+| FR-87 | Motyw „Klinika” — czcionka i układ, nie tylko kolory | ✅ v5 (2026-08-23): pełna parytet z Androidem — oba warianty (`clinic`/`clinic_dark`), paleta/fonty/nagłówek-karta/pływający pasek (v4) ORAZ pozostałe 4 bespoke layouty (Planer bento, Zakupy badge, Postęp bento+kółka wody, Spiżarnia akordeon — v5), zweryfikowane bezpośrednio w przeglądarce (patrz uwagi niżej) | ✅ v3 (2026-08-23): nagłówek (kółko kalorii + posiłki) przebudowany na uniesioną kartę na jasnym/ciemnym tle (nie tylko przefarbowany blok), + nowy 13. motyw „Klinika (noc)” (`clinic_dark`) — oba warianty zweryfikowane na żywo na emulatorze (patrz uwagi niżej) |
 
 ## Uwagi do częściowych wpisów
 
@@ -119,6 +119,34 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 - **FR-84 — scalenie oceniania w jeden mechanizm (2026-08-11, piąta runda tego dnia)**: na wyraźną prośbę użytkownika ("scal w jedno system gwiazdek, oceny po zrobieniu dania oraz ocene i komentarz ktory mozna dodać pod przepisem, to jedno i to samo"), trzy dotychczas osobne systemy oceniania (przesunięcie karty ❤️/👎, gwiazdka za każde „✅ Zrobione", ocena+komentarz z FR-67) stały się JEDNYM — samą oceną z FR-67 (`RecipeReview`/`recipeReviews`). Android: `RecipeViewModel.setRatingQuick(recipeId, stars)` — nowa funkcja wołana zarówno przez przesunięcie karty (prawo=5★, lewo=1★, zachowuje istniejący komentarz), jak i przez nowy przycisk „⭐ Oceń to danie"/„⭐ Twoja ocena: X/5 (zmień)" w `CookHistoryDialog` (który stał się czystym logiem dat — usunięto `onSetRating`/`StarRatingRow` per-wpisowy). Plakietka w rogu karty pokazuje „★N" (zamiast dawnego 👍/👎) i po dotknięciu otwiera okienko oceny zamiast je kasować. Przełącznik sortowania „❤️ Ranking" (`RecipeRatingOperations.sortByRating`) usunięty z paska filtrów jako redundantny z „🏆 Ocena". Migracja: `RecipeViewModel.replaceRatings` (wołana przy każdym wczytaniu lokalnym i pull z chmury) jednorazowo konwertuje stare wpisy `RecipeRating` bez odpowiadającej im recenzji na recenzję (LIKE→5★, DISLIKE→1★), nigdy nie nadpisując istniejącej prawdziwej recenzji. Świadomie NIE usunięto `RecipeRatingOperations`/`CookHistoryOperations.setRating` z modułu `logic` (razem z ich testami JUnit) — zostają jako nieużywany, ale nieszkodliwy kod, żeby nie poszerzać zakresu zmiany o usuwanie testów w tej samej turze. Zweryfikowane bezpośrednio na emulatorze: ocena 5★ przez okienko poprawnie pokazała plakietkę „★5" z zieloną obwódką karty, historia gotowania pokazuje czysty log dat bez własnych gwiazdek, przycisk „⭐ Oceń to danie" poprawnie otwiera to samo okienko co plakietka. Zero crashy. `versionCode`/`versionName` bump w `app/build.gradle.kts`.
 
 - **Naprawiony realny błąd utraty danych profilu (2026-08-11, czwarta runda tego dnia)**: użytkownik zgłosił "w kotlin nie zapamiętuje mi w ustawieniach że jestem mężczyzną, przełącza mi na kobietę... cel zmieniałem a teraz widzę znów z defaultu wstawił" — realny, potwierdzony błąd, najprawdopodobniej wprowadzony/odsłonięty przez zmianę z drugiej rundy tego dnia (FR-78 dirty-field-tracking). Przyczyna: `lastKnownFields` (mapa "ostatnia wartość, co do której to urządzenie i Firestore się zgodziły") żyła WYŁĄCZNIE w pamięci (`remember`), resetując się do pustej przy KAŻDYM restarcie aplikacji. Sekwencja gubiąca dane: użytkownik edytuje profil, zamyka aplikację ZANIM 1,5-sekundowy debounce zdąży wypchnąć zmianę do chmury; po ponownym uruchomieniu edycja poprawnie wraca z lokalnego dysku, ale `lastKnownFields` startuje puste, więc PIERWSZY odebrany snapshot z Firestore (wciąż ze STARĄ wartością) wyglądał jak "coś nowego" i cicho nadpisywał świeżą lokalną edycję. Naprawione: nowy `CloudSyncBaselineStore` (`android/app/.../data/CloudSyncBaselineStore.kt`) zapisuje `lastKnownFields` na dysk (per uid, reużywa `LocalStateStore`'s JSON I/O pod inną nazwą pliku), wczytywany PRZED dopuszczeniem nasłuchiwacza Firestore do podłączenia się (`baselineLoaded` blokuje `DisposableEffect`) — więc nawet PIERWSZY snapshot po zimnym starcie poprawnie odróżnia "to pasuje do tego, co już wiedziałem" (ignoruj) od "to naprawdę inne niż ostatnio wiedziałem" (zastosuj — dotyczy też prawdziwie nowego urządzenia/logowania, gdzie baseline jest pusty celowo). Przy okazji usunięto `PushedSnapshot`/`lastPushed`/`suppressNextPush` jako w pełni zastąpione przez trwały `lastKnownFields` — mniej kodu, jeden mechanizm zamiast dwóch częściowo nakładających się. Zweryfikowane bezpośrednio na emulatorze: zmiana płci na Mężczyzna → `adb shell am force-stop` ~900ms później (po lokalnym zapisie na dysk, przed wypchnięciem do chmury) → ponowne uruchomienie → wartość poprawnie przetrwała I pozostała stabilna po pełnej synchronizacji z chmurą (sprawdzone dwoma pełnymi cyklami restart+odczekanie), zero crashy w logcat.
+
+- **FR-87/v5 — pozostałe 4 layouty Kliniki doportowane na web (2026-08-23)**:
+  po v4 (nagłówek-karta + pływający pasek) użytkownik potwierdził kierunek
+  ("kontynuuj resztę rzeczy" → "Tak, doportuj wszystkie 4 układy na web").
+  `index.html` dostał: `renderPlannerBento()` + współdzielone
+  `.clinic-bento`/`.bento-tile` (reużyte też przez Postęp) — pasek celu
+  dziennego nad listą dni Planera, karty dni w wariancie `.cdc-*` z
+  awatarem-emoji i odznaką „Dziś”/kcal (klik odznaki skali/regeneracji ma
+  jawne `e.stopPropagation()`, bo DOM — inaczej niż Compose'owe zagnieżdżone
+  `clickable` — nie konsumuje zdarzeń automatycznie); `clinicCatBadge()` w
+  `renderShop()` — kolorowy badge kategorii pod nazwą produktu z tego
+  samego `CANON_INFO.cat`, którego web już używał dla kafelków spiżarni
+  (zero nowej kategoryzacji), przekreślenie zaznaczonej pozycji celowo
+  dotyka tylko `.label-text`, nie odznaki; `renderWater()`'s gałąź Klinika
+  (rząd kółek z przyciskami –/+, `setWaterCount()` wydzielone z
+  powtarzającej się logiki zapis+rerender+powiadomienie) zamiast rzędu
+  emoji kropelek; `renderWeightBento()` w `renderWeights()` (3 kafelki:
+  Aktualnie/Zmiana 30 dni/Cel, ta sama metoda liczenia zmiany co
+  `PostepScreen.kt`); `renderPantry()`'s akordeon kategorii
+  (`clinicCollapsedPantryCats` — Set w pamięci, nie w `state`, odpowiednik
+  Androidowego `remember`), domyślnie wszystko rozwinięte. Każdy z 4
+  fragmentów zweryfikowany bezpośrednio w przeglądarce (lokalny serwer +
+  Claude in Chrome) w obu wariantach Klinika, w tym realne interakcje
+  (klik +/- nawodnienia, zwinięcie/rozwinięcie kategorii spiżarni, wybór
+  dania w pickerze Planera z odświeżeniem odznaki kcal) — nie tylko
+  statycznie wizualnie. `CACHE_NAME` podniesiony na `dieta-app-v87`,
+  backup pre-edit `index.html`/`sw.js` w `versions/v87/` (tym razem
+  zrobiony PRZED edycją, zgodnie z poprawką procesu z notatki v4 niżej).
 
 - **FR-87/v4 — Klinika doportowana na web (2026-08-23)**: po v3
   (nagłówek-karta + Klinika (noc) na Androidzie) użytkownik poprosił

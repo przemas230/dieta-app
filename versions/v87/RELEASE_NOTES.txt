@@ -1,0 +1,34 @@
+Web v87 — dokończenie portu motywu "Klinika" (dzień i noc) na wszystkie
+pozostałe ekrany
+
+Kontynuacja v86 (który przeniósł nagłówek-jako-kartę i pływający dolny
+pasek nawigacji). Na wyraźną prośbę użytkownika ("doportuj wszystkie 4
+układy na web") przeniesiono pozostałe bespoke layouty z Androida
+(PlannerScreen.kt/ShoppingScreen.kt/PostepScreen.kt/PantryScreen.kt) —
+zero nowej logiki, tylko warstwa wizualna nad tymi samymi danymi:
+
+1. Planer — pasek bento z dziennym celem (kcal/białko/tłuszcz/węgle) nad
+   listą dni, karty dni w wersji "Klinika" z awatarem-emoji, odznaką
+   "Dziś"/kcal i przyciskami skali/regeneracji w jednym wierszu.
+2. Zakupy — kolorowy badge kategorii pod nazwą produktu (ten sam
+   CANON_INFO.cat, który appka już trzyma dla kafelków spiżarni), karty
+   bez obramowania z cieniem zamiast linii.
+3. Postęp — pasek bento (Aktualnie / Zmiana 30 dni / Cel) nad wykresem
+   wagi, licznik nawodnienia jako rząd kółek z przyciskami –/+ zamiast
+   emoji kropelek.
+4. Spiżarnia — nagłówki kategorii jako akordeon (stuknięcie zwija/
+   rozwija), z licznikiem pozycji i strzałką ⌃/⌄. Domyślnie wszystko
+   rozwinięte, więc nic się nie zmienia wizualnie, dopóki użytkownik
+   czegoś nie zwinie.
+
+Wszystkie 4 zweryfikowane na żywo w przeglądarce (lokalny serwer +
+claude-in-chrome), w obu wariantach motywu (jasny/ciemny) — kolory,
+zaokrąglenia i interakcje (klik odznaki bez propagacji do karty dnia,
+przełączanie akordeonu, +/- nawodnienia) potwierdzone działające.
+Pozostałe 11 motywów nietknięte (cały nowy kod owinięty w
+:is([data-theme="clinic"], [data-theme="clinic_dark"]) albo w JS
+sprawdzenie state.theme, z gałęzią non-clinic bajt-w-bajt identyczną
+jak przed tą zmianą).
+
+CACHE_NAME podniesiony na dieta-app-v87 (FR-52/v2 — zasada: bumpować
+przy każdej turze dotykającej web), backup pre-edit w versions/v87/.
