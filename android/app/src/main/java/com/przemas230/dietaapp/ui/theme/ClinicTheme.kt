@@ -57,11 +57,17 @@ val ClinicTypography = Typography(
     labelSmall = TextStyle(fontFamily = DMSans, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 15.sp),
 )
 
-/** Duze, jednolite zaokraglenia (16-24dp) -- wyraznie wieksze/bardziej "kliniczne" niz AppShapes. */
+/**
+ * Duze, jednolite zaokraglenia -- wyraznie wieksze/bardziej "kliniczne" niz
+ * AppShapes. Skala v2 (2026-08-23) dopasowana do dokladnej skali promieni
+ * diet-chef-pro-75 (`--radius: 1.25rem` = 20px, z calc() offsetami -4/+4/+8):
+ * sm=16dp, md=18dp, lg=20dp, xl=24dp, 2xl=28dp -- ta ostatnia uzyta dla kart
+ * przepisow, ktore w Lovable byly najbardziej zaokraglonym elementem na ekranie.
+ */
 val ClinicShapes = Shapes(
     extraSmall = RoundedCornerShape(12.dp),
     small = RoundedCornerShape(16.dp),
     medium = RoundedCornerShape(18.dp),
-    large = RoundedCornerShape(22.dp),
-    extraLarge = RoundedCornerShape(24.dp),
+    large = RoundedCornerShape(24.dp),
+    extraLarge = RoundedCornerShape(28.dp),
 )

@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -40,6 +42,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -57,6 +60,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -143,6 +147,7 @@ import com.przemas230.dietaapp.ui.WeightViewModel
 import com.przemas230.dietaapp.ui.navigation.BOTTOM_NAV_SCREENS
 import com.przemas230.dietaapp.ui.navigation.Screen
 import com.przemas230.dietaapp.ui.theme.DietaAppTheme
+import com.przemas230.dietaapp.ui.theme.LocalDietaThemeId
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import kotlin.math.max
@@ -551,22 +556,32 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
             }
         },
         bottomBar = {
-            NavigationBar {
-                BOTTOM_NAV_SCREENS.forEach { screen ->
-                    NavigationBarItem(
-                        selected = currentRoute == screen.route,
-                        onClick = {
-                            focusManager.clearFocus()
-                            keyboardController?.hide()
-                            navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = { Icon(screen.icon, contentDescription = screen.label) },
-                        label = { Text(screen.label) },
-                    )
+            val onNavigate: (Screen) -> Unit = { screen ->
+                focusManager.clearFocus()
+                keyboardController?.hide()
+                navController.navigate(screen.route) {
+                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
+            // FR-87/v2: Klinika gets the "floating pill" nav bar from
+            // diet-chef-pro-75 (Lovable) instead of a docked Material3 bar --
+            // on explicit request ("podobały mi się karty na dole... że nie
+            // były osadzone na dole tylko jakby nad ekranem"). Every other
+            // theme keeps the standard docked NavigationBar unchanged.
+            if (LocalDietaThemeId.current == "clinic") {
+                FloatingBottomNav(currentRoute = currentRoute, onNavigate = onNavigate)
+            } else {
+                NavigationBar {
+                    BOTTOM_NAV_SCREENS.forEach { screen ->
+                        NavigationBarItem(
+                            selected = currentRoute == screen.route,
+                            onClick = { onNavigate(screen) },
+                            icon = { Icon(screen.icon, contentDescription = screen.label) },
+                            label = { Text(screen.label) },
+                        )
+                    }
                 }
             }
         },
@@ -819,6 +834,76 @@ private fun WaterCupIcon(filled: Boolean, size: Dp, modifier: Modifier = Modifie
  * Planer-slot rows (swipe right to toggle eaten) and the eaten-kcal summary
  * line. Only shown while headerExpanded, in DietaAppRoot.
  */
+/**
+ * FR-87/v2: "floating pill" bottom nav for the Klinika theme -- port of
+ * diet-chef-pro-75's (Lovable) nav bar, which sits with visible margin above
+ * the screen edge instead of docking flush like Material3's NavigationBar,
+ * with the active tab's icon in a filled sage circle instead of a text-label
+ * color change alone. Lives in Scaffold's own `bottomBar` slot (same as the
+ * docked NavigationBar it replaces for this theme) so content padding still
+ * accounts for its height automatically -- the "floating" look comes purely
+ * from the surrounding Box painting the screen's own background color behind
+ * the pill (so the margin reads as page, not as a separate opaque bar) plus
+ * the pill's own shadow/rounded shape, not from any special Scaffold slot.
+ */
+@Composable
+private fun FloatingBottomNav(currentRoute: String?, onNavigate: (Screen) -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 10.dp,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp, horizontal = 4.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BOTTOM_NAV_SCREENS.forEach { screen ->
+                    val selected = currentRoute == screen.route
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .clickable { onNavigate(screen) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                screen.icon,
+                                contentDescription = screen.label,
+                                tint = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            screen.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun HeaderKcalPanel(
     targetKcal: Int,

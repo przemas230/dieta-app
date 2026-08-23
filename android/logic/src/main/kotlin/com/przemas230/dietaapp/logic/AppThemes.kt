@@ -129,13 +129,21 @@ object AppThemes {
         ),
         // FR-87: motyw "Klinika" -- jedyny, ktory ma tez wlasny font i uklad
         // (nie tylko paleta), patrz android/app/.../ui/theme/ClinicTheme.kt.
+        // Paleta v2 (2026-08-23): przestrojona na dokladny odpowiednik "sage +
+        // stone" z diet-chef-pro-75 (Lovable) -- kazda wartosc ponizej to
+        // realny OKLCH token z tamtego projektu (src/styles.css), przeliczony
+        // na sRGB (patrz uwaga w PARITY.md). honey/plum nie maja tam wprost
+        // odpowiednika (Lovable jest celowo niemal monochromatyczne: kremowe
+        // tlo + jedna zielen szalwiowa) -- dobrane jako stonowane, spojne z
+        // reszta palety warianty (ciepla glina / przygaszony blekit) tylko po
+        // to, zeby dwie kategorie posilkow obok siebie dalej dalo sie odroznic.
         AppThemeDef(
-            id = "clinic", label = "Klinika", swatch = 0xFF5B9279, metaColor = 0xFF5B9279,
-            teal = 0xFF5B9279, tealDark = 0xFF3E6B57, tealPale = 0xFFE3F2EC,
-            honey = 0xFF6B8CAE, honeyPale = 0xFFE7EEF5, honeyDark = 0xFF3E5A75,
-            plum = 0xFF7FB6A6, plumPale = 0xFFEAF5F1,
-            bg = 0xFFF8FAF9, card = 0xFFFFFFFF, text = 0xFF1F2937, muted = 0xFF6B7280, line = 0xFFE5E7EB,
-            danger = 0xFFEF4444, dangerPale = 0xFFFDECEC, starOff = 0xFFD1D5DB, isDark = false,
+            id = "clinic", label = "Klinika", swatch = 0xFF6DA480, metaColor = 0xFF6DA480,
+            teal = 0xFF6DA480, tealDark = 0xFF346B49, tealPale = 0xFFD9EEDF,
+            honey = 0xFFC69B78, honeyPale = 0xFFF8E8DB, honeyDark = 0xFF7E522C,
+            plum = 0xFF7A90B4, plumPale = 0xFFDDE5F2,
+            bg = 0xFFF9F7F5, card = 0xFFFFFFFF, text = 0xFF1E1B16, muted = 0xFF766B59, line = 0xFFE3DFD8,
+            danger = 0xFFE7000B, dangerPale = 0xFFFFE2DD, starOff = 0xFFC9C3BA, isDark = false,
         ),
     )
 
