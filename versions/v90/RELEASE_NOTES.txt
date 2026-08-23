@@ -1,0 +1,37 @@
+Wersja v90 — 2026-08-23
+
+Zmiany (web + Android, port 1:1):
+
+1. Planer jako pierwsza zakładka nawigacji (dotyczy wszystkich motywów) —
+   dolny pasek nawigacji zaczyna się teraz od Planera zamiast Przepisów,
+   Planer jest też domyślnym ekranem po uruchomieniu aplikacji.
+
+2. Nowy dashboard startowy Plannera dla motywu Klinika i Klinika (noc):
+   - powitanie ("Cześć, {imię}") + dzisiejsza data + ikona wylogowania,
+   - rząd trzech kart: CEL (dzienny cel kcal), POZOSTAŁO (nowy, cienki
+     pierścień postępu "zjedzone/cel" + duży sage prostokąt z liczbą
+     pozostałych kcal — zastępuje dawny podwójny pierścień kcal+woda
+     w globalnym nagłówku), WODA,
+   - dekoracyjny pasek 7 dni tygodnia, dzisiejszy dzień pierwszy
+     i wizualnie wyróżniony ciemniejszą ramką,
+   - sekcja "Dzisiejszy Planer": karta na każdy zaplanowany posiłek dnia
+     (nazwa dania, kcal, kategoria, × do usunięcia z planu) oraz
+     przerywany placeholder "+ [kategoria]" dla pustych slotów.
+   Dotychczasowa pełna lista wszystkich 7 dni tygodnia (bento celu +
+   karty dni) zostaje bez zmian, tylko przewinięta niżej pod nowym
+   dashboardem. Pozostałych 11 motywów ta zmiana wizualnie nie dotyczy —
+   widzą dokładnie ten sam Planer co dotychczas, tylko jako pierwszą
+   zakładkę.
+
+3. Karty na liście Przepisy rozwijają się teraz jednym kliknięciem
+   (zamiast dawnego dwuetapowego "kliknij żeby wycentrować, kliknij
+   znowu żeby rozwinąć"). Ochrona przed przypadkowym rozwinięciem karty
+   w momencie, gdy dotknięcie kończy przewijanie listy, zostaje
+   zachowana (i została dodana także po stronie Androida, gdzie wcześniej
+   jej nie było).
+
+Powód zmian: uproszczenie ścieżki "co dziś zjadłam/em i ile mi zostało"
+dla motywu Klinika (dashboard zamiast przewijania nagłówka + całego
+tygodnia), globalne ustawienie Planera jako punktu startowego aplikacji,
+oraz usunięcie zbędnego dodatkowego kliknięcia przy przeglądaniu
+przepisów.

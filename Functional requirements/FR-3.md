@@ -4,20 +4,26 @@
 **Status:** Zaimplementowane
 
 ## Opis
-Każdy przepis wyświetlany jest jako karta z nazwą, czasem przygotowania, kalorycznością i skrótowymi znacznikami (np. podwyższony IG, dopasowanie do celu). Domyślnie karta jest zwinięta. Rozwijanie jest dwuetapowe: pierwsze stuknięcie w zwiniętą kartę WYŁĄCZNIE przewija ją do widoku (wyśrodkowuje), nie rozwijając jej jeszcze — dopiero drugie stuknięcie tej samej, już wyśrodkowanej karty faktycznie rozwija pełną listę składników, sposób przygotowania i przyciski akcji (i ponownie ją pozycjonuje). Zwinięcie rozwiniętej karty jest natomiast możliwe WYŁĄCZNIE przez rozwinięcie innej karty (co automatycznie zwija poprzednią) — ponowne dotknięcie tej samej, już rozwiniętej karty nie robi nic (patrz v8: dawniej zamykało jednym stuknięciem, uznane za uciążliwe).
+Każdy przepis wyświetlany jest jako karta z nazwą, czasem przygotowania, kalorycznością i skrótowymi znacznikami (np. podwyższony IG, dopasowanie do celu). Domyślnie karta jest zwinięta. Rozwijanie jest jednoetapowe (patrz v10 — do 2026-08-23 było dwuetapowe): jedno wyraźne, stacjonarne stuknięcie w zwiniętą kartę od razu rozwija pełną listę składników, sposób przygotowania i przyciski akcji, po czym karta automatycznie się pozycjonuje na ekranie. Zwinięcie rozwiniętej karty jest natomiast możliwe WYŁĄCZNIE przez rozwinięcie innej karty (co automatycznie zwija poprzednią) — ponowne dotknięcie tej samej, już rozwiniętej karty nie robi nic (patrz v8: dawniej zamykało jednym stuknięciem, uznane za uciążliwe).
 
 Rozwinięta treść karty na Androidzie ma wyglądać jak na webie w większości szczegółów (pogrubiony pasek czasu/kalorii/dopasowania i przyciski akcji, ciasne jednowierszowe wiersze składników bez wymuszonego minimalnego rozmiaru dotykowego Material na każdym wierszu — patrz v7), ale ze świadomymi, udokumentowanymi różnicami na wyraźną prośbę użytkownika: etykiety sekcji „Składniki”/„Przygotowanie” WIDOCZNE tylko na Androidzie (web ich nie ma, patrz v7 vs v9), i miniaturka dania po PRAWEJ stronie karty na Androidzie tak, żeby tytuł zaczynał się od lewej krawędzi jak na webie (patrz v9).
 
 ## Kryteria akceptacji
 - Karta w stanie zwiniętym pokazuje tylko nagłówek i podstawowe metadane — WYŁĄCZNIE przyciski „✅ Zrobione” i „📅 Zaplanuj” (i „🗑️ Usuń” dla własnych przepisów) są widoczne od razu; przycisk „🛒 Dodaj do listy zakupów” pojawia się dopiero po rozwinięciu karty (patrz v6).
-- Rozwinięcie karty odbywa się WYŁĄCZNIE przez wyraźne, stacjonarne stuknięcie — nie przez przypadkowe zatrzymanie przewijania listy (patrz historia rewizji poniżej i FR-44).
-- Pierwsze stuknięcie zwiniętej karty przewija ją do widoku, ale jej NIE rozwija. Drugie stuknięcie tej samej karty (bez stuknięcia innej karty pomiędzy) rozwija ją. Stuknięcie innej, zwiniętej karty pomiędzy tymi dwoma stuknięciami traktuje TĘ nową kartę jako pierwsze stuknięcie (nie rozwija poprzednio dotykanej).
+- Rozwinięcie karty odbywa się WYŁĄCZNIE przez wyraźne, stacjonarne stuknięcie — nie przez przypadkowe zatrzymanie przewijania listy (patrz historia rewizji poniżej, FR-44 i v10 — ta ochrona musi działać niezależnie od tego, czy rozwinięcie jest jedno- czy dwuetapowe).
+- Jedno stuknięcie zwiniętej karty (v10 — od 2026-08-23; wcześniej v4-v9 wymagały dwóch stuknięć) od razu ją rozwija.
 - Dotknięcie JUŻ rozwiniętej karty (jej samej, nie innej) nic nie robi — nie zwija jej (v8).
 - Tylko jedna karta na liście może być rozwinięta jednocześnie.
 - Po rozwinięciu karty ekran automatycznie przewija się tak, żeby cała rozwinięta karta wylądowała na środku widocznego obszaru — użytkownik nie musi ręcznie doprzewijać, żeby zobaczyć składniki i sposób przygotowania. Przewinięcie następuje PO zakończeniu animacji rozwijania karty (nie w trakcie), żeby wyśrodkowanie trafiało na docelową, już powiększoną wysokość karty, a nie na jej wysokość sprzed rozwinięcia. Jeśli rozwinięta karta jest WYŻSZA niż widoczny obszar ekranu, wyśrodkowanie zastępowane jest wyrównaniem górnej krawędzi karty do góry widoku (samo wyśrodkowanie ucinałoby wtedy tytuł/początek karty poza ekranem).
 
 ## Uwagi
 Zrewidowane w rundzie z 2026-08-03: pierwotna wersja pozwalała, by dotknięcie kończące przewijanie listy (bardzo mały ruch palca przy jednoczesnym przewinięciu strony przez inercję) było błędnie odczytane jako stuknięcie i rozwijało kartę, co powodowało 'skakanie' ekranu. Naprawiono porównując pozycję przewijania strony w momencie dotknięcia i puszczenia — jeśli strona przewinęła się w tym czasie, gest NIE liczy się jako stuknięcie, nawet jeśli sam palec poruszył się nieznacznie. Patrz też FR-44.
+
+Ten mechanizm (porównanie pozycji scrolla na dotknięciu vs puszczeniu) jest,
+i pozostaje po v10, JEDYNĄ ochroną przed przypadkowym rozwinięciem —
+dwuetapowe otwieranie wprowadzone w v4 było osobną, niezależną decyzją UX
+(wygoda przeglądania), nie mechanizmem antyprzypadkowym, więc jego usunięcie
+w v10 nie osłabia ochrony przed przypadkowym dotknięciem podczas scrolla.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
@@ -29,3 +35,29 @@ Zrewidowane w rundzie z 2026-08-03: pierwotna wersja pozwalała, by dotknięcie 
 - **v7** (2026-08-23, Android): Po v6 użytkownik przysłał zrzuty ekranu z obu platform i zgłosił, że mimo strukturalnej zgodności (oba miejsca na miejscu) karty dalej "są dwiema różnymi kartami" — Androidowa wyglądała mniej kompaktowo, z mniej wyrazistą (niepogrubioną) typografią niż webowa, którą wskazał jako wzorzec ("bardziej podoba mi się wygląd karty w aplikacji PWA... jest bardziej kompaktowa, ma ładniejsze czcionki i pogrubienia"). Zbadane źródło: (1) `RecipeCardBody` miała własne nagłówki „Składniki”/„Przygotowanie”, których web NIE ma — usunięte. (2) Każdy wiersz składnika owijał gwiazdkę-przełącznik w `TextButton`, który (mimo `contentPadding` ustawionego na zero) i tak wymusza Material3'ową minimalną wysokość dotykową ~40dp na wiersz — dużo więcej niż web'owy, bezstylowy `<button class="ing-fav">` (`font-size:14px`, brak wymuszonego rozmiaru). To był GŁÓWNY powód mniejszej gęstości. Naprawione zastąpieniem `TextButton` zwykłym klikalnym `Text` (`Modifier.clickable`, bez wymuszania rozmiaru), wiersze składników spięte w `Column` z `Arrangement.spacedBy(4.dp)` (port web'owego `.ingredients li{margin-bottom:4px}`). (3) Pasek czasu/kalorii/dopasowania, tekst przycisku „🛒 Dodaj...”, „⭐ Oceń i skomentuj” i licznik widżetu spiżarni dostały `fontWeight = FontWeight.SemiBold`/`Bold` (port web'owych `font-weight:600`/`700`, które Compose'owe domyślne style przycisków/`bodySmall` nie odtwarzały). (4) Tytuł dostał węższy `lineHeight` (dopasowany do web'owego `line-height:1.3` zamiast szerokiego domyślnego Material3). Makro-wiersz i tekst przygotowania dostały `onSurfaceVariant` (przygaszony), jak web'owy `var(--muted)`. Zero zmian w logice/danych — czysto typograficzno-strukturalna korekta. `./gradlew :app:compileDebugKotlin :app:assembleDebug` przechodzi; zweryfikowane bezpośrednio na emulatorze (Medium_Phone_API_35): rozwinięta karta wyraźnie ciaśniejsza (6 składników "Szakszuki" mieści się w połowie poprzedniej wysokości), pogrubienia widoczne na pasku meta i przyciskach.
 - **v8** (2026-08-23, Web + Android): Na wyraźną prośbę użytkownika ("gdy karta przepisu jest otwarta to ponowne kliknięcie niech jej nie zwija bo to uciążliwe w używaniu, zarówno w Web jak i kotlin") — dotknięcie już rozwiniętej karty (jej samej, całe ciało + chevron "Składniki i przygotowanie") stało się no-opem zamiast natychmiastowego zwinięcia. Web: `handleCardTap()` w `index.html` wraca wcześnie bez wołania `setCardExpanded(card, false)`, gdy `card.classList.contains("expanded")`. Android: `RecipeListScreen.kt`'s `onToggleExpanded`'s `when(recipe.id){ expandedRecipeId -> {...} }` gałąź zamieniona na pusty blok. Jedyny sposób zwinięcia karty to teraz rozwinięcie innej (już istniejący mechanizm auto-zwijania poprzedniej). Zweryfikowane na żywo na obu platformach: wielokrotne dotknięcie rozwiniętej karty (w tym na samym tekście metadanych, nie tylko chevronie) zostawia ją rozwiniętą.
 - **v9** (2026-08-23, Android): Po v7/v8 użytkownik przysłał kolejne zrzuty ekranu i doprecyzował dwa punkty specyficzne dla Androida. (1) "w kotlin brakuje na karcie napisu składniki i przygotowanie" — v7 usunęła te etykiety, żeby dopasować się 1:1 do weba; użytkownik jednak chce je z powrotem NA ANDROIDZIE konkretnie (web zostaje bez zmian, świadoma rozbieżność udokumentowana w Opisie). (2) "przenieś tez ikonkę z miniaturka dania na karcie danie na prawą stronę w kotlin żeby od lewej strony karty już się zaczynał tekst tak jak w webowej wersji" — dotąd `RecipeCard`'s zewnętrzny `Row` miał miniaturkę 48dp PRZED tekstową kolumną (`Box(thumb); Spacer; Column{RecipeCardBody}`), przeciwnie niż web'owy `.card-head` (tytuł flex:1 po lewej, `.card-head-side` z miniaturką po prawej). Zamienione kolejnością: `Column{RecipeCardBody}` teraz pierwsza (tytuł startuje od lewej krawędzi karty), `Box(thumb)` po niej. `./gradlew :app:compileDebugKotlin :app:assembleDebug` przechodzi; zweryfikowane bezpośrednio na emulatorze: etykiety "Składniki"/"Przygotowanie" ponownie widoczne, miniaturka (np. jajko/awokado) po prawej stronie karty na liście zwiniętej i rozwiniętej.
+- **v10** (2026-08-23, Web + Android): Użytkownik zgłosił, że dwuetapowe
+  otwieranie z v4 ("teraz sie wysrodkowuje na ekranie") jest zbędnym
+  tarciem i poprosił o powrót do jednego stuknięcia = pełne rozwinięcie,
+  z zastrzeżeniem że nadal ma być jakaś ochrona przed przypadkowym
+  rozwinięciem podczas przewijania. Research potwierdził, że ta ochrona
+  to od zawsze OSOBNY mechanizm od dwuetapowości (patrz Uwagi) — na
+  webie już istniejący (`startScrollY`/`scrollMoved` w
+  `attachSwipeRating()`'s `finish()`, `index.html`), na Androidzie
+  DOTĄD NIEISTNIEJĄCY (poprzednio polegał wyłącznie na wbudowanym
+  touch-slop Compose). Web: `handleCardTap()` uproszczony — usunięta
+  gałąź `pendingCenterCard` (arm-and-center-only na pierwsze stuknięcie),
+  jedno stuknięcie od razu woła `setCardExpanded(card, true)` (v8's
+  no-op na już rozwiniętej karcie zostaje); `wasTap`/`scrollMoved` w
+  `attachSwipeRating()` pozostają bez zmian jako jedyna ochrona.
+  Android: `pendingCenterRecipeId` i jego `LaunchedEffect` usunięte z
+  `RecipeListScreen.kt`, `onToggleExpanded` uproszczony do dwóch gałęzi
+  (już rozwinięta → no-op; inaczej → `expandedRecipeId = recipe.id`
+  wprost); NOWY scroll-guard dodany na miejscu zwykłego `.clickable` —
+  porównanie pozycji listy (`LazyListState`) w momencie dotknięcia i
+  puszczenia, port web'owego `startScrollY`/`scrollMoved`, koegzystujący
+  z istniejącym `detectHorizontalDragGestures` (swipe-to-rate). Post-
+  expand auto-centrowanie (v3/v5) zostaje bez zmian na obu platformach.
+  Zweryfikowane bezpośrednio w przeglądarce i na emulatorze: pojedyncze,
+  stacjonarne stuknięcie od razu rozwija kartę i centruje ją na ekranie;
+  dotknięcie kończące przewijanie listy (fling) nie rozwija karty na
+  żadnej z platform.

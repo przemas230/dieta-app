@@ -79,6 +79,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-47: Brak migotania (FOUC) domyślnych danych profilu przy odświeżeniu](#fr-47-brak-migotania-fouc-domyślnych-danych-profilu-przy-odświeżeniu)
 - [FR-59: Wyśrodkowane okienka modalne, na pełną dostępną szerokość](#fr-59-wyśrodkowane-okienka-modalne-na-pełną-dostępną-szerokość)
 - [FR-70: Licznik nawodnienia w nagłówku — pojedyncze klikalne kropelki](#fr-70-licznik-nawodnienia-w-nagłówku--pojedyncze-klikalne-kropelki)
+- [FR-88: Planer jako pierwsza zakładka nawigacji](#fr-88-planer-jako-pierwsza-zakładka-nawigacji)
 
 ### Wygląd i motywy
 - [FR-48: Wybór motywu kolorystycznego aplikacji](#fr-48-wybór-motywu-kolorystycznego-aplikacji)
@@ -239,20 +240,26 @@ Filtr progu oceny pokazuje wyłącznie przepisy, których ocena gwiazdkowa (⭐ 
 **Status:** Zaimplementowane
 
 ## Opis
-Każdy przepis wyświetlany jest jako karta z nazwą, czasem przygotowania, kalorycznością i skrótowymi znacznikami (np. podwyższony IG, dopasowanie do celu). Domyślnie karta jest zwinięta. Rozwijanie jest dwuetapowe: pierwsze stuknięcie w zwiniętą kartę WYŁĄCZNIE przewija ją do widoku (wyśrodkowuje), nie rozwijając jej jeszcze — dopiero drugie stuknięcie tej samej, już wyśrodkowanej karty faktycznie rozwija pełną listę składników, sposób przygotowania i przyciski akcji (i ponownie ją pozycjonuje). Zwinięcie rozwiniętej karty jest natomiast możliwe WYŁĄCZNIE przez rozwinięcie innej karty (co automatycznie zwija poprzednią) — ponowne dotknięcie tej samej, już rozwiniętej karty nie robi nic (patrz v8: dawniej zamykało jednym stuknięciem, uznane za uciążliwe).
+Każdy przepis wyświetlany jest jako karta z nazwą, czasem przygotowania, kalorycznością i skrótowymi znacznikami (np. podwyższony IG, dopasowanie do celu). Domyślnie karta jest zwinięta. Rozwijanie jest jednoetapowe (patrz v10 — do 2026-08-23 było dwuetapowe): jedno wyraźne, stacjonarne stuknięcie w zwiniętą kartę od razu rozwija pełną listę składników, sposób przygotowania i przyciski akcji, po czym karta automatycznie się pozycjonuje na ekranie. Zwinięcie rozwiniętej karty jest natomiast możliwe WYŁĄCZNIE przez rozwinięcie innej karty (co automatycznie zwija poprzednią) — ponowne dotknięcie tej samej, już rozwiniętej karty nie robi nic (patrz v8: dawniej zamykało jednym stuknięciem, uznane za uciążliwe).
 
 Rozwinięta treść karty na Androidzie ma wyglądać jak na webie w większości szczegółów (pogrubiony pasek czasu/kalorii/dopasowania i przyciski akcji, ciasne jednowierszowe wiersze składników bez wymuszonego minimalnego rozmiaru dotykowego Material na każdym wierszu — patrz v7), ale ze świadomymi, udokumentowanymi różnicami na wyraźną prośbę użytkownika: etykiety sekcji „Składniki”/„Przygotowanie” WIDOCZNE tylko na Androidzie (web ich nie ma, patrz v7 vs v9), i miniaturka dania po PRAWEJ stronie karty na Androidzie tak, żeby tytuł zaczynał się od lewej krawędzi jak na webie (patrz v9).
 
 ## Kryteria akceptacji
 - Karta w stanie zwiniętym pokazuje tylko nagłówek i podstawowe metadane — WYŁĄCZNIE przyciski „✅ Zrobione” i „📅 Zaplanuj” (i „🗑️ Usuń” dla własnych przepisów) są widoczne od razu; przycisk „🛒 Dodaj do listy zakupów” pojawia się dopiero po rozwinięciu karty (patrz v6).
-- Rozwinięcie karty odbywa się WYŁĄCZNIE przez wyraźne, stacjonarne stuknięcie — nie przez przypadkowe zatrzymanie przewijania listy (patrz historia rewizji poniżej i FR-44).
-- Pierwsze stuknięcie zwiniętej karty przewija ją do widoku, ale jej NIE rozwija. Drugie stuknięcie tej samej karty (bez stuknięcia innej karty pomiędzy) rozwija ją. Stuknięcie innej, zwiniętej karty pomiędzy tymi dwoma stuknięciami traktuje TĘ nową kartę jako pierwsze stuknięcie (nie rozwija poprzednio dotykanej).
+- Rozwinięcie karty odbywa się WYŁĄCZNIE przez wyraźne, stacjonarne stuknięcie — nie przez przypadkowe zatrzymanie przewijania listy (patrz historia rewizji poniżej, FR-44 i v10 — ta ochrona musi działać niezależnie od tego, czy rozwinięcie jest jedno- czy dwuetapowe).
+- Jedno stuknięcie zwiniętej karty (v10 — od 2026-08-23; wcześniej v4-v9 wymagały dwóch stuknięć) od razu ją rozwija.
 - Dotknięcie JUŻ rozwiniętej karty (jej samej, nie innej) nic nie robi — nie zwija jej (v8).
 - Tylko jedna karta na liście może być rozwinięta jednocześnie.
 - Po rozwinięciu karty ekran automatycznie przewija się tak, żeby cała rozwinięta karta wylądowała na środku widocznego obszaru — użytkownik nie musi ręcznie doprzewijać, żeby zobaczyć składniki i sposób przygotowania. Przewinięcie następuje PO zakończeniu animacji rozwijania karty (nie w trakcie), żeby wyśrodkowanie trafiało na docelową, już powiększoną wysokość karty, a nie na jej wysokość sprzed rozwinięcia. Jeśli rozwinięta karta jest WYŻSZA niż widoczny obszar ekranu, wyśrodkowanie zastępowane jest wyrównaniem górnej krawędzi karty do góry widoku (samo wyśrodkowanie ucinałoby wtedy tytuł/początek karty poza ekranem).
 
 ## Uwagi
 Zrewidowane w rundzie z 2026-08-03: pierwotna wersja pozwalała, by dotknięcie kończące przewijanie listy (bardzo mały ruch palca przy jednoczesnym przewinięciu strony przez inercję) było błędnie odczytane jako stuknięcie i rozwijało kartę, co powodowało 'skakanie' ekranu. Naprawiono porównując pozycję przewijania strony w momencie dotknięcia i puszczenia — jeśli strona przewinęła się w tym czasie, gest NIE liczy się jako stuknięcie, nawet jeśli sam palec poruszył się nieznacznie. Patrz też FR-44.
+
+Ten mechanizm (porównanie pozycji scrolla na dotknięciu vs puszczeniu) jest,
+i pozostaje po v10, JEDYNĄ ochroną przed przypadkowym rozwinięciem —
+dwuetapowe otwieranie wprowadzone w v4 było osobną, niezależną decyzją UX
+(wygoda przeglądania), nie mechanizmem antyprzypadkowym, więc jego usunięcie
+w v10 nie osłabia ochrony przed przypadkowym dotknięciem podczas scrolla.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
@@ -264,6 +271,32 @@ Zrewidowane w rundzie z 2026-08-03: pierwotna wersja pozwalała, by dotknięcie 
 - **v7** (2026-08-23, Android): Po v6 użytkownik przysłał zrzuty ekranu z obu platform i zgłosił, że mimo strukturalnej zgodności (oba miejsca na miejscu) karty dalej "są dwiema różnymi kartami" — Androidowa wyglądała mniej kompaktowo, z mniej wyrazistą (niepogrubioną) typografią niż webowa, którą wskazał jako wzorzec ("bardziej podoba mi się wygląd karty w aplikacji PWA... jest bardziej kompaktowa, ma ładniejsze czcionki i pogrubienia"). Zbadane źródło: (1) `RecipeCardBody` miała własne nagłówki „Składniki”/„Przygotowanie”, których web NIE ma — usunięte. (2) Każdy wiersz składnika owijał gwiazdkę-przełącznik w `TextButton`, który (mimo `contentPadding` ustawionego na zero) i tak wymusza Material3'ową minimalną wysokość dotykową ~40dp na wiersz — dużo więcej niż web'owy, bezstylowy `<button class="ing-fav">` (`font-size:14px`, brak wymuszonego rozmiaru). To był GŁÓWNY powód mniejszej gęstości. Naprawione zastąpieniem `TextButton` zwykłym klikalnym `Text` (`Modifier.clickable`, bez wymuszania rozmiaru), wiersze składników spięte w `Column` z `Arrangement.spacedBy(4.dp)` (port web'owego `.ingredients li{margin-bottom:4px}`). (3) Pasek czasu/kalorii/dopasowania, tekst przycisku „🛒 Dodaj...”, „⭐ Oceń i skomentuj” i licznik widżetu spiżarni dostały `fontWeight = FontWeight.SemiBold`/`Bold` (port web'owych `font-weight:600`/`700`, które Compose'owe domyślne style przycisków/`bodySmall` nie odtwarzały). (4) Tytuł dostał węższy `lineHeight` (dopasowany do web'owego `line-height:1.3` zamiast szerokiego domyślnego Material3). Makro-wiersz i tekst przygotowania dostały `onSurfaceVariant` (przygaszony), jak web'owy `var(--muted)`. Zero zmian w logice/danych — czysto typograficzno-strukturalna korekta. `./gradlew :app:compileDebugKotlin :app:assembleDebug` przechodzi; zweryfikowane bezpośrednio na emulatorze (Medium_Phone_API_35): rozwinięta karta wyraźnie ciaśniejsza (6 składników "Szakszuki" mieści się w połowie poprzedniej wysokości), pogrubienia widoczne na pasku meta i przyciskach.
 - **v8** (2026-08-23, Web + Android): Na wyraźną prośbę użytkownika ("gdy karta przepisu jest otwarta to ponowne kliknięcie niech jej nie zwija bo to uciążliwe w używaniu, zarówno w Web jak i kotlin") — dotknięcie już rozwiniętej karty (jej samej, całe ciało + chevron "Składniki i przygotowanie") stało się no-opem zamiast natychmiastowego zwinięcia. Web: `handleCardTap()` w `index.html` wraca wcześnie bez wołania `setCardExpanded(card, false)`, gdy `card.classList.contains("expanded")`. Android: `RecipeListScreen.kt`'s `onToggleExpanded`'s `when(recipe.id){ expandedRecipeId -> {...} }` gałąź zamieniona na pusty blok. Jedyny sposób zwinięcia karty to teraz rozwinięcie innej (już istniejący mechanizm auto-zwijania poprzedniej). Zweryfikowane na żywo na obu platformach: wielokrotne dotknięcie rozwiniętej karty (w tym na samym tekście metadanych, nie tylko chevronie) zostawia ją rozwiniętą.
 - **v9** (2026-08-23, Android): Po v7/v8 użytkownik przysłał kolejne zrzuty ekranu i doprecyzował dwa punkty specyficzne dla Androida. (1) "w kotlin brakuje na karcie napisu składniki i przygotowanie" — v7 usunęła te etykiety, żeby dopasować się 1:1 do weba; użytkownik jednak chce je z powrotem NA ANDROIDZIE konkretnie (web zostaje bez zmian, świadoma rozbieżność udokumentowana w Opisie). (2) "przenieś tez ikonkę z miniaturka dania na karcie danie na prawą stronę w kotlin żeby od lewej strony karty już się zaczynał tekst tak jak w webowej wersji" — dotąd `RecipeCard`'s zewnętrzny `Row` miał miniaturkę 48dp PRZED tekstową kolumną (`Box(thumb); Spacer; Column{RecipeCardBody}`), przeciwnie niż web'owy `.card-head` (tytuł flex:1 po lewej, `.card-head-side` z miniaturką po prawej). Zamienione kolejnością: `Column{RecipeCardBody}` teraz pierwsza (tytuł startuje od lewej krawędzi karty), `Box(thumb)` po niej. `./gradlew :app:compileDebugKotlin :app:assembleDebug` przechodzi; zweryfikowane bezpośrednio na emulatorze: etykiety "Składniki"/"Przygotowanie" ponownie widoczne, miniaturka (np. jajko/awokado) po prawej stronie karty na liście zwiniętej i rozwiniętej.
+- **v10** (2026-08-23, Web + Android): Użytkownik zgłosił, że dwuetapowe
+  otwieranie z v4 ("teraz sie wysrodkowuje na ekranie") jest zbędnym
+  tarciem i poprosił o powrót do jednego stuknięcia = pełne rozwinięcie,
+  z zastrzeżeniem że nadal ma być jakaś ochrona przed przypadkowym
+  rozwinięciem podczas przewijania. Research potwierdził, że ta ochrona
+  to od zawsze OSOBNY mechanizm od dwuetapowości (patrz Uwagi) — na
+  webie już istniejący (`startScrollY`/`scrollMoved` w
+  `attachSwipeRating()`'s `finish()`, `index.html`), na Androidzie
+  DOTĄD NIEISTNIEJĄCY (poprzednio polegał wyłącznie na wbudowanym
+  touch-slop Compose). Web: `handleCardTap()` uproszczony — usunięta
+  gałąź `pendingCenterCard` (arm-and-center-only na pierwsze stuknięcie),
+  jedno stuknięcie od razu woła `setCardExpanded(card, true)` (v8's
+  no-op na już rozwiniętej karcie zostaje); `wasTap`/`scrollMoved` w
+  `attachSwipeRating()` pozostają bez zmian jako jedyna ochrona.
+  Android: `pendingCenterRecipeId` i jego `LaunchedEffect` usunięte z
+  `RecipeListScreen.kt`, `onToggleExpanded` uproszczony do dwóch gałęzi
+  (już rozwinięta → no-op; inaczej → `expandedRecipeId = recipe.id`
+  wprost); NOWY scroll-guard dodany na miejscu zwykłego `.clickable` —
+  porównanie pozycji listy (`LazyListState`) w momencie dotknięcia i
+  puszczenia, port web'owego `startScrollY`/`scrollMoved`, koegzystujący
+  z istniejącym `detectHorizontalDragGestures` (swipe-to-rate). Post-
+  expand auto-centrowanie (v3/v5) zostaje bez zmian na obu platformach.
+  Zweryfikowane bezpośrednio w przeglądarce i na emulatorze: pojedyncze,
+  stacjonarne stuknięcie od razu rozwija kartę i centruje ją na ekranie;
+  dotknięcie kończące przewijanie listy (fling) nie rozwija karty na
+  żadnej z platform.
 
 # FR-4: Miniatura przepisu jako emoji głównego składnika
 
@@ -2825,9 +2858,15 @@ zmian dla istniejących użytkowników innych motywów.
 
 Układ (tylko gdy „Klinika” aktywna, ten sam stan/callbacki ViewModeli co
 reszta motywów — zero zmian logiki):
-- **Planer**: pasek bento z celem dziennym (kcal/białko/tłuszcz/węgle),
-  karty dni z odznaką „Dziś”, wiersze posiłków jako zaokrąglone chipy z
-  emoji-avatarem.
+- **Planer**: od v7 ekran zaczyna się od nowego dashboardu dnia (patrz
+  Historia rewizji v7) — powitanie + data + wylogowanie, rząd trzech kart
+  (CEL / cienki pierścień „zjedzone/cel” + sage prostokąt „POZOSTAŁO” /
+  WODA), dekoracyjny pasek 7 dni tygodnia (dziś pierwsze i wyróżnione),
+  sekcja „Dzisiejszy Planer” (karty dzisiejszych posiłków z × do usunięcia
+  z planu, przerywany placeholder „+ [kategoria]” dla pustych slotów).
+  Pod dashboardem, bez zmian: pasek bento z celem dziennym (kcal/białko/
+  tłuszcz/węgle), karty dni z odznaką „Dziś”, wiersze posiłków jako
+  zaokrąglone chipy z emoji-avatarem.
 - **Przepisy**: kategorie jako od razu widoczny rząd chipów (zamiast panelu
   rozwijanego stukiem).
 - **Zakupy**: wiersz z kolorowym badge kategorii produktu (`IngredientCanon.
@@ -2859,6 +2898,13 @@ reszta motywów — zero zmian logiki):
   kalorii przefarbowany na `primary` (szałwia), pierścień nawodnienia na
   `tertiary` (przygaszony błękit) zamiast na sztywno wpisanych pomarańczu/
   niebieskim z pozostałych motywów.
+- **Nagłówek (v7, usunięcie globalnego pierścienia kcal/wody)**: od v7
+  globalny nagłówek (`header.app-top` na webie, `TopAppBar`+
+  `HeaderKcalPanel` na Androidzie) nie pokazuje już pierścienia kcal/wody
+  ani listy dzisiejszych posiłków dla Klinika/Klinika (noc) — cała ta
+  treść (i logika: `onToggleEaten`, `eatenEntries`, `snacks`) przeniosła
+  się do nowego dashboardu Plannera opisanego wyżej. Pozostałych 11
+  motywów globalny nagłówek nie zmienia się w ogóle.
 - **"Klinika (noc)" — nowy, 13. motyw**: osobny, wybieralny ciemny wariant
   (id `clinic_dark`) obok jasnej "Klinika", na wyraźną prośbę użytkownika
   ("zrob klinika dzien i noc motyw taki jak w propozycji"). Ten sam akcent
@@ -2893,6 +2939,17 @@ reszta motywów — zero zmian logiki):
   układ co Android (bento paski, kolorowe badge kategorii, akordeon
   kategorii spiżarni, licznik wody jako kółka +/-); pozostałych 11 motywów
   te ekrany bajt-w-bajt niezmienione.
+- Przy aktywnej Klinice/Klinika (noc) globalny nagłówek NIE pokazuje
+  pierścienia kcal/wody ani listy dzisiejszych posiłków — ta treść żyje
+  wyłącznie w nowym dashboardzie na górze zakładki Planer (toggle
+  „zjedzone”, usuwanie przekąsek itd. nadal działają, tylko stamtąd).
+  Pozostałych 11 motywów globalny nagłówek zachowuje pierścień kcal/wody
+  bez zmian.
+- Dashboard Plannera (powitanie/karty CEL-POZOSTAŁO-WODA/pasek dni/
+  „Dzisiejszy Planer”) renderuje się WYŁĄCZNIE dla Klinika/Klinika (noc);
+  pozostałych 11 motywów zakładka Planer wygląda identycznie jak przed
+  tą zmianą (patrz też FR-88 — kolejność samej zakładki w nawigacji
+  zmienia się dla wszystkich motywów, ale nie jej zawartość).
 - `./gradlew :app:assembleDebug :logic:test` przechodzi.
 
 ## Uwagi
@@ -3019,3 +3076,76 @@ się zgadzać z web co do joty.
   Planera) — nie tylko wizualnie statycznie. `CACHE_NAME` podniesiony na
   `dieta-app-v87`, backup pre-edit `index.html`/`sw.js` w `versions/v87/`.
 - **v6** (2026-08-23, Web + Android): Użytkownik zgłosił realny błąd kontrastu ("motyw jasny klinika jest w niektórych momentach aż za jasny, nie widać np przycisku opcji na headerze"). Znalezione i potwierdzone bezpośrednio w przeglądarce i na emulatorze: pierścień kalorii/wody w nagłówku (kółko z liczbą zjedzonych kcal) był praktycznie niewidoczny w jasnej Klinice — kolor "toru" (niewypełnionej części) był `surfaceVariant`/`var(--line)`, DOKŁADNIE ten sam token, którego już używa obramowanie/tło samej karty nagłówka — na białym tle różnica była za mała, by okiem odróżnić pierścień od karty pod nim, zwłaszcza przy 0% wypełnienia (świeży dzień). Naprawione użyciem przygaszonej wersji koloru TEKSTU (`onSurfaceVariant`/`--muted`, już zaprojektowanego z realnym kontrastem względem tła) zamiast koloru linii/obramowania: Android — `MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)` w `HeaderKcalPanel` (`MainActivity.kt`); web — `--ring-track` dla `clinic`/`clinic_dark` zmienione z `var(--line)` na dosłowny `rgba()` odpowiadający `--muted` przy tej samej alfie (custom property nie da się alpha-blendować przez `var()` bez znajomości jego RGB). Zweryfikowane bezpośrednio w przeglądarce i na emulatorze: pierścień wyraźnie widoczny (jasnoszary tor) na obu platformach, w tym przy 0% wypełnienia.
+- **v7** (2026-08-23, Web + Android): Na prośbę użytkownika (dwa zrzuty
+  ekranu — nowy styl pierścienia kcal, i opis nowego dashboardu Plannera)
+  przeprojektowany ekran Planera dla Klinika/Klinika (noc): dawny podwójny
+  pierścień kcal+woda w globalnym nagłówku (`HeaderKcalPanel`/`.kcal-row`)
+  usunięty stamtąd i zastąpiony nowym, pojedynczym cienkim pierścieniem
+  „zjedzone/cel” (bez podziałek, wypełnia się jak tarcza zegara) + sage
+  prostokątem „POZOSTAŁO”/kcal — to nowy środkowy element rzędu trzech
+  kart CEL/POZOSTAŁO/WODA na górze zakładki Planer, nie w nagłówku.
+  Dashboard dodaje też: powitanie („Cześć, {imię}”) + datę + wylogowanie,
+  dekoracyjny pasek 7 dni tygodnia (dziś pierwsze w kolejności i
+  wizualnie wyróżnione ciemniejszą ramką — NIE przełącza, który dzień
+  pokazuje sekcja poniżej), i „Dzisiejszy Planer” (karty dzisiejszych
+  posiłków, × usuwa przypisanie z planu, przerywany placeholder
+  „+ [kategoria]” dla pustych slotów — ta sekcja to przeniesienie/
+  restyling tej samej logiki co dawny `KcalMealRow`/`.kcal-meal-list`
+  z nagłówka, nie nowa logika biznesowa). Istniejący pasek bento celu
+  dziennego i pełna lista 7 dni (`DailyTargetBento`/`DayCardClinic`,
+  `.clinic-bento`/`.cdc-*`) zostają BEZ ZMIAN, tylko niżej pod nowym
+  dashboardem. Pasek dni jest świadomie dekoracyjny (nie funkcjonalny
+  przełącznik) i pełna lista 7 dni świadomie zostaje jako jedyny sposób
+  edycji innych dni niż dziś — oba ustalenia z użytkownikiem przed
+  implementacją (AskUserQuestion), żeby nie usuwać istniejącej
+  funkcjonalności edycji dowolnego dnia. Zobacz też FR-88 dla globalnej
+  (wszystkie motywy) zmiany kolejności zakładek nawigacji, ustalonej przy
+  tej samej okazji, ale udokumentowanej osobno, bo nie jest specyficzna
+  dla Kliniki.
+
+# FR-88: Planer jako pierwsza zakładka nawigacji
+
+**Obszar:** Nagłówek i nawigacja, Android + Web
+**Status:** Zaimplementowane na obu platformach
+
+## Opis
+Dolny pasek nawigacji (Przepisy, Zakupy, Planer, Postęp, Spiżarnia) zmienia
+kolejność na: **Planer, Przepisy, Zakupy, Postęp, Spiżarnia** — Planer staje
+się pierwszą zakładką i jednocześnie domyślnym ekranem otwieranym zaraz po
+uruchomieniu aplikacji, zamiast Przepisów. Zmiana dotyczy WSZYSTKICH 13
+motywów kolorystycznych jednakowo — to zmiana kolejności/domyślnego
+ekranu współdzielonej infrastruktury nawigacji, nie osobny wygląd per
+motyw (w odróżnieniu od FR-87, który opisuje bespoke wygląd samej
+zawartości Planera wyłącznie dla motywu Klinika/Klinika (noc)).
+
+Powód: użytkownik chce, żeby pierwsze co widać po otwarciu aplikacji to
+plan dnia (ile zjedzone/ile zostało, co zaplanowane na dziś), a nie lista
+przepisów.
+
+## Kryteria akceptacji
+- Dolny pasek nawigacji pokazuje zakładki w kolejności: Planer, Przepisy,
+  Zakupy, Postęp, Spiżarnia — identycznie na Android i Web, we wszystkich
+  13 motywach.
+- Po uruchomieniu aplikacji (świeże wejście, nie powrót z tła) domyślnie
+  aktywny jest Planer, nie Przepisy.
+- Powrót przyciskiem „Wstecz”/gestem systemowym z Planera (jako ekranu
+  startowego) zachowuje się tak jak dotychczas zachowywał się dla
+  Przepisów jako ekranu startowego (FR-46) — nie zamyka aplikacji
+  przypadkowo.
+- Sama zawartość/wygląd Planera dla 11 motywów innych niż Klinika jest
+  bajt-w-bajt identyczna jak przed tą zmianą — zmienia się wyłącznie
+  KOLEJNOŚĆ, w jakiej się do niej trafia.
+
+## Historia rewizji
+- **v1** (2026-08-23, Web + Android): Pierwsza wersja, na wyraźną prośbę
+  użytkownika przy okazji przeprojektowania dashboardu Plannera dla
+  Kliniki (FR-87). Web: `index.html` — przycisk `data-view="planner"`
+  przeniesiony na początek `nav.bottom`, sekcja `#view-planner` domyślnie
+  `active` zamiast `#view-recipes`, trzy twardo wpisane fallbacki
+  `"recipes"` w routingu historii (`switchView`/`popstate`/initial state)
+  zmienione na `"planner"`. Android: `Screen.Planner` przeniesiony na
+  początek `BOTTOM_NAV_SCREENS` (`ui/navigation/Screen.kt`) —
+  napędza jednocześnie zwykły `NavigationBar` i Klinikowy
+  `FloatingBottomNav`; `startDestination` w `MainActivity.kt` zmieniony
+  na `Screen.Planner.route`.
+

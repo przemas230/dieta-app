@@ -704,56 +704,6 @@
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) .eaten-summary{ border-top-color:var(--line); }
   [data-theme="clinic"] .kcal-meal-row.eatable{ background:rgba(0,0,0,.035); }
   [data-theme="clinic_dark"] .kcal-meal-row.eatable{ background:rgba(255,255,255,.05); }
-  /* FR-87/v7: the kcal/water ring + today's meal list moved out of this
-     global header and into a new dashboard at the top of the Planer tab
-     (see #view-planner's clinic-dashboard rules further below) -- for
-     Klinika/Klinika (noc) only, so the header itself has nothing left to
-     collapse/expand. display:none (not just hiding the ring) beats the
-     max-height-based FR-44/45 collapse rules regardless of .collapsed
-     state since it comes later in the cascade at equal specificity (see
-     the comment above header-collapsible's own clinic rule). */
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top .header-water-row,
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top .header-collapsible,
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top .header-chevron{
-    display:none;
-  }
-  /* FR-87/v7: Klinika's Planer dashboard (greeting/logout, CEL+ring+WODA
-     cards, decorative day strip, "Dzisiejszy Planer" cards) -- built by
-     renderPlannerDashboard(), which only ever fills #plannerDashboard's
-     innerHTML for Klinika/Klinika (noc) (empties it otherwise, same gate
-     as renderPlannerBento() above), so these classes need no
-     [data-theme=...] scoping of their own -- they simply never exist in
-     the DOM for the other 11 themes. */
-  #plannerDashboard:not(:empty){ margin-bottom:14px; }
-  .pd-header{display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:12px;}
-  .pd-date{font-size:12px; color:var(--muted); text-transform:capitalize;}
-  .pd-greeting{font-family:var(--font-heading); font-size:19px; font-weight:600; margin-top:2px;}
-  .pd-signout{width:38px; height:38px; border-radius:50%; border:none; background:var(--card); color:var(--muted); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.08); cursor:pointer; flex:0 0 auto; font-size:16px; padding:0;}
-  .pd-cards{display:grid; grid-template-columns:1fr 1.5fr 1fr; gap:8px; margin-bottom:14px;}
-  .pd-card{background:var(--card); border-radius:20px; padding:12px 10px; box-shadow:0 1px 3px rgba(0,0,0,.06); display:flex; flex-direction:column; justify-content:center;}
-  .pd-card-label{font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--muted);}
-  .pd-card-value{font-family:var(--font-heading); font-size:20px; font-weight:700; margin-top:4px;}
-  .pd-card-unit{font-size:10px; color:var(--muted);}
-  .pd-card-remaining{flex-direction:row; align-items:center; gap:8px; padding:10px;}
-  .pd-ring-wrap{position:relative; width:52px; height:52px; flex:0 0 auto;}
-  .pd-ring-svg{width:100%; height:100%; display:block;}
-  .pd-ring-center{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:9.5px; font-weight:700; color:var(--text);}
-  .pd-remaining-box{flex:1; min-width:0; background:var(--teal); border-radius:14px; padding:8px 10px;}
-  .pd-remaining-label{font-size:9px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#fff; opacity:.85;}
-  .pd-remaining-value{font-family:var(--font-heading); font-size:18px; font-weight:700; color:#fff; margin-top:2px; white-space:nowrap;}
-  .pd-strip{display:flex; gap:6px; overflow-x:auto; margin-bottom:14px; padding-bottom:2px;}
-  .pd-day-chip{flex:0 0 auto; min-width:38px; text-align:center; padding:8px 6px; border-radius:14px; background:var(--card); font-size:11px; font-weight:600; color:var(--muted); border:1.5px solid transparent;}
-  .pd-day-chip.today{border-color:var(--text); color:var(--text); font-weight:700;}
-  .pd-section-title{font-family:var(--font-heading); font-size:14px; font-weight:600; margin:0 0 8px;}
-  .pd-meal-card{display:flex; align-items:center; gap:10px; width:100%; text-align:left; background:var(--card); border:none; border-radius:16px; padding:10px 12px; margin-bottom:8px; box-shadow:0 1px 2px rgba(0,0,0,.05); font-family:inherit; color:var(--text); cursor:pointer;}
-  .pd-meal-avatar{font-size:18px; flex:0 0 auto;}
-  .pd-meal-text{flex:1; min-width:0; display:flex; flex-direction:column;}
-  .pd-meal-cat{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.03em;}
-  .pd-meal-name{font-size:13.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .pd-meal-card.eaten .pd-meal-name{ text-decoration:line-through; opacity:.55; }
-  .pd-meal-kcal{font-size:12px; color:var(--muted); flex:0 0 auto;}
-  .pd-meal-remove{background:none; border:none; color:var(--muted); font-size:15px; line-height:1; padding:4px; cursor:pointer; flex:0 0 auto;}
-  .pd-meal-card-empty{border:1.5px dashed var(--line); background:transparent; box-shadow:none; color:var(--muted); justify-content:center; font-size:13px; font-weight:600;}
   /* Same "floating pill" bottom nav as Android's FloatingBottomNav -- visible
      margin from the screen edge instead of docking flush, active tab's icon
      in a filled sage circle instead of a color-only change. */
@@ -1415,7 +1365,7 @@
 <main>
 
   <!-- VIEW: PRZEPISY -->
-  <section id="view-recipes" class="view">
+  <section id="view-recipes" class="view active">
     <div class="recipes-sticky-bar" id="recipesStickyBar">
       <div class="pill-row" id="catPills"></div>
       <div class="toolbar" style="flex-wrap:wrap;">
@@ -1474,8 +1424,7 @@
   </section>
 
   <!-- VIEW: PLANER -->
-  <section id="view-planner" class="view active">
-    <div id="plannerDashboard"></div>
+  <section id="view-planner" class="view">
     <div class="shop-actions" style="margin-top:0;">
       <button class="btn primary" id="autoPlanBtn">🎲 Wygeneruj losowo cały tydzień</button>
     </div>
@@ -1723,9 +1672,9 @@
 </div>
 
 <nav class="bottom">
-  <button data-view="planner" class="active"><span class="ic"><i data-lucide="calendar-days"></i></span>Planer</button>
-  <button data-view="recipes"><span class="ic"><i data-lucide="salad"></i></span>Przepisy</button>
+  <button data-view="recipes" class="active"><span class="ic"><i data-lucide="salad"></i></span>Przepisy</button>
   <button data-view="shop"><span class="ic"><i data-lucide="shopping-cart"></i></span>Zakupy</button>
+  <button data-view="planner"><span class="ic"><i data-lucide="calendar-days"></i></span>Planer</button>
   <button data-view="progress"><span class="ic"><i data-lucide="trending-up"></i></span>Postęp</button>
   <button data-view="pantry"><span class="ic"><i data-lucide="package"></i></span>Spiżarnia</button>
 </nav>
@@ -3912,7 +3861,7 @@ function switchView(name, opts){
   // back through tabs/modals instead of instantly exiting the app. Skip the
   // push when we're already restoring a view *because of* a back-press.
   if(!(opts && opts.fromPopstate)){
-    const cur = (history.state && history.state.dietaAppView) || "planner";
+    const cur = (history.state && history.state.dietaAppView) || "recipes";
     if(name !== cur) history.pushState({dietaAppView:name}, "");
   }
 }
@@ -4144,7 +4093,6 @@ function renderHeader(){
   renderEatenSummary(t.daily);
   document.getElementById("weightGoalTitle").textContent = `⚖️ Postęp wagi (cel: ${p.targetWeight} kg)`;
   renderHeaderWater();
-  renderPlannerDashboard();
 }
 
 // Compact droplet strip in the header, always visible (even when the header
@@ -4637,6 +4585,10 @@ let expandedCardEl = null;
 // Two-step open, on explicit request (2026-08-11): a first tap on a
 // collapsed card only brings it into view (so the user can see what they're
 // about to open without the list jumping AND expanding at once); a second
+// tap on that same, already-centered card actually expands it. Reset
+// whenever a DIFFERENT card is tapped first, so it's always "this exact
+// card, tapped twice in a row" — never a stale leftover from an earlier card.
+let pendingCenterCard = null;
 // Centers a card, unless it's taller than the viewport (only possible once
 // expanded) — centering something taller than the screen just clips its top
 // half (title/ingredients) off-screen, so align its TOP edge into view instead.
@@ -4675,15 +4627,11 @@ function setCardExpanded(card, expand){
   }
   card.setAttribute("aria-expanded", expand ? "true" : "false");
 }
-// FR-3/v10: the actual tap handler wired to both the whole (non-swipeable)
-// card and the dedicated chevron/[data-expand-toggle] button — a single,
-// stationary tap expands the card immediately (v4-v9 required a first tap
-// to just center it, then a second tap to expand; dropped as unnecessary
-// friction). Protection against a tap that's really the tail end of a list
-// fling lives one level up, in attachSwipeRating()'s finish() (wasTap/
-// scrollMoved) — that check already gates every call into this function,
-// so it doesn't need duplicating here. Collapsing an already-expanded card
-// stays a single, immediate tap (no two-step needed to CLOSE something).
+// FR-3: the actual tap handler wired to both the whole (non-swipeable) card
+// and the dedicated chevron/[data-expand-toggle] button — implements the
+// two-step center-then-expand described above. Collapsing an already-
+// expanded card stays a single, immediate tap (no two-step needed to CLOSE
+// something).
 function handleCardTap(card){
   // On explicit user request, tapping an ALREADY-expanded card no longer
   // collapses it (used to be a single immediate tap) -- users found that
@@ -4694,7 +4642,13 @@ function handleCardTap(card){
   if(card.classList.contains("expanded")){
     return;
   }
-  setCardExpanded(card, true);
+  if(pendingCenterCard===card){
+    pendingCenterCard = null;
+    setCardExpanded(card, true);
+  }else{
+    pendingCenterCard = card;
+    scrollCardIntoView(card);
+  }
 }
 
 function renderPills(){
@@ -6686,128 +6640,8 @@ function renderPlannerBento(){
   ];
   box.innerHTML = tiles.map(x=>`<div class="bento-tile"><div class="bento-value">${x.value}</div><div class="bento-label">${x.label}</div></div>`).join("");
 }
-// FR-87/v7: Klinika's Planer dashboard -- greeting/date/logout, CEL+ring+
-// WODA card row (the ring replaces the old header's kcal/water ring, see
-// the header-collapsible display:none rule above), a decorative "today
-// first" day strip, and "Dzisiejszy Planer" cards for today's 5 meal
-// slots (tap toggles eaten -- same setEaten() the old header's swipe-to-
-// eat rows used -- × clears the slot the same way openPlannerPickerModal's
-// "brak / wyczyść" row does, empty slots are a dashed "+ [category]"
-// placeholder opening the normal picker). Called from both renderPlanner()
-// (day-specific changes) and renderHeader() (global changes -- snacks,
-// water, weight -- that affect the eaten/remaining totals shown here but
-// don't otherwise touch the planner) so it never goes stale regardless of
-// which of the two a given call site happens to invoke.
-function renderPlannerDashboard(){
-  const box = document.getElementById("plannerDashboard");
-  if(!box) return;
-  const isClinic = state.theme==="clinic" || state.theme==="clinic_dark";
-  if(!isClinic){ box.innerHTML = ""; return; }
-  const p = state.profile;
-  const t = calcTargets(p);
-  const today = todayStr();
-  const eaten = dailyEatenKcal(today);
-  const remaining = Math.max(0, t.daily - eaten);
-  const kcalPct = t.daily ? Math.max(0, Math.min(1, eaten / t.daily)) : 0;
-  const circumference = 2 * Math.PI * 24;
-  const jsDay = new Date().getDay();
-  const todayIdx = jsDay===0 ? 6 : jsDay-1;
-  const dateLabel = new Date().toLocaleDateString("pl-PL", {weekday:"long", day:"numeric", month:"long"});
-  if(state.water.date !== today){ state.water = {date:today, count:0}; }
-  const waterCount = state.water.count;
-
-  const stripHtml = Array.from({length:7}, (_,i)=>{
-    const di = (todayIdx + i) % 7;
-    return `<div class="pd-day-chip${i===0?' today':''}">${DAYS[di].slice(0,2)}</div>`;
-  }).join("");
-
-  const meals = todaysPlannerMeals();
-  const mealsHtml = CATS.map(c=>{
-    const r = meals[c.id];
-    if(!r){
-      return `<button class="pd-meal-card pd-meal-card-empty" data-pd-add-cat="${c.id}">+ ${c.label}</button>`;
-    }
-    const done = isEaten(today, c.id);
-    return `<div class="pd-meal-card${done?' eaten':''}" data-pd-toggle-cat="${c.id}">
-      <span class="pd-meal-avatar">${c.icon}</span>
-      <span class="pd-meal-text">
-        <span class="pd-meal-cat">${c.label}</span>
-        <span class="pd-meal-name">${r.name}</span>
-      </span>
-      <span class="pd-meal-kcal">${r.kcal} kcal</span>
-      <button class="pd-meal-remove" data-pd-remove-cat="${c.id}" title="Usuń z planu">✕</button>
-    </div>`;
-  }).join("");
-
-  box.innerHTML = `
-    <div class="pd-header">
-      <div>
-        <div class="pd-date">${dateLabel}</div>
-        <div class="pd-greeting">Cześć${state.displayName?`, ${state.displayName}`:""}!</div>
-      </div>
-      <button class="pd-signout" id="pdSignOutBtn" title="Wyloguj się z tego urządzenia">🚪</button>
-    </div>
-    <div class="pd-cards">
-      <div class="pd-card">
-        <div class="pd-card-label">Cel</div>
-        <div class="pd-card-value">${t.daily}</div>
-        <div class="pd-card-unit">kcal</div>
-      </div>
-      <div class="pd-card pd-card-remaining">
-        <div class="pd-ring-wrap">
-          <svg viewBox="0 0 56 56" class="pd-ring-svg">
-            <circle cx="28" cy="28" r="24" fill="none" stroke="var(--ring-track)" stroke-width="3.5"/>
-            <circle cx="28" cy="28" r="24" fill="none" stroke="var(--ring-kcal)" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="${(kcalPct*circumference).toFixed(1)} ${circumference.toFixed(1)}" transform="rotate(-90 28 28)"/>
-          </svg>
-          <div class="pd-ring-center">${eaten}/${t.daily}</div>
-        </div>
-        <div class="pd-remaining-box">
-          <div class="pd-remaining-label">Pozostało</div>
-          <div class="pd-remaining-value">${remaining} kcal</div>
-        </div>
-      </div>
-      <div class="pd-card">
-        <div class="pd-card-label">Woda</div>
-        <div class="pd-card-value">${waterCount}/8</div>
-        <div class="pd-card-unit">szklanek</div>
-      </div>
-    </div>
-    <div class="pd-strip">${stripHtml}</div>
-    <h3 class="pd-section-title">Dzisiejszy Planer</h3>
-    <div class="pd-today-list">${mealsHtml}</div>
-  `;
-
-  document.getElementById("pdSignOutBtn").addEventListener("click", ()=>{
-    document.getElementById("signOutBtn").click();
-  });
-  box.querySelectorAll("[data-pd-toggle-cat]").forEach(el=>{
-    el.addEventListener("click", (e)=>{
-      if(e.target.closest("[data-pd-remove-cat]")) return;
-      const cat = el.dataset.pdToggleCat;
-      const wasEaten = isEaten(today, cat);
-      setEaten(today, cat, !wasEaten);
-      saveState(); renderPlannerDashboard(); renderHeader(); renderTodayTracker();
-    });
-  });
-  box.querySelectorAll("[data-pd-remove-cat]").forEach(btn=>{
-    btn.addEventListener("click", (e)=>{
-      e.stopPropagation();
-      const cat = btn.dataset.pdRemoveCat;
-      state.planner[todayIdx] = state.planner[todayIdx] || {};
-      state.planner[todayIdx][cat] = "";
-      clearPlannerLeftover(todayIdx, cat);
-      setPlannerScale(todayIdx, cat, 1);
-      saveState(); renderPlanner(); renderHeader();
-      toast("Usunięto z planu");
-    });
-  });
-  box.querySelectorAll("[data-pd-add-cat]").forEach(btn=>{
-    btn.addEventListener("click", ()=> openPlannerModal(todayIdx, btn.dataset.pdAddCat));
-  });
-}
 function renderPlanner(){
   renderPlannerBento();
-  renderPlannerDashboard();
   const isClinic = state.theme==="clinic" || state.theme==="clinic_dark";
   const jsDay = new Date().getDay();
   const todayIdx = jsDay===0 ? 6 : jsDay-1;
@@ -8235,7 +8069,7 @@ if(forceUpdateBtn){
   document.querySelectorAll(".modal-overlay").forEach(el=>{
     observer.observe(el, {attributes:true, attributeFilter:["class"]});
   });
-  history.replaceState({dietaAppView:"planner"}, "");
+  history.replaceState({dietaAppView:"recipes"}, "");
   window.addEventListener("popstate", (e)=>{
     const shown = shownOverlay();
     if(shown){
@@ -8249,7 +8083,7 @@ if(forceUpdateBtn){
       suppressNextPopstateSwitch = false;
       return;
     }
-    switchView((e.state && e.state.dietaAppView) || "planner", {fromPopstate:true});
+    switchView((e.state && e.state.dietaAppView) || "recipes", {fromPopstate:true});
   });
 })();
 
@@ -8258,7 +8092,6 @@ TILE_UNIT_CAT = computeTileUnitCats();
 renderHeader();
 renderPills();
 renderRecipes();
-renderPlanner();
 if(typeof lucide !== "undefined") lucide.createIcons();
 syncPendingWaterFromNotifications();
 checkWaterReminderSchedule();
