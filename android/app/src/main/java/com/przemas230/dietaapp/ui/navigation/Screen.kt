@@ -12,10 +12,10 @@ import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
- * Mirrors the web app's bottom nav (index.html, `nav.bottom` — Przepisy,
- * Zakupy, Planer, Postęp, Spiżarnia) plus Settings, which in the web app
- * lives behind a gear icon in the header rather than the bottom nav — same
- * placement here (top bar action, not a 6th bottom tab).
+ * Mirrors the web app's bottom nav (index.html, `nav.bottom` — FR-88's
+ * Planer, Przepisy, Zakupy, Postęp, Spiżarnia) plus Settings, which in the
+ * web app lives behind a gear icon in the header rather than the bottom
+ * nav — same placement here (top bar action, not a 6th bottom tab).
  */
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     data object Recipes : Screen("recipes", "Przepisy", Icons.Filled.Restaurant)
@@ -32,10 +32,12 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     }
 }
 
+// FR-88: Planer first -- global, all themes, launch destination too (see
+// MainActivity.kt's startDestination).
 val BOTTOM_NAV_SCREENS = listOf(
+    Screen.Planner,
     Screen.Recipes,
     Screen.Shopping,
-    Screen.Planner,
     Screen.Progress,
     Screen.Pantry,
 )

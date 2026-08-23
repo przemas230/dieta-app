@@ -3,7 +3,9 @@ package com.przemas230.dietaapp.ui
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,13 +24,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -42,24 +48,38 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Logout
+import com.przemas230.dietaapp.data.EatenEntry
 import com.przemas230.dietaapp.data.PlannedMeal
 import com.przemas230.dietaapp.data.Profile
 import com.przemas230.dietaapp.data.Recipe
+import com.przemas230.dietaapp.data.Snack
 import com.przemas230.dietaapp.logic.AppThemes
+import com.przemas230.dietaapp.logic.EatenOperations
 import com.przemas230.dietaapp.logic.MacroGrams
 import com.przemas230.dietaapp.logic.PlannerCategory
 import com.przemas230.dietaapp.logic.PlannerOperations
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.RecipeMatching
+import com.przemas230.dietaapp.logic.WaterOperations
 import com.przemas230.dietaapp.logic.WeekPlan
 import com.przemas230.dietaapp.logic.forCategory
 import com.przemas230.dietaapp.ui.theme.LocalDietaThemeId
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * FR-18/20/21/22/23/24: 7 day cards, each with the 5 meal-slot rows from
@@ -71,7 +91,24 @@ import java.time.LocalDate
  * version of this is FR-27, see ShoppingScreen.kt).
  */
 @Composable
-fun PlannerScreen(plannerViewModel: PlannerViewModel, profileViewModel: ProfileViewModel, shoppingViewModel: ShoppingViewModel) {
+fun PlannerScreen(
+    plannerViewModel: PlannerViewModel,
+    profileViewModel: ProfileViewModel,
+    shoppingViewModel: ShoppingViewModel,
+    // FR-87/v7: the rest of these params feed ONLY the Klinika-only
+    // PlannerDashboard below -- they're the exact same data/callbacks
+    // MainActivity's global-header HeaderKcalPanel used to receive
+    // directly (that panel no longer renders at all for Klinika, see
+    // MainActivity.kt's isClinicHeader gate), just routed here instead.
+    // The other 11 themes' DayCard/DayCardClinic loop below is completely
+    // unaffected either way.
+    eatenEntries: Map<String, EatenEntry> = emptyMap(),
+    snacks: List<Snack> = emptyList(),
+    displayName: String = "",
+    onToggleEaten: (cat: String, plannedKcal: Int?, plannedName: String?) -> Unit = { _, _, _ -> },
+    waterCount: Int = 0,
+    onSignOut: () -> Unit = {},
+) {
     val allRecipes by plannerViewModel.allRecipes.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
     val profile by profileViewModel.profile.collectAsState()
@@ -108,6 +145,22 @@ fun PlannerScreen(plannerViewModel: PlannerViewModel, profileViewModel: ProfileV
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (isClinic) {
+            item {
+                PlannerDashboard(
+                    displayName = displayName,
+                    kcalTarget = kcalTargets.daily,
+                    todayMeals = weekPlan[todayIndex].orEmpty(),
+                    recipesById = recipesById,
+                    eatenEntries = eatenEntries,
+                    snacks = snacks,
+                    waterCount = waterCount,
+                    todayIndex = todayIndex,
+                    onToggleEaten = onToggleEaten,
+                    onClearSlot = { cat -> plannerViewModel.clearSlot(todayIndex, cat) },
+                    onSlotClick = { cat -> slotPicker = todayIndex to cat },
+                    onSignOut = onSignOut,
+                )
+            }
             item {
                 DailyTargetBento(kcalTarget = kcalTargets.daily, macros = macroTargets.daily)
             }
@@ -342,6 +395,241 @@ private fun DayCard(
             }
         }
     }
+}
+
+/**
+ * FR-87/v7: Klinika-only dashboard at the top of the Planer tab -- port of
+ * index.html's renderPlannerDashboard() (same data shape: todaysPlannerMeals
+ * -equivalent map, EatenOperations, WaterOperations -- only the layout
+ * differs). Greeting/date/sign-out, a CEL/POZOSTAŁO(ring)/WODA card row (the
+ * ring replaces the kcal ring the global header used to show, see
+ * MainActivity.kt's isClinicHeader gate on HeaderKcalPanel), a decorative
+ * "today first, today highlighted" day strip (does NOT switch which day's
+ * meals show below -- confirmed with the user before building this, see
+ * FR-87.md v7), and "Dzisiejszy Planer" cards for today's 5 meal slots (tap
+ * toggles eaten same as the old header's swipe-to-eat rows, × clears the
+ * slot same as the picker dialog's "— brak / wyczyść —" row, empty slots
+ * are a dashed "+ [category]" placeholder opening that same picker).
+ */
+@Composable
+private fun PlannerDashboard(
+    displayName: String,
+    kcalTarget: Int,
+    todayMeals: Map<String, PlannedMeal>,
+    recipesById: Map<String, Recipe>,
+    eatenEntries: Map<String, EatenEntry>,
+    snacks: List<Snack>,
+    waterCount: Int,
+    todayIndex: Int,
+    onToggleEaten: (cat: String, plannedKcal: Int?, plannedName: String?) -> Unit,
+    onClearSlot: (cat: String) -> Unit,
+    onSlotClick: (cat: String) -> Unit,
+    onSignOut: () -> Unit,
+) {
+    val eatenKcal = EatenOperations.dailyEatenKcal(eatenEntries) + EatenOperations.snacksKcal(snacks)
+    val remaining = (kcalTarget - eatenKcal).coerceAtLeast(0)
+    val kcalPct = if (kcalTarget > 0) (eatenKcal.toFloat() / kcalTarget).coerceIn(0f, 1f) else 0f
+    val dateLabel = remember {
+        val raw = LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale("pl")))
+        raw.replaceFirstChar { it.uppercase() }
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top,
+        ) {
+            Column {
+                Text(dateLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    if (displayName.isNotBlank()) "Cześć, $displayName!" else "Cześć!",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            IconButton(onClick = onSignOut) {
+                Icon(Icons.Filled.Logout, contentDescription = "Wyloguj się z tego urządzenia")
+            }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            DashboardStatCard(label = "Cel", value = "$kcalTarget", unit = "kcal", modifier = Modifier.weight(1f))
+            Card(
+                modifier = Modifier.weight(1.5f),
+                shape = MaterialTheme.shapes.large,
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            ) {
+                Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp)) {
+                        CircularProgressIndicator(
+                            progress = { 1f },
+                            modifier = Modifier.fillMaxSize(),
+                            strokeWidth = 3.dp,
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                        )
+                        CircularProgressIndicator(
+                            progress = { kcalPct },
+                            modifier = Modifier.fillMaxSize(),
+                            strokeWidth = 3.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Text("$eatenKcal/$kcalTarget", style = MaterialTheme.typography.labelSmall, fontSize = 9.sp)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.medium)
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                    ) {
+                        Text(
+                            "POZOSTAŁO",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            "$remaining kcal",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            }
+            DashboardStatCard(
+                label = "Woda",
+                value = "$waterCount/${WaterOperations.MAX_LEVEL}",
+                unit = "szklanek",
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            for (i in 0 until 7) {
+                val di = (todayIndex + i) % 7
+                val isToday = i == 0
+                Box(
+                    modifier = Modifier
+                        .clip(MaterialTheme.shapes.medium)
+                        .background(MaterialTheme.colorScheme.surface)
+                        .then(
+                            if (isToday) {
+                                Modifier.border(1.5.dp, MaterialTheme.colorScheme.onSurface, MaterialTheme.shapes.medium)
+                            } else {
+                                Modifier
+                            },
+                        )
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        PlannerOperations.DAYS_PL[di].take(2),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isToday) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        Text("Dzisiejszy Planer", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.height(6.dp))
+        PlannerOperations.PLANNER_CATEGORIES.forEachIndexed { index, category ->
+            if (index > 0) Spacer(modifier = Modifier.height(6.dp))
+            val meal = todayMeals[category.id]
+            val recipe = meal?.let { recipesById[it.recipeId] }
+            if (recipe == null || meal == null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.large)
+                        .dashedBorder(MaterialTheme.colorScheme.outlineVariant, 16.dp)
+                        .clickable { onSlotClick(category.id) }
+                        .padding(vertical = 14.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        "+ ${category.label}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                val kcal = PlannerOperations.scaledKcal(recipe, meal.scale)
+                val eaten = EatenOperations.isEaten(eatenEntries, category.id)
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onToggleEaten(category.id, kcal, recipe.name) },
+                    shape = MaterialTheme.shapes.large,
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                ) {
+                    Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(category.emoji, fontSize = 18.sp)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                category.label.uppercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                recipe.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                textDecoration = if (eaten) TextDecoration.LineThrough else TextDecoration.None,
+                            )
+                        }
+                        Text(
+                            "$kcal kcal",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        IconButton(onClick = { onClearSlot(category.id) }, modifier = Modifier.size(32.dp)) {
+                            Text("✕", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardStatCard(label: String, value: String, unit: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.large,
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            Text(
+                label.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(unit, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** Dashed rounded-rect outline -- Modifier.border only draws solid lines, so the empty-slot placeholder (visually distinct "tap to add" affordance) needs its own draw pass. */
+private fun Modifier.dashedBorder(color: androidx.compose.ui.graphics.Color, cornerRadiusDp: androidx.compose.ui.unit.Dp) = this.drawWithContent {
+    drawContent()
+    drawRoundRect(
+        color = color,
+        style = Stroke(width = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 6f), 0f)),
+        cornerRadius = CornerRadius(cornerRadiusDp.toPx()),
+    )
 }
 
 /** FR-87: bento pasek celu dnia dla motywu "Klinika" -- poziome kafelki kcal/B/T/W. */

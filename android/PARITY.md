@@ -14,7 +14,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 |---|---|---|---|
 | FR-1 | Baza przepisów podzielona na 5 kategorii posiłków | ✅ (pigułki w tym samym pasku co reszta filtrów) | ✅ v2 (2026-08-11, zweryfikowane na emulatorze 2026-08-23): pigułki kategorii wydzielone do WŁASNEGO zwijanego panelu, niezależnego od nagłówka — świadoma rozbieżność z web, patrz uwagi niżej |
 | FR-2 | Wyszukiwanie i filtrowanie przepisów | ✅ (pełnowymiarowe pole wyszukiwania, próg oceny "★4+" jako "polubione") | ✅ v4/v5 (2026-08-11, zweryfikowane na emulatorze 2026-08-23): pole wyszukiwania zastąpione kompaktową ikoną "🔍" + dropdown; dodano dedykowany przełącznik "❤️ Podoba się" — świadoma rozbieżność z web, patrz uwagi niżej |
-| FR-3 | Karta przepisu — widok skrócony i rozwinięty | ✅ v8 (2026-08-23): rozwinięta karta nie zwija się już na ponowne dotknięcie (tylko rozwinięcie innej karty zwija poprzednią) | ✅ v9 (2026-08-23): to samo + świadome rozbieżności na życzenie: etykiety "Składniki"/"Przygotowanie" WIDOCZNE (web nie ma), miniaturka po prawej stronie karty (nie lewej) -- `RecipeListScreen.kt`'s `pendingCenterRecipeId` (v5, dwuetapowe otwieranie), typografia/gęstość dopasowana do weba (v7, patrz uwagi niżej) |
+| FR-3 | Karta przepisu — widok skrócony i rozwinięty | ✅ v10 (2026-08-23): jedno stuknięcie od razu rozwija kartę (dwuetapowe centruj-potem-rozwiń z v4 usunięte); ochrona przed przypadkowym rozwinięciem podczas przewijania (`startScrollY`/`scrollMoved`) bez zmian | ✅ v10 (2026-08-23), zweryfikowane na emulatorze: to samo -- `pendingCenterRecipeId` usunięty z `RecipeListScreen.kt`, `onToggleExpanded` uproszczony do dwóch gałęzi; NOWY scroll-guard (porównanie `LazyListState` pozycji na down/up, `RecipeCard`'s dodatkowy `pointerInput`) -- wcześniej Android nie miał ŻADNEJ ochrony przed tym konkretnym przypadkiem (dotąd polegał wyłącznie na wbudowanym touch-slop Compose), teraz dogoniony do parytetu z web. Pozostałe świadome rozbieżności bez zmian: etykiety "Składniki"/"Przygotowanie" WIDOCZNE (web nie ma), miniaturka po prawej stronie karty (nie lewej), typografia/gęstość dopasowana do weba (v7, patrz uwagi niżej) |
 | FR-4 | Miniatura przepisu jako emoji głównego składnika | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-5 | Przycisk powrotu do góry listy przepisów | ✅ | ✅ v2 (2026-08-23): naprawiony -- kolidował z innymi pływającymi przyciskami w tym samym rogu, całkowicie niewidoczny; przeniesiony w przeciwny róg, zweryfikowany na emulatorze |
 | FR-6 | Profil użytkownika i wyliczanie zapotrzebowania kalorycznego | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
@@ -98,9 +98,77 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-81 | Propozycja przeliczenia planu i listy zakupów po zapisaniu profilu | ✅ | ✅ zaimplementowane 2026-08-11 tego samego dnia co web, zweryfikowane na żywo na emulatorze (patrz uwagi niżej) |
 | FR-82 | Widoczna wersja aplikacji w Ustawieniach | ✅ | ✅ Android miał to już od wcześniej (`AppUpdateCard`'s „Zainstalowana wersja: X”) — FR dopisany 2026-08-11 tylko formalnie, bez zmian w Kotlinie |
 | FR-83 | Edycja wcześniej wpisanej wagi i historii kalorii | ✅ (waga) / ✅ (historia kalorii) | ✅ waga (edycja+usuwanie inline, zweryfikowane na emulatorze) / ✅ historia kalorii doportowana i zweryfikowana na emulatorze 2026-08-23 (przebudowa `EatenViewModel`/`EatenEntry` na `EatenDay` per-data, patrz uwagi FR-83.md i notatka niżej) |
-| FR-87 | Motyw „Klinika” — czcionka i układ, nie tylko kolory | ✅ v6 (2026-08-23): naprawiony realny błąd kontrastu — pierścień kalorii/wody w nagłówku był niemal niewidoczny na jasnym tle (patrz uwagi niżej) | ✅ v6 (2026-08-23): ten sam błąd kontrastu naprawiony -- `clinicRingTrack` w `HeaderKcalPanel` (`MainActivity.kt`) (patrz uwagi niżej) |
+| FR-87 | Motyw „Klinika” — czcionka i układ, nie tylko kolory | ✅ v7 (2026-08-23): nowy dashboard na górze zakładki Planer -- powitanie/data/wylogowanie, karty CEL/pierścień+POZOSTAŁO/WODA, dekoracyjny pasek 7 dni (dziś pierwsze+wyróżnione), "Dzisiejszy Planer" (× usuwa slot, placeholder + dla pustych); stary pierścień kcal/wody USUNIĘTY z globalnego nagłówka dla tego motywu (patrz uwagi niżej) | ✅ v7 (2026-08-23), zweryfikowane na emulatorze (jasny + noc): to samo -- nowy `PlannerDashboard` w `PlannerScreen.kt`, `HeaderKcalPanel`/`.header-collapsible`-odpowiednik w `MainActivity.kt` już się NIE renderuje dla `isClinicFamily` (dane/callbacki przekazane zamiast tego do `PlannerScreen`) (patrz uwagi niżej) |
+| FR-88 | Planer jako pierwsza zakładka nawigacji | ✅ v1 (2026-08-23): `nav.bottom` przeorganizowany, Planer domyślnym widokiem startowym | ✅ v1 (2026-08-23), zweryfikowane na emulatorze (wszystkie motywy): `BOTTOM_NAV_SCREENS` przeorganizowana (`Screen.kt`), `startDestination = Screen.Planner.route` (`MainActivity.kt`) |
 
 ## Uwagi do częściowych wpisów
+
+- **FR-88/v1 + FR-87/v7 + FR-3/v10 — Planer jako dashboard startowy, nowy
+  pierścień kcal, jednoetapowe rozwijanie karty (2026-08-23, Web + Android)**:
+  trzy powiązane zmiany UX w jednej turze, ustalone przez serię
+  AskUserQuestion (rozdzielenie kolejności nawigacji od zawartości
+  dashboardu; zakres paska dni; los pełnej listy 7 dni) przed kodowaniem.
+  (1) **FR-88**: Planer przeniesiony na początek dolnej nawigacji --
+  GLOBALNIE, wszystkie 13 motywów (jedna wspólna lista/nav, nie osobna per
+  motyw), i jako domyślny ekran startowy. Web: `nav.bottom` reorder +
+  3 twardo wpisane fallbacki `"recipes"`→`"planner"` w routingu historii.
+  Android: `Screen.Planner` na początek `BOTTOM_NAV_SCREENS`
+  (`ui/navigation/Screen.kt`), `startDestination` w `MainActivity.kt`.
+  (2) **FR-87/v7**: nowy dashboard na górze zakładki Planer, TYLKO dla
+  Klinika/Klinika (noc) (pozostałych 11 motywów Planer wygląda identycznie
+  jak przed tą zmianą, tylko jako pierwsza zakładka) -- powitanie
+  ("Cześć, {imię}") + data + wylogowanie (ikona, lekki confirm dialog),
+  rząd trzech kart CEL / cienki pierścień „zjedzone/cel” + sage prostokąt
+  „POZOSTAŁO” (zastępuje stary podwójny pierścień kcal+woda z globalnego
+  nagłówka -- ten nagłówek już się w ogóle NIE renderuje dla Klinika,
+  `MainActivity.kt`'s `isClinicHeader` gate na `HeaderWaterRow`/
+  `HeaderKcalPanel`) / WODA, dekoracyjny pasek 7 dni (dziś PIERWSZE w
+  kolejności + wyróżnione ciemniejszą ramką -- świadomie NIE przełącza,
+  który dzień pokazuje sekcja poniżej, ustalone z użytkownikiem), sekcja
+  „Dzisiejszy Planer” (karty dzisiejszych posiłków, × czyści slot --
+  bezpośrednio `plannerViewModel.clearSlot(day, cat)`, ten sam call co
+  `PlannerSlotDialog`'s "brak/wyczyść" -- przerywany placeholder
+  „+ [kategoria]” dla pustych slotów, otwiera ten sam `PlannerSlotDialog`
+  co reszta). Istniejący `DailyTargetBento`/`DayCardClinic`/pełna lista 7
+  dni zostają DOSŁOWNIE bez zmian, tylko renderowane niżej pod nowym
+  dashboardem -- świadoma decyzja (potwierdzona z użytkownikiem), żeby nie
+  usuwać istniejącej możliwości edycji dowolnego dnia. Android: nowy
+  `PlannerDashboard`/`DashboardStatCard`/`dashedBorder` w `PlannerScreen.kt`
+  (Material `CircularProgressIndicator` dla pierścienia, `drawWithContent`+
+  `PathEffect.dashPathEffect` dla przerywanej ramki placeholdera --
+  `Modifier.border` nie wspiera linii przerywanych natywnie). (3) **FR-3/
+  v10**: karty przepisów rozwijają się teraz JEDNYM stuknięciem zamiast
+  dawnego dwuetapowego "klik centruje → klik rozwija" (v4-v9) -- uznane za
+  zbędne tarcie. Kluczowe ustalenie z researchu: ochrona przed przypadkowym
+  rozwinięciem podczas przewijania to od zawsze OSOBNY mechanizm od
+  dwuetapowości, nie ta sama rzecz -- web już miał go (`startScrollY`/
+  `scrollMoved` w `attachSwipeRating()`'s `finish()`, `index.html`),
+  Android NIE miał go wcale (dotąd polegał wyłącznie na wbudowanym
+  touch-slop Compose). Web: `handleCardTap()` uproszczony, `pendingCenterCard`
+  usunięty, `wasTap`/`scrollMoved` bez zmian. Android: `pendingCenterRecipeId`
+  i jego `LaunchedEffect` usunięte z `RecipeListScreen.kt`, `onToggleExpanded`
+  uproszczony do dwóch gałęzi; NOWY scroll-guard dodany -- osobny
+  `Modifier.pointerInput` (`awaitEachGesture`/`awaitFirstDown`, nie
+  konsumujący) zapisujący `listState.firstVisibleItemIndex`/
+  `firstVisibleItemScrollOffset` na dotknięciu, porównywany z aktualną
+  pozycją wewnątrz `.clickable`'s `onClick` (próg 3dp, port web'owego
+  3px) -- koegzystuje z istniejącym `detectHorizontalDragGestures`
+  (swipe-to-rate) i `.clickable` (ripple/accessibility) bez zmian w tamtych.
+  `./gradlew :app:compileDebugKotlin :app:assembleDebug :logic:test`
+  przechodzi. **Zweryfikowane bezpośrednio na emulatorze
+  (Medium_Phone_API_35)**: dashboard Klinika (jasny I ciemny wariant,
+  zrzuty ekranu) -- powitanie/data/pierścień/karty/pasek dni/dzisiejsze
+  posiłki poprawne; toggle zjedzone (ring+POZOSTAŁO aktualizują się na
+  żywo, przekreślenie nazwy dania), × usuwa TYLKO dzisiejszy slot (dzień
+  Poniedziałek w pełnej liście niżej nietknięty), pusty placeholder otwiera
+  picker, ikona wylogowania pokazuje confirm dialog (anulowany, nie
+  wylogowano); pozostałe motywy (sprawdzone na motywie domyślnym Zielony)
+  -- Planer pierwszą zakładką, ale WYGLĄD identyczny jak przed zmianą (stary
+  `DayCard`/„Razem: X kcal”, brak dashboardu); karty przepisów -- pojedyncze
+  stuknięcie od razu rozwija (potwierdzone też, że dotknięcie samego
+  podkreślonego TYTUŁU otwiera wyszukiwarkę Google w nowej karcie -- to
+  ISTNIEJĄCA, niezwiązana funkcja na obu platformach, nie regresja), szybkie
+  przewinięcie listy nie rozwinęło żadnej karty przypadkowo.
 
 - **FR-3/v8-v9 + FR-16/v5 + FR-5/v2 + FR-87/v6 + FR-28/v5 — runda drobnych
   poprawek UX na wyraźną prośbę użytkownika (2026-08-23, Web + Android)**:

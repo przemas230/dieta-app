@@ -14,8 +14,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -773,21 +776,6 @@ private fun RecipeListWithScrollToTop(
     // open. Also lives outside the per-item composable so it survives that
     // item scrolling out of the LazyColumn's composition window and back.
     var expandedRecipeId by remember { mutableStateOf<String?>(null) }
-    // FR-3/v4: two-step open, mirrors index.html's pendingCenterCard -- a
-    // first tap on a collapsed card only arms/centers it (this), a second
-    // tap on that SAME still-armed card actually expands it (above). Tapping
-    // a DIFFERENT card resets this to the new card instead of continuing the
-    // old one -- see the click handler in itemsIndexed below.
-    var pendingCenterRecipeId by remember { mutableStateOf<String?>(null) }
-    // FR-3/v4: first tap only centers the still-collapsed card -- no layout
-    // growth to wait out (nothing is expanding yet), unlike the second tap's
-    // effect below.
-    LaunchedEffect(pendingCenterRecipeId) {
-        val id = pendingCenterRecipeId ?: return@LaunchedEffect
-        val itemInfo = listState.layoutInfo.visibleItemsInfo.find { it.key == id } ?: return@LaunchedEffect
-        val delta = centerOrTopAlignScrollDelta(itemInfo, listState.layoutInfo.viewportSize.height)
-        if (reducedMotion) listState.scrollBy(delta) else listState.animateScrollBy(delta)
-    }
     // FR-3/v3+v4: auto-centers (or top-aligns if now taller than the
     // viewport -- see centerOrTopAlignScrollDelta) the just-expanded card,
     // since the card's collapsible body isn't behind an AnimatedVisibility/
@@ -873,29 +861,24 @@ private fun RecipeListWithScrollToTop(
                     isFavorite = recipe.id in favoriteRecipeIds,
                     onToggleFavorite = { onToggleFavoriteRecipe(recipe.id) },
                     isExpanded = recipe.id == expandedRecipeId,
-                    // FR-3/v4: two-step open -- see pendingCenterRecipeId's
-                    // doc comment above for the full state machine.
+                    // FR-3/v10: single tap expands immediately (v4-v9's
+                    // two-step center-then-expand was dropped as unnecessary
+                    // friction -- protection against a tap that's really the
+                    // tail end of a list fling now lives in RecipeCard's own
+                    // scroll-position-at-down-vs-up guard, see there).
                     onToggleExpanded = {
-                        when (recipe.id) {
-                            // On explicit user request, tapping an ALREADY-expanded
-                            // card no longer collapses it (used to be a single
-                            // immediate tap) -- "uciążliwe w używaniu" (a stray tap
-                            // while reading the open card would close it). The only
-                            // way to collapse a card now is to expand a different
-                            // one (below auto-collapses whichever was open, per
-                            // FR-3's "only one expanded at a time").
-                            expandedRecipeId -> { /* no-op */ }
-                            pendingCenterRecipeId -> {
-                                // Second tap on the same, already-centered card -- expand it.
-                                pendingCenterRecipeId = null
-                                expandedRecipeId = recipe.id
-                            }
-                            else -> {
-                                // First tap (or a tap on a DIFFERENT card than whichever was armed) -- just arm/center it.
-                                pendingCenterRecipeId = recipe.id
-                            }
+                        // On explicit user request, tapping an ALREADY-expanded
+                        // card no longer collapses it (used to be a single
+                        // immediate tap) -- "uciążliwe w używaniu" (a stray tap
+                        // while reading the open card would close it). The only
+                        // way to collapse a card now is to expand a different
+                        // one (auto-collapses whichever was open, per FR-3's
+                        // "only one expanded at a time").
+                        if (recipe.id != expandedRecipeId) {
+                            expandedRecipeId = recipe.id
                         }
                     },
+                    listState = listState,
                     commentsViewModel = commentsViewModel,
                 )
             }
@@ -970,6 +953,7 @@ private fun RecipeCard(
     onToggleFavorite: () -> Unit,
     isExpanded: Boolean,
     onToggleExpanded: () -> Unit,
+    listState: LazyListState,
     commentsViewModel: RecipeCommentsViewModel,
 ) {
     val expanded = isExpanded
@@ -991,6 +975,17 @@ private fun RecipeCard(
     val offsetX = remember { Animatable(0f) }
     val swipeCoroutineScope = rememberCoroutineScope()
     val swipeThresholdPx = with(LocalDensity.current) { 90.dp.toPx() }
+    // FR-3/v10: port of index.html's startScrollY/scrollMoved (attachSwipeRating's
+    // finish()) -- a touch used to stop a still-flinging list can register as a
+    // legitimate tap by Compose's own touch-slop rules (the finger barely moved),
+    // which used to expand the card and make the screen visibly "jump". Recording
+    // the list's scroll position on down and comparing it to the position at click
+    // time (below) catches that case even when the touch itself looks stationary.
+    // Passive observer only (never consumes), so it doesn't interfere with the
+    // existing horizontal drag detector or .clickable's own gesture handling.
+    var scrollBaselineIndex by remember { mutableStateOf(0) }
+    var scrollBaselineOffset by remember { mutableStateOf(0) }
+    val scrollMovedThresholdPx = with(LocalDensity.current) { 3.dp.toPx() }
     // 2026-08-11: the persistent border tint now reflects the unified
     // review's stars (>=4 "liked", <=2 "disliked", 3 or unrated neutral)
     // instead of the old separate like/dislike flag -- see setRatingQuick.
@@ -1041,6 +1036,13 @@ private fun RecipeCard(
                 .rotate(rotation)
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
                 .border(2.dp, dragBorderColor, cardShape)
+                .pointerInput(recipe.id, listState) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        scrollBaselineIndex = listState.firstVisibleItemIndex
+                        scrollBaselineOffset = listState.firstVisibleItemScrollOffset
+                    }
+                }
                 .pointerInput(recipe.id) {
                     detectHorizontalDragGestures(
                         onDragEnd = {
@@ -1059,7 +1061,11 @@ private fun RecipeCard(
                         swipeCoroutineScope.launch { offsetX.snapTo(offsetX.value + dragAmount) }
                     }
                 }
-                .clickable { onToggleExpanded() },
+                .clickable {
+                    val scrollMoved = listState.firstVisibleItemIndex != scrollBaselineIndex ||
+                        abs(listState.firstVisibleItemScrollOffset - scrollBaselineOffset) > scrollMovedThresholdPx
+                    if (!scrollMoved) onToggleExpanded()
+                },
         ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
             if (themeId == "metro") {

@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -404,7 +405,17 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
 
     val eatenEntries by eatenViewModel.entries.collectAsState()
     val snacks by eatenViewModel.snacks.collectAsState()
+    // FR-87/v7: fed straight into PlannerScreen's Klinika-only dashboard
+    // below (WODA card) -- HeaderKcalPanel already collects its own copy
+    // for the other 11 themes, this is the same StateFlow, just also
+    // needed one level up now that Klinika reads it outside that panel.
+    val plannerDashboardWaterCount by waterViewModel.count.collectAsState()
     var showQuickAddDialog by remember { mutableStateOf(false) }
+    // FR-87/v7: the Klinika Planer dashboard's icon-only sign-out button
+    // gets its own lightweight confirm (not the full Ustawienia flow with
+    // the second "clear local data too?" step -- that stays reachable via
+    // Ustawienia for anyone who needs it, this is just the quick-tap guard).
+    var showDashboardSignOutConfirm by remember { mutableStateOf(false) }
     // FR-32/v2: floating "💡" on Przepisy -- see FavoriteDishIdeaDialog.
     var showFavoriteDishIdeaDialog by remember { mutableStateOf(false) }
     val favIngredientsForIdea by favoriteIngredientsViewModel.favorites.collectAsState()
@@ -487,11 +498,18 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("Dieta App")
-                                Text(
-                                    if (headerExpanded) "⌃" else "⌄",
-                                    modifier = Modifier.padding(start = 4.dp),
-                                    style = MaterialTheme.typography.labelSmall,
-                                )
+                                // FR-87/v7: nothing left to collapse/expand for Klinika --
+                                // the ring/meal-list this chevron used to toggle moved to
+                                // the Planer dashboard (see the gated HeaderKcalPanel call
+                                // below), so the chevron itself is dropped too, matching
+                                // web's .header-chevron{display:none} for this theme family.
+                                if (!isClinicHeader) {
+                                    Text(
+                                        if (headerExpanded) "⌃" else "⌄",
+                                        modifier = Modifier.padding(start = 4.dp),
+                                        style = MaterialTheme.typography.labelSmall,
+                                    )
+                                }
                             }
                             val namePrefix = if (displayName.isNotBlank()) "$displayName · " else ""
                             val subtitle = if (!profile.configured) {
@@ -552,20 +570,28 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                         }
                     },
                 )
-                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
-                    HeaderWaterRow(waterViewModel)
-                    if (headerExpanded) {
-                        HeaderKcalPanel(
-                            targetKcal = kcalTargets.daily,
-                            kcalTargets = kcalTargets,
-                            todayMeals = todayMeals,
-                            recipesById = recipesById,
-                            eatenEntries = eatenEntries,
-                            snacks = snacks,
-                            waterViewModel = waterViewModel,
-                            onToggleEaten = { cat, kcal, name -> eatenViewModel.toggle(cat, kcal, name) },
-                            onRemoveSnack = { id -> eatenViewModel.removeSnack(id) },
-                        )
+                // FR-87/v7: this whole panel (ring + today's meal list + snacks)
+                // moved into a new dashboard at the top of the Planer tab for
+                // Klinika/Klinika (noc) -- see PlannerScreen's clinicDashboard
+                // param below, fed the exact same todayMeals/eatenEntries/snacks/
+                // waterViewModel/callbacks this used to render directly. The
+                // other 11 themes keep this global header panel unchanged.
+                if (!isClinicHeader) {
+                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                        HeaderWaterRow(waterViewModel)
+                        if (headerExpanded) {
+                            HeaderKcalPanel(
+                                targetKcal = kcalTargets.daily,
+                                kcalTargets = kcalTargets,
+                                todayMeals = todayMeals,
+                                recipesById = recipesById,
+                                eatenEntries = eatenEntries,
+                                snacks = snacks,
+                                waterViewModel = waterViewModel,
+                                onToggleEaten = { cat, kcal, name -> eatenViewModel.toggle(cat, kcal, name) },
+                                onRemoveSnack = { id -> eatenViewModel.removeSnack(id) },
+                            )
+                        }
                     }
                 }
             }
@@ -633,7 +659,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Recipes.route,
+            startDestination = Screen.Planner.route,
             modifier = Modifier.padding(padding),
         ) {
             composable(Screen.Recipes.route) {
@@ -661,6 +687,12 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     plannerViewModel = plannerViewModel,
                     profileViewModel = profileViewModel,
                     shoppingViewModel = shoppingViewModel,
+                    eatenEntries = eatenEntries,
+                    snacks = snacks,
+                    displayName = displayName,
+                    onToggleEaten = { cat, kcal, name -> eatenViewModel.toggle(cat, kcal, name) },
+                    waterCount = plannerDashboardWaterCount,
+                    onSignOut = { showDashboardSignOutConfirm = true },
                 )
             }
             composable(Screen.Progress.route) {
@@ -751,6 +783,22 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
         FavoriteDishIdeaDialog(
             favIngredients = favIngredientsForIdea,
             onDismiss = { showFavoriteDishIdeaDialog = false },
+        )
+    }
+    if (showDashboardSignOutConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDashboardSignOutConfirm = false },
+            title = { Text("Wylogować się z tego urządzenia?") },
+            text = { Text("Synchronizacja z chmurą zostanie zatrzymana, dopóki nie zalogujesz się ponownie.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDashboardSignOutConfirm = false
+                    authViewModel.signOut()
+                }) { Text("Wyloguj") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDashboardSignOutConfirm = false }) { Text("Anuluj") }
+            },
         )
     }
 }
