@@ -9,6 +9,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -54,6 +55,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -72,6 +74,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -1075,19 +1078,10 @@ private fun RecipeCard(
                         isFavorite = isFavorite,
                         onToggleFavorite = onToggleFavorite,
                         commentsViewModel = commentsViewModel,
+                        isAddedToShopping = isAddedToShopping,
+                        onToggleAddToShopping = onToggleAddToShopping,
                     )
                 }
-            }
-            // FR-25: whole-recipe add/remove toggle, mirrors index.html's
-            // data-add button ("🛒 Dodaj..." / "✓ Na liście zakupów").
-            TextButton(
-                onClick = onToggleAddToShopping,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 38.dp)
-                    .padding(horizontal = 10.dp),
-            ) {
-                Text(if (isAddedToShopping) "✓ Na liście zakupów" else "🛒 Dodaj do listy zakupów")
             }
             // FR-15: always visible (not gated by `expanded`), same as
             // index.html's always-shown card-actions bar. Tapping this never
@@ -1299,6 +1293,8 @@ private fun RecipeCardBody(
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
     commentsViewModel: RecipeCommentsViewModel,
+    isAddedToShopping: Boolean,
+    onToggleAddToShopping: () -> Unit,
 ) {
     val context = LocalContext.current
     Column {
@@ -1365,18 +1361,6 @@ private fun RecipeCardBody(
                 }
             }
             Spacer(modifier = Modifier.height(6.dp))
-            // FR-16: full button styling (border + filled background), not
-            // bare text, per the revised acceptance criteria in FR-16.md.
-            OutlinedButton(
-                onClick = onPantryCheckClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 38.dp),
-                colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            ) {
-                Text("🏺 Sprawdź stan spiżarni dla tego dania")
-            }
-            Spacer(modifier = Modifier.height(6.dp))
             Text("Składniki", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
             recipe.ingredients.forEach { ingredient ->
                 // FR-35: emoji suffix when the ingredient resolves to a known canon -- port of index.html's withEmoji.
@@ -1429,6 +1413,62 @@ private fun RecipeCardBody(
             }
             Spacer(modifier = Modifier.height(6.dp))
             RecipeCommentsSection(recipeId = recipe.id, viewModel = commentsViewModel)
+            // FR-16/v4: inline coverage summary (count + shaded progress bar)
+            // instead of a plain trigger button, so the user sees what's
+            // missing at a glance without tapping -- moved to the bottom of
+            // the card on explicit user request. Still opens the same detail
+            // dialog (PantryCheckDialog) on tap for the per-ingredient
+            // "Mam to" actions -- port of index.html's .pantry-status-btn.
+            val pantryTotal = recipe.ingredients.size
+            val pantryHave = remember(recipe.id, pantryItems) {
+                recipe.ingredients.count { ing -> pantryItems.containsKey(RecipePantryMatching.parseIngredient(ing).canonName) }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Card(
+                onClick = onPantryCheckClick,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(modifier = Modifier.padding(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("🏺 Stan spiżarni", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            "$pantryHave / $pantryTotal składników",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    LinearProgressIndicator(
+                        progress = { if (pantryTotal > 0) pantryHave.toFloat() / pantryTotal else 0f },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            // FR-25: whole-recipe add/remove toggle, mirrors index.html's
+            // data-add button ("🛒 Dodaj..." / "✓ Na liście zakupów") --
+            // moved here (only visible once expanded) on explicit user
+            // request: it used to sit always-visible right under the title,
+            // where it was easy to hit by accident while trying to expand
+            // the card, since the tap-to-expand target covers the same area.
+            TextButton(
+                onClick = onToggleAddToShopping,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 38.dp),
+            ) {
+                Text(if (isAddedToShopping) "✓ Na liście zakupów" else "🛒 Dodaj do listy zakupów")
+            }
             // FR-66: only a custom (user-added) recipe can be deleted this way.
             if (recipe.source == "custom") {
                 Spacer(modifier = Modifier.height(6.dp))

@@ -872,6 +872,22 @@
     font-size:12.5px; font-weight:700; color:var(--teal-dark); cursor:pointer;
   }
   .pantry-check-btn:active{ transform:scale(.98); }
+  /* Inline pantry-coverage summary, replacing the old plain-text trigger
+     button -- shows what's already covered at a glance (count + shaded
+     progress bar) instead of requiring a tap to find out. Still opens the
+     same detail modal (openPantryModal) on tap; moved to the bottom of the
+     expanded card on explicit user request. */
+  .pantry-status-btn{
+    display:block; width:100%; text-align:left; border:1px solid var(--line);
+    background:var(--card); border-radius:11px; padding:9px 10px; margin:10px 0 0;
+    cursor:pointer; font:inherit; color:inherit;
+  }
+  .pantry-status-btn:active{ transform:scale(.98); }
+  .pantry-status-head{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:6px; font-size:12.5px; font-weight:700;
+  }
+  .pantry-status-count{font-weight:600; color:var(--muted); font-size:11.5px;}
   .recipe-comments-section{margin-top:10px; padding-top:10px; border-top:1px solid var(--line);}
   .comments-toggle-btn{
     display:flex; align-items:center; justify-content:space-between; width:100%;
@@ -1088,7 +1104,7 @@
   .method{font-size:13px; color:var(--muted); line-height:1.5; margin:0 0 12px;}
   .card-actions{display:flex; gap:8px; flex-wrap:wrap;}
   .add-btn{
-    flex:1 1 auto; min-width:0; border:none; border-radius:11px; padding:10px 8px; font-size:13px;
+    display:block; width:100%; min-width:0; margin-top:8px; border:none; border-radius:11px; padding:10px 8px; font-size:13px;
     font-weight:700; cursor:pointer; background:var(--teal-pale); color:var(--teal-dark);
     transition:transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
   }
@@ -4882,6 +4898,9 @@ function recipeCard(r, onChange, opts={}){
     : "";
   const review = state.recipeReviews[r.id];
   const reviewLabel = review ? `⭐ Oceń i skomentuj (Twoja ocena: ${review.stars}/5)` : "⭐ Oceń i skomentuj";
+  const pantryHave = r.ingredients.filter(i=>pantryMatch(i)).length;
+  const pantryTotal = r.ingredients.length;
+  const pantryPct = pantryTotal ? Math.round(pantryHave / pantryTotal * 100) : 0;
   card.innerHTML = `
     <div class="card-head">
       <h3 class="recipe-title" data-search="${r.name}">${r.name}</h3>
@@ -4895,7 +4914,6 @@ function recipeCard(r, onChange, opts={}){
     ${expandable ? `<button type="button" class="expand-toggle" data-expand-toggle><span>Składniki i przygotowanie</span><span class="expand-chevron">⌄</span></button>` : ""}
     <div class="card-collapsible-body"><div class="card-collapsible-inner">
       ${macroLine}
-      <button type="button" class="pantry-check-btn" data-pantry-check>🏺 Sprawdź stan spiżarni dla tego dania</button>
       <ul class="ingredients">${r.ingredients.map(i=>{
         const canon = pantryCanon(coreName(i));
         const f = !!state.favIngredients[canon];
@@ -4914,9 +4932,13 @@ function recipeCard(r, onChange, opts={}){
           <button type="button" class="btn ghost comments-more-btn" data-comments-more style="display:none;">Pokaż więcej</button>
         </div>
       </div>
+      <button type="button" class="pantry-status-btn" data-pantry-check>
+        <div class="pantry-status-head"><span>🏺 Stan spiżarni</span><span class="pantry-status-count">${pantryHave} / ${pantryTotal} składników</span></div>
+        <div class="weight-bar-track"><div class="weight-bar-fill" style="width:${pantryPct}%"></div></div>
+      </button>
+      <button class="add-btn ${added?'on':''}" data-add="${r.id}">${added?'✓ Na liście zakupów':'🛒 Dodaj do listy zakupów'}</button>
     </div></div>
     <div class="card-actions">
-      <button class="add-btn ${added?'on':''}" data-add="${r.id}">${added?'✓ Na liście zakupów':'🛒 Dodaj do listy zakupów'}</button>
       <button class="plan-btn" data-cook="${r.id}" title="Otwiera historię gotowania — stąd oznaczysz dzisiejsze wykonanie i ocenisz danie" style="-webkit-user-select:none; user-select:none; touch-action:manipulation;">✅ Zrobione${cookEntries.length?` (${cookEntries.length}×)`:""}</button>
       <button class="plan-btn" data-schedule="${r.id}">📅 Zaplanuj</button>
       ${r.source==="custom" ? `<button class="plan-btn" data-delete-recipe="${r.id}" title="Usuń swój przepis">🗑️ Usuń</button>` : ""}

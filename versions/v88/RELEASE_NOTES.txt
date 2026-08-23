@@ -1,0 +1,25 @@
+Web + Android v88 — redesign dolnej części karty przepisu (FR-3/v6, FR-16/v4)
+
+Na wyraźną prośbę użytkownika, trzy powiązane zmiany na karcie przepisu:
+
+1. "Sprawdź stan spiżarni" przestał być zwykłym przyciskiem-wyzwalaczem na
+   górze rozwiniętej karty — zastąpiony inline'owym widżetem pokazującym
+   od razu (bez dodatkowego stuknięcia) licznik "X / Y składników" i pasek
+   postępu (wypełnienie w kolorze akcentu na przygaszonym tle innego
+   odcienia). Widżet przeniesiony na sam dół rozwiniętej karty. Stuknięcie
+   w widżet nadal otwiera dokładnie to samo okienko szczegółowe z
+   przyciskami "Mam to" przy każdym składniku — bez zmian w jego działaniu.
+
+2. "Dodaj do listy zakupów" — dotąd zawsze widoczny nawet na zwiniętej
+   karcie, przez co dało się go przypadkowo trafić próbując rozwinąć
+   kartę — przeniesiony w to samo miejsce co widżet spiżarni: widoczny
+   wyłącznie po rozwinięciu karty. "Zrobione"/"Zaplanuj"/"Usuń" bez zmian.
+
+3. Web zaimplementowany jako pierwszy (wzorcowy wygląd karty), Android
+   doportowany 1:1 w tej samej turze — oba platformy zweryfikowane na
+   żywo (przeglądarka + emulator): zwinięta karta bez przycisku zakupów,
+   rozwinięcie odsłania oba elementy na dole, licznik/pasek aktualizują
+   się natychmiast po oznaczeniu składnika w okienku szczegółowym.
+
+CACHE_NAME podniesiony na dieta-app-v88 (FR-52/v2's zasada), backup
+pre-edit w versions/v88/ (zrobiony przed edycją, zgodnie z procesem).

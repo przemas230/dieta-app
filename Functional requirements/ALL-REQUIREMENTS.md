@@ -242,7 +242,7 @@ Filtr progu oceny pokazuje wyłącznie przepisy, których ocena gwiazdkowa (⭐ 
 Każdy przepis wyświetlany jest jako karta z nazwą, czasem przygotowania, kalorycznością i skrótowymi znacznikami (np. podwyższony IG, dopasowanie do celu). Domyślnie karta jest zwinięta. Rozwijanie jest dwuetapowe: pierwsze stuknięcie w zwiniętą kartę WYŁĄCZNIE przewija ją do widoku (wyśrodkowuje), nie rozwijając jej jeszcze — dopiero drugie stuknięcie tej samej, już wyśrodkowanej karty faktycznie rozwija pełną listę składników, sposób przygotowania i przyciski akcji (i ponownie ją pozycjonuje). Zwinięcie rozwiniętej karty z powrotem nadal działa jednym, natychmiastowym stuknięciem — dwuetapowość dotyczy wyłącznie otwierania.
 
 ## Kryteria akceptacji
-- Karta w stanie zwiniętym pokazuje tylko nagłówek i podstawowe metadane.
+- Karta w stanie zwiniętym pokazuje tylko nagłówek i podstawowe metadane — WYŁĄCZNIE przyciski „✅ Zrobione” i „📅 Zaplanuj” (i „🗑️ Usuń” dla własnych przepisów) są widoczne od razu; przycisk „🛒 Dodaj do listy zakupów” pojawia się dopiero po rozwinięciu karty (patrz v6).
 - Rozwinięcie karty odbywa się WYŁĄCZNIE przez wyraźne, stacjonarne stuknięcie — nie przez przypadkowe zatrzymanie przewijania listy (patrz historia rewizji poniżej i FR-44).
 - Pierwsze stuknięcie zwiniętej karty przewija ją do widoku, ale jej NIE rozwija. Drugie stuknięcie tej samej karty (bez stuknięcia innej karty pomiędzy) rozwija ją. Stuknięcie innej, zwiniętej karty pomiędzy tymi dwoma stuknięciami traktuje TĘ nową kartę jako pierwsze stuknięcie (nie rozwija poprzednio dotykanej).
 - Tylko jedna karta na liście może być rozwinięta jednocześnie.
@@ -257,8 +257,7 @@ Zrewidowane w rundzie z 2026-08-03: pierwotna wersja pozwalała, by dotknięcie 
 - **v3** (2026-08-08): Dodano automatyczne wyśrodkowywanie rozwiniętej karty na ekranie, na życzenie użytkownika ("karta z przepisem na którą klikniemy [powinna] wyśrodkowywać się na ekranie... użytkownik nie musi sam jej przesuwać").
 - **v4** (2026-08-11): Rozbito otwieranie na dwa etapy, na wyraźną prośbę użytkownika ("zmień żeby wysrodkowywalo kafelek dopiero po kliknięciu na niego a dopiero po drugim kliknięciu żeby go rozwijało i wysrodkowywalo albo jak się nie mieści na ekranie to żeby był wyświetlony od góry") — pierwsze stuknięcie tylko centruje, drugie rozwija; dodano też wariant "wyrównaj do góry" dla kart wyższych niż ekran, zamiast zawsze centrować (co ucinałoby górę zbyt wysokiej karty). Zamknięcie nadal jednym stuknięciem. Zaimplementowane na web w tej rundzie; port na Android odłożony (patrz `android/PARITY.md`).
 - **v5** (2026-08-23, Android): v4 doportowane na Android, na życzenie użytkownika ("zacznij ... fr-3"). `RecipeListScreen.kt`'s nowy `pendingCenterRecipeId` (port web'owego `pendingCenterCard`) — pierwsze stuknięcie zwiniętej karty ją centruje bez rozwijania, drugie stuknięcie TEJ SAMEJ karty rozwija; stuknięcie innej karty pomiędzy resetuje na nową kartę. Nowa wspólna funkcja `centerOrTopAlignScrollDelta` (port `scrollCardIntoView`) — wyrównanie do góry zamiast centrowania, gdy rozwinięta karta jest wyższa niż widoczny obszar; użyta zarówno przy centrowaniu (krok 1), jak i przy rozwinięciu (krok 2, wcześniej brakowało tego wariantu nawet w istniejącym centrowaniu). Zamknięcie nadal jednym stuknięciem. `./gradlew :app:compileDebugKotlin` przechodzi; zweryfikowane bezpośrednio na emulatorze (Medium_Phone_API_35): pierwsze stuknięcie zostawiło kartę zwiniętą, drugie stuknięcie w to samo miejsce w pełni ją rozwinęło, kolejne pojedyncze stuknięcie natychmiast ją zwinęło.
-
----
+- **v6** (2026-08-23, Web + Android): Użytkownik zgłosił, że przycisk „🛒 Dodaj do listy zakupów” — dotąd zawsze widoczny, także na zwiniętej karcie — "przypadkowo się klika, jak chce się rozwinąć [kartę]", bo siedział tuż pod nagłówkiem, w tym samym miejscu co obszar tap-to-expand. Naprawione przeniesieniem przycisku z zawsze-widocznego paska akcji do wnętrza rozwijanej treści karty (widoczny WYŁĄCZNIE po rozwinięciu, na samym dole, obok nowego widżetu stanu spiżarni — patrz FR-16/v4). „✅ Zrobione”/„📅 Zaplanuj”/„🗑️ Usuń” zostają bez zmian w zawsze-widocznym pasku — użytkownik zgłosił problem wyłącznie z przyciskiem zakupów. Web: `.add-btn` przeniesiony z `.card-actions` do `.card-collapsible-inner` w `recipeCard()` (`index.html`). Android: `TextButton` przeniesiony z `RecipeCard` do `RecipeCardBody`'s `if (expanded)` (`RecipeListScreen.kt`), nowe parametry `isAddedToShopping`/`onToggleAddToShopping`. Zweryfikowane na żywo na obu platformach: zwinięta karta nie pokazuje już przycisku zakupów, rozwinięcie odsłania go na dole razem z widżetem stanu spiżarni.
 
 # FR-4: Miniatura przepisu jako emoji głównego składnika
 
@@ -489,25 +488,28 @@ Zrewidowane: pierwotnie zwykłe kliknięcie od razu oznaczało danie jako zrobio
 **Status:** Zaimplementowane
 
 ## Opis
-Przycisk „🏺 Sprawdź stan spiżarni dla tego dania” w rozwiniętej karcie otwiera okienko stylizowane jak karta przepisu (te same zaokrąglone rogi, cień, tło), w którym każdy składnik ma osobny wiersz z wyraźnym stanem posiadania („Brak w spiżarni” / „🏺 …”) oraz dużym przyciskiem „Mam to” do oznaczenia/odznaczenia go w spiżarni, plus osobny przycisk dodania pojedynczego składnika do listy zakupów. Sam przycisk otwierający okienko, na karcie przepisu, ma pełnoprawny wygląd przycisku (obramowanie, tło, zaokrąglone rogi, min. wysokość dotykowa), a nie samego napisu.
+Na dole rozwiniętej karty przepisu (po sekcji komentarzy, tuż przed przyciskiem „Dodaj do listy zakupów”) znajduje się widżet „🏺 Stan spiżarni” pokazujący OD RAZU, bez dodatkowego stuknięcia, ile z składników przepisu jest już w spiżarni — licznik „X / Y składników” oraz pasek postępu (wypełnienie w kolorze akcentu na przygaszonym tle innego odcienia, proporcjonalne do pokrycia). Stuknięcie w cały widżet otwiera to samo okienko co dawniej, stylizowane jak karta przepisu (te same zaokrąglone rogi, cień, tło), w którym każdy składnik ma osobny wiersz z wyraźnym stanem posiadania („Brak w spiżarni” / „🏺 …”) oraz dużym przyciskiem „Mam to” do oznaczenia/odznaczenia go w spiżarni, plus osobny przycisk dodania pojedynczego składnika do listy zakupów.
 
 ## Kryteria akceptacji
-- Okienko wizualnie przypomina kartę przepisu, nie generyczną szufladę z drobnymi elementami.
-- Każdy wiersz ma jeden, duży, łatwo trafialny przycisk zmieniający stan posiadania (min. wysokość dotykowa 34px).
-- Zmiana stanu w tym okienku natychmiast odzwierciedla się w zakładce Spiżarnia.
-- Przycisk „Sprawdź stan spiżarni” na karcie przepisu ma widoczne obramowanie i wypełnione tło (nie jest samym tekstem) oraz min. wysokość dotykową ok. 38px, na całą szerokość karty.
+- Karta przepisu pokazuje pokrycie spiżarni (liczbę i pasek postępu) OD RAZU po rozwinięciu, bez konieczności stukania w cokolwiek.
+- Pasek postępu ma wyraźnie odróżnialne wypełnienie (odcień akcentu) i tło (przygaszony/neutralny odcień) — nie jest jednolitym kolorem.
+- Widżet stanu spiżarni znajduje się na SAMYM DOLE rozwiniętej treści karty (po składnikach, sposobie przygotowania, sekcji ocen/komentarzy), tuż przed przyciskiem „Dodaj do listy zakupów”.
+- Stuknięcie w widżet otwiera okienko szczegółowe: wizualnie przypomina kartę przepisu, nie generyczną szufladę z drobnymi elementami.
+- Każdy wiersz w okienku szczegółowym ma jeden, duży, łatwo trafialny przycisk zmieniający stan posiadania (min. wysokość dotykowa 34px).
+- Zmiana stanu w tym okienku natychmiast odzwierciedla się zarówno w zakładce Spiżarnia, jak i w liczniku/pasku postępu na karcie.
 
 ## Uwagi
 Zrewidowane w rundzie z 2026-08-03: poprzednia wersja miała stłoczony, jednowierszowy układ (tekst składnika + malutka plakietka + dwa małe przyciski obok siebie), trudny do trafienia kciukiem — przeprojektowano na czytelny układ dwuwierszowy z osobnym, dużym przyciskiem akcji.
 
-Zrewidowane ponownie 2026-08-03: sam przycisk-wyzwalacz na karcie przepisu był stylistycznie samym napisem bez tła/obramowania, co czyniło go trudnym do trafienia — dodano pełny styl przycisku (patrz Kryteria akceptacji).
+Zrewidowane ponownie 2026-08-03: sam przycisk-wyzwalacz na karcie przepisu był stylistycznie samym napisem bez tła/obramowania, co czyniło go trudnym do trafienia — dodano pełny styl przycisku.
+
+Zrewidowane 2026-08-23 (v4): na wyraźną prośbę użytkownika ("miało od razu pokazywać co jest a czego nie ma i pokazywać innym odcieniem pasek postępu, przenieś też to pole na dół karty") zwykły przycisk-wyzwalacz zastąpiony inline'owym podsumowaniem pokrycia (licznik + pasek postępu) i przeniesiony z góry rozwiniętej karty (zaraz po makroskładnikach) na sam dół — patrz Historia rewizji.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-03): Doprecyzowano zachowanie na podstawie zgłoszonej poprawki — patrz sekcja "Uwagi" powyżej.
 - **v3** (2026-08-03): Dodano stylizację przycisku-wyzwalacza na karcie przepisu — patrz sekcja "Uwagi" powyżej.
-
----
+- **v4** (2026-08-23, Web + Android): Przycisk-wyzwalacz zastąpiony inline'owym widżetem (licznik „X / Y składników” + pasek postępu, ten sam mechanizm liczenia co istniejący `pantryMatch`/`pantryCoverageRatio` na webie i `pantryItems.containsKey` na Androidzie — zero nowej logiki dopasowania), przeniesiony na sam dół rozwiniętej karty, tuż przed przyciskiem dodania do listy zakupów. Stuknięcie w widżet nadal otwiera dokładnie to samo okienko szczegółowe co wcześniej (`openPantryModal`/`PantryCheckDialog`), bez zmian w jego zawartości ani działaniu. Web: `.pantry-status-btn` w `index.html` (reużywa istniejące `.weight-bar-track`/`.weight-bar-fill` dla spójnego wyglądu paska z ekranem Postęp). Android: `Card` z `LinearProgressIndicator` w `RecipeCardBody` (`RecipeListScreen.kt`). Zweryfikowane na żywo na obu platformach (przeglądarka + emulator): licznik i pasek aktualizują się natychmiast po oznaczeniu składnika jako posiadanego w okienku szczegółowym, bez ponownego otwierania karty.
 
 # FR-17: Ocena dania po ugotowaniu (gwiazdki)
 

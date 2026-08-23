@@ -14,7 +14,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 |---|---|---|---|
 | FR-1 | Baza przepisów podzielona na 5 kategorii posiłków | ✅ (pigułki w tym samym pasku co reszta filtrów) | ✅ v2 (2026-08-11, zweryfikowane na emulatorze 2026-08-23): pigułki kategorii wydzielone do WŁASNEGO zwijanego panelu, niezależnego od nagłówka — świadoma rozbieżność z web, patrz uwagi niżej |
 | FR-2 | Wyszukiwanie i filtrowanie przepisów | ✅ (pełnowymiarowe pole wyszukiwania, próg oceny "★4+" jako "polubione") | ✅ v4/v5 (2026-08-11, zweryfikowane na emulatorze 2026-08-23): pole wyszukiwania zastąpione kompaktową ikoną "🔍" + dropdown; dodano dedykowany przełącznik "❤️ Podoba się" — świadoma rozbieżność z web, patrz uwagi niżej |
-| FR-3 | Karta przepisu — widok skrócony i rozwinięty | ✅ | ✅ dwuetapowe otwieranie (v4) doportowane i zweryfikowane na emulatorze 2026-08-23 -- `RecipeListScreen.kt`'s `pendingCenterRecipeId`, port web'owego `pendingCenterCard`/`handleCardTap` (patrz uwagi niżej) |
+| FR-3 | Karta przepisu — widok skrócony i rozwinięty | ✅ v6 (2026-08-23): przycisk zakupów ukryty do rozwinięcia karty | ✅ v6 (2026-08-23): to samo -- dwuetapowe otwieranie (v4) doportowane i zweryfikowane na emulatorze 2026-08-23 -- `RecipeListScreen.kt`'s `pendingCenterRecipeId`, port web'owego `pendingCenterCard`/`handleCardTap` (patrz uwagi niżej) |
 | FR-4 | Miniatura przepisu jako emoji głównego składnika | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-5 | Przycisk powrotu do góry listy przepisów | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-6 | Profil użytkownika i wyliczanie zapotrzebowania kalorycznego | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
@@ -27,7 +27,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-13 | Piąta kategoria posiłku: Deser/Przekąska | ✅ | ✅ wszystkie 3 kryteria akceptacji spełnione (patrz uwagi niżej) |
 | FR-14 | Skalowanie rozmiaru interfejsu (UI scale) | ✅ | ✅ zaimplementowane, trwały zapis dodany 2026-08-10 (patrz uwagi niżej) |
 | FR-15 | Oznaczanie dania jako ugotowane, z historią i ocenami | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-16 | Sprawdzenie stanu spiżarni dla konkretnego przepisu | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-16 | Sprawdzenie stanu spiżarni dla konkretnego przepisu | ✅ v4 (2026-08-23): inline widżet (licznik + pasek postępu) na dole karty, zamiast przycisku-wyzwalacza na górze | ✅ v4 (2026-08-23): to samo, zweryfikowane na emulatorze -- `Card`+`LinearProgressIndicator` w `RecipeCardBody` |
 | FR-17 | Ocena dania po ugotowaniu (gwiazdki) | ⚠️ nieaktualne, scalone w FR-84 | ⚠️ nieaktualne, scalone w FR-84 — historia gotowania jest teraz czystym logiem dat, patrz notatka FR-84 niżej |
 | FR-18 | Planer tygodniowy z 5 slotami posiłków dziennie | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-19 | Wybór innego slotu posiłkowego z poziomu karty przepisu | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
@@ -101,6 +101,46 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-87 | Motyw „Klinika” — czcionka i układ, nie tylko kolory | ✅ v5 (2026-08-23): pełna parytet z Androidem — oba warianty (`clinic`/`clinic_dark`), paleta/fonty/nagłówek-karta/pływający pasek (v4) ORAZ pozostałe 4 bespoke layouty (Planer bento, Zakupy badge, Postęp bento+kółka wody, Spiżarnia akordeon — v5), zweryfikowane bezpośrednio w przeglądarce (patrz uwagi niżej) | ✅ v3 (2026-08-23): nagłówek (kółko kalorii + posiłki) przebudowany na uniesioną kartę na jasnym/ciemnym tle (nie tylko przefarbowany blok), + nowy 13. motyw „Klinika (noc)” (`clinic_dark`) — oba warianty zweryfikowane na żywo na emulatorze (patrz uwagi niżej) |
 
 ## Uwagi do częściowych wpisów
+
+- **FR-3/v6 + FR-16/v4 — redesign dolnej części karty przepisu (2026-08-23,
+  Web + Android)**: na wyraźną prośbę użytkownika, trzy powiązane zmiany w
+  jednej turze. (1) FR-16: przycisk-wyzwalacz „🏺 Sprawdź stan spiżarni”
+  (na górze rozwiniętej karty, zaraz po makroskładnikach) zastąpiony
+  inline'owym widżetem pokazującym OD RAZU licznik „X / Y składników” i
+  pasek postępu (wypełnienie w kolorze akcentu na przygaszonym tle) —
+  bez dodatkowego stuknięcia widać pokrycie spiżarni. Widżet przeniesiony
+  na sam dół rozwiniętej treści karty (po sekcji komentarzy), nadal
+  otwiera dokładnie to samo okienko szczegółowe (`openPantryModal`/
+  `PantryCheckDialog`) po stuknięciu, bez zmian w jego działaniu. Liczenie
+  pokrycia to zero nowej logiki — ten sam `pantryMatch()` na webie
+  (już użyty w `pantryCoverageRatio`) i to samo `pantryItems.containsKey`
+  na Androidzie (już użyte do pogrubienia „have-it” składników). (2) FR-3:
+  przycisk „🛒 Dodaj do listy zakupów” — dotąd zawsze widoczny nawet na
+  zwiniętej karcie, tuż pod nagłówkiem — przenoszony w to samo miejsce co
+  widżet spiżarni: widoczny WYŁĄCZNIE po rozwinięciu. Powód: użytkownik
+  zgłosił, że przycisk "przypadkowo się klika, jak chce się rozwinąć
+  [kartę]", bo siedział dokładnie w obszarze tap-to-expand. „✅ Zrobione”/
+  „📅 Zaplanuj”/„🗑️ Usuń” ZOSTAJĄ bez zmian w zawsze-widocznym pasku —
+  zgłoszenie dotyczyło wyłącznie przycisku zakupów, celowo nie
+  poszerzono zakresu na pozostałe przyciski. (3) Web zaimplementowany
+  jako pierwszy (użytkownik: "bardziej podoba mi się wygląd karty w
+  aplikacji PWA"), Android doportowany 1:1 w tej samej turze — `.add-btn`
+  i nowy `.pantry-status-btn` w `index.html`'s `recipeCard()`; w Kotlinie
+  `TextButton`/nowy `Card`+`LinearProgressIndicator` przeniesione z
+  `RecipeCard` do `RecipeCardBody`'s `if (expanded)` (`RecipeListScreen.
+  kt`), nowe parametry `isAddedToShopping`/`onToggleAddToShopping`.
+  `./gradlew :app:compileDebugKotlin :app:assembleDebug` przechodzi.
+  Zweryfikowane bezpośrednio na obu platformach (przeglądarka +
+  emulator): zwinięta karta nie pokazuje już przycisku zakupów na żadnej
+  z nich; rozwinięcie odsłania oba elementy na dole; oznaczenie składnika
+  jako posiadanego w okienku szczegółowym natychmiast zaktualizowało
+  licznik/pasek na karcie bez ponownego jej otwierania (sprawdzone na
+  „Szakszuka ze szpinakiem i pomidorami”, 6 składników, licznik poprawnie
+  przeszedł 0/6 → 1/6 po jednym „Mam to”). Podczas weryfikacji na
+  emulatorze przypadkowe dotknięcie otworzyło systemowy ekran wyboru
+  konta Google w Chrome (efekt uboczny wcześniejszego testu linku
+  wyszukiwania, nie tej zmiany) — natychmiast wycofane bez wybierania
+  żadnego konta, zero interakcji z prawdziwymi danymi logowania.
 
 - **Trzy błędy naprawione po manualnym przejściu checklisty QA (2026-08-22, web/`index.html` wyłącznie)**: użytkownik poprosił o pełne manualne przejście szczegółowej checklisty testowej (onboarding, spiżarnia, planer, zakupy, postęp, trwałość danych, edge case'y) — w jej trakcie znalezione i naprawione trzy realne błędy, wszystkie zweryfikowane bezpośrednio w przeglądarce (`javascript_tool`, stan `state.pantry`/`state.planner` przed i po każdej akcji, zero błędów w konsoli po zmianach):
   1. **(Critical) Cofnięcie „Zrobione” dolewało spiżarnię ponad stan sprzed ugotowania, gdy zapasu nie starczyło.** `subtractRecipeFromPantry` przycinał brakujący składnik do zera (`Math.max(0, qty-baseQty)`), ale `restoreRecipeToPantry` przy cofnięciu zawsze dodawał PEŁNĄ ilość z przepisu — np. 0.5 garści szpinaku, ugotowanie (przycięte do 0), cofnięcie dawało 1.0, czyli o 0.5 więcej niż na starcie. Naprawione: `subtractRecipeFromPantry` teraz zwraca dokładnie to, co realnie odjął (per składnik), zapisywane w `state.cooked[id][].subtracted`; nowa `restoreSubtractedToPantry` przywraca DOKŁADNIE te zapisane ilości zamiast przeliczać na nowo z listy składników przepisu. Stare wpisy historii (sprzed tej poprawki, bez pola `subtracted`) nadal używają starego, mniej dokładnego `restoreRecipeToPantry` jako fallbacku — nie ma jak ich cofnąć precyzyjnie bez danych, których nigdy nie zapisały.
