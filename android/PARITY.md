@@ -14,7 +14,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 |---|---|---|---|
 | FR-1 | Baza przepisów podzielona na 5 kategorii posiłków | ✅ (pigułki w tym samym pasku co reszta filtrów) | ✅ v2 (2026-08-11, zweryfikowane na emulatorze 2026-08-23): pigułki kategorii wydzielone do WŁASNEGO zwijanego panelu, niezależnego od nagłówka — świadoma rozbieżność z web, patrz uwagi niżej |
 | FR-2 | Wyszukiwanie i filtrowanie przepisów | ✅ (pełnowymiarowe pole wyszukiwania, próg oceny "★4+" jako "polubione") | ✅ v4/v5 (2026-08-11, zweryfikowane na emulatorze 2026-08-23): pole wyszukiwania zastąpione kompaktową ikoną "🔍" + dropdown; dodano dedykowany przełącznik "❤️ Podoba się" — świadoma rozbieżność z web, patrz uwagi niżej |
-| FR-3 | Karta przepisu — widok skrócony i rozwinięty | ✅ v6 (2026-08-23): przycisk zakupów ukryty do rozwinięcia karty | ✅ v6 (2026-08-23): to samo -- dwuetapowe otwieranie (v4) doportowane i zweryfikowane na emulatorze 2026-08-23 -- `RecipeListScreen.kt`'s `pendingCenterRecipeId`, port web'owego `pendingCenterCard`/`handleCardTap` (patrz uwagi niżej) |
+| FR-3 | Karta przepisu — widok skrócony i rozwinięty | ✅ v6 (2026-08-23): przycisk zakupów ukryty do rozwinięcia karty | ✅ v7 (2026-08-23): to samo + typografia/gęstość rozwiniętej karty dopasowana 1:1 do weba (bez nagłówków sekcji, bez wymuszonej wysokości Material na wierszach składników, pogrubienia jak na webie) -- dwuetapowe otwieranie (v4) doportowane i zweryfikowane na emulatorze 2026-08-23 -- `RecipeListScreen.kt`'s `pendingCenterRecipeId`, port web'owego `pendingCenterCard`/`handleCardTap` (patrz uwagi niżej) |
 | FR-4 | Miniatura przepisu jako emoji głównego składnika | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-5 | Przycisk powrotu do góry listy przepisów | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-6 | Profil użytkownika i wyliczanie zapotrzebowania kalorycznego | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
@@ -101,6 +101,36 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-87 | Motyw „Klinika” — czcionka i układ, nie tylko kolory | ✅ v5 (2026-08-23): pełna parytet z Androidem — oba warianty (`clinic`/`clinic_dark`), paleta/fonty/nagłówek-karta/pływający pasek (v4) ORAZ pozostałe 4 bespoke layouty (Planer bento, Zakupy badge, Postęp bento+kółka wody, Spiżarnia akordeon — v5), zweryfikowane bezpośrednio w przeglądarce (patrz uwagi niżej) | ✅ v3 (2026-08-23): nagłówek (kółko kalorii + posiłki) przebudowany na uniesioną kartę na jasnym/ciemnym tle (nie tylko przefarbowany blok), + nowy 13. motyw „Klinika (noc)” (`clinic_dark`) — oba warianty zweryfikowane na żywo na emulatorze (patrz uwagi niżej) |
 
 ## Uwagi do częściowych wpisów
+
+- **FR-3/v7 — typografia/gęstość karty dopasowana 1:1 do weba (2026-08-23,
+  Android)**: po v6 użytkownik przysłał zrzuty ekranu obu platform i
+  zgłosił, że mimo strukturalnej zgodności "to są dwie różne karty" --
+  Androidowa mniej kompaktowa, mniej wyrazista typografia niż web, który
+  wskazał jako wzorzec ("bardziej podoba mi się wygląd karty w aplikacji
+  PWA... jest bardziej kompaktowa, ma ładniejsze czcionki i pogrubienia").
+  Główna przyczyna znaleziona przez porównanie CSS webowego z Compose:
+  każdy wiersz składnika owijał gwiazdkę-przełącznik w `TextButton`, który
+  mimo zerowego `contentPadding` i tak wymusza Material3'ową minimalną
+  wysokość dotykową ~40dp na wiersz -- znacznie więcej niż web'owy,
+  bezstylowy `<button class="ing-fav">` bez wymuszonego rozmiaru. Zastąpione
+  zwykłym klikalnym `Text` (`Modifier.clickable`), wiersze spięte w
+  `Arrangement.spacedBy(4.dp)` (port `.ingredients li{margin-bottom:4px}`).
+  Dodatkowo: usunięte własne nagłówki "Składniki"/"Przygotowanie", których
+  web nie ma; pasek meta (czas/kcal/dopasowanie), tekst przycisku zakupów,
+  "Oceń i skomentuj" i licznik widżetu spiżarni dostały `FontWeight.
+  SemiBold`/`Bold` (port web'owych `font-weight:600`/`700`); tytuł dostał
+  węższy `lineHeight` (port `line-height:1.3`); makro-wiersz i tekst
+  przygotowania dostały przygaszony kolor (port `var(--muted)`). Zero zmian
+  logiki/danych. `./gradlew :app:compileDebugKotlin :app:assembleDebug`
+  przechodzi; zweryfikowane bezpośrednio na emulatorze: rozwinięta karta
+  "Szakszuki" (6 składników) teraz mieści się w mniej więcej połowie
+  poprzedniej wysokości, pogrubienia widoczne na pasku meta i przyciskach.
+  Pozostała różnica kolorystyczna między zrzutami użytkownika (zielona web
+  vs szaro-fioletowa Android) to najpewniej różne motywy aktywne aktualnie
+  na każdym urządzeniu (oba platformy mają identyczne 13 motywów do
+  wyboru, FR-48/FR-87), NIE rozbieżność kodu -- do potwierdzenia z
+  użytkownikiem, czy to oczekiwane (różne urządzenia, różny wybór) czy
+  wymaga sprawdzenia synchronizacji `theme` w chmurze.
 
 - **FR-3/v6 + FR-16/v4 — redesign dolnej części karty przepisu (2026-08-23,
   Web + Android)**: na wyraźną prośbę użytkownika, trzy powiązane zmiany w

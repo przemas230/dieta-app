@@ -1304,7 +1304,7 @@ private fun RecipeCardBody(
             // click is consumed here, same as the web's e.stopPropagation()).
             Text(
                 recipe.name,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.5.sp, lineHeight = 19.sp),
                 fontWeight = FontWeight.Bold,
                 textDecoration = TextDecoration.Underline,
                 modifier = Modifier
@@ -1338,7 +1338,12 @@ private fun RecipeCardBody(
         }
         Spacer(modifier = Modifier.height(4.dp))
         val matchSuffix = matchScore?.let { "   🎯 $it%" } ?: ""
-        Text("⏱ ${recipe.time}   🔥 ${recipe.kcal} kcal$matchSuffix", style = MaterialTheme.typography.bodySmall)
+        Text(
+            "⏱ ${recipe.time}   🔥 ${recipe.kcal} kcal$matchSuffix",
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
         if (expanded) {
             val protein = recipe.protein
@@ -1353,6 +1358,7 @@ private fun RecipeCardBody(
                     Text(
                         "B ${formatNum(protein)}g · W ${formatNum(carbs)}g · T ${formatNum(fat)}g$fiberPart$giPart$glPart",
                         style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),
                     )
                     if (recipe.calc.isNotEmpty()) {
@@ -1360,36 +1366,54 @@ private fun RecipeCardBody(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(6.dp))
-            Text("Składniki", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-            recipe.ingredients.forEach { ingredient ->
-                // FR-35: emoji suffix when the ingredient resolves to a known canon -- port of index.html's withEmoji.
-                val canon = remember(ingredient) { RecipePantryMatching.parseIngredient(ingredient).canonName }
-                // FR-32: star toggles this ingredient as a favorite (fuels the
-                // dish-idea generator below); "have it" highlight (bold) fires
-                // when the ingredient is either favorited OR already tracked in
-                // the pantry -- port of index.html's `(have||f)?'have-it'` class.
-                val isFav = canon in favIngredients
-                val haveIt = isFav || pantryItems.containsKey(canon)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(
-                        onClick = { onToggleFavIngredient(canon) },
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
-                        modifier = Modifier.widthIn(min = 32.dp),
+            Spacer(modifier = Modifier.height(8.dp))
+            // No "Składniki" section label -- port of index.html's recipeCard(),
+            // which goes straight from the macro row into the <ul> with no
+            // heading, on explicit user request to match the web card 1:1.
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                recipe.ingredients.forEach { ingredient ->
+                    // FR-35: emoji suffix when the ingredient resolves to a known canon -- port of index.html's withEmoji.
+                    val canon = remember(ingredient) { RecipePantryMatching.parseIngredient(ingredient).canonName }
+                    // FR-32: star toggles this ingredient as a favorite (fuels the
+                    // dish-idea generator below); "have it" highlight (bold) fires
+                    // when the ingredient is either favorited OR already tracked in
+                    // the pantry -- port of index.html's `(have||f)?'have-it'` class.
+                    val isFav = canon in favIngredients
+                    val haveIt = isFav || pantryItems.containsKey(canon)
+                    // Plain clickable Text instead of a TextButton -- a Material
+                    // button enforces a ~40dp minimum touch height per row even
+                    // with zero content padding, which was inflating every
+                    // ingredient row far beyond web's tight `margin-bottom:4px`
+                    // <li> rows and was the main reason the card read as "less
+                    // compact" than the PWA one.
+                    Row(
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Text(if (isFav) "★" else "☆", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            if (isFav) "★" else "☆",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (isFav) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.clickable { onToggleFavIngredient(canon) },
+                        )
+                        Text(
+                            IngredientCanon.withEmoji(ingredient, canon),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = if (haveIt) FontWeight.Bold else FontWeight.Normal,
+                            color = if (haveIt) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                        )
                     }
-                    Text(
-                        IngredientCanon.withEmoji(ingredient, canon),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = if (haveIt) FontWeight.Bold else FontWeight.Normal,
-                        color = if (haveIt) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                    )
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Przygotowanie", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-            Text(recipe.method, style = MaterialTheme.typography.bodySmall)
+            // No "Przygotowanie" section label either -- port of index.html's
+            // <p class="method"> which has no heading above it, same reasoning
+            // as the ingredients list above.
+            Text(
+                recipe.method,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             if (review?.comment != null) {
                 Text(
                     "💬 Twój komentarz: „${review.comment}”",
@@ -1409,7 +1433,10 @@ private fun RecipeCardBody(
                     .heightIn(min = 38.dp),
                 colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
-                Text(if (review != null) "⭐ Oceń i skomentuj (Twoja ocena: ${review.stars}/5)" else "⭐ Oceń i skomentuj")
+                Text(
+                    if (review != null) "⭐ Oceń i skomentuj (Twoja ocena: ${review.stars}/5)" else "⭐ Oceń i skomentuj",
+                    fontWeight = FontWeight.Bold,
+                )
             }
             Spacer(modifier = Modifier.height(6.dp))
             RecipeCommentsSection(recipeId = recipe.id, viewModel = commentsViewModel)
@@ -1440,6 +1467,7 @@ private fun RecipeCardBody(
                         Text(
                             "$pantryHave / $pantryTotal składników",
                             style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -1467,7 +1495,10 @@ private fun RecipeCardBody(
                     .fillMaxWidth()
                     .heightIn(min = 38.dp),
             ) {
-                Text(if (isAddedToShopping) "✓ Na liście zakupów" else "🛒 Dodaj do listy zakupów")
+                Text(
+                    if (isAddedToShopping) "✓ Na liście zakupów" else "🛒 Dodaj do listy zakupów",
+                    fontWeight = FontWeight.Bold,
+                )
             }
             // FR-66: only a custom (user-added) recipe can be deleted this way.
             if (recipe.source == "custom") {
