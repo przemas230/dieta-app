@@ -21,8 +21,8 @@ android {
         applicationId = "com.przemas230.dietaapp"
         minSdk = 26
         targetSdk = 34
-        versionCode = 68
-        versionName = "0.1.67"
+        versionCode = 69
+        versionName = "0.1.68"
     }
 
     buildTypes {
