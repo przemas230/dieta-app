@@ -98,7 +98,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-81 | Propozycja przeliczenia planu i listy zakupów po zapisaniu profilu | ✅ | ✅ zaimplementowane 2026-08-11 tego samego dnia co web, zweryfikowane na żywo na emulatorze (patrz uwagi niżej) |
 | FR-82 | Widoczna wersja aplikacji w Ustawieniach | ✅ | ✅ Android miał to już od wcześniej (`AppUpdateCard`'s „Zainstalowana wersja: X”) — FR dopisany 2026-08-11 tylko formalnie, bez zmian w Kotlinie |
 | FR-83 | Edycja wcześniej wpisanej wagi i historii kalorii | ✅ (waga) / ✅ (historia kalorii) | ✅ waga (edycja+usuwanie inline, zweryfikowane na emulatorze) / ✅ historia kalorii doportowana i zweryfikowana na emulatorze 2026-08-23 (przebudowa `EatenViewModel`/`EatenEntry` na `EatenDay` per-data, patrz uwagi FR-83.md i notatka niżej) |
-| FR-87 | Motyw „Klinika” — czcionka i układ, nie tylko kolory | N/D (Android-only funkcja) | ✅ v3 (2026-08-23): nagłówek (kółko kalorii + posiłki) przebudowany na uniesioną kartę na jasnym/ciemnym tle (nie tylko przefarbowany blok), + nowy 13. motyw „Klinika (noc)” (`clinic_dark`) — oba warianty zweryfikowane na żywo na emulatorze (patrz uwagi niżej) |
+| FR-87 | Motyw „Klinika” — czcionka i układ, nie tylko kolory | ✅ v4 (2026-08-23): doportowane z Androida — oba warianty (`clinic`/`clinic_dark`), ta sama paleta/fonty/nagłówek-karta/pływający pasek, zweryfikowane bezpośrednio w przeglądarce (patrz uwagi niżej) | ✅ v3 (2026-08-23): nagłówek (kółko kalorii + posiłki) przebudowany na uniesioną kartę na jasnym/ciemnym tle (nie tylko przefarbowany blok), + nowy 13. motyw „Klinika (noc)” (`clinic_dark`) — oba warianty zweryfikowane na żywo na emulatorze (patrz uwagi niżej) |
 
 ## Uwagi do częściowych wpisów
 
@@ -119,6 +119,43 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 - **FR-84 — scalenie oceniania w jeden mechanizm (2026-08-11, piąta runda tego dnia)**: na wyraźną prośbę użytkownika ("scal w jedno system gwiazdek, oceny po zrobieniu dania oraz ocene i komentarz ktory mozna dodać pod przepisem, to jedno i to samo"), trzy dotychczas osobne systemy oceniania (przesunięcie karty ❤️/👎, gwiazdka za każde „✅ Zrobione", ocena+komentarz z FR-67) stały się JEDNYM — samą oceną z FR-67 (`RecipeReview`/`recipeReviews`). Android: `RecipeViewModel.setRatingQuick(recipeId, stars)` — nowa funkcja wołana zarówno przez przesunięcie karty (prawo=5★, lewo=1★, zachowuje istniejący komentarz), jak i przez nowy przycisk „⭐ Oceń to danie"/„⭐ Twoja ocena: X/5 (zmień)" w `CookHistoryDialog` (który stał się czystym logiem dat — usunięto `onSetRating`/`StarRatingRow` per-wpisowy). Plakietka w rogu karty pokazuje „★N" (zamiast dawnego 👍/👎) i po dotknięciu otwiera okienko oceny zamiast je kasować. Przełącznik sortowania „❤️ Ranking" (`RecipeRatingOperations.sortByRating`) usunięty z paska filtrów jako redundantny z „🏆 Ocena". Migracja: `RecipeViewModel.replaceRatings` (wołana przy każdym wczytaniu lokalnym i pull z chmury) jednorazowo konwertuje stare wpisy `RecipeRating` bez odpowiadającej im recenzji na recenzję (LIKE→5★, DISLIKE→1★), nigdy nie nadpisując istniejącej prawdziwej recenzji. Świadomie NIE usunięto `RecipeRatingOperations`/`CookHistoryOperations.setRating` z modułu `logic` (razem z ich testami JUnit) — zostają jako nieużywany, ale nieszkodliwy kod, żeby nie poszerzać zakresu zmiany o usuwanie testów w tej samej turze. Zweryfikowane bezpośrednio na emulatorze: ocena 5★ przez okienko poprawnie pokazała plakietkę „★5" z zieloną obwódką karty, historia gotowania pokazuje czysty log dat bez własnych gwiazdek, przycisk „⭐ Oceń to danie" poprawnie otwiera to samo okienko co plakietka. Zero crashy. `versionCode`/`versionName` bump w `app/build.gradle.kts`.
 
 - **Naprawiony realny błąd utraty danych profilu (2026-08-11, czwarta runda tego dnia)**: użytkownik zgłosił "w kotlin nie zapamiętuje mi w ustawieniach że jestem mężczyzną, przełącza mi na kobietę... cel zmieniałem a teraz widzę znów z defaultu wstawił" — realny, potwierdzony błąd, najprawdopodobniej wprowadzony/odsłonięty przez zmianę z drugiej rundy tego dnia (FR-78 dirty-field-tracking). Przyczyna: `lastKnownFields` (mapa "ostatnia wartość, co do której to urządzenie i Firestore się zgodziły") żyła WYŁĄCZNIE w pamięci (`remember`), resetując się do pustej przy KAŻDYM restarcie aplikacji. Sekwencja gubiąca dane: użytkownik edytuje profil, zamyka aplikację ZANIM 1,5-sekundowy debounce zdąży wypchnąć zmianę do chmury; po ponownym uruchomieniu edycja poprawnie wraca z lokalnego dysku, ale `lastKnownFields` startuje puste, więc PIERWSZY odebrany snapshot z Firestore (wciąż ze STARĄ wartością) wyglądał jak "coś nowego" i cicho nadpisywał świeżą lokalną edycję. Naprawione: nowy `CloudSyncBaselineStore` (`android/app/.../data/CloudSyncBaselineStore.kt`) zapisuje `lastKnownFields` na dysk (per uid, reużywa `LocalStateStore`'s JSON I/O pod inną nazwą pliku), wczytywany PRZED dopuszczeniem nasłuchiwacza Firestore do podłączenia się (`baselineLoaded` blokuje `DisposableEffect`) — więc nawet PIERWSZY snapshot po zimnym starcie poprawnie odróżnia "to pasuje do tego, co już wiedziałem" (ignoruj) od "to naprawdę inne niż ostatnio wiedziałem" (zastosuj — dotyczy też prawdziwie nowego urządzenia/logowania, gdzie baseline jest pusty celowo). Przy okazji usunięto `PushedSnapshot`/`lastPushed`/`suppressNextPush` jako w pełni zastąpione przez trwały `lastKnownFields` — mniej kodu, jeden mechanizm zamiast dwóch częściowo nakładających się. Zweryfikowane bezpośrednio na emulatorze: zmiana płci na Mężczyzna → `adb shell am force-stop` ~900ms później (po lokalnym zapisie na dysk, przed wypchnięciem do chmury) → ponowne uruchomienie → wartość poprawnie przetrwała I pozostała stabilna po pełnej synchronizacji z chmurą (sprawdzone dwoma pełnymi cyklami restart+odczekanie), zero crashy w logcat.
+
+- **FR-87/v4 — Klinika doportowana na web (2026-08-23)**: po v3
+  (nagłówek-karta + Klinika (noc) na Androidzie) użytkownik poprosił
+  "przenieś od razu do Web". `index.html` dostał nowe
+  `:root[data-theme="clinic"]`/`"clinic_dark"]` bloki z DOKŁADNIE tymi
+  samymi wartościami hex co `AppThemes.kt`, Space Grotesk/DM Sans dograne
+  do istniejącego, WSPÓLNEGO linku Google Fonts (web już ładował różne
+  fonty per motyw dla Fluent/Metro — ten sam, sprawdzony mechanizm).
+  Strukturalne nadpisania (`:is([data-theme="clinic"],
+  [data-theme="clinic_dark"])`) dla nagłówka-karty i pływającego paska,
+  ten sam wzorzec co istniejący Polaroid/Kafelki. Nowa zmienna
+  `--ring-track` (kolor nie-wypełnionej części pierścienia kalorii/wody —
+  wcześniej "na sztywno" `rgba(255,255,255,.20)` w atrybucie SVG,
+  jednakowe dla wszystkich motywów bo nagłówek był zawsze ciemny) —
+  Klinika ją nadpisuje, pozostałych 11 motywów dostaje DOKŁADNIE tę samą
+  liczbową wartość co wcześniej, zero zmiany renderowania.
+  **Realny błąd znaleziony i naprawiony podczas weryfikacji w
+  przeglądarce** (nie samą kompilacją/wizualnie na pierwszy rzut oka —
+  dopiero po faktycznym przewinięciu listy przepisów): nowa reguła
+  nagłówka-karty ustawiająca `max-height` miała DOKŁADNIE taką samą
+  specyficzność CSS co istniejąca reguła zwijania nagłówka przy scrollu
+  (`.collapsed .header-collapsible{max-height:0}`, FR-44/FR-45) i
+  wygrywała z nią przez samą kolejność w pliku (moja reguła była później)
+  — po przewinięciu w dół zostawała pusta, czarna dziura zamiast
+  poprawnie zwiniętego nagłówka. Naprawione usunięciem `max-height` z
+  nowej reguły — istniejący mechanizm zwijania działa poprawnie bez tego,
+  konflikt był całkowicie zbędny (padding/tło/cień same w sobie nie
+  kolidują z max-height:0). `CACHE_NAME` w `sw.js` podniesiony na
+  `dieta-app-v86` zgodnie z zasadą z FR-52/v2 (każda tura dotykająca
+  index.html/sw.js bumpuje w parze z numeracją `versions/vNN`), backup
+  pre-edit `index.html`/`sw.js` w `versions/v86/` (backup zrobiony
+  RETROAKTYWNIE z `git show HEAD:index.html`, bo edycja zaczęła się przed
+  backupem — poprawka procesu na przyszłość: backupować PRZED, nie po).
+  Zweryfikowane bezpośrednio w przeglądarce (lokalny serwer
+  `python -m http.server`, Claude in Chrome): oba warianty na liście
+  przepisów i rozwiniętej karcie, w tym scroll-collapse po naprawie —
+  nie tylko kompilacją/kodem.
 
 - **FR-87/v3 — nagłówek jako karta + Klinika (noc) (2026-08-23)**: po v2
   użytkownik trafnie zgłosił "nie widzę zmian w Nagłówek... jest tak

@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&family=Lora:wght@500;600;700&family=Nunito:wght@400;600;700;800&family=Baloo+2:wght@600;700;800&family=Quicksand:wght@500;600;700&family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&family=Work+Sans:wght@400;500;600&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&family=Lora:wght@500;600;700&family=Nunito:wght@400;600;700;800&family=Baloo+2:wght@600;700;800&family=Quicksand:wght@500;600;700&family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&family=Work+Sans:wght@400;500;600&family=Caveat:wght@600;700&family=Space+Grotesk:wght@500;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <script>
 (function(){
   try{
@@ -47,6 +47,14 @@
        regardless of the app's overall accent color. */
     --ring-kcal:#F5822B;
     --ring-water:#3E8EF5;
+    /* FR-87/v4: the two ring TRACK circles (unfilled portion) were hardcoded
+       rgba(255,255,255,.20) directly on the SVG stroke= attribute, tuned for
+       the always-dark header every theme used to share. Klinika's header is
+       no longer a solid color block (see the [data-theme="clinic"] rules
+       below), so it overrides this to something visible against a light
+       card instead -- every other theme keeps this exact byte-for-byte
+       value, so their rendering is unchanged. */
+    --ring-track:rgba(255,255,255,.20);
     --bg:#F7F6F2;
     --card:#FFFFFF;
     --text:#22302B;
@@ -299,6 +307,69 @@
     /* Flat and immediate — no bounce, no lingering ease, mirroring how
        Metro's live tiles used to flip and snap rather than glide. */
     --dur-fast:.12s; --dur-med:.2s; --ease:cubic-bezier(.4,0,.2,1);
+  }
+  /* FR-87/v4: "Klinika" (day) + "Klinika (noc)" -- web port of the Android-
+     only theme (android/PARITY.md's FR-87), palette lifted 1:1 from the
+     external diet-chef-pro-75 (Lovable) project's OKLCH design tokens, same
+     hex values already computed for AppThemes.kt's "clinic"/"clinic_dark"
+     entries. Unlike the other 11 themes (pure palette port), Klinika also
+     swaps --font-heading/--font-body to Space Grotesk/DM Sans and recolors
+     the kcal/water ring (--ring-kcal/--ring-water/--ring-track, normally
+     fixed across every theme -- see the base :root's comment on those) --
+     plus the structural header-card and floating-nav rules further below,
+     scoped to :is([data-theme="clinic"], [data-theme="clinic_dark"]). */
+  :root[data-theme="clinic"]{
+    --teal:#6DA480;
+    --teal-dark:#346B49;
+    --teal-pale:#D9EEDF;
+    --honey:#C69B78;
+    --honey-pale:#F8E8DB;
+    --honey-dark:#7E522C;
+    --plum:#7A90B4;
+    --plum-pale:#DDE5F2;
+    --bg:#F9F7F5;
+    --card:#FFFFFF;
+    --text:#1E1B16;
+    --muted:#766B59;
+    --line:#E3DFD8;
+    --danger:#E7000B;
+    --danger-pale:#FFE2DD;
+    --star-off:#C9C3BA;
+    --font-heading:"Space Grotesk", -apple-system, sans-serif;
+    --font-body:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --ring-kcal:var(--teal);
+    --ring-water:var(--plum);
+    --ring-track:var(--line);
+    --dur-fast:.16s; --dur-med:.28s; --ease:cubic-bezier(.16,1,.3,1);
+  }
+  :root[data-theme="clinic_dark"]{
+    /* Same sage accent as the light "Klinika" -- diet-chef-pro-75's own
+       dark mode leaves --primary untouched too, only surfaces/text invert. */
+    --teal:#6DA480;
+    --teal-dark:#B0DABD;
+    --teal-pale:#1D3425;
+    --honey:#C69B78;
+    --honey-pale:#392A1E;
+    --honey-dark:#E7C7AE;
+    --plum:#7A90B4;
+    --plum-pale:#252E3D;
+    --bg:#1E1B16;
+    --card:#2B2823;
+    --text:#FEFAF3;
+    --muted:#ABA397;
+    --line:#36322D;
+    --danger:#FF6467;
+    --danger-pale:#421B1B;
+    --star-off:#534C41;
+    --font-heading:"Space Grotesk", -apple-system, sans-serif;
+    --font-body:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --ring-kcal:var(--teal);
+    --ring-water:var(--plum);
+    --ring-track:var(--line);
+    --dur-fast:.16s; --dur-med:.28s; --ease:cubic-bezier(.16,1,.3,1);
+    color-scheme: dark;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0; overflow-anchor:none;}
@@ -582,6 +653,68 @@
   [data-theme="metro"] .pantry-tile{ border:none; border-radius:2px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.06); }
   [data-theme="metro"] .pantry-tile.active{ background:var(--teal); border-color:var(--teal); }
   [data-theme="metro"] .pantry-tile.active .pt-name{ color:#fff; }
+  /* FR-87/v4: Klinika's header stops being a solid teal-gradient block (the
+     same one every other theme, including Klinika before this, still uses)
+     and sits on the page background instead, with the kcal/water panel as
+     its OWN elevated card -- port of the Android header redesign (see
+     MainActivity.kt's HeaderKcalPanel doc comment for the same rationale:
+     recoloring the fill alone doesn't change the LAYOUT). Every text color
+     inside that used to be a flat white/rgba(255,255,255,x) (correct only
+     against the old dark block) is remapped to --text/--muted here so it
+     stays legible on the light/dark CARD background instead. */
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top{
+    background:var(--bg); color:var(--text); box-shadow:none;
+    border-bottom-left-radius:0; border-bottom-right-radius:0;
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top .header-collapse-btn,
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top .quick-add-btn{
+    background:var(--card); color:var(--text); box-shadow:0 1px 2px rgba(0,0,0,.08);
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top .header-water-row{ color:var(--muted); }
+  /* NOT touching max-height here on purpose: header.app-top.collapsed
+     .header-collapsible{max-height:0} (FR-44/FR-45's scroll-collapse) has
+     the SAME specificity as a same-shape :is()-based selector -- whichever
+     rule is LATER in the stylesheet would then win regardless of whether
+     .collapsed is actually present, breaking the collapse. Padding alone
+     already grows/shrinks correctly with the existing max-height transition. */
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top .header-collapsible{
+    background:var(--card); border-radius:28px; padding:14px 16px; margin-top:10px;
+    box-shadow:0 1px 3px rgba(0,0,0,.07), 0 8px 22px rgba(0,0,0,.06);
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .kcal-remaining .kr-label,
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .kcal-remaining .kr-unit,
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .kcal-ring-caption,
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .kmr-dish,
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .kmr-hint,
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .eaten-summary{ color:var(--muted); }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .kcal-remaining .kr-value,
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .kcal-ring-value,
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .kmr-label,
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .eaten-summary b{ color:var(--text); }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .eaten-summary{ border-top-color:var(--line); }
+  [data-theme="clinic"] .kcal-meal-row.eatable{ background:rgba(0,0,0,.035); }
+  [data-theme="clinic_dark"] .kcal-meal-row.eatable{ background:rgba(255,255,255,.05); }
+  /* Same "floating pill" bottom nav as Android's FloatingBottomNav -- visible
+     margin from the screen edge instead of docking flush, active tab's icon
+     in a filled sage circle instead of a color-only change. */
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) nav.bottom{
+    left:50%; right:auto; bottom:calc(12px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    width:calc(100% - 32px); max-width:568px;
+    border-top:none; border-radius:28px;
+    box-shadow:0 10px 28px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.1);
+    padding-bottom:0;
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) nav.bottom button .ic{
+    width:30px; height:30px; margin:0 auto; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    transition:background var(--dur-fast) var(--ease);
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) nav.bottom button.active .ic{
+    background:var(--teal); transform:none;
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) nav.bottom button.active .ic i{ color:#fff; }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) nav.bottom button::after{ display:none; }
   .card-head{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
   .card-head h3{margin:0; font-size:15.5px; line-height:1.3; min-width:0;}
   .card-head-side{display:flex; flex-direction:column; align-items:center; gap:5px; flex:0 0 auto;}
@@ -1065,9 +1198,9 @@
       </div>
       <div class="kcal-ring-wrap">
         <svg viewBox="0 0 120 120" class="kcal-ring-svg">
-          <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.20)" stroke-width="11"/>
+          <circle cx="60" cy="60" r="52" fill="none" stroke="var(--ring-track)" stroke-width="11"/>
           <circle id="kcalRingProgress" cx="60" cy="60" r="52" fill="none" stroke="var(--ring-kcal)" stroke-width="11" stroke-linecap="round" stroke-dasharray="0 326.7" transform="rotate(-90 60 60)"/>
-          <circle cx="60" cy="60" r="39" fill="none" stroke="rgba(255,255,255,.20)" stroke-width="8"/>
+          <circle cx="60" cy="60" r="39" fill="none" stroke="var(--ring-track)" stroke-width="8"/>
           <circle id="waterRingProgress" cx="60" cy="60" r="39" fill="none" stroke="var(--ring-water)" stroke-width="8" stroke-linecap="round" stroke-dasharray="0 245" transform="rotate(-90 60 60)"/>
         </svg>
         <div class="kcal-ring-center">
@@ -3481,7 +3614,9 @@ const THEMES = [
   {id:"berry", label:"Jagodowa noc", swatch:"#7A2F55", metaColor:"#0D0710"},
   {id:"polaroid", label:"Polaroid", swatch:"#C1503A", metaColor:"#C1503A"},
   {id:"fluent", label:"Fluent", swatch:"#0F6CBD", metaColor:"#0F6CBD"},
-  {id:"metro", label:"Kafelki", swatch:"#2D89EF", metaColor:"#2D89EF"}
+  {id:"metro", label:"Kafelki", swatch:"#2D89EF", metaColor:"#2D89EF"},
+  {id:"clinic", label:"Klinika", swatch:"#6DA480", metaColor:"#6DA480"},
+  {id:"clinic_dark", label:"Klinika (noc)", swatch:"#6DA480", metaColor:"#1E1B16"}
 ];
 (function syncMetaColor(){
   const meta = document.querySelector('meta[name="theme-color"]');

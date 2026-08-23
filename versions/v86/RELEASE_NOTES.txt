@@ -1,0 +1,39 @@
+Wersja v86 (2026-08-23)
+
+Motyw "Klinika" (dzien i noc) doportowany na web -- do tej pory istnial
+wylacznie w wersji Android (FR-87). Ten sam jezyk wizualny co Android:
+paleta wyciagnieta 1:1 z zewnetrznego projektu diet-chef-pro-75 (Lovable,
+tokeny OKLCH przeliczone na sRGB), czcionki Space Grotesk (naglowki) i
+DM Sans (tekst) zamiast Fraunces/Plus Jakarta Sans, oraz dwa nowe elementy
+strukturalne widoczne tylko dla tego motywu:
+
+1. Naglowek (pierscien kalorii + posilki dnia) przestaje byc jednolitym
+   kolorowym blokiem -- stoi na tle strony, a panel kalorii/wody renderuje
+   sie jako wlasna, uniesiona karta z zaokraglonymi rogami i cieniem.
+   Pierscien kalorii/nawodnienia przefarbowany na akcent szalwiowy zamiast
+   sztywno wpisanego pomaranczu/niebieskiego (nowa zmienna --ring-track do
+   koloru sciezki pierscienia, wczesniej byla to wartosc "na sztywno" w
+   atrybucie SVG, jednakowa dla kazdego motywu).
+
+2. Dolny pasek nawigacji zmienia sie w "plywajaca pigulke" z widocznym
+   marginesem od krawedzi ekranu (zamiast dokowanego paska na styk),
+   aktywna zakladka podswietlona wypelnionym szalwiowym kolkiem wokol
+   ikony -- ten sam wzorzec co Android's FloatingBottomNav.
+
+Nowe motywy "Klinika" (id clinic) i "Klinika (noc)" (id clinic_dark)
+dostepne w Ustawieniach -> Wyglad, obok pozostalych 11. Wszystkie inne
+motywy sa bajt-w-bajt niezmienione -- kazda nowa reguła CSS jest scopowana
+do [data-theme="clinic"]/[data-theme="clinic_dark"].
+
+Rzeczywisty blad znaleziony i naprawiony podczas weryfikacji w przegladarce
+(nie tylko kompilacja): reguła CSS ustawiajaca wieksza wysokosc karty
+naglowka dla Klinika miala DOKLADNIE taka sama specyficznosc co istniejaca
+reguła zwijania naglowka przy przewijaniu (".collapsed .header-collapsible
+{max-height:0}") i wygrywala z nia przez kolejnosc w pliku -- efekt: po
+przewinieciu listy przepisow w dol zostawala pusta, czarna dziura zamiast
+poprawnie zwinietego naglowka. Naprawione przez usuniecie max-height z nowej
+reguly (istniejacy mechanizm zwijania i tak dziala poprawnie bez tego).
+
+CACHE_NAME w sw.js podniesiony na dieta-app-v86, zgodnie z nowa zasada z
+FR-52/v2 (kazda tura dotykajaca index.html/sw.js bumpuje w parze z
+numeracja versions/vNN, bez wyjatkow).
