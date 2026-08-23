@@ -44,12 +44,12 @@ object PantryOperations {
                 items + (name to spice.copy(level = clamped))
             }
         } else {
-            val step = PantryTiles.tileStep(unitCat)
-            if (current == null) {
+            val product = current as? PantryItem.Product
+            val step = product?.stepOverride ?: PantryTiles.tileStep(unitCat)
+            if (product == null) {
                 if (dir < 0) return items
                 items + (name to PantryItem.Product(name, category, step, PantryTiles.unitCatToUnit(unitCat)))
             } else {
-                val product = current as? PantryItem.Product ?: return items
                 val newQty = maxOf(0.0, Math.round((product.quantity + dir * step) * 100) / 100.0)
                 items + (name to product.copy(quantity = newQty))
             }
@@ -57,6 +57,12 @@ object PantryOperations {
     }
 
     fun removeItem(items: Map<String, PantryItem>, name: String): Map<String, PantryItem> = items - name
+
+    /** Long-press a product tile -> "🔢 Zmień skok +/-" (weight/volume only, see PantryScreen's TileActionDialog). */
+    fun changeStep(items: Map<String, PantryItem>, name: String, newStep: Double): Map<String, PantryItem> {
+        val product = items[name] as? PantryItem.Product ?: return items
+        return items + (name to product.copy(stepOverride = newStep))
+    }
 
     /** FR-30: long-press "🗂️ Zmień kategorię" -- moves the tile to another section without touching its quantity/unit/level. */
     fun changeCategory(items: Map<String, PantryItem>, name: String, category: PantryCategory): Map<String, PantryItem> {

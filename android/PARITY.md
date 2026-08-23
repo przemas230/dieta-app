@@ -14,9 +14,9 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 |---|---|---|---|
 | FR-1 | Baza przepisów podzielona na 5 kategorii posiłków | ✅ (pigułki w tym samym pasku co reszta filtrów) | ✅ v2 (2026-08-11, zweryfikowane na emulatorze 2026-08-23): pigułki kategorii wydzielone do WŁASNEGO zwijanego panelu, niezależnego od nagłówka — świadoma rozbieżność z web, patrz uwagi niżej |
 | FR-2 | Wyszukiwanie i filtrowanie przepisów | ✅ (pełnowymiarowe pole wyszukiwania, próg oceny "★4+" jako "polubione") | ✅ v4/v5 (2026-08-11, zweryfikowane na emulatorze 2026-08-23): pole wyszukiwania zastąpione kompaktową ikoną "🔍" + dropdown; dodano dedykowany przełącznik "❤️ Podoba się" — świadoma rozbieżność z web, patrz uwagi niżej |
-| FR-3 | Karta przepisu — widok skrócony i rozwinięty | ✅ v6 (2026-08-23): przycisk zakupów ukryty do rozwinięcia karty | ✅ v7 (2026-08-23): to samo + typografia/gęstość rozwiniętej karty dopasowana 1:1 do weba (bez nagłówków sekcji, bez wymuszonej wysokości Material na wierszach składników, pogrubienia jak na webie) -- dwuetapowe otwieranie (v4) doportowane i zweryfikowane na emulatorze 2026-08-23 -- `RecipeListScreen.kt`'s `pendingCenterRecipeId`, port web'owego `pendingCenterCard`/`handleCardTap` (patrz uwagi niżej) |
+| FR-3 | Karta przepisu — widok skrócony i rozwinięty | ✅ v8 (2026-08-23): rozwinięta karta nie zwija się już na ponowne dotknięcie (tylko rozwinięcie innej karty zwija poprzednią) | ✅ v9 (2026-08-23): to samo + świadome rozbieżności na życzenie: etykiety "Składniki"/"Przygotowanie" WIDOCZNE (web nie ma), miniaturka po prawej stronie karty (nie lewej) -- `RecipeListScreen.kt`'s `pendingCenterRecipeId` (v5, dwuetapowe otwieranie), typografia/gęstość dopasowana do weba (v7, patrz uwagi niżej) |
 | FR-4 | Miniatura przepisu jako emoji głównego składnika | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-5 | Przycisk powrotu do góry listy przepisów | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-5 | Przycisk powrotu do góry listy przepisów | ✅ | ✅ v2 (2026-08-23): naprawiony -- kolidował z innymi pływającymi przyciskami w tym samym rogu, całkowicie niewidoczny; przeniesiony w przeciwny róg, zweryfikowany na emulatorze |
 | FR-6 | Profil użytkownika i wyliczanie zapotrzebowania kalorycznego | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-7 | Podział dziennego celu kalorycznego na 5 posiłków | ✅ | ✅ zaimplementowane jako część FR-6 (ProfileCalculations.calcTargets) |
 | FR-8 | Filtr bez glutenu / bez laktozy | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
@@ -27,7 +27,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-13 | Piąta kategoria posiłku: Deser/Przekąska | ✅ | ✅ wszystkie 3 kryteria akceptacji spełnione (patrz uwagi niżej) |
 | FR-14 | Skalowanie rozmiaru interfejsu (UI scale) | ✅ | ✅ zaimplementowane, trwały zapis dodany 2026-08-10 (patrz uwagi niżej) |
 | FR-15 | Oznaczanie dania jako ugotowane, z historią i ocenami | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-16 | Sprawdzenie stanu spiżarni dla konkretnego przepisu | ✅ v4 (2026-08-23): inline widżet (licznik + pasek postępu) na dole karty, zamiast przycisku-wyzwalacza na górze | ✅ v4 (2026-08-23): to samo, zweryfikowane na emulatorze -- `Card`+`LinearProgressIndicator` w `RecipeCardBody` |
+| FR-16 | Sprawdzenie stanu spiżarni dla konkretnego przepisu | ✅ v5 (2026-08-23): inline widżet przesunięty wyżej (zaraz po przygotowaniu), rzędy przycisków pod nim przeukładane obok siebie | ✅ v5 (2026-08-23): to samo, zweryfikowane na emulatorze -- `Card`+`LinearProgressIndicator` w `RecipeCardBody` |
 | FR-17 | Ocena dania po ugotowaniu (gwiazdki) | ⚠️ nieaktualne, scalone w FR-84 | ⚠️ nieaktualne, scalone w FR-84 — historia gotowania jest teraz czystym logiem dat, patrz notatka FR-84 niżej |
 | FR-18 | Planer tygodniowy z 5 slotami posiłków dziennie | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-19 | Wybór innego slotu posiłkowego z poziomu karty przepisu | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
@@ -40,7 +40,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-25 | Budowanie listy zakupów ze składników przepisów | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-26 | Odhaczanie, udostępnianie i czyszczenie listy zakupów | ✅ | ✅ udostępnianie + "Wyczyść całą listę" dodane 2026-08-10, zweryfikowane na emulatorze (patrz uwagi niżej) |
 | FR-27 | Dodanie składników z całego tygodnia z Planera | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-28 | Śledzenie stanu spiżarni w kafelkach pogrupowanych kategoriami | ✅ | ✅ przebudowane od zera 2026-08-10 na pełną siatkę kafelków (patrz uwagi niżej) — web'owa poprawka wydajności z 2026-08-11 (v3) nie dotyczy Androida, ten kod nigdy nie odświeżał niewidocznych zakładek; „🗑️ Wyczyść całą spiżarnię" (v4) dodane na obu platformach w tej samej turze |
+| FR-28 | Śledzenie stanu spiżarni w kafelkach pogrupowanych kategoriami | ✅ v5 (2026-08-23): skok ml 100→50, per-produktowy override skoku przez długie przytrzymanie | ✅ przebudowane od zera 2026-08-10 na pełną siatkę kafelków (patrz uwagi niżej) — web'owa poprawka wydajności z 2026-08-11 (v3) nie dotyczy Androida, ten kod nigdy nie odświeżał niewidocznych zakładek; „🗑️ Wyczyść całą spiżarnię" (v4) dodane na obu platformach w tej samej turze; v5 (2026-08-23): to samo skok/override, `stepOverride` na `PantryItem.Product` zamiast osobnej mapy (patrz uwagi niżej) |
 | FR-29 | Odmiana gramatyczna nazw produktów w spiżarni | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-30 | Zmiana kategorii i usuwanie śledzenia kafelka spiżarni | ✅ | ✅ v2 (2026-08-11): naprawiony realny błąd "menu po przytrzymaniu nic nie robi" (stale pointerInput closure), potwierdzone na żywo na emulatorze (patrz uwagi niżej) |
 | FR-31 | Skanowanie kodu kreskowego produktu | ❌ wyłączone (przycisk ukryty, kod zostaje) | N/D — celowo nierozpoczęte, funkcja wyłączona na obu platformach na życzenie użytkownika (2026-08-10), nie będzie rozwijana na ten moment |
@@ -98,9 +98,44 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-81 | Propozycja przeliczenia planu i listy zakupów po zapisaniu profilu | ✅ | ✅ zaimplementowane 2026-08-11 tego samego dnia co web, zweryfikowane na żywo na emulatorze (patrz uwagi niżej) |
 | FR-82 | Widoczna wersja aplikacji w Ustawieniach | ✅ | ✅ Android miał to już od wcześniej (`AppUpdateCard`'s „Zainstalowana wersja: X”) — FR dopisany 2026-08-11 tylko formalnie, bez zmian w Kotlinie |
 | FR-83 | Edycja wcześniej wpisanej wagi i historii kalorii | ✅ (waga) / ✅ (historia kalorii) | ✅ waga (edycja+usuwanie inline, zweryfikowane na emulatorze) / ✅ historia kalorii doportowana i zweryfikowana na emulatorze 2026-08-23 (przebudowa `EatenViewModel`/`EatenEntry` na `EatenDay` per-data, patrz uwagi FR-83.md i notatka niżej) |
-| FR-87 | Motyw „Klinika” — czcionka i układ, nie tylko kolory | ✅ v5 (2026-08-23): pełna parytet z Androidem — oba warianty (`clinic`/`clinic_dark`), paleta/fonty/nagłówek-karta/pływający pasek (v4) ORAZ pozostałe 4 bespoke layouty (Planer bento, Zakupy badge, Postęp bento+kółka wody, Spiżarnia akordeon — v5), zweryfikowane bezpośrednio w przeglądarce (patrz uwagi niżej) | ✅ v3 (2026-08-23): nagłówek (kółko kalorii + posiłki) przebudowany na uniesioną kartę na jasnym/ciemnym tle (nie tylko przefarbowany blok), + nowy 13. motyw „Klinika (noc)” (`clinic_dark`) — oba warianty zweryfikowane na żywo na emulatorze (patrz uwagi niżej) |
+| FR-87 | Motyw „Klinika” — czcionka i układ, nie tylko kolory | ✅ v6 (2026-08-23): naprawiony realny błąd kontrastu — pierścień kalorii/wody w nagłówku był niemal niewidoczny na jasnym tle (patrz uwagi niżej) | ✅ v6 (2026-08-23): ten sam błąd kontrastu naprawiony -- `clinicRingTrack` w `HeaderKcalPanel` (`MainActivity.kt`) (patrz uwagi niżej) |
 
 ## Uwagi do częściowych wpisów
+
+- **FR-3/v8-v9 + FR-16/v5 + FR-5/v2 + FR-87/v6 + FR-28/v5 — runda drobnych
+  poprawek UX na wyraźną prośbę użytkownika (2026-08-23, Web + Android)**:
+  sześć niezależnych zgłoszeń w jednej turze. (1) Rozwinięta karta przepisu
+  przestała się zwijać na ponowne dotknięcie (tylko rozwinięcie innej karty
+  ją zamyka) -- `handleCardTap()`/`onToggleExpanded`'s `expanded` gałąź
+  zamieniona na no-op na obu platformach. (2) Dolna część karty
+  przeukładana: „⭐ Oceń | 💬 Komentarze” w jednej linii, „🛒 Dodaj do listy
+  | ✅ Zrobione | 📅 Zaplanuj” w kolejnej, obie pod widżetem Stan spiżarni
+  (FR-16/v5). (3) Naprawiony realny błąd kontrastu w jasnej Klinice --
+  pierścień kalorii/wody w nagłówku używał tego samego koloru co
+  obramowanie karty pod nim, praktycznie niewidoczny na białym tle;
+  naprawiony użyciem przygaszonego koloru TEKSTU (już zaprojektowanego z
+  realnym kontrastem) zamiast koloru linii (FR-87/v6). (4) Spiżarnia:
+  domyślny skok +/- dla ml zmniejszony ze 100 na 50, z opcją zmiany per
+  produkt przez długie przytrzymanie (FR-28/v5) -- Android świadomie
+  prościej niż web (pole na `PantryItem.Product` zamiast osobnej trwałej
+  mapy, ginie po pełnym usunięciu śledzenia -- ten sam kompromis co
+  wcześniejszy brak portu zmiany jednostki przez długie przytrzymanie).
+  Android-only, bez zmian na webie: (5) etykiety "Składniki"/"Przygotowanie"
+  przywrócone na karcie (v7 je usunęła dla 1:1 z webem, użytkownik jednak
+  chce je z powrotem konkretnie na Androidzie) i miniaturka dania
+  przeniesiona na prawą stronę karty (FR-3/v9). (6) Naprawiony całkowicie
+  niewidoczny przycisk „⬆️ powrót do góry” listy przepisów -- kolidował z
+  `MainActivity.kt`'s `Scaffold`'s `floatingActionButton`'owymi „💡”/„📖”
+  w tym samym rogu ekranu (osobna kompozycja, ten sam punkt, całkowicie
+  pod nimi ukryty), przeniesiony w przeciwny róg (FR-5/v2). Przy okazji
+  wdrożenia (4) złapany i naprawiony błąd layoutu: 6 opcji skoku w jednym
+  `Row` bez zawijania wypadało poza ekran po prawej -- zamienione na
+  `FlowRow`. `./gradlew :logic:test :app:compileDebugKotlin
+  :app:assembleDebug` przechodzi (test `PantryTilesTest` zaktualizowany).
+  Każda zmiana zweryfikowana bezpośrednio na obu platformach (przeglądarka
+  + emulator), w tym realne interakcje (długi przytrzymanie kafelka →
+  wybór nowego skoku → potwierdzenie trwałości po restarcie ekranu,
+  wielokrotne dotknięcie rozwiniętej karty bez zwinięcia).
 
 - **FR-3/v7 — typografia/gęstość karty dopasowana 1:1 do weba (2026-08-23,
   Android)**: po v6 użytkownik przysłał zrzuty ekranu obu platform i

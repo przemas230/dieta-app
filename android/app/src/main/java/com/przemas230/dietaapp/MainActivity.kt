@@ -957,20 +957,31 @@ private fun HeaderKcalPanel(
                 Text(remaining.toString(), fontWeight = FontWeight.Bold, fontSize = 17.sp, color = textColor)
                 Text("kcal", fontSize = 8.sp, color = mutedTextColor)
             }
+            // Bug found 2026-08-23 ("motyw jasny klinika jest w niektórych
+            // momentach aż za jasny"): the ring track used to be
+            // colorScheme.surfaceVariant, which for Klinika IS the same
+            // `line` token the elevated panel's own border/divider color
+            // comes from -- on a white card, an unfilled (0%) ring rendered
+            // almost perfectly invisible (surfaceVariant and the card's own
+            // surface differ by only a few RGB values). onSurfaceVariant
+            // (the muted-text token) is already tuned for real contrast
+            // against surface/background by design, so a low-alpha version
+            // of THAT reads as a proper pale track instead of vanishing.
+            val clinicRingTrack = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(78.dp)) {
                 CircularProgressIndicator(
                     progress = { kcalPct },
                     modifier = Modifier.fillMaxSize(),
                     strokeWidth = 8.dp,
                     color = if (isClinic) MaterialTheme.colorScheme.primary else Color(0xFFF5822B),
-                    trackColor = if (isClinic) MaterialTheme.colorScheme.surfaceVariant else Color.White.copy(alpha = 0.20f),
+                    trackColor = if (isClinic) clinicRingTrack else Color.White.copy(alpha = 0.20f),
                 )
                 CircularProgressIndicator(
                     progress = { waterPct },
                     modifier = Modifier.fillMaxSize().padding(11.dp),
                     strokeWidth = 6.dp,
                     color = if (isClinic) MaterialTheme.colorScheme.tertiary else Color(0xFF3E8EF5),
-                    trackColor = if (isClinic) MaterialTheme.colorScheme.surfaceVariant else Color.White.copy(alpha = 0.20f),
+                    trackColor = if (isClinic) clinicRingTrack else Color.White.copy(alpha = 0.20f),
                 )
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(eatenKcal.toString(), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = textColor)

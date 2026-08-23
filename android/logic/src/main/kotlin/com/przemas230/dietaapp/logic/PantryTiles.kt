@@ -26,8 +26,17 @@ object PantryTiles {
         PantryCategory.INNE,
     )
 
-    /** Port of index.html's tileStep(unitCat): weight/volume step by 100 (g/ml), everything else by 1. */
-    fun tileStep(unitCat: String): Double = if (unitCat == "weight" || unitCat == "volume") 100.0 else 1.0
+    /**
+     * Port of index.html's tileStep(unitCat). On explicit user request
+     * ("dla artykułów liczonych w ml zmniejsz skok z 100 do 50 ml") volume
+     * dropped to 50 -- 100ml jumps overshot for things like oil/sauces
+     * typically used a tablespoon at a time. Weight (g) keeps 100.
+     */
+    fun tileStep(unitCat: String): Double = when (unitCat) {
+        "weight" -> 100.0
+        "volume" -> 50.0
+        else -> 1.0
+    }
 
     /** weight->"g", volume->"ml", count (and anything else in this simplified model)->"szt." -- matches RecipePantryMatching's UNIT_DEFS. */
     fun unitCatToUnit(unitCat: String): String = when (unitCat) {

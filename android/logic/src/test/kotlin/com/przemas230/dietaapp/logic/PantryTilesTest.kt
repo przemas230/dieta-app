@@ -25,9 +25,9 @@ private fun recipeWithIngredients(id: String, vararg ingredients: String) = Reci
 class PantryTilesTest {
 
     @Test
-    fun `tileStep is 100 for weight and volume, 1 for everything else`() {
+    fun `tileStep is 100 for weight, 50 for volume, 1 for everything else`() {
         assertEquals(100.0, PantryTiles.tileStep("weight"))
-        assertEquals(100.0, PantryTiles.tileStep("volume"))
+        assertEquals(50.0, PantryTiles.tileStep("volume"))
         assertEquals(1.0, PantryTiles.tileStep("count"))
         assertEquals(1.0, PantryTiles.tileStep("unknown"))
     }

@@ -7,6 +7,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,6 +29,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -201,12 +204,20 @@ fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityL
         )
     }
     actionTarget?.let { (name, category) ->
+        val product = items[name] as? PantryItem.Product
+        val unitCat = unitCats[name] ?: "count"
         TileActionDialog(
             name = name,
             currentCategory = category,
+            stepUnitCat = unitCat.takeIf { it == "weight" || it == "volume" },
+            currentStep = product?.stepOverride ?: PantryTiles.tileStep(unitCat),
             onChangeCategory = { newCategory ->
                 viewModel.changeCategory(name, newCategory)
                 activityLogViewModel.log("pantry_recat", "Zmieniono kategorię „$name” na: ${newCategory.label}")
+            },
+            onChangeStep = { newStep ->
+                viewModel.changeStep(name, newStep)
+                activityLogViewModel.log("pantry_add", "Zmieniono skok +/-: „$name” na $newStep")
             },
             onRemoveTracking = {
                 viewModel.removeItem(name)
@@ -401,12 +412,15 @@ private fun AddCustomTileDialog(category: PantryCategory, onAdd: (name: String) 
 }
 
 /** FR-30: long-press a TRACKED tile -> change category, or remove tracking (wyzeruj stan). */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun TileActionDialog(
     name: String,
     currentCategory: PantryCategory,
+    stepUnitCat: String?,
+    currentStep: Double,
     onChangeCategory: (PantryCategory) -> Unit,
+    onChangeStep: (Double) -> Unit,
     onRemoveTracking: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -441,6 +455,28 @@ private fun TileActionDialog(
                         onChangeCategory(selected)
                         onDismiss()
                     }) { Text("Zapisz kategorię") }
+                }
+                // On explicit user request ("dodaj opcje zmieniania skoku po
+                // przytrzymaniu kafelka") -- only weight/volume have a
+                // meaningful numeric +/- increment to override (count steps
+                // by 1 whole item, spices cycle Mało/Wystarczy/Dużo).
+                if (stepUnitCat != null) {
+                    val unitLabel = if (stepUnitCat == "weight") "g" else "ml"
+                    val stepOptions = if (stepUnitCat == "weight") {
+                        listOf(10.0, 25.0, 50.0, 100.0, 250.0, 500.0)
+                    } else {
+                        listOf(10.0, 25.0, 50.0, 100.0, 200.0, 250.0)
+                    }
+                    Text("🔢 Skok +/-", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        stepOptions.forEach { step ->
+                            FilterChip(
+                                selected = step == currentStep,
+                                onClick = { onChangeStep(step) },
+                                label = { Text("${step.toInt()} $unitLabel") },
+                            )
+                        }
+                    }
                 }
                 TextButton(onClick = {
                     onRemoveTracking()

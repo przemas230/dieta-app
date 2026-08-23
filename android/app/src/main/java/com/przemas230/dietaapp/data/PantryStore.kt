@@ -48,6 +48,7 @@ object PantryStore {
                     obj.put("type", "product")
                     obj.put("quantity", item.quantity)
                     obj.put("unit", item.unit)
+                    if (item.stepOverride != null) obj.put("stepOverride", item.stepOverride)
                 }
                 is PantryItem.Spice -> {
                     obj.put("type", "spice")
@@ -68,7 +69,13 @@ object PantryStore {
             val category = PantryCategory.valueOf(obj.getString("category"))
             val item: PantryItem = when (obj.getString("type")) {
                 "spice" -> PantryItem.Spice(name, category, SpiceLevel.valueOf(obj.getString("level")))
-                else -> PantryItem.Product(name, category, obj.getDouble("quantity"), obj.getString("unit"))
+                else -> PantryItem.Product(
+                    name,
+                    category,
+                    obj.getDouble("quantity"),
+                    obj.getString("unit"),
+                    stepOverride = if (obj.has("stepOverride")) obj.getDouble("stepOverride") else null,
+                )
             }
             result[name] = item
         }

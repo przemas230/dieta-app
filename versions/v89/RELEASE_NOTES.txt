@@ -1,0 +1,33 @@
+Web + Android v89 — poprawki karty przepisu, motywu Klinika i spiżarni
+
+Na wyraźną prośbę użytkownika, seria drobnych ale realnych poprawek UX:
+
+1. Rozwinięta karta przepisu już się nie zwija po ponownym kliknięciu —
+   dotąd jedno stuknięcie w otwartą kartę natychmiast ją zamykało, co
+   okazało się uciążliwe (przypadkowe zamknięcie przy czytaniu). Jedyny
+   sposób zamknięcia to teraz rozwinięcie innej karty.
+
+2. Dolna część rozwiniętej karty przeukładana: pasek "Oceń i skomentuj" +
+   "Komentarze" w jednej linii, a "Dodaj do listy zakupów" + "Zrobione" +
+   "Zaplanuj" w kolejnej — obie linie pod widżetem stanu spiżarni.
+
+3. Naprawiony realny błąd kontrastu w jasnym motywie Klinika: pierścień
+   kalorii/wody w nagłówku był praktycznie niewidoczny (kolor "toru"
+   pierścienia różnił się od tła karty o kilka wartości RGB). Naprawione
+   przez użycie przygaszonej wersji koloru tekstu (już mającego realny
+   kontrast z założenia) zamiast koloru linii/obramowania.
+
+4. Spiżarnia: domyślny skok +/- dla produktów w mililitrach zmniejszony
+   ze 100 do 50 ml (100ml jump był za duży np. dla oliwy/sosów). Dodana
+   możliwość zmiany skoku per-produkt przez przytrzymanie kafelka.
+
+Android-only (bez zmian na webie, świadome rozbieżności):
+- Miniaturka dania przeniesiona na prawą stronę karty (tekst zaczyna się
+  od lewej krawędzi, jak na webie).
+- Etykiety "Składniki"/"Przygotowanie" przywrócone na karcie (na wyraźną
+  prośbę, mimo że web ich nie ma).
+- Naprawiony niewidoczny przycisk "⬆️ powrót do góry" listy przepisów —
+  kolidował z innymi pływającymi przyciskami w tym samym rogu ekranu,
+  całkowicie pod nimi ukryty; przeniesiony w przeciwny róg.
+
+CACHE_NAME podniesiony na dieta-app-v89, backup pre-edit w versions/v89/.

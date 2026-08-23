@@ -83,6 +83,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -876,11 +877,14 @@ private fun RecipeListWithScrollToTop(
                     // doc comment above for the full state machine.
                     onToggleExpanded = {
                         when (recipe.id) {
-                            expandedRecipeId -> {
-                                // Already expanded -- collapsing stays a single, immediate tap.
-                                expandedRecipeId = null
-                                pendingCenterRecipeId = null
-                            }
+                            // On explicit user request, tapping an ALREADY-expanded
+                            // card no longer collapses it (used to be a single
+                            // immediate tap) -- "uciążliwe w używaniu" (a stray tap
+                            // while reading the open card would close it). The only
+                            // way to collapse a card now is to expand a different
+                            // one (below auto-collapses whichever was open, per
+                            // FR-3's "only one expanded at a time").
+                            expandedRecipeId -> { /* no-op */ }
                             pendingCenterRecipeId -> {
                                 // Second tap on the same, already-centered card -- expand it.
                                 pendingCenterRecipeId = null
@@ -896,12 +900,22 @@ private fun RecipeListWithScrollToTop(
                 )
             }
         }
+        // Bug found 2026-08-23 ("do wersji kotlin dodaj button przewijania do
+        // góry listy przepisów" -- it turned out to already exist in code but
+        // be completely invisible in practice): MainActivity's own Scaffold
+        // floatingActionButton slot stacks "💡"/"📖" at BottomEnd for this
+        // exact same route, and this button lived in a SEPARATE composition
+        // scope targeting that identical corner -- both render at the same
+        // physical position, with the Scaffold slot's FABs drawn on top,
+        // completely hiding this one underneath them. Moved to BottomStart
+        // (the opposite corner) so it can never collide with that stack,
+        // however many buttons it grows to.
         AnimatedVisibility(
             visible = showButton,
             enter = if (reducedMotion) EnterTransition.None else fadeIn(),
             exit = if (reducedMotion) ExitTransition.None else fadeOut(),
             modifier = Modifier
-                .align(Alignment.BottomEnd)
+                .align(Alignment.BottomStart)
                 .padding(16.dp),
         ) {
             FloatingActionButton(onClick = {
@@ -1053,15 +1067,10 @@ private fun RecipeCard(
             }
         Column(modifier = Modifier.weight(1f).padding(bottom = if (themeId == "polaroid") 18.dp else 0.dp)) {
             Row(modifier = Modifier.padding(14.dp)) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(thumbEmoji, fontSize = 24.sp)
-                }
-                Spacer(modifier = Modifier.width(12.dp))
+                // Thumbnail on the right (not left) on explicit user request,
+                // so the title text starts flush against the card's left
+                // edge like index.html's .card-head (title flex:1 on the
+                // left, .card-head-side incl. the thumb on the right).
                 Column(modifier = Modifier.weight(1f)) {
                     RecipeCardBody(
                         recipe,
@@ -1080,30 +1089,19 @@ private fun RecipeCard(
                         commentsViewModel = commentsViewModel,
                         isAddedToShopping = isAddedToShopping,
                         onToggleAddToShopping = onToggleAddToShopping,
+                        cookCount = cookEntries.size,
+                        onMarkDoneClick = { showCookHistory = true },
+                        onPlanClick = { showPlanPicker = true },
                     )
                 }
-            }
-            // FR-15: always visible (not gated by `expanded`), same as
-            // index.html's always-shown card-actions bar. Tapping this never
-            // marks the dish done directly — it always opens the history
-            // dialog first (revised from the original press-and-hold design,
-            // see FR-15.md's "Uwagi").
-            Row(modifier = Modifier.padding(horizontal = 10.dp)) {
-                TextButton(
-                    onClick = { showCookHistory = true },
+                Spacer(modifier = Modifier.width(12.dp))
+                Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 38.dp),
+                        .size(48.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Text("✅ Zrobione" + if (cookEntries.isNotEmpty()) " (${cookEntries.size}×)" else "")
-                }
-                TextButton(
-                    onClick = { showPlanPicker = true },
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 38.dp),
-                ) {
-                    Text("📅 Zaplanuj")
+                    Text(thumbEmoji, fontSize = 24.sp)
                 }
             }
         }
@@ -1295,6 +1293,9 @@ private fun RecipeCardBody(
     commentsViewModel: RecipeCommentsViewModel,
     isAddedToShopping: Boolean,
     onToggleAddToShopping: () -> Unit,
+    cookCount: Int,
+    onMarkDoneClick: () -> Unit,
+    onPlanClick: () -> Unit,
 ) {
     val context = LocalContext.current
     Column {
@@ -1367,9 +1368,12 @@ private fun RecipeCardBody(
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
-            // No "Składniki" section label -- port of index.html's recipeCard(),
-            // which goes straight from the macro row into the <ul> with no
-            // heading, on explicit user request to match the web card 1:1.
+            // "Składniki" section label -- web doesn't have one (see FR-3's
+            // Uwagi), but the user explicitly asked for it back on Android
+            // specifically ("w kotlin brakuje na karcie napisu składniki i
+            // przygotowanie"), so this is a deliberate, documented
+            // divergence from the otherwise-1:1 port, not an oversight.
+            Text("Składniki", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 recipe.ingredients.forEach { ingredient ->
                     // FR-35: emoji suffix when the ingredient resolves to a known canon -- port of index.html's withEmoji.
@@ -1406,9 +1410,9 @@ private fun RecipeCardBody(
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
-            // No "Przygotowanie" section label either -- port of index.html's
-            // <p class="method"> which has no heading above it, same reasoning
-            // as the ingredients list above.
+            // "Przygotowanie" section label -- same deliberate divergence as
+            // "Składniki" above, on the same explicit user request.
+            Text("Przygotowanie", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
             Text(
                 recipe.method,
                 style = MaterialTheme.typography.bodySmall,
@@ -1421,25 +1425,6 @@ private fun RecipeCardBody(
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
-            Spacer(modifier = Modifier.height(6.dp))
-            // FR-67: deliberate 1-5 star review + optional comment, distinct
-            // from the FR-55/57 swipe like/dislike badge shown elsewhere on
-            // this card -- port of index.html's reviewLabel/recipeReviewBtn,
-            // placed at the very bottom of the expanded card per FR-67/FR-77.
-            OutlinedButton(
-                onClick = onOpenReview,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 38.dp),
-                colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            ) {
-                Text(
-                    if (review != null) "⭐ Oceń i skomentuj (Twoja ocena: ${review.stars}/5)" else "⭐ Oceń i skomentuj",
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            RecipeCommentsSection(recipeId = recipe.id, viewModel = commentsViewModel)
             // FR-16/v4: inline coverage summary (count + shaded progress bar)
             // instead of a plain trigger button, so the user sees what's
             // missing at a glance without tapping -- moved to the bottom of
@@ -1450,7 +1435,7 @@ private fun RecipeCardBody(
             val pantryHave = remember(recipe.id, pantryItems) {
                 recipe.ingredients.count { ing -> pantryItems.containsKey(RecipePantryMatching.parseIngredient(ing).canonName) }
             }
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Card(
                 onClick = onPantryCheckClick,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -1482,23 +1467,105 @@ private fun RecipeCardBody(
                     )
                 }
             }
+            // FR-67/FR-77: review + comments toggle side by side on explicit
+            // user request ("oceń i skomentuj oraz komentarze użytkowników
+            // też daj do jednej linii"), positioned below the pantry widget.
+            // Comments state hoisted here (not inside a self-contained
+            // composable) so the toggle button can live in this row while
+            // the actual comment list still expands full-width beneath it.
+            var commentsExpanded by remember { mutableStateOf(false) }
             Spacer(modifier = Modifier.height(6.dp))
-            // FR-25: whole-recipe add/remove toggle, mirrors index.html's
-            // data-add button ("🛒 Dodaj..." / "✓ Na liście zakupów") --
-            // moved here (only visible once expanded) on explicit user
-            // request: it used to sit always-visible right under the title,
-            // where it was easy to hit by accident while trying to expand
-            // the card, since the tap-to-expand target covers the same area.
-            TextButton(
-                onClick = onToggleAddToShopping,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 38.dp),
-            ) {
-                Text(
-                    if (isAddedToShopping) "✓ Na liście zakupów" else "🛒 Dodaj do listy zakupów",
-                    fontWeight = FontWeight.Bold,
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = onOpenReview,
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 38.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                ) {
+                    Text(
+                        if (review != null) "⭐ Ocena ${review.stars}/5" else "⭐ Oceń",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                OutlinedButton(
+                    onClick = {
+                        commentsExpanded = !commentsExpanded
+                        if (commentsExpanded) commentsViewModel.loadFirstPage(recipe.id)
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 38.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                ) {
+                    Text(
+                        if (commentsExpanded) "💬 Komentarze ▲" else "💬 Komentarze ▼",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            RecipeCommentsBody(recipeId = recipe.id, viewModel = commentsViewModel, expanded = commentsExpanded)
+            // FR-25/FR-15: shopping-list toggle, "Zrobione" and "Zaplanuj"
+            // side by side on explicit user request ("przycisk dodaj do
+            // listy zakupów zrób tak samo jak zrobione i zaplanuj w tej
+            // samej linii"). All three now live inside the expanded body
+            // (visible only once expanded), same reasoning as the shopping
+            // button's own earlier move: sitting always-visible right under
+            // the title made it easy to hit by accident while trying to
+            // expand the card.
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(
+                    onClick = onToggleAddToShopping,
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 38.dp),
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        if (isAddedToShopping) "✓ Na liście" else "🛒 Zakupy",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                TextButton(
+                    onClick = onMarkDoneClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 38.dp),
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        "✅ Zrobione" + if (cookCount > 0) " (${cookCount}×)" else "",
+                        style = MaterialTheme.typography.labelMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                TextButton(
+                    onClick = onPlanClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 38.dp),
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        "📅 Zaplanuj",
+                        style = MaterialTheme.typography.labelMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
             // FR-66: only a custom (user-added) recipe can be deleted this way.
             if (recipe.source == "custom") {
@@ -1516,27 +1583,19 @@ private fun RecipeCardBody(
 }
 
 /**
- * FR-77: "💬 Komentarze innych użytkowników" -- collapsed by default,
- * fetches the first page (3) on first expand, "Pokaż więcej" fetches 10 more
- * at a time until Firestore returns fewer than requested. Port of
- * index.html's comments-toggle-btn/comments-body (index.html:4202-4211,
- * 4254-4264).
+ * FR-77: "💬 Komentarze innych użytkowników" body -- fetches the first page
+ * (3) on first expand, "Pokaż więcej" fetches 10 more at a time until
+ * Firestore returns fewer than requested. Port of index.html's
+ * comments-toggle-btn/comments-body (index.html:4202-4211, 4254-4264).
+ * The toggle BUTTON itself lives in `RecipeCardBody` now (sharing a row
+ * with "Oceń i skomentuj" on explicit user request), so `expanded` is
+ * hoisted there instead of owned locally here.
  */
 @Composable
-private fun RecipeCommentsSection(recipeId: String, viewModel: RecipeCommentsViewModel) {
-    var expanded by remember { mutableStateOf(false) }
+private fun RecipeCommentsBody(recipeId: String, viewModel: RecipeCommentsViewModel, expanded: Boolean) {
     val pages by viewModel.pages.collectAsState()
     val page = pages[recipeId]
 
-    TextButton(
-        onClick = {
-            expanded = !expanded
-            if (expanded) viewModel.loadFirstPage(recipeId)
-        },
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text(if (expanded) "💬 Komentarze innych użytkowników ▲" else "💬 Komentarze innych użytkowników ▼")
-    }
     if (expanded) {
         Column(modifier = Modifier.padding(top = 4.dp)) {
             when {

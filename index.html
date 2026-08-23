@@ -340,7 +340,17 @@
     --font-mono:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     --ring-kcal:var(--teal);
     --ring-water:var(--plum);
-    --ring-track:var(--line);
+    /* Bug found 2026-08-23 ("motyw jasny klinika jest w niektórych
+       momentach aż za jasny"): var(--line) is the SAME token the card's own
+       border/divider already uses, so an unfilled (0%) ring on the white
+       --card background was rendering almost perfectly invisible -- --line
+       and --card differ by only a few RGB values. --muted is already tuned
+       for real contrast against --card/--bg by design (it's the token every
+       muted LABEL uses), so a low-alpha version of THAT reads as a proper
+       pale track instead of vanishing. rgba() literal, not var(--muted)
+       with opacity, since CSS custom properties can't be alpha-blended
+       without knowing the underlying RGB triplet. */
+    --ring-track:rgba(118,107,89,.35);
     --dur-fast:.16s; --dur-med:.28s; --ease:cubic-bezier(.16,1,.3,1);
   }
   :root[data-theme="clinic_dark"]{
@@ -367,7 +377,7 @@
     --font-mono:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     --ring-kcal:var(--teal);
     --ring-water:var(--plum);
-    --ring-track:var(--line);
+    --ring-track:rgba(171,163,151,.35);
     --dur-fast:.16s; --dur-med:.28s; --ease:cubic-bezier(.16,1,.3,1);
     color-scheme: dark;
   }
@@ -889,6 +899,11 @@
   }
   .pantry-status-count{font-weight:600; color:var(--muted); font-size:11.5px;}
   .recipe-comments-section{margin-top:10px; padding-top:10px; border-top:1px solid var(--line);}
+  /* Groups of bottom-of-card buttons that used to stack full-width, now
+     placed side by side on explicit user request ("w tej samej linii żeby
+     były obok siebie"). */
+  .card-action-row{display:flex; gap:8px; margin-top:8px;}
+  .card-action-row:first-child{margin-top:0;}
   .comments-toggle-btn{
     display:flex; align-items:center; justify-content:space-between; width:100%;
     border:none; background:none; padding:6px 2px; margin:2px 0 0;
@@ -1102,7 +1117,6 @@
   .star-pick{flex:1 1 0; text-align:center; font-size:28px; cursor:pointer; color:var(--honey); line-height:1; padding:6px 0; min-height:34px; display:flex; align-items:center; justify-content:center;}
   .ch-del{flex:0 0 auto; border:none; background:none; color:var(--danger); font-size:17px; cursor:pointer; padding:4px 6px;}
   .method{font-size:13px; color:var(--muted); line-height:1.5; margin:0 0 12px;}
-  .card-actions{display:flex; gap:8px; flex-wrap:wrap;}
   .add-btn{
     display:block; width:100%; min-width:0; margin-top:8px; border:none; border-radius:11px; padding:10px 8px; font-size:13px;
     font-weight:700; cursor:pointer; background:var(--teal-pale); color:var(--teal-dark);
@@ -2136,8 +2150,20 @@ function shopDisplayName(canonName, unitCat, qty){
 }
 function tileStep(unitCat){
   if(unitCat==="weight") return 100;
-  if(unitCat==="volume") return 100;
+  // On explicit user request ("dla artykułów liczonych w ml zmniejsz skok
+  // z 100 do 50 ml") -- 100ml jumps overshot for things like oil/sauces
+  // typically used a tablespoon at a time. Weight (g) keeps 100 -- not part
+  // of the request, and 100g is still a reasonable default bite there.
+  if(unitCat==="volume") return 50;
   return 1;
+}
+// Per-product override of the tap increment (set via long-press -> "Zmień
+// skok"), on top of the unitCat-based default above -- e.g. someone tracking
+// olive oil in 25ml sips instead of the 50ml default. Falls back to
+// tileStep() when no override exists for this canonical name.
+function effectiveStep(canonName, unitCat){
+  const override = state.pantryStepOverride[canonName];
+  return (override && override > 0) ? override : tileStep(unitCat);
 }
 function computeTileUnitCats(){
   const counts = {};
@@ -2905,6 +2931,7 @@ function loadState(){
       if(!s.customTiles) s.customTiles = {};
       if(!s.pantryUnitOverride) s.pantryUnitOverride = {};
       if(!s.pantryCategoryOverride) s.pantryCategoryOverride = {};
+      if(!s.pantryStepOverride) s.pantryStepOverride = {};
       if(s.waterNotifEnabled===undefined) s.waterNotifEnabled = false;
       if(!s.theme) s.theme = "teal";
       if(!s.waterReminder) s.waterReminder = {...DEFAULT_WATER_REMINDER};
@@ -2944,7 +2971,7 @@ function loadState(){
       return s;
     }
   }catch(e){}
-  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, plannerLeftover:{}, water:{date:"",count:0}, waterHistory:{}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, pantryCategoryOverride:{}, waterNotifEnabled:false, theme:"teal", waterReminder:{...DEFAULT_WATER_REMINDER}, uiScale:detectDefaultUiScale(), recipeRating:{}, swipeRatingStyle:"balloon", displayName:"", myRecipes:[], recipeReviews:{}, communityRecipesEnabled:false, household:{id:null, name:"", inviteCode:null, members:[]}, _lastSyncedSnapshot:null};
+  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, plannerLeftover:{}, water:{date:"",count:0}, waterHistory:{}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, pantryCategoryOverride:{}, pantryStepOverride:{}, waterNotifEnabled:false, theme:"teal", waterReminder:{...DEFAULT_WATER_REMINDER}, uiScale:detectDefaultUiScale(), recipeRating:{}, swipeRatingStyle:"balloon", displayName:"", myRecipes:[], recipeReviews:{}, communityRecipesEnabled:false, household:{id:null, name:"", inviteCode:null, members:[]}, _lastSyncedSnapshot:null};
 }
 let state = loadState();
 document.documentElement.setAttribute("data-theme", state.theme || "teal");
@@ -2963,7 +2990,7 @@ function saveState(){
 // explicitly asked for EVERY field to round-trip through the cloud today —
 // so instead of excluding collision-prone keys (shopping/planner/history),
 // they're included here and protected by a real 3-way merge below instead.
-const SYNCED_STATE_KEYS = ["displayName","profile","theme","uiScale","communityRecipesEnabled","pantry","pantryUnitOverride","pantryCategoryOverride","favorites","favIngredients","myRecipes","recipeReviews","recipeRating","customTiles","swipeRatingStyle","shopping","recipeAdded","planner","plannerScale","plannerLeftover","cooked","eaten","waterHistory","water","weights","history","waterNotifEnabled","waterReminder","household"];
+const SYNCED_STATE_KEYS = ["displayName","profile","theme","uiScale","communityRecipesEnabled","pantry","pantryUnitOverride","pantryCategoryOverride","pantryStepOverride","favorites","favIngredients","myRecipes","recipeReviews","recipeRating","customTiles","swipeRatingStyle","shopping","recipeAdded","planner","plannerScale","plannerLeftover","cooked","eaten","waterHistory","water","weights","history","waterNotifEnabled","waterReminder","household"];
 // Keys whose change can actually affect what renderRecipes() draws (matching
 // %, badges, filters) -- used to skip that expensive 229-card full rebuild
 // on syncs that only touched something unrelated (e.g. a weight entry or
@@ -2972,7 +2999,7 @@ const RECIPE_RELEVANT_SYNC_KEYS = new Set(["pantry","favorites","favIngredients"
 // Keys shaped as {id: value} maps, where a real 3-way merge can be done
 // PER ENTRY (so two devices adding different shopping items both survive,
 // instead of one whole-field overwrite winning outright).
-const MAP_MERGE_KEYS = ["shopping","recipeAdded","planner","plannerScale","plannerLeftover","cooked","eaten","waterHistory","favorites","favIngredients","pantry","pantryUnitOverride","pantryCategoryOverride","customTiles","recipeReviews","recipeRating"];
+const MAP_MERGE_KEYS = ["shopping","recipeAdded","planner","plannerScale","plannerLeftover","cooked","eaten","waterHistory","favorites","favIngredients","pantry","pantryUnitOverride","pantryCategoryOverride","pantryStepOverride","customTiles","recipeReviews","recipeRating"];
 // Arrays of objects with a stable .id, diffed the same way as MAP_MERGE_KEYS
 // after converting array<->map by id.
 const ARRAY_BY_ID_MERGE_KEYS = ["myRecipes"];
@@ -3415,7 +3442,7 @@ const MERGE_KEY_LABELS = {
   planner:"Planer", plannerScale:"Planer (skala porcji)", plannerLeftover:"Planer (resztki)",
   cooked:"Historia gotowania", eaten:"Dziennik posiłków", waterHistory:"Historia nawodnienia",
   favorites:"Ulubione przepisy", favIngredients:"Ulubione składniki", pantry:"Spiżarnia",
-  pantryUnitOverride:"Spiżarnia (jednostka)", pantryCategoryOverride:"Spiżarnia (kategoria)",
+  pantryUnitOverride:"Spiżarnia (jednostka)", pantryCategoryOverride:"Spiżarnia (kategoria)", pantryStepOverride:"Spiżarnia (skok +/-)",
   customTiles:"Własne kafelki spiżarni", recipeReviews:"Oceny i komentarze", recipeRating:"Oceny (podoba/nie podoba się)",
   myRecipes:"Własne przepisy", displayName:"Nazwa w aplikacji", theme:"Motyw", uiScale:"Skala interfejsu",
   communityRecipesEnabled:"Przepisy społeczności (przełącznik)", swipeRatingStyle:"Styl oceniania przesunięciem",
@@ -4606,9 +4633,13 @@ function setCardExpanded(card, expand){
 // expanded card stays a single, immediate tap (no two-step needed to CLOSE
 // something).
 function handleCardTap(card){
+  // On explicit user request, tapping an ALREADY-expanded card no longer
+  // collapses it (used to be a single immediate tap) -- users found that
+  // "uciążliwe w używaniu" (annoying), since any stray tap on the open
+  // card while reading it would close it. The only way to collapse a card
+  // now is to expand a different one (setCardExpanded auto-collapses the
+  // previous one, per FR-3's "only one expanded at a time").
   if(card.classList.contains("expanded")){
-    setCardExpanded(card, false);
-    if(pendingCenterCard===card) pendingCenterCard = null;
     return;
   }
   if(pendingCenterCard===card){
@@ -4922,27 +4953,29 @@ function recipeCard(r, onChange, opts={}){
       }).join("")}</ul>
       <p class="method">${r.method}</p>
       ${review && review.comment ? `<p class="hint-text" style="margin-top:8px;">💬 Twój komentarz: „${review.comment}”</p>` : ""}
+      <button type="button" class="pantry-status-btn" data-pantry-check>
+        <div class="pantry-status-head"><span>🏺 Stan spiżarni</span><span class="pantry-status-count">${pantryHave} / ${pantryTotal} składników</span></div>
+        <div class="weight-bar-track"><div class="weight-bar-fill" style="width:${pantryPct}%"></div></div>
+      </button>
       <div class="recipe-comments-section">
-        <button type="button" class="pantry-check-btn" data-review-recipe>${reviewLabel}</button>
-        <button type="button" class="comments-toggle-btn" data-comments-toggle>
-          <span>💬 Komentarze innych użytkowników</span><span class="expand-chevron">⌄</span>
-        </button>
+        <div class="card-action-row">
+          <button type="button" class="pantry-check-btn" data-review-recipe style="width:auto; flex:1; margin:0;">${reviewLabel}</button>
+          <button type="button" class="comments-toggle-btn" data-comments-toggle style="width:auto; flex:1; margin:0;">
+            <span>💬 Komentarze</span><span class="expand-chevron">⌄</span>
+          </button>
+        </div>
         <div class="comments-body" data-comments-body style="display:none;">
           <div class="comments-list" data-comments-list></div>
           <button type="button" class="btn ghost comments-more-btn" data-comments-more style="display:none;">Pokaż więcej</button>
         </div>
       </div>
-      <button type="button" class="pantry-status-btn" data-pantry-check>
-        <div class="pantry-status-head"><span>🏺 Stan spiżarni</span><span class="pantry-status-count">${pantryHave} / ${pantryTotal} składników</span></div>
-        <div class="weight-bar-track"><div class="weight-bar-fill" style="width:${pantryPct}%"></div></div>
-      </button>
-      <button class="add-btn ${added?'on':''}" data-add="${r.id}">${added?'✓ Na liście zakupów':'🛒 Dodaj do listy zakupów'}</button>
+      <div class="card-action-row">
+        <button class="add-btn ${added?'on':''}" data-add="${r.id}" style="width:auto; flex:1; margin:0;">${added?'✓ Na liście zakupów':'🛒 Dodaj do listy zakupów'}</button>
+        <button class="plan-btn" data-cook="${r.id}" title="Otwiera historię gotowania — stąd oznaczysz dzisiejsze wykonanie i ocenisz danie" style="flex:1; -webkit-user-select:none; user-select:none; touch-action:manipulation;">✅ Zrobione${cookEntries.length?` (${cookEntries.length}×)`:""}</button>
+        <button class="plan-btn" data-schedule="${r.id}" style="flex:1;">📅 Zaplanuj</button>
+      </div>
+      ${r.source==="custom" ? `<button class="plan-btn" data-delete-recipe="${r.id}" style="width:100%; margin-top:8px;" title="Usuń swój przepis">🗑️ Usuń</button>` : ""}
     </div></div>
-    <div class="card-actions">
-      <button class="plan-btn" data-cook="${r.id}" title="Otwiera historię gotowania — stąd oznaczysz dzisiejsze wykonanie i ocenisz danie" style="-webkit-user-select:none; user-select:none; touch-action:manipulation;">✅ Zrobione${cookEntries.length?` (${cookEntries.length}×)`:""}</button>
-      <button class="plan-btn" data-schedule="${r.id}">📅 Zaplanuj</button>
-      ${r.source==="custom" ? `<button class="plan-btn" data-delete-recipe="${r.id}" title="Usuń swój przepis">🗑️ Usuń</button>` : ""}
-    </div>
   `;
   if(expandable){
     const toggle = (e)=>{ if(e) e.stopPropagation(); handleCardTap(card); };
@@ -6031,7 +6064,7 @@ function tileTapDelta(canonName, catLabel, dir){
     }
   }else{
     const unitCat = effectiveUnitCat(canonName);
-    const step = tileStep(unitCat);
+    const step = effectiveStep(canonName, unitCat);
     const cur = state.pantry[canonName];
     if(!cur){
       if(dir<0) return;
@@ -6230,6 +6263,21 @@ function openTileAction(canonName, catLabel){
     unitBtn.textContent = "📏 Zmień jednostkę (obecnie: " + (cur?cur[1]:effectiveUnitCat(canonName)) + ")";
     unitBtn.addEventListener("click", ()=> showUnitPicker(canonName));
     body.appendChild(unitBtn);
+    // On explicit user request ("dodaj opcje zmieniania skoku po
+    // przytrzymaniu kafelka") -- only weight/volume have a meaningful
+    // numeric +/- increment (count steps by 1 whole item, spices cycle
+    // Mało/Wystarczy/Dużo, and the remaining unit cats — łyżki/szklanki/
+    // garści/ząbki/opak./puszki/kromki — are also always ±1 of themselves).
+    const stepUnitCat = effectiveUnitCat(canonName);
+    if(stepUnitCat === "weight" || stepUnitCat === "volume"){
+      const curStep = effectiveStep(canonName, stepUnitCat);
+      const stepBtn = document.createElement("button");
+      stepBtn.className = "btn ghost";
+      stepBtn.style.cssText = "width:100%; margin-bottom:8px;";
+      stepBtn.textContent = "🔢 Zmień skok +/- (obecnie: " + formatQty(stepUnitCat, curStep) + ")";
+      stepBtn.addEventListener("click", ()=> showStepPicker(canonName, stepUnitCat));
+      body.appendChild(stepBtn);
+    }
   }
   const delBtn = document.createElement("button");
   delBtn.className = "btn ghost";
@@ -6280,6 +6328,34 @@ function showUnitPicker(canonName){
     });
     body.appendChild(b);
   });
+}
+const STEP_PICKER_OPTIONS = {
+  volume: [10, 25, 50, 100, 200, 250],
+  weight: [10, 25, 50, 100, 250, 500],
+};
+function showStepPicker(canonName, unitCat){
+  const body = document.getElementById("tileActionBody");
+  body.innerHTML = "";
+  const curStep = effectiveStep(canonName, unitCat);
+  (STEP_PICKER_OPTIONS[unitCat] || []).forEach(step=>{
+    const b = document.createElement("div");
+    b.className = "modal-ing-row";
+    b.style.cursor = "pointer";
+    b.innerHTML = `<span>${formatQty(unitCat, step)}</span>${step===curStep?'<span class="pantry-tag">obecny</span>':''}`;
+    b.addEventListener("click", ()=>{
+      changeTileStep(canonName, unitCat, step);
+      document.getElementById("tileActionOverlay").classList.remove("show");
+      toast(`Skok +/- ustawiony na ${formatQty(unitCat, step)}`);
+    });
+    body.appendChild(b);
+  });
+}
+function changeTileStep(canonName, unitCat, newStep){
+  const defaultStep = tileStep(unitCat);
+  if(newStep === defaultStep) delete state.pantryStepOverride[canonName];
+  else state.pantryStepOverride[canonName] = newStep;
+  addLog("pantry_add", `Zmieniono skok +/-: ${canonName} → ${formatQty(unitCat, newStep)}`);
+  saveState();
 }
 function showCategoryPicker(canonName){
   const body = document.getElementById("tileActionBody");
@@ -6473,7 +6549,7 @@ function openPantryModal(r){
         if(info.cat === "Przyprawy"){
           state.pantry[canon] = {label:canon, cat:info.cat, type:"spice", level:"Wystarczy"};
         }else{
-          state.pantry[canon] = {label:canon, cat:info.cat, type:"product", qty: tileStep(unitCat), unitCat};
+          state.pantry[canon] = {label:canon, cat:info.cat, type:"product", qty: effectiveStep(canon, unitCat), unitCat};
         }
         addLog("pantry_add", `Dodano do spiżarni: ${canon}`);
       }

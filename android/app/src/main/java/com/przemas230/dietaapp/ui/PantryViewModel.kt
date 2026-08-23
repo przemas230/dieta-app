@@ -62,6 +62,11 @@ class PantryViewModel(application: Application) : AndroidViewModel(application) 
         update(PantryOperations.changeCategory(_items.value, name, category))
     }
 
+    /** Long-press a product tile -> "🔢 Zmień skok +/-". */
+    fun changeStep(name: String, newStep: Double) {
+        update(PantryOperations.changeStep(_items.value, name, newStep))
+    }
+
     /** FR-73: applies an incoming cloud snapshot wholesale (last-cloud-write-wins), replacing local state. */
     fun replaceAll(items: Map<String, PantryItem>) {
         update(items)
