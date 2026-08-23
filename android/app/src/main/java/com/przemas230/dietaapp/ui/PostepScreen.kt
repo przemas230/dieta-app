@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -53,17 +54,19 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 /**
- * FR-37/FR-40/FR-41/FR-42/FR-60: the Postęp tab -- previously a bare
+ * FR-37/FR-40/FR-41/FR-42/FR-60/FR-83: the Postęp tab -- previously a bare
  * PlaceholderScreen. Covers the golden-rules card, streaks, a full-size
  * water view (mirrors the header strip, FR-70), weight tracking with a
- * simple line chart, and calorie history with a weekly balance.
+ * simple line chart, a date-navigable "co zjadłam" tracker (FR-83), and
+ * calorie history with a weekly balance.
  *
- * FR-41/42's history (kcal per day, water per day) only starts
- * accumulating from whenever this shipped -- EatenViewModel/WaterViewModel
- * record TODAY's totals into a date-keyed map on every change, but Android
- * never tracked earlier dates, so there's no retroactive data to show for
- * days before this feature existed. Same honest limitation as everything
- * else in this local-only version (see PARITY.md).
+ * FR-42's water-per-day history only starts accumulating from whenever this
+ * shipped -- WaterViewModel records TODAY's total into a date-keyed map on
+ * every change, but Android never tracked earlier water dates, so there's
+ * no retroactive water data to show for days before this feature existed.
+ * FR-41's calorie history no longer has that limitation as of FR-83: it's
+ * derived from EatenViewModel's full per-date record, editable for any past
+ * day via [EatenHistoryCard] below, same as web's date-navigable tracker.
  *
  * Deliberately NOT covered yet: FR-38/39 (water reminder notifications --
  * needs Android notification channels/permissions).
@@ -75,6 +78,7 @@ fun PostepScreen(
     weightViewModel: WeightViewModel,
     eatenViewModel: EatenViewModel,
     activityLogViewModel: ActivityLogViewModel,
+    plannerViewModel: PlannerViewModel,
 ) {
     val profile by profileViewModel.profile.collectAsState()
     val waterCount by waterViewModel.count.collectAsState()
@@ -82,6 +86,9 @@ fun PostepScreen(
     val kcalHistory by eatenViewModel.kcalHistory.collectAsState()
     val waterHistory by waterViewModel.history.collectAsState()
     val activityLog by activityLogViewModel.entries.collectAsState()
+    val allRecipes by plannerViewModel.allRecipes.collectAsState()
+    val recipesById = remember(allRecipes) { allRecipes.associateBy { it.id } }
+    val weekPlan by plannerViewModel.weekPlan.collectAsState()
     val today = remember { LocalDate.now(ZoneOffset.UTC) }
     val dailyTarget = remember(profile) { ProfileCalculations.calcTargets(profile).daily }
     // FR-87: motyw "Klinika" -- kropki wody jako pelne kolka + przyciski
@@ -195,10 +202,178 @@ fun PostepScreen(
         )
         Spacer(modifier = Modifier.height(12.dp))
 
+        EatenHistoryCard(
+            eatenViewModel = eatenViewModel,
+            weekPlan = weekPlan,
+            recipesById = recipesById,
+            dailyTarget = dailyTarget,
+            today = today,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+
         KcalHistoryCard(kcalHistory = kcalHistory, dailyTarget = dailyTarget, today = today)
         Spacer(modifier = Modifier.height(12.dp))
 
         ActivityHistoryCard(entries = activityLog, onClear = activityLogViewModel::clear)
+    }
+}
+
+/**
+ * FR-83: date-navigable "co zjadłam" tracker -- port of index.html's
+ * renderTodayTracker/trackerViewDate. The always-visible header panel
+ * (HeaderKcalPanel) already covers TODAY via swipe-to-eat; this card lets a
+ * wrongly-checked/missed meal or snack on an EARLIER day be corrected too,
+ * which the header has no way to reach. Editing recomputes kcalHistory (and
+ * the chart/streaks below it) immediately, since EatenViewModel derives
+ * both straight from its per-date `days` map.
+ *
+ * Which recipe is "planned" for a past date is looked up the same way web
+ * does (`polIndexForDate`/`plannedRecipeFor`): via that date's day-of-week
+ * slot in the CURRENT weekly planner template, not a per-date snapshot --
+ * the planner is a reusable weekly template on both platforms, not a
+ * per-date record, so this is only accurate if that weekday's plan hasn't
+ * changed since. `LocalDate.dayOfWeek.value - 1` gives the same 0=Poniedziałek..6=Niedziela
+ * index `WeekPlan` already uses everywhere else (matches
+ * ShoppingDayStrip.todayIndex's jsDayOfWeek conversion, just computed
+ * directly from java.time instead of a JS-style getDay()).
+ */
+@Composable
+private fun EatenHistoryCard(
+    eatenViewModel: EatenViewModel,
+    weekPlan: com.przemas230.dietaapp.logic.WeekPlan,
+    recipesById: Map<String, com.przemas230.dietaapp.data.Recipe>,
+    dailyTarget: Int,
+    today: LocalDate,
+) {
+    val selectedDate by eatenViewModel.selectedDate.collectAsState()
+    val days by eatenViewModel.days.collectAsState()
+    val day = days[selectedDate.toString()] ?: com.przemas230.dietaapp.data.EatenDay()
+    val isToday = selectedDate == today
+    val dayMeals = remember(weekPlan, selectedDate) { weekPlan[selectedDate.dayOfWeek.value - 1].orEmpty() }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val label = remember(selectedDate) { selectedDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")) }
+                Text(
+                    if (isToday) "📆 Dzisiaj — co zjadłam" else "📆 $label — co zjadłam",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = { eatenViewModel.setSelectedDate(selectedDate.minusDays(1)) }) { Text("◀") }
+                TextButton(onClick = { eatenViewModel.setSelectedDate(selectedDate.plusDays(1)) }, enabled = !isToday) { Text("▶") }
+            }
+            if (!isToday) {
+                Text(
+                    "Edytujesz wcześniejszy dzień — zmiany od razu przeliczają historię kalorii poniżej.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            com.przemas230.dietaapp.logic.PlannerOperations.PLANNER_CATEGORIES.forEach { category ->
+                val meal = dayMeals[category.id]
+                val recipe = meal?.let { recipesById[it.recipeId] }
+                val plannedKcal = if (recipe != null && meal != null) {
+                    com.przemas230.dietaapp.logic.PlannerOperations.scaledKcal(recipe, meal.scale)
+                } else {
+                    null
+                }
+                val checked = com.przemas230.dietaapp.logic.EatenOperations.isEaten(day.entries, category.id)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp)
+                        .then(
+                            if (recipe != null) {
+                                Modifier.clickable {
+                                    eatenViewModel.toggleForDate(selectedDate, category.id, plannedKcal, recipe.name)
+                                }
+                            } else {
+                                Modifier
+                            },
+                        ),
+                ) {
+                    Checkbox(
+                        checked = checked,
+                        onCheckedChange = { eatenViewModel.toggleForDate(selectedDate, category.id, plannedKcal, recipe?.name) },
+                        enabled = recipe != null,
+                    )
+                    Text(
+                        if (recipe != null) {
+                            "${category.emoji} ${category.label}: ${recipe.name} ($plannedKcal kcal)"
+                        } else {
+                            "${category.emoji} ${category.label}: — nie zaplanowano w Planerze —"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+            if (day.snacks.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                day.snacks.forEach { snack ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("🍪 ${snack.name} (${snack.kcal} kcal)", style = MaterialTheme.typography.bodySmall)
+                        TextButton(onClick = { eatenViewModel.removeSnackForDate(selectedDate, snack.id) }) { Text("✕") }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            EatenHistorySnackAddRow(onAdd = { name, kcal -> eatenViewModel.addSnackForDate(selectedDate, name, kcal) })
+            Spacer(modifier = Modifier.height(8.dp))
+            val eatenKcal = com.przemas230.dietaapp.logic.EatenOperations.dailyEatenKcal(day.entries) +
+                com.przemas230.dietaapp.logic.EatenOperations.snacksKcal(day.snacks)
+            val pct = if (dailyTarget > 0) eatenKcal * 100 / dailyTarget else 0
+            Text(
+                "${if (isToday) "Zjedzono dziś" else "Zjedzono tego dnia"}: $eatenKcal / $dailyTarget kcal ($pct%).",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** FR-83: mirrors index.html's buildSnackAddForm -- adds an ad-hoc snack to whichever date [EatenHistoryCard] is currently showing. */
+@Composable
+private fun EatenHistorySnackAddRow(onAdd: (name: String, kcal: Int) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var kcalInput by remember { mutableStateOf("") }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = { Text("Przekąska") },
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        OutlinedTextField(
+            value = kcalInput,
+            onValueChange = { kcalInput = it },
+            label = { Text("kcal") },
+            singleLine = true,
+            modifier = Modifier.width(72.dp),
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Button(onClick = {
+            val kcal = kcalInput.trim().toIntOrNull()
+            if (name.isNotBlank() && kcal != null && kcal > 0) {
+                onAdd(name.trim(), kcal)
+                name = ""
+                kcalInput = ""
+            }
+        }) { Text("+") }
     }
 }
 

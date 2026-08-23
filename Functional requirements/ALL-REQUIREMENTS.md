@@ -255,7 +255,8 @@ Zrewidowane w rundzie z 2026-08-03: pierwotna wersja pozwalała, by dotknięcie 
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-03): Doprecyzowano zachowanie na podstawie zgłoszonej poprawki — patrz sekcja "Uwagi" powyżej.
 - **v3** (2026-08-08): Dodano automatyczne wyśrodkowywanie rozwiniętej karty na ekranie, na życzenie użytkownika ("karta z przepisem na którą klikniemy [powinna] wyśrodkowywać się na ekranie... użytkownik nie musi sam jej przesuwać").
-- **v4** (2026-08-11): Rozbito otwieranie na dwa etapy, na wyraźną prośbę użytkownika ("zmień żeby wysrodkowywalo kafelek dopiero po kliknięciu na niego a dopiero po drugim kliknięciu żeby go rozwijało i wysrodkowywalo albo jak się nie mieści na ekranie to żeby był wyświetlony od góry") — pierwsze stuknięcie tylko centruje, drugie rozwija; dodano też wariant "wyrównaj do góry" dla kart wyższych niż ekran, zamiast zawsze centrować (co ucinałoby górę zbyt wysokiej karty). Zamknięcie nadal jednym stuknięciem.
+- **v4** (2026-08-11): Rozbito otwieranie na dwa etapy, na wyraźną prośbę użytkownika ("zmień żeby wysrodkowywalo kafelek dopiero po kliknięciu na niego a dopiero po drugim kliknięciu żeby go rozwijało i wysrodkowywalo albo jak się nie mieści na ekranie to żeby był wyświetlony od góry") — pierwsze stuknięcie tylko centruje, drugie rozwija; dodano też wariant "wyrównaj do góry" dla kart wyższych niż ekran, zamiast zawsze centrować (co ucinałoby górę zbyt wysokiej karty). Zamknięcie nadal jednym stuknięciem. Zaimplementowane na web w tej rundzie; port na Android odłożony (patrz `android/PARITY.md`).
+- **v5** (2026-08-23, Android): v4 doportowane na Android, na życzenie użytkownika ("zacznij ... fr-3"). `RecipeListScreen.kt`'s nowy `pendingCenterRecipeId` (port web'owego `pendingCenterCard`) — pierwsze stuknięcie zwiniętej karty ją centruje bez rozwijania, drugie stuknięcie TEJ SAMEJ karty rozwija; stuknięcie innej karty pomiędzy resetuje na nową kartę. Nowa wspólna funkcja `centerOrTopAlignScrollDelta` (port `scrollCardIntoView`) — wyrównanie do góry zamiast centrowania, gdy rozwinięta karta jest wyższa niż widoczny obszar; użyta zarówno przy centrowaniu (krok 1), jak i przy rozwinięciu (krok 2, wcześniej brakowało tego wariantu nawet w istniejącym centrowaniu). Zamknięcie nadal jednym stuknięciem. `./gradlew :app:compileDebugKotlin` przechodzi; zweryfikowane bezpośrednio na emulatorze (Medium_Phone_API_35): pierwsze stuknięcie zostawiło kartę zwiniętą, drugie stuknięcie w to samo miejsce w pełni ją rozwinęło, kolejne pojedyncze stuknięcie natychmiast ją zwinęło.
 
 ---
 
@@ -2658,7 +2659,7 @@ Android: karta „🔄 Aktualizacja aplikacji” w Ustawieniach już od wcześni
 # FR-83: Edycja wcześniej wpisanej wagi i historii kalorii
 
 **Obszar:** Postęp
-**Status:** Zaimplementowane (waga: web + Android; historia kalorii: web — Android świadomie odłożone, patrz Uwagi)
+**Status:** Zaimplementowane na obu platformach (waga i historia kalorii)
 
 ## Opis
 Do tej pory zarówno wpisy wagi (FR-40), jak i dziennik zjedzonych posiłków (FR-33/34/36/41/42) dało się tylko DODAWAĆ — pomyłkę we wpisanej wartości można było naprawić jedynie nadpisując wpis z DZISIEJSZĄ datą, bez możliwości poprawienia błędu z wcześniejszego dnia ani cofnięcia się do przeszłości w ogóle.
@@ -2675,7 +2676,33 @@ Do tej pory zarówno wpisy wagi (FR-40), jak i dziennik zjedzonych posiłków (F
 - (Web) Powrót do dzisiejszego dnia po edycji wcześniejszego pokazuje dzisiejszy stan bez żadnych zmian wprowadzonych przy edycji innego dnia.
 
 ## Uwagi
-Android ma dziś tylko WAGĘ w pełni zaportowaną. Historia kalorii na Androidzie architektonicznie NIE wspiera edycji wstecz bez większej przebudowy: `EatenViewModel._entries` trzyma stan WYŁĄCZNIE per kategoria posiłku (zawsze "dzisiaj"), a `_kcalHistory` to tylko POCHODNA suma dzienna, bez zapisanych pojedynczych zaznaczeń/przekąsek dla przeszłych dni — w odróżnieniu od web'a, gdzie `state.eaten[data]` od zawsze przechowuje pełny, edytowalny stan PER DATA. Dodanie tego wymagałoby zmiany kształtu `EatenEntry`/`_entries` na mapę data→kategoria→wpis, aktualizacji `EatenOperations`, `CloudSyncCoordinator`'s kodeka pola "eaten" i ekranu, który dziś renderuje tylko "dzisiaj" — porównywalne rozmiarem do osobnego, dedykowanego FR, świadomie odłożone zamiast pospiesznej, niedotestowanej przebudowy modelu danych w tej samej turze co inne zmiany (patrz CLAUDE.md o niepiętrzeniu wielu niezweryfikowanych kroków w Kotlinie na raz).
+Android's `EatenViewModel` przebudowany (2026-08-23) z modelu "tylko dzisiaj"
+(`Map<String, EatenEntry>` per kategoria) na pełną historię per data
+(`Map<String, EatenDay>`, `EatenDay = {entries, snacks}`) — dokładnie ten sam
+kształt co web'owe `state.eaten[data]`. Konkretnie zmienione:
+`EatenViewModel` (nowy `days`/`selectedDate`, `toggleForDate`/
+`addSnackForDate`/`removeSnackForDate`, `kcalHistory` teraz POCHODNA z
+`days` zamiast osobno akumulowana), `CloudSyncCodec.encodeEaten`/
+`decodeEaten` (kodują/dekodują WSZYSTKIE daty, nie tylko dzisiejszą),
+`CloudSyncCoordinator` (pole "eaten" dołączyło do zwykłej grupy
+whole-field-replace zamiast wąskiej ścieżki `eaten.$today` — bezpieczne
+teraz, bo Android zna pełną historię tak jak web), `LocalPersistenceCoordinator`
+(pole "kcalHistory" usunięte jako redundantne, skoro liczy się samo z
+`days`), nowa karta `EatenHistoryCard` w `PostepScreen` (nawigacja dat
+◀/▶ zablokowana na przyszłość, te same 5 kategorii co nagłówkowy panel +
+lista przekąsek z dodawaniem/usuwaniem, disabled checkbox gdy nic nie
+zaplanowano na dany dzień tygodnia w Planerze — identyczna logika co web'owe
+`plannedRecipeFor`/`polIndexForDate`, tylko przez `LocalDate.dayOfWeek`
+zamiast JS-owego `getDay()`). Nagłówkowy panel (`HeaderKcalPanel`, zawsze
+"dzisiaj", swipe-to-eat) pozostał BEZ zmian — nowa karta w Postęp jest
+osobnym, dodatkowym miejscem do edycji WCZEŚNIEJSZYCH dni, nie zastępuje go.
+`./gradlew :logic:test`, `:app:compileDebugKotlin` i `:app:assembleDebug`
+przechodzą; zweryfikowane bezpośrednio na emulatorze (Medium_Phone_API_35,
+`adb`): nawigacja ◀ na 22.08.2026, dodanie przekąski (150 kcal) pod TĄ
+datą ("Zjedzono tego dnia: 150/1480 kcal"), powrót ▶ na dziś pokazał
+0/1480 kcal (edycja wczorajszego dnia nie wyciekła do dzisiejszego stanu),
+a wykres "📈 Historia kalorii" i "Bilans ostatnich 7 dni" natychmiast
+odzwierciedliły nowy wpis.
 
 ## Historia rewizji
 - **v1** (2026-08-11): Pierwsza wersja wymagania, na życzenie użytkownika
@@ -2688,6 +2715,12 @@ Android ma dziś tylko WAGĘ w pełni zaportowaną. Historia kalorii na Androidz
   w karcie trackera), zweryfikowana bezpośrednio w przeglądarce (dodanie
   przekąski do 2026-08-09 poprawnie odizolowane od stanu dzisiejszego dnia)
   — Android świadomie odłożony, patrz Uwagi.
+- **v2** (2026-08-23): Historia kalorii doportowana na Android, na życzenie
+  użytkownika ("zacznij FR-83, edycja historii kalorii"). Przebudowa modelu
+  danych z "tylko dzisiaj" na pełną historię per data (szczegóły w Uwagach),
+  nowa karta z nawigacją dat w Postęp. `./gradlew :logic:test` i
+  `:app:assembleDebug` przechodzą; zweryfikowane bezpośrednio na emulatorze
+  (patrz Uwagi).
 
 ---
 

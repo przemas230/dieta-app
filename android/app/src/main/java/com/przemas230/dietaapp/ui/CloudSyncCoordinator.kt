@@ -14,11 +14,10 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import com.przemas230.dietaapp.data.ActivityLogEntry
 import com.przemas230.dietaapp.data.CloudSyncBaselineStore
-import com.przemas230.dietaapp.data.EatenEntry
+import com.przemas230.dietaapp.data.EatenDay
 import com.przemas230.dietaapp.data.PantryItem
 import com.przemas230.dietaapp.data.Profile
 import com.przemas230.dietaapp.data.ShoppingItem
-import com.przemas230.dietaapp.data.Snack
 import com.przemas230.dietaapp.data.WeightEntry
 import com.przemas230.dietaapp.logic.CloudSyncCodec
 import com.przemas230.dietaapp.logic.RecipeRating
@@ -57,7 +56,7 @@ private fun encodeBaselineField(key: String, value: Any?): Any? = when (key) {
             "plannerLeftover" to CloudSyncCodec.encodePlannerLeftover(it),
         )
     }
-    "eaten" -> (value as? Pair<Map<String, EatenEntry>, List<Snack>>)?.let { CloudSyncCodec.encodeEaten(it.first, it.second) }
+    "eaten" -> (value as? Map<String, EatenDay>)?.let(CloudSyncCodec::encodeEaten)
     "waterCount" -> (value as? Int)?.let(CloudSyncCodec::encodeWater)
     "weights" -> (value as? List<WeightEntry>)?.let(CloudSyncCodec::encodeWeights)
     "activityLog" -> (value as? List<ActivityLogEntry>)?.let(CloudSyncCodec::encodeActivityLog)
@@ -81,7 +80,7 @@ private fun decodeBaselineField(key: String, raw: Any?): Any? = when (key) {
         val m = raw as? Map<*, *>
         CloudSyncCodec.decodeWeekPlan(m?.get("planner") as? Map<*, *>, m?.get("plannerScale") as? Map<*, *>, m?.get("plannerLeftover") as? Map<*, *>)
     }
-    "eaten" -> CloudSyncCodec.decodeEaten(raw as? Map<*, *>)?.let { it.entries to it.snacks }
+    "eaten" -> CloudSyncCodec.decodeEaten(raw as? Map<*, *>)
     "waterCount" -> CloudSyncCodec.decodeWater(raw as? Map<*, *>)
     "weights" -> CloudSyncCodec.decodeWeights(raw as? List<*>)
     "activityLog" -> CloudSyncCodec.decodeActivityLog(raw as? List<*>)
@@ -122,19 +121,26 @@ private fun decodeBaselineFields(raw: Map<String, Any?>): Map<String, Any?> =
  * **Second bug fixed 2026-08-10** ("wypita woda tu swoje a tu swoje",
  * "historia też ma być wspólna"): `eaten` and `waterHistory` are per-DATE
  * maps in web (`state.eaten[date]`/`state.waterHistory[date]`) that
- * accumulate for MONTHS, but Android only ever tracks "today" locally (no
- * UI for past days). Pushing Android's narrow `{today: ...}` object as a
- * plain top-level field via `SetOptions.merge()` doesn't deep-merge nested
- * map VALUES -- it REPLACES the entire top-level field, so every other
- * date web had stored for that key was silently destroyed on the very
- * first Android push. Fixed by pushing those two fields through
- * `SetOptions.mergeFields("eaten.$today", "waterHistory.$today")` instead
- * of a blanket `SetOptions.merge()` -- Firestore's dotted mergeFields path
- * targets exactly that one nested key, leaving every other date's entry in
- * the document completely untouched. On the PULL side, `waterHistory` is
- * merged (union) into Android's local map instead of replacing it outright,
- * so historical dates from web survive even though Android only ever
- * pushes today's.
+ * accumulate for MONTHS, but Android only ever tracked "today" locally (no
+ * UI for past days) at the time this was fixed. Pushing Android's narrow
+ * `{today: ...}` object as a plain top-level field via `SetOptions.merge()`
+ * doesn't deep-merge nested map VALUES -- it REPLACES the entire top-level
+ * field, so every other date web had stored for that key was silently
+ * destroyed on the very first Android push. Fixed by pushing those two
+ * fields through `SetOptions.mergeFields("eaten.$today",
+ * "waterHistory.$today")` instead of a blanket `SetOptions.merge()` --
+ * Firestore's dotted mergeFields path targets exactly that one nested key,
+ * leaving every other date's entry in the document completely untouched.
+ * **FR-83 (2026-08-23) superseded this for `eaten` specifically**: Android
+ * now tracks full per-date history locally (see EatenViewModel), so `eaten`
+ * pushes/pulls as an ordinary whole-field replace like `pantry`/`profile`
+ * below -- the narrow "eaten.$today" nested path and the pull-side
+ * union-merge described above no longer apply to it. `waterHistory` is
+ * untouched by FR-83 (water tracking itself is still today-only) and still
+ * needs both: pushed via `SetOptions.mergeFields("waterHistory.$today")`,
+ * and on the PULL side merged (union) into Android's local map instead of
+ * replacing it outright, so historical dates from web survive even though
+ * Android only ever pushes today's.
  *
  * **Third change 2026-08-10**: pushing is gated on having processed at
  * least one snapshot from Firestore first (`hasReceivedFirstSnapshot`).
@@ -243,8 +249,7 @@ fun CloudSyncCoordinator(
     val ratings by recipeViewModel.ratings.collectAsState()
     val shoppingItems by shoppingViewModel.items.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
-    val eatenEntries by eatenViewModel.entries.collectAsState()
-    val snacks by eatenViewModel.snacks.collectAsState()
+    val eatenDays by eatenViewModel.days.collectAsState()
     val waterCount by waterViewModel.count.collectAsState()
     val waterHistory by waterViewModel.history.collectAsState()
     val weightEntries by weightViewModel.entries.collectAsState()
@@ -270,8 +275,7 @@ fun CloudSyncCoordinator(
     val currentRatings = rememberUpdatedState(ratings)
     val currentShoppingItems = rememberUpdatedState(shoppingItems)
     val currentWeekPlan = rememberUpdatedState(weekPlan)
-    val currentEatenEntries = rememberUpdatedState(eatenEntries)
-    val currentSnacks = rememberUpdatedState(snacks)
+    val currentEatenDays = rememberUpdatedState(eatenDays)
     val currentWaterCount = rememberUpdatedState(waterCount)
     val currentWaterHistory = rememberUpdatedState(waterHistory)
     val currentWeightEntries = rememberUpdatedState(weightEntries)
@@ -332,7 +336,7 @@ fun CloudSyncCoordinator(
 
     LaunchedEffect(
         uid, hasReceivedFirstSnapshot, profile, displayName, pantryItems, themeId, uiScale, swipeStyle,
-        favIngredients, cooked, ratings, shoppingItems, weekPlan, eatenEntries, snacks, waterCount,
+        favIngredients, cooked, ratings, shoppingItems, weekPlan, eatenDays, waterCount,
         waterHistory, weightEntries, activityLogEntries, communityRecipesEnabled,
     ) {
         if (uid == null || !hasReceivedFirstSnapshot) return@LaunchedEffect
@@ -356,7 +360,7 @@ fun CloudSyncCoordinator(
             "cooked" to cooked,
             "shoppingItems" to shoppingItems,
             "weekPlan" to weekPlan,
-            "eaten" to (eatenEntries to snacks),
+            "eaten" to eatenDays,
             "waterCount" to waterCount,
             "weights" to weightEntries,
             "activityLog" to activityLogEntries,
@@ -376,7 +380,7 @@ fun CloudSyncCoordinator(
             "cooked" to listOf("cooked"),
             "shoppingItems" to listOf("shopping"),
             "weekPlan" to listOf("planner", "plannerScale", "plannerLeftover"),
-            "eaten" to listOf("eaten.$today"),
+            "eaten" to listOf("eaten"),
             "waterCount" to listOf("water", "waterHistory.$today"),
             "weights" to listOf("weights"),
             "activityLog" to listOf("history"),
@@ -395,8 +399,7 @@ fun CloudSyncCoordinator(
             cooked = cooked,
             shopping = shoppingItems,
             weekPlan = weekPlan,
-            eatenEntries = eatenEntries,
-            snacks = snacks,
+            eatenDays = eatenDays,
             waterCount = waterCount,
         ) + mapOf(
             // Nested on purpose -- only "eaten.$today"/"waterHistory.$today"
@@ -523,12 +526,9 @@ fun CloudSyncCoordinator(
                     }
                 }
                 CloudSyncCodec.decodeEaten(data["eaten"] as? Map<*, *>)?.let {
-                    val decoded = it.entries to it.snacks
-                    known["eaten"] = decoded
-                    val matchesLastKnown = decoded == lastKnownFields["eaten"]
-                    val matchesCurrent = it.entries == currentEatenEntries.value && it.snacks == currentSnacks.value
-                    if (!matchesLastKnown && !matchesCurrent) {
-                        eatenViewModel.replaceAll(it.entries, it.snacks)
+                    known["eaten"] = it
+                    if (it != lastKnownFields["eaten"] && it != currentEatenDays.value) {
+                        eatenViewModel.replaceAll(it)
                     }
                 }
                 CloudSyncCodec.decodeWater(data["water"] as? Map<*, *>)?.let {

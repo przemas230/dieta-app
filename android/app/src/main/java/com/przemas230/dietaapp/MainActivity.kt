@@ -385,8 +385,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
         recipeViewModel.replaceReviews(emptyMap())
         recipeViewModel.replaceMyRecipes(emptyList())
         favoriteIngredientsViewModel.replaceAll(emptySet())
-        eatenViewModel.replaceAll(emptyMap(), emptyList())
-        eatenViewModel.replaceHistory(emptyMap())
+        eatenViewModel.replaceAll(emptyMap())
         waterViewModel.setCount(0)
         waterViewModel.replaceHistory(emptyMap())
         weightViewModel.replaceAll(emptyList())
@@ -641,6 +640,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     weightViewModel = weightViewModel,
                     eatenViewModel = eatenViewModel,
                     activityLogViewModel = activityLogViewModel,
+                    plannerViewModel = plannerViewModel,
                 )
             }
             composable(Screen.Pantry.route) {

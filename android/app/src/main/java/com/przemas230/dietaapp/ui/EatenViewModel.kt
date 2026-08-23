@@ -1,6 +1,7 @@
 package com.przemas230.dietaapp.ui
 
 import androidx.lifecycle.ViewModel
+import com.przemas230.dietaapp.data.EatenDay
 import com.przemas230.dietaapp.data.EatenEntry
 import com.przemas230.dietaapp.data.Snack
 import com.przemas230.dietaapp.logic.EatenOperations
@@ -11,57 +12,91 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 
-/** FR-36/FR-33/FR-34: today's "did I eat this" state per Planer category, plus ad-hoc snacks. Local-only, same as the other local-only ViewModels -- see android/PARITY.md. */
+/**
+ * FR-36/FR-33/FR-34/FR-83: "did I eat this" state, keyed by date (mirrors
+ * index.html's state.eaten[date] shape) so both TODAY's tracking (the
+ * always-visible header panel) and editing an EARLIER day (the Postęp tab's
+ * date-navigable tracker, FR-83) read/write the same underlying history.
+ *
+ * Before FR-83 this only ever held "today" -- [toggle]/[addSnack]/
+ * [removeSnack] (unchanged signatures, still operate on today) and
+ * [entries]/[snacks] (today's slice, unchanged shape) are kept exactly as
+ * they were so every pre-FR-83 call site (HeaderKcalPanel, MainActivity's
+ * onToggleEaten/onRemoveSnack wiring) needed no changes. [kcalHistory] is
+ * now genuinely derived from the full per-date map on every mutation
+ * instead of being separately accumulated, so editing a PAST day
+ * immediately recomputes that day's history entry too -- previously
+ * impossible since past days simply didn't exist here.
+ */
 class EatenViewModel : ViewModel() {
+    private val _days = MutableStateFlow<Map<String, EatenDay>>(emptyMap())
+    val days: StateFlow<Map<String, EatenDay>> = _days.asStateFlow()
+
+    /** FR-83: which date the Postęp "co zjadłam" tracker is currently showing/editing -- never allowed past today, see [setSelectedDate]. */
+    private val _selectedDate = MutableStateFlow(todayUtc())
+    val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
+
     private val _entries = MutableStateFlow<Map<String, EatenEntry>>(emptyMap())
     val entries: StateFlow<Map<String, EatenEntry>> = _entries.asStateFlow()
 
     private val _snacks = MutableStateFlow<List<Snack>>(emptyList())
     val snacks: StateFlow<List<Snack>> = _snacks.asStateFlow()
 
-    // FR-41/42: date-string -> that day's total eaten kcal, updated
-    // automatically (below) whenever today's entries/snacks change --
-    // mirrors index.html's state.eaten[date] naturally accumulating history
-    // as different dates get touched. Android only ever tracks "today", so
-    // this only ever writes TODAY's key -- history starts accumulating from
-    // whenever this shipped, same "no retroactive data" limitation already
-    // documented for the rest of this feature area.
+    // FR-41/42: date-string -> that day's total eaten kcal -- derived from
+    // _days below on every change, so it always reflects the full history,
+    // including any past day edited via FR-83.
     private val _kcalHistory = MutableStateFlow<Map<String, Int>>(emptyMap())
     val kcalHistory: StateFlow<Map<String, Int>> = _kcalHistory.asStateFlow()
 
-    /** Swipe-to-mark-eaten toggles, same as index.html's `setEaten(today, cat, !wasEaten)`. */
-    fun toggle(cat: String, plannedKcal: Int?, plannedName: String?) {
-        val wasEaten = EatenOperations.isEaten(_entries.value, cat)
-        _entries.value = EatenOperations.setEaten(_entries.value, cat, !wasEaten, plannedKcal, plannedName)
-        recordTodayInHistory()
+    /** Swipe-to-mark-eaten toggles on today's header panel, same as index.html's `setEaten(today, cat, !wasEaten)`. */
+    fun toggle(cat: String, plannedKcal: Int?, plannedName: String?) = toggleForDate(todayUtc(), cat, plannedKcal, plannedName)
+
+    /** FR-83: same as [toggle] but for an arbitrary (non-future) date -- port of index.html's `setEaten(viewDate, cat, checked)`. */
+    fun toggleForDate(date: LocalDate, cat: String, plannedKcal: Int?, plannedName: String?) {
+        val key = date.toString()
+        val day = _days.value[key] ?: EatenDay()
+        val wasEaten = EatenOperations.isEaten(day.entries, cat)
+        val newEntries = EatenOperations.setEaten(day.entries, cat, !wasEaten, plannedKcal, plannedName)
+        applyDays(_days.value + (key to day.copy(entries = newEntries)))
     }
 
-    /** FR-33/34: the global "➕" quick-add dialog's "+ Dodaj" button. */
-    fun addSnack(name: String, kcal: Int) {
-        _snacks.value = _snacks.value + Snack(UUID.randomUUID().toString(), name, kcal)
-        recordTodayInHistory()
+    /** FR-33/34: the global "➕" quick-add dialog's "+ Dodaj" button -- always today. */
+    fun addSnack(name: String, kcal: Int) = addSnackForDate(todayUtc(), name, kcal)
+
+    /** FR-83: FR-33/34's snack add, but for an arbitrary (non-future) date. */
+    fun addSnackForDate(date: LocalDate, name: String, kcal: Int) {
+        val key = date.toString()
+        val day = _days.value[key] ?: EatenDay()
+        applyDays(_days.value + (key to day.copy(snacks = day.snacks + Snack(UUID.randomUUID().toString(), name, kcal))))
     }
 
-    fun removeSnack(id: String) {
-        _snacks.value = _snacks.value.filterNot { it.id == id }
-        recordTodayInHistory()
+    fun removeSnack(id: String) = removeSnackForDate(todayUtc(), id)
+
+    /** FR-83: FR-33/34's snack removal, but for an arbitrary date. */
+    fun removeSnackForDate(date: LocalDate, id: String) {
+        val key = date.toString()
+        val day = _days.value[key] ?: return
+        applyDays(_days.value + (key to day.copy(snacks = day.snacks.filterNot { it.id == id })))
     }
 
-    /** FR-73/local persistence: applies an incoming snapshot wholesale (last-write-wins), replacing local state. */
-    fun replaceAll(entries: Map<String, EatenEntry>, snacks: List<Snack>) {
-        _entries.value = entries
-        _snacks.value = snacks
-        recordTodayInHistory()
+    /** FR-83: never allows navigating into the future, matching index.html's `if(trackerViewDate > today) trackerViewDate = today`. */
+    fun setSelectedDate(date: LocalDate) {
+        val today = todayUtc()
+        _selectedDate.value = if (date.isAfter(today)) today else date
     }
 
-    /** Used by LocalPersistenceCoordinator on app startup to restore history saved on a previous run. */
-    fun replaceHistory(history: Map<String, Int>) {
-        _kcalHistory.value = history
+    /** FR-73/local persistence: applies an incoming snapshot wholesale (last-write-wins), replacing the entire local history. */
+    fun replaceAll(days: Map<String, EatenDay>) = applyDays(days)
+
+    private fun applyDays(newDays: Map<String, EatenDay>) {
+        _days.value = newDays
+        val today = newDays[todayUtc().toString()] ?: EatenDay()
+        _entries.value = today.entries
+        _snacks.value = today.snacks
+        _kcalHistory.value = newDays.mapValues { (_, day) ->
+            EatenOperations.dailyEatenKcal(day.entries) + EatenOperations.snacksKcal(day.snacks)
+        }
     }
 
-    private fun recordTodayInHistory() {
-        val today = LocalDate.now(ZoneOffset.UTC).toString()
-        val total = EatenOperations.dailyEatenKcal(_entries.value) + EatenOperations.snacksKcal(_snacks.value)
-        _kcalHistory.value = _kcalHistory.value + (today to total)
-    }
+    private fun todayUtc(): LocalDate = LocalDate.now(ZoneOffset.UTC)
 }

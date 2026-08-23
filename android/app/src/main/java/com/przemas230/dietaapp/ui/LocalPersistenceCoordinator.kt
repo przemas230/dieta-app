@@ -62,11 +62,9 @@ fun LocalPersistenceCoordinator(
     val communityRecipesEnabled by recipeViewModel.communityRecipesEnabled.collectAsState()
     val shoppingItems by shoppingViewModel.items.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
-    val eatenEntries by eatenViewModel.entries.collectAsState()
-    val snacks by eatenViewModel.snacks.collectAsState()
+    val eatenDays by eatenViewModel.days.collectAsState()
     val waterCount by waterViewModel.count.collectAsState()
     val weightEntries by weightViewModel.entries.collectAsState()
-    val kcalHistory by eatenViewModel.kcalHistory.collectAsState()
     val waterHistory by waterViewModel.history.collectAsState()
     val activityLogEntries by activityLogViewModel.entries.collectAsState()
 
@@ -99,12 +97,11 @@ fun LocalPersistenceCoordinator(
                 data["plannerScale"] as? Map<*, *>,
                 data["plannerLeftover"] as? Map<*, *>,
             )?.let { plannerViewModel.replaceAll(it) }
-            // History restored BEFORE replaceAll/setCount below, since those
-            // internally re-derive TODAY's entry on top of whatever history
-            // is already there -- restoring it first means past days survive.
-            CloudSyncCodec.decodeDateIntMap(data["kcalHistory"] as? Map<*, *>)?.let { eatenViewModel.replaceHistory(it) }
             CloudSyncCodec.decodeDateIntMap(data["waterHistory"] as? Map<*, *>)?.let { waterViewModel.replaceHistory(it) }
-            CloudSyncCodec.decodeEaten(data["eaten"] as? Map<*, *>)?.let { eatenViewModel.replaceAll(it.entries, it.snacks) }
+            // FR-83: eatenViewModel now derives kcalHistory straight from the
+            // full per-date map it restores here, so there's no separate
+            // "kcalHistory" field left to load first.
+            CloudSyncCodec.decodeEaten(data["eaten"] as? Map<*, *>)?.let { eatenViewModel.replaceAll(it) }
             CloudSyncCodec.decodeWater(data["water"] as? Map<*, *>)?.let { waterViewModel.setCount(it) }
             CloudSyncCodec.decodeWeights(data["weights"] as? List<*>)?.let { weightViewModel.replaceAll(it) }
             CloudSyncCodec.decodeActivityLog(data["activityLog"] as? List<*>)?.let { activityLogViewModel.replaceAll(it) }
@@ -115,7 +112,7 @@ fun LocalPersistenceCoordinator(
     LaunchedEffect(
         initialLoadDone, profile, displayName, pantryItems, themeId, uiScale, swipeStyle,
         favIngredients, cooked, ratings, reviews, myRecipes, favoriteRecipes, shoppingItems, weekPlan,
-        eatenEntries, snacks, waterCount, weightEntries, kcalHistory, waterHistory, activityLogEntries,
+        eatenDays, waterCount, weightEntries, waterHistory, activityLogEntries,
         communityRecipesEnabled,
     ) {
         if (!initialLoadDone) return@LaunchedEffect
@@ -132,8 +129,7 @@ fun LocalPersistenceCoordinator(
             cooked = cooked,
             shopping = shoppingItems,
             weekPlan = weekPlan,
-            eatenEntries = eatenEntries,
-            snacks = snacks,
+            eatenDays = eatenDays,
             waterCount = waterCount,
         ) + mapOf(
             "recipeReviews" to CloudSyncCodec.encodeReviews(reviews),
@@ -144,7 +140,6 @@ fun LocalPersistenceCoordinator(
             // favIngredients, just a different top-level key/meaning.
             "favorites" to CloudSyncCodec.encodeFavIngredients(favoriteRecipes),
             "weights" to CloudSyncCodec.encodeWeights(weightEntries),
-            "kcalHistory" to CloudSyncCodec.encodeDateIntMap(kcalHistory),
             "waterHistory" to CloudSyncCodec.encodeDateIntMap(waterHistory),
             "activityLog" to CloudSyncCodec.encodeActivityLog(activityLogEntries),
             "communityRecipesEnabled" to communityRecipesEnabled,

@@ -12,9 +12,9 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 
 | FR | Wymaganie | Status w web | Status w Android |
 |---|---|---|---|
-| FR-1 | Baza przepisów podzielona na 5 kategorii posiłków | ✅ (pigułki w tym samym pasku co reszta filtrów) | ⏳ v2 (2026-08-11): pigułki kategorii wydzielone do WŁASNEGO zwijanego panelu, niezależnego od nagłówka — świadoma rozbieżność z web, patrz uwagi niżej |
-| FR-2 | Wyszukiwanie i filtrowanie przepisów | ✅ (pełnowymiarowe pole wyszukiwania, próg oceny "★4+" jako "polubione") | ⏳ v4/v5 (2026-08-11): pole wyszukiwania zastąpione kompaktową ikoną "🔍" + dropdown; dodano dedykowany przełącznik "❤️ Podoba się" — świadoma rozbieżność z web, patrz uwagi niżej |
-| FR-3 | Karta przepisu — widok skrócony i rozwinięty | ✅ | ⏳ dwa prawdziwe braki naprawione 2026-08-11 (pojedyncze rozwinięcie + auto-wyśrodkowanie); web'owe dwuetapowe otwieranie (v4, 2026-08-11) jeszcze NIE przeniesione (patrz uwagi niżej) |
+| FR-1 | Baza przepisów podzielona na 5 kategorii posiłków | ✅ (pigułki w tym samym pasku co reszta filtrów) | ✅ v2 (2026-08-11, zweryfikowane na emulatorze 2026-08-23): pigułki kategorii wydzielone do WŁASNEGO zwijanego panelu, niezależnego od nagłówka — świadoma rozbieżność z web, patrz uwagi niżej |
+| FR-2 | Wyszukiwanie i filtrowanie przepisów | ✅ (pełnowymiarowe pole wyszukiwania, próg oceny "★4+" jako "polubione") | ✅ v4/v5 (2026-08-11, zweryfikowane na emulatorze 2026-08-23): pole wyszukiwania zastąpione kompaktową ikoną "🔍" + dropdown; dodano dedykowany przełącznik "❤️ Podoba się" — świadoma rozbieżność z web, patrz uwagi niżej |
+| FR-3 | Karta przepisu — widok skrócony i rozwinięty | ✅ | ✅ dwuetapowe otwieranie (v4) doportowane i zweryfikowane na emulatorze 2026-08-23 -- `RecipeListScreen.kt`'s `pendingCenterRecipeId`, port web'owego `pendingCenterCard`/`handleCardTap` (patrz uwagi niżej) |
 | FR-4 | Miniatura przepisu jako emoji głównego składnika | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-5 | Przycisk powrotu do góry listy przepisów | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-6 | Profil użytkownika i wyliczanie zapotrzebowania kalorycznego | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
@@ -44,7 +44,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-29 | Odmiana gramatyczna nazw produktów w spiżarni | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-30 | Zmiana kategorii i usuwanie śledzenia kafelka spiżarni | ✅ | ✅ v2 (2026-08-11): naprawiony realny błąd "menu po przytrzymaniu nic nie robi" (stale pointerInput closure), potwierdzone na żywo na emulatorze (patrz uwagi niżej) |
 | FR-31 | Skanowanie kodu kreskowego produktu | ❌ wyłączone (przycisk ukryty, kod zostaje) | N/D — celowo nierozpoczęte, funkcja wyłączona na obu platformach na życzenie użytkownika (2026-08-10), nie będzie rozwijana na ten moment |
-| FR-32 | Podpowiedź „🏺 masz w spiżarni” i „Pomysł na danie z ulubionych składników” | ✅ (v1 — przycisk inline, 2 losowe składniki) | ⏳ v2 (2026-08-11): przycisk inline ZASTĄPIONY floating „💡” z innym algorytmem (5 zróżnicowanych składników + wyszukiwanie Google) — świadoma rozbieżność z web, patrz FR-32 v2 i uwagi niżej; ☆→★ z v1 nadal ✅ zweryfikowane 2026-08-10 |
+| FR-32 | Podpowiedź „🏺 masz w spiżarni” i „Pomysł na danie z ulubionych składników” | ✅ (v1 — przycisk inline, 2 losowe składniki) | ✅ v2 (2026-08-11, zweryfikowane na emulatorze 2026-08-23): przycisk inline ZASTĄPIONY floating „💡” z innym algorytmem (5 zróżnicowanych składników + wyszukiwanie Google) — świadoma rozbieżność z web, patrz FR-32 v2 i uwagi niżej; ☆→★ z v1 nadal ✅ zweryfikowane 2026-08-10 |
 | FR-33 | Globalny przycisk szybkiego dodania przekąski/dania z każdego miejsca | ✅ | ✅ pływający przycisk na Postępie dodany 2026-08-10, zweryfikowany na emulatorze (patrz uwagi niżej) |
 | FR-34 | Automatyczne szacowanie kalorii przekąski z bazy 336 produktów | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
 | FR-35 | Emotikonki przy rozpoznanych składnikach/przekąskach | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
@@ -78,7 +78,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-63 | Motywy „Fluent” i „Kafelki” inspirowane Windows 11 / Metro | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi FR-48) |
 | FR-64 | Orientacyjne wartości mikroskładników (wapń, wit. D, B12) w okienku wyliczeń | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-65 | Własna, opcjonalna nazwa użytkownika w aplikacji | ✅ | ✅ oba pierwotne blokery usunięte (patrz uwagi niżej) |
-| FR-66 | Dodawanie własnych przepisów przez użytkownika | ✅ (przycisk inline) | ⏳ v4 (2026-08-11): przycisk PRZENIESIONY z inline na floating "📖" (Przepisy only) — świadoma rozbieżność z web, patrz uwagi niżej |
+| FR-66 | Dodawanie własnych przepisów przez użytkownika | ✅ (przycisk inline) | ✅ v4 (2026-08-11, zweryfikowane na emulatorze 2026-08-23): przycisk PRZENIESIONY z inline na floating "📖" (Przepisy only) — świadoma rozbieżność z web, patrz uwagi niżej |
 | FR-85 | Zatwierdzanie przepisów społeczności z poziomu aplikacji + "Moje przepisy" | N/D (Android-only funkcja) | ⏳ v3 (2026-08-22): po wklejeniu reguły Firestore brak Toastu sugeruje że zapis jednak się udał, tylko brakowało potwierdzenia sukcesu — dodany Toast "✅ Zatwierdzono"/"❌ Odrzucono" (patrz uwagi niżej), czeka na potwierdzenie użytkownika |
 | FR-67 | Ocena gwiazdkowa i komentarz przy przepisie | ✅ (od FR-84: jedyny mechanizm oceniania) | ⏳ zaimplementowane 2026-08-10, lokalnie (bez wielo-użytkownikowego wątku komentarzy z FR-77, patrz uwagi niżej); stało się jedynym mechanizmem oceniania 2026-08-11, patrz notatka FR-84 |
 | FR-84 | Scalenie oceniania przepisu w jeden mechanizm | ✅ | ✅ zaimplementowane i zweryfikowane na żywo na emulatorze 2026-08-11 (patrz uwagi niżej) |
@@ -97,7 +97,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-80 | Dzień tygodnia przy składniku na liście zakupów | ✅ | ✅ zaimplementowane 2026-08-11 tego samego dnia co web, testy JUnit (patrz uwagi niżej) |
 | FR-81 | Propozycja przeliczenia planu i listy zakupów po zapisaniu profilu | ✅ | ✅ zaimplementowane 2026-08-11 tego samego dnia co web, zweryfikowane na żywo na emulatorze (patrz uwagi niżej) |
 | FR-82 | Widoczna wersja aplikacji w Ustawieniach | ✅ | ✅ Android miał to już od wcześniej (`AppUpdateCard`'s „Zainstalowana wersja: X”) — FR dopisany 2026-08-11 tylko formalnie, bez zmian w Kotlinie |
-| FR-83 | Edycja wcześniej wpisanej wagi i historii kalorii | ✅ (waga) / ✅ (historia kalorii) | ✅ waga (edycja+usuwanie inline, zweryfikowane na emulatorze) / ⬜ historia kalorii świadomie odłożona — wymaga przebudowy `EatenViewModel`/`EatenEntry` z per-kategoria na per-data (patrz uwagi FR-83.md i notatka niżej) |
+| FR-83 | Edycja wcześniej wpisanej wagi i historii kalorii | ✅ (waga) / ✅ (historia kalorii) | ✅ waga (edycja+usuwanie inline, zweryfikowane na emulatorze) / ✅ historia kalorii doportowana i zweryfikowana na emulatorze 2026-08-23 (przebudowa `EatenViewModel`/`EatenEntry` na `EatenDay` per-data, patrz uwagi FR-83.md i notatka niżej) |
 | FR-87 | Motyw „Klinika” — czcionka i układ, nie tylko kolory | N/D (Android-only funkcja) | ✅ zaimplementowane 2026-08-22, zweryfikowane wizualnie na emulatorze (patrz uwagi niżej) |
 
 ## Uwagi do częściowych wpisów
@@ -119,6 +119,68 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 - **FR-84 — scalenie oceniania w jeden mechanizm (2026-08-11, piąta runda tego dnia)**: na wyraźną prośbę użytkownika ("scal w jedno system gwiazdek, oceny po zrobieniu dania oraz ocene i komentarz ktory mozna dodać pod przepisem, to jedno i to samo"), trzy dotychczas osobne systemy oceniania (przesunięcie karty ❤️/👎, gwiazdka za każde „✅ Zrobione", ocena+komentarz z FR-67) stały się JEDNYM — samą oceną z FR-67 (`RecipeReview`/`recipeReviews`). Android: `RecipeViewModel.setRatingQuick(recipeId, stars)` — nowa funkcja wołana zarówno przez przesunięcie karty (prawo=5★, lewo=1★, zachowuje istniejący komentarz), jak i przez nowy przycisk „⭐ Oceń to danie"/„⭐ Twoja ocena: X/5 (zmień)" w `CookHistoryDialog` (który stał się czystym logiem dat — usunięto `onSetRating`/`StarRatingRow` per-wpisowy). Plakietka w rogu karty pokazuje „★N" (zamiast dawnego 👍/👎) i po dotknięciu otwiera okienko oceny zamiast je kasować. Przełącznik sortowania „❤️ Ranking" (`RecipeRatingOperations.sortByRating`) usunięty z paska filtrów jako redundantny z „🏆 Ocena". Migracja: `RecipeViewModel.replaceRatings` (wołana przy każdym wczytaniu lokalnym i pull z chmury) jednorazowo konwertuje stare wpisy `RecipeRating` bez odpowiadającej im recenzji na recenzję (LIKE→5★, DISLIKE→1★), nigdy nie nadpisując istniejącej prawdziwej recenzji. Świadomie NIE usunięto `RecipeRatingOperations`/`CookHistoryOperations.setRating` z modułu `logic` (razem z ich testami JUnit) — zostają jako nieużywany, ale nieszkodliwy kod, żeby nie poszerzać zakresu zmiany o usuwanie testów w tej samej turze. Zweryfikowane bezpośrednio na emulatorze: ocena 5★ przez okienko poprawnie pokazała plakietkę „★5" z zieloną obwódką karty, historia gotowania pokazuje czysty log dat bez własnych gwiazdek, przycisk „⭐ Oceń to danie" poprawnie otwiera to samo okienko co plakietka. Zero crashy. `versionCode`/`versionName` bump w `app/build.gradle.kts`.
 
 - **Naprawiony realny błąd utraty danych profilu (2026-08-11, czwarta runda tego dnia)**: użytkownik zgłosił "w kotlin nie zapamiętuje mi w ustawieniach że jestem mężczyzną, przełącza mi na kobietę... cel zmieniałem a teraz widzę znów z defaultu wstawił" — realny, potwierdzony błąd, najprawdopodobniej wprowadzony/odsłonięty przez zmianę z drugiej rundy tego dnia (FR-78 dirty-field-tracking). Przyczyna: `lastKnownFields` (mapa "ostatnia wartość, co do której to urządzenie i Firestore się zgodziły") żyła WYŁĄCZNIE w pamięci (`remember`), resetując się do pustej przy KAŻDYM restarcie aplikacji. Sekwencja gubiąca dane: użytkownik edytuje profil, zamyka aplikację ZANIM 1,5-sekundowy debounce zdąży wypchnąć zmianę do chmury; po ponownym uruchomieniu edycja poprawnie wraca z lokalnego dysku, ale `lastKnownFields` startuje puste, więc PIERWSZY odebrany snapshot z Firestore (wciąż ze STARĄ wartością) wyglądał jak "coś nowego" i cicho nadpisywał świeżą lokalną edycję. Naprawione: nowy `CloudSyncBaselineStore` (`android/app/.../data/CloudSyncBaselineStore.kt`) zapisuje `lastKnownFields` na dysk (per uid, reużywa `LocalStateStore`'s JSON I/O pod inną nazwą pliku), wczytywany PRZED dopuszczeniem nasłuchiwacza Firestore do podłączenia się (`baselineLoaded` blokuje `DisposableEffect`) — więc nawet PIERWSZY snapshot po zimnym starcie poprawnie odróżnia "to pasuje do tego, co już wiedziałem" (ignoruj) od "to naprawdę inne niż ostatnio wiedziałem" (zastosuj — dotyczy też prawdziwie nowego urządzenia/logowania, gdzie baseline jest pusty celowo). Przy okazji usunięto `PushedSnapshot`/`lastPushed`/`suppressNextPush` jako w pełni zastąpione przez trwały `lastKnownFields` — mniej kodu, jeden mechanizm zamiast dwóch częściowo nakładających się. Zweryfikowane bezpośrednio na emulatorze: zmiana płci na Mężczyzna → `adb shell am force-stop` ~900ms później (po lokalnym zapisie na dysk, przed wypchnięciem do chmury) → ponowne uruchomienie → wartość poprawnie przetrwała I pozostała stabilna po pełnej synchronizacji z chmurą (sprawdzone dwoma pełnymi cyklami restart+odczekanie), zero crashy w logcat.
+
+- **FR-3/v5 — dwuetapowe otwieranie karty doportowane na Android (2026-08-23)**:
+  na życzenie użytkownika ("zacznij ... fr-3"). `RecipeListScreen.kt`'s nowy
+  `pendingCenterRecipeId` (port web'owego `pendingCenterCard`/
+  `handleCardTap`): pierwsze stuknięcie zwiniętej karty ją centruje bez
+  rozwijania, drugie stuknięcie TEJ SAMEJ, już wyśrodkowanej karty rozwija
+  ją; stuknięcie INNEJ karty pomiędzy tymi dwoma resetuje na nową kartę
+  zamiast kontynuować poprzednią. Zamknięcie rozwiniętej karty zostaje
+  jednym, natychmiastowym stuknięciem (bez zmian). Przy okazji naprawiono
+  drugi, mniejszy brak z tej samej wersji FR-3/v4: nowa wspólna funkcja
+  `centerOrTopAlignScrollDelta` (port `scrollCardIntoView`) wyrównuje kartę
+  do GÓRY widoku zamiast centrować, gdy rozwinięta karta jest wyższa niż
+  widoczny obszar ekranu — dotychczasowe centrowanie zawsze centrowało,
+  nawet dla zbyt wysokich kart (co ucinałoby górę/tytuł poza ekranem);
+  teraz stosowana przy obu krokach (centrowanie kroku 1 i rozwinięcie kroku
+  2). Android nie potrzebował web'owego scroll-vs-tap workaround'u z Uwag
+  FR-3.md — Compose'owy `Modifier.clickable` wewnątrz `LazyColumn` już
+  natywnie odróżnia stuknięcie od przewijania. `./gradlew
+  :app:compileDebugKotlin` przechodzi; zweryfikowane bezpośrednio na
+  emulatorze (Medium_Phone_API_35, `adb`): pierwsze stuknięcie karty
+  "Szakszuka..." zostawiło ją zwiniętą (żadnej zmiany poza ew. przewinięciem
+  — karta była już blisko wyśrodkowanej pozycji), drugie stuknięcie w to
+  samo miejsce w pełni ją rozwinęło (makra, "Sprawdź stan spiżarni",
+  składniki), a kolejne pojedyncze stuknięcie natychmiast ją zwinęło z
+  powrotem — dokładnie sekwencja wymagana przez FR-3/v4's kryteria
+  akceptacji.
+
+- **FR-83/v2 — historia kalorii doportowana na Android (2026-08-23)**: na
+  wyraźną prośbę użytkownika ("zacznij FR-83, edycja historii kalorii").
+  `EatenViewModel` przebudowany z modelu "tylko dzisiaj"
+  (`Map<String, EatenEntry>` per kategoria) na pełną historię per data
+  (`Map<String, EatenDay>`, ten sam kształt co web'owe `state.eaten[data]`)
+  -- nowy `days`/`selectedDate`, `toggleForDate`/`addSnackForDate`/
+  `removeSnackForDate`, `kcalHistory` teraz POCHODNA z `days` zamiast osobno
+  akumulowana. `CloudSyncCodec.encodeEaten`/`decodeEaten` kodują/dekodują
+  WSZYSTKIE daty zamiast tylko dzisiejszej; `CloudSyncCoordinator`'s pole
+  "eaten" dołączyło do zwykłej grupy whole-field-replace (jak
+  `pantry`/`profile`) zamiast wąskiej ścieżki `eaten.$today` z nested
+  mergeFields -- bezpieczne teraz, bo Android zna pełną historię tak jak
+  web (`waterHistory` zostaje przy starym mechanizmie, bo woda nadal jest
+  tylko-dzisiaj). `LocalPersistenceCoordinator`'s pole "kcalHistory"
+  usunięte jako redundantne. Nowa karta `EatenHistoryCard` w `PostepScreen`
+  między kartą wagi a wykresem historii kalorii: nawigacja dat ◀/▶
+  zablokowana na przyszłość, te same 5 kategorii co nagłówkowy panel (z
+  disabled checkboxem gdy nic nie zaplanowano na dany dzień tygodnia w
+  Planerze -- ten sam `plannedRecipeFor`/`polIndexForDate`-owy odczyt co
+  web, przez `LocalDate.dayOfWeek` zamiast JS `getDay()`) + lista przekąsek
+  z dodawaniem/usuwaniem. Nagłówkowy panel (zawsze "dzisiaj", swipe-to-eat)
+  pozostał bez zmian -- to osobne, DODATKOWE miejsce do edycji wcześniejszych
+  dni. `./gradlew :logic:test`, `:app:compileDebugKotlin` i
+  `:app:assembleDebug` przechodzą (w tym zaktualizowany
+  `CloudSyncCodecTest`'s "eaten" round-trip test, teraz wielodatowy);
+  zweryfikowane bezpośrednio na emulatorze: nawigacja ◀ na 22.08.2026,
+  dodanie przekąski "150 kcal" pod TĄ datą ("Zjedzono tego dnia: 150/1480
+  kcal"), powrót ▶ na dziś pokazał 0/1480 kcal (edycja wczorajszego dnia nie
+  wyciekła do dzisiejszego stanu), a wykres "📈 Historia kalorii" i "Bilans
+  ostatnich 7 dni" poniżej natychmiast odzwierciedliły nowy wpis (150/10360
+  kcal) — dokładnie zachowanie wymagane przez FR-83's kryteria akceptacji.
+  Ta sama sesja emulatora potwierdziła też na żywo FR-1 (panel kategorii),
+  FR-2 (kompaktowe wyszukiwanie + przełącznik "Podoba się"), FR-3
+  (dwuetapowe otwieranie, patrz notatka wyżej), FR-32 (floating "💡") i
+  FR-66 (floating "📖") — wszystkie pięć oznaczone teraz ✅ w tabeli powyżej.
 
 - **FR-83 (2026-08-11, trzecia runda tego dnia)**: waga (edycja/usuwanie wpisu) zaimplementowana i zweryfikowana na obu platformach — Android: `WeightOperations.editWeight`/`removeWeight` (+ testy JUnit) i `WeightCard`'s nowe inline wiersze z ✏️/🗑, na żywo na emulatorze (edycja wpisu z 07.08.2026 z 73 na inną wartość zadziałała poprawnie inline, bez osobnego okna). Historia kalorii (nawigacja dat w karcie „co zjadłam”) zaimplementowana TYLKO na web — świadomie NIE przeniesiona na Androida w tej samej turze, bo wymagałaby zmiany kształtu danych (`EatenViewModel._entries: Map<String, EatenEntry>` trzyma WYŁĄCZNIE dzisiejszy stan per kategoria, `_kcalHistory` to tylko pochodna suma dzienna bez zapisanych pojedynczych zaznaczeń dla przeszłych dni), nie tylko UI jak przy wadze — porównywalne rozmiarem do osobnego FR, patrz pełne uzasadnienie w `FR-83.md`'s sekcji Uwagi.
 

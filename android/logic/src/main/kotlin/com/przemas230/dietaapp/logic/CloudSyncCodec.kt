@@ -2,6 +2,7 @@ package com.przemas230.dietaapp.logic
 
 import com.przemas230.dietaapp.data.ActivityLevel
 import com.przemas230.dietaapp.data.ActivityLogEntry
+import com.przemas230.dietaapp.data.EatenDay
 import com.przemas230.dietaapp.data.EatenEntry
 import com.przemas230.dietaapp.data.Goal
 import com.przemas230.dietaapp.data.PantryCategory
@@ -38,29 +39,33 @@ import java.time.ZoneOffset
  *
  * Scope is FR-73's field list intersected with what Android actually has
  * built: displayName, profile, pantry, favIngredients, recipeRating,
- * cooked, shopping, planner/plannerScale/plannerLeftover, eaten (+ snacks,
- * today only), water (today only), waterHistory (today's entry only --
- * see CloudSyncCoordinator's nested-merge push for why), weights, history
- * (the activity log, FR-42 -- index.html's field name, NOT "activityLog"),
- * theme, uiScale, swipeRatingStyle. `communityRecipesEnabled` (FR-68/76) is
- * synced too, but as a plain scalar directly in CloudSyncCoordinator (not
- * through this codec -- it's a bare Boolean, no encode/decode pair needed).
- * Fields FR-73/FR-78 also list that don't exist as Android state yet
- * (myRecipes, recipeReviews, customTiles, pantryUnitOverride,
- * pantryCategoryOverride, household, waterNotifEnabled, waterReminder,
- * plain `favorites` star-toggle) are simply not encoded -- nothing to sync
- * for a feature that isn't ported. Semantics are FR-73's original "last cloud write wins
- * the whole document" (decode replaces local state wholesale) -- NOT
- * FR-78's later per-item 3-way merge, which is a separate, bigger port
- * (Android just does whole-field replace on every touched top-level key,
- * same as web's OWN semantics for the fields web itself doesn't put in
- * MAP_MERGE_KEYS, e.g. weights/history/profile). The one exception is
- * `eaten`/`waterHistory`: both are per-DATE maps in web that accumulate
- * over months, but Android only ever knows "today" locally -- pushing a
- * plain top-level replace for either would silently wipe out every other
- * date web has stored (a real, confirmed bug fixed 2026-08-10, see
- * CloudSyncCoordinator's nested SetOptions.mergeFields push for
- * "eaten.$today"/"waterHistory.$today").
+ * cooked, shopping, planner/plannerScale/plannerLeftover, eaten (full
+ * per-date history as of FR-83, see below), water (today only),
+ * waterHistory (today's entry only -- see CloudSyncCoordinator's
+ * nested-merge push for why), weights, history (the activity log, FR-42 --
+ * index.html's field name, NOT "activityLog"), theme, uiScale,
+ * swipeRatingStyle. `communityRecipesEnabled` (FR-68/76) is synced too, but
+ * as a plain scalar directly in CloudSyncCoordinator (not through this
+ * codec -- it's a bare Boolean, no encode/decode pair needed). Fields
+ * FR-73/FR-78 also list that don't exist as Android state yet (myRecipes,
+ * recipeReviews, customTiles, pantryUnitOverride, pantryCategoryOverride,
+ * household, waterNotifEnabled, waterReminder, plain `favorites`
+ * star-toggle) are simply not encoded -- nothing to sync for a feature that
+ * isn't ported. Semantics are FR-73's original "last cloud write wins the
+ * whole document" (decode replaces local state wholesale) -- NOT FR-78's
+ * later per-item 3-way merge, which is a separate, bigger port (Android
+ * just does whole-field replace on every touched top-level key, same as
+ * web's OWN semantics for the fields web itself doesn't put in
+ * MAP_MERGE_KEYS, e.g. weights/history/profile). `eaten` used to be a
+ * second exception here too (Android only ever knew "today" locally, so a
+ * plain top-level replace would have wiped every other date web had
+ * stored) -- fixed 2026-08-10 with a narrow "eaten.$today" nested
+ * mergeFields push, and superseded entirely by FR-83 (2026-08-23): Android
+ * now tracks full per-date history the same as web, so `eaten` rejoined the
+ * ordinary whole-field-replace group above and no longer needs the nested
+ * push (see CloudSyncCoordinator). `waterHistory` still needs it, since
+ * water tracking itself remains today-only (FR-83 only covers weight +
+ * calorie history editing, not water).
  */
 object CloudSyncCodec {
     fun encodeProfile(profile: Profile): Map<String, Any?> = mapOf(
@@ -279,48 +284,51 @@ object CloudSyncCodec {
     }
 
     /**
-     * index.html's state.eaten[date] mixes per-category `{done,kcal,name}`
-     * entries with a "snacks" array key in the SAME flat object. Android
-     * only ever tracks "today" (UTC date, matching web's
-     * `new Date().toISOString().slice(0,10)`), so encoding always nests
-     * under today's date and decoding only reads that same key -- any other
-     * date in the remote doc (written by a device that had already rolled
-     * over to a new day) is intentionally ignored, same as Android's own
-     * no-history scope.
+     * FR-83: index.html's state.eaten shape -- {date: {catId:
+     * {done,kcal,name}, snacks:[...]}} for every date the user has ever
+     * touched, mixing per-category entries with a "snacks" array key in the
+     * SAME flat per-date object. Android used to only ever track "today"
+     * here (see the class doc for that history); it now mirrors the full
+     * per-date map the same way `pantry`/`profile`/every other synced field
+     * already does, so no date-specific narrowing happens on either side.
      */
-    fun encodeEaten(entries: Map<String, EatenEntry>, snacks: List<Snack>): Map<String, Any?> {
-        val dayMap = LinkedHashMap<String, Any?>()
-        entries.forEach { (cat, entry) ->
-            dayMap[cat] = mapOf("done" to entry.done, "kcal" to entry.kcal, "name" to entry.name)
-        }
-        dayMap["snacks"] = snacks.map { mapOf("id" to it.id, "name" to it.name, "kcal" to it.kcal) }
-        return mapOf(todayUtcDateString() to dayMap)
-    }
-
-    data class DecodedEaten(val entries: Map<String, EatenEntry>, val snacks: List<Snack>)
-
-    fun decodeEaten(map: Map<*, *>?): DecodedEaten? {
-        if (map == null) return null
-        val today = map[todayUtcDateString()] as? Map<*, *> ?: return null
-        val entries = LinkedHashMap<String, EatenEntry>()
-        val snacks = mutableListOf<Snack>()
-        today.forEach { (k, v) ->
-            val key = k as? String ?: return@forEach
-            if (key == "snacks") {
-                (v as? List<*>)?.forEach { raw ->
-                    val s = raw as? Map<*, *> ?: return@forEach
-                    val id = s["id"]?.toString() ?: return@forEach
-                    val name = s["name"] as? String ?: return@forEach
-                    val kcal = numberFrom(s["kcal"])?.toInt() ?: return@forEach
-                    snacks.add(Snack(id, name, kcal))
-                }
-            } else {
-                val entryMap = v as? Map<*, *> ?: return@forEach
-                val done = entryMap["done"] as? Boolean ?: false
-                entries[key] = EatenEntry(done, numberFrom(entryMap["kcal"])?.toInt(), entryMap["name"] as? String)
+    fun encodeEaten(days: Map<String, EatenDay>): Map<String, Any?> =
+        days.mapValues { (_, day) ->
+            val dayMap = LinkedHashMap<String, Any?>()
+            day.entries.forEach { (cat, entry) ->
+                dayMap[cat] = mapOf("done" to entry.done, "kcal" to entry.kcal, "name" to entry.name)
             }
+            dayMap["snacks"] = day.snacks.map { mapOf("id" to it.id, "name" to it.name, "kcal" to it.kcal) }
+            dayMap
         }
-        return DecodedEaten(entries, snacks)
+
+    fun decodeEaten(map: Map<*, *>?): Map<String, EatenDay>? {
+        if (map == null) return null
+        val result = LinkedHashMap<String, EatenDay>()
+        map.forEach { (dateRaw, dayRaw) ->
+            val date = dateRaw as? String ?: return@forEach
+            val dayMap = dayRaw as? Map<*, *> ?: return@forEach
+            val entries = LinkedHashMap<String, EatenEntry>()
+            val snacks = mutableListOf<Snack>()
+            dayMap.forEach { (k, v) ->
+                val key = k as? String ?: return@forEach
+                if (key == "snacks") {
+                    (v as? List<*>)?.forEach { raw ->
+                        val s = raw as? Map<*, *> ?: return@forEach
+                        val id = s["id"]?.toString() ?: return@forEach
+                        val name = s["name"] as? String ?: return@forEach
+                        val kcal = numberFrom(s["kcal"])?.toInt() ?: return@forEach
+                        snacks.add(Snack(id, name, kcal))
+                    }
+                } else {
+                    val entryMap = v as? Map<*, *> ?: return@forEach
+                    val done = entryMap["done"] as? Boolean ?: false
+                    entries[key] = EatenEntry(done, numberFrom(entryMap["kcal"])?.toInt(), entryMap["name"] as? String)
+                }
+            }
+            result[date] = EatenDay(entries, snacks)
+        }
+        return result
     }
 
     /** index.html's state.water = {date: "YYYY-MM-DD" (UTC), count}. Decoding ignores a remote count from a different (UTC) day, same "today only" scope as eaten. */
@@ -466,8 +474,7 @@ object CloudSyncCodec {
         cooked: Map<String, List<com.przemas230.dietaapp.data.CookEntry>>,
         shopping: Map<String, ShoppingItem>,
         weekPlan: WeekPlan,
-        eatenEntries: Map<String, EatenEntry>,
-        snacks: List<Snack>,
+        eatenDays: Map<String, EatenDay>,
         waterCount: Int,
     ): Map<String, Any?> = mapOf(
         "displayName" to displayName,
@@ -483,7 +490,7 @@ object CloudSyncCodec {
         "planner" to encodePlanner(weekPlan),
         "plannerScale" to encodePlannerScale(weekPlan),
         "plannerLeftover" to encodePlannerLeftover(weekPlan),
-        "eaten" to encodeEaten(eatenEntries, snacks),
+        "eaten" to encodeEaten(eatenDays),
         "water" to encodeWater(waterCount),
     )
 

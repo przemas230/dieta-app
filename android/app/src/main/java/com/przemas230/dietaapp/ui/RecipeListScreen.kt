@@ -38,6 +38,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -767,8 +768,24 @@ private fun RecipeListWithScrollToTop(
     // open. Also lives outside the per-item composable so it survives that
     // item scrolling out of the LazyColumn's composition window and back.
     var expandedRecipeId by remember { mutableStateOf<String?>(null) }
-    // FR-3/v3: auto-centers the just-expanded card in the viewport, since the
-    // card's collapsible body isn't behind an AnimatedVisibility/
+    // FR-3/v4: two-step open, mirrors index.html's pendingCenterCard -- a
+    // first tap on a collapsed card only arms/centers it (this), a second
+    // tap on that SAME still-armed card actually expands it (above). Tapping
+    // a DIFFERENT card resets this to the new card instead of continuing the
+    // old one -- see the click handler in itemsIndexed below.
+    var pendingCenterRecipeId by remember { mutableStateOf<String?>(null) }
+    // FR-3/v4: first tap only centers the still-collapsed card -- no layout
+    // growth to wait out (nothing is expanding yet), unlike the second tap's
+    // effect below.
+    LaunchedEffect(pendingCenterRecipeId) {
+        val id = pendingCenterRecipeId ?: return@LaunchedEffect
+        val itemInfo = listState.layoutInfo.visibleItemsInfo.find { it.key == id } ?: return@LaunchedEffect
+        val delta = centerOrTopAlignScrollDelta(itemInfo, listState.layoutInfo.viewportSize.height)
+        if (reducedMotion) listState.scrollBy(delta) else listState.animateScrollBy(delta)
+    }
+    // FR-3/v3+v4: auto-centers (or top-aligns if now taller than the
+    // viewport -- see centerOrTopAlignScrollDelta) the just-expanded card,
+    // since the card's collapsible body isn't behind an AnimatedVisibility/
     // animateContentSize (it's a plain `if(expanded)`, so there's no
     // in-flight animation to wait out -- the layout pass after this
     // recomposition already reflects the card's new, taller measured size
@@ -783,9 +800,7 @@ private fun RecipeListWithScrollToTop(
         withFrameNanos {}
         withFrameNanos {}
         val itemInfo = listState.layoutInfo.visibleItemsInfo.find { it.key == id } ?: return@LaunchedEffect
-        val viewportHeight = listState.layoutInfo.viewportSize.height
-        val itemCenter = itemInfo.offset + itemInfo.size / 2
-        val delta = (itemCenter - viewportHeight / 2).toFloat()
+        val delta = centerOrTopAlignScrollDelta(itemInfo, listState.layoutInfo.viewportSize.height)
         if (reducedMotion) listState.scrollBy(delta) else listState.animateScrollBy(delta)
     }
 
@@ -853,8 +868,25 @@ private fun RecipeListWithScrollToTop(
                     isFavorite = recipe.id in favoriteRecipeIds,
                     onToggleFavorite = { onToggleFavoriteRecipe(recipe.id) },
                     isExpanded = recipe.id == expandedRecipeId,
+                    // FR-3/v4: two-step open -- see pendingCenterRecipeId's
+                    // doc comment above for the full state machine.
                     onToggleExpanded = {
-                        expandedRecipeId = if (expandedRecipeId == recipe.id) null else recipe.id
+                        when (recipe.id) {
+                            expandedRecipeId -> {
+                                // Already expanded -- collapsing stays a single, immediate tap.
+                                expandedRecipeId = null
+                                pendingCenterRecipeId = null
+                            }
+                            pendingCenterRecipeId -> {
+                                // Second tap on the same, already-centered card -- expand it.
+                                pendingCenterRecipeId = null
+                                expandedRecipeId = recipe.id
+                            }
+                            else -> {
+                                // First tap (or a tap on a DIFFERENT card than whichever was armed) -- just arm/center it.
+                                pendingCenterRecipeId = recipe.id
+                            }
+                        }
                     },
                     commentsViewModel = commentsViewModel,
                 )
@@ -876,6 +908,22 @@ private fun RecipeListWithScrollToTop(
         }
     }
 }
+
+/**
+ * FR-3/v4: port of index.html's scrollCardIntoView -- centers the item
+ * unless it's taller than the viewport (only possible once expanded), in
+ * which case centering would clip its top half (title/ingredients)
+ * off-screen, so its TOP edge is aligned into view instead. Returns a delta
+ * for `LazyListState.animateScrollBy`/`scrollBy` (positive = scroll
+ * forward), not an absolute position.
+ */
+private fun centerOrTopAlignScrollDelta(itemInfo: LazyListItemInfo, viewportHeight: Int): Float =
+    if (itemInfo.size > viewportHeight) {
+        itemInfo.offset.toFloat()
+    } else {
+        val itemCenter = itemInfo.offset + itemInfo.size / 2
+        (itemCenter - viewportHeight / 2).toFloat()
+    }
 
 @Composable
 private fun RecipeCard(

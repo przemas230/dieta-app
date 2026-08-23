@@ -144,14 +144,18 @@ class CloudSyncCodecTest {
     }
 
     @Test
-    fun `eaten nests under today's UTC date and ignores a different date on decode`() {
-        val entries = mapOf("obiady" to com.przemas230.dietaapp.data.EatenEntry(true, 400, "Kotlet"))
-        val snacks = listOf(com.przemas230.dietaapp.data.Snack("s1", "banan", 105))
-        val encoded = CloudSyncCodec.encodeEaten(entries, snacks)
-        val decoded = CloudSyncCodec.decodeEaten(encoded)
-        assertEquals(entries, decoded?.entries)
-        assertEquals(snacks, decoded?.snacks)
-        assertNull(CloudSyncCodec.decodeEaten(mapOf("2000-01-01" to mapOf<String, Any?>())))
+    fun `eaten round-trips every date present, not just today`() {
+        val day1 = com.przemas230.dietaapp.data.EatenDay(
+            entries = mapOf("obiady" to com.przemas230.dietaapp.data.EatenEntry(true, 400, "Kotlet")),
+            snacks = listOf(com.przemas230.dietaapp.data.Snack("s1", "banan", 105)),
+        )
+        val day2 = com.przemas230.dietaapp.data.EatenDay(
+            entries = mapOf("sniadania" to com.przemas230.dietaapp.data.EatenEntry(true, 320, "Owsianka")),
+        )
+        val days = mapOf("2026-08-10" to day1, "2026-08-11" to day2)
+        val decoded = CloudSyncCodec.decodeEaten(CloudSyncCodec.encodeEaten(days))
+        assertEquals(days, decoded)
+        assertNull(CloudSyncCodec.decodeEaten(null))
     }
 
     @Test
@@ -218,8 +222,7 @@ class CloudSyncCodecTest {
             cooked = emptyMap(),
             shopping = emptyMap(),
             weekPlan = emptyMap(),
-            eatenEntries = emptyMap(),
-            snacks = emptyList(),
+            eatenDays = emptyMap(),
             waterCount = 0,
         )
         assertEquals(
