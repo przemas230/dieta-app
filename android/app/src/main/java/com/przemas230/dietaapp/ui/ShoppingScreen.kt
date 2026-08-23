@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.przemas230.dietaapp.data.PantryItem
 import com.przemas230.dietaapp.data.ShoppingItem
+import com.przemas230.dietaapp.logic.AppThemes
 import com.przemas230.dietaapp.logic.DayCardState
 import com.przemas230.dietaapp.logic.IngredientCanon
 import com.przemas230.dietaapp.logic.RecipePantryMatching
@@ -98,7 +99,7 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
     val ingredientDays = remember(items, weekPlan, recipesById) { ShoppingOperations.computeIngredientDays(items, weekPlan, recipesById) }
     // FR-87: motyw "Klinika" pokazuje wiersz z kolorowym badge kategorii
     // (IngredientCanon.CANON_INFO.cat -- dane juz istnieja, zero nowej logiki).
-    val isClinic = LocalDietaThemeId.current == "clinic"
+    val isClinic = AppThemes.isClinicFamily(LocalDietaThemeId.current)
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(

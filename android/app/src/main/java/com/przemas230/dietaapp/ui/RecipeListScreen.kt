@@ -92,6 +92,7 @@ import com.przemas230.dietaapp.data.PantryItem
 import com.przemas230.dietaapp.data.ShoppingItem
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.data.RecipeReview
+import com.przemas230.dietaapp.logic.AppThemes
 import com.przemas230.dietaapp.logic.CATEGORIES
 import com.przemas230.dietaapp.logic.CustomRecipeOperations
 import com.przemas230.dietaapp.logic.DailyCalorieTargets
@@ -195,7 +196,7 @@ fun RecipeListScreen(
     // FR-87: motyw "Klinika" pokazuje kategorie jako od razu widoczny rząd
     // chipów zamiast panelu rozwijanego stukiem -- ten sam selectedCategory/
     // viewModel.selectCategory co reszta motywów, tylko inny układ.
-    val isClinic = LocalDietaThemeId.current == "clinic"
+    val isClinic = AppThemes.isClinicFamily(LocalDietaThemeId.current)
     // FR-72: the 🎯 badge means nothing before the user has entered real
     // profile data, so it's withheld entirely (not computed off the
     // internal placeholder Profile()) until profile.configured -- port of

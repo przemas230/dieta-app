@@ -14,15 +14,19 @@ import androidx.compose.ui.unit.sp
 import com.przemas230.dietaapp.R
 
 /**
- * FR-87: font/kszalt/uklad zestaw dla motywu "Klinika" (id "clinic"), oddzielny
- * od reszty 11 motywow AppThemes -- ten sam wzorzec co juz istniejace
- * strukturalnie odmienne motywy Polaroid/Kafelki (patrz FR-49/FR-63 w
- * RecipeListScreen.kt), tylko rozszerzony o fonty i typografie, nie tylko
- * ksztalt karty. Oba pliki .ttf w res/font/ sa fontami zmiennymi (variable
- * fonts, jeden plik = caly zakres wag) -- kazdy FontWeight ponizej to ten sam
- * plik z innym FontVariation.Settings, zgodnie z oficjalnym wzorcem Compose
- * dla fontow zmiennych. Wymaga minSdk 26 (platformowe wsparcie
- * Typeface.Builder.setFontVariationSettings) -- projekt ma minSdk 26.
+ * FR-87: font/ksztalt/uklad zestaw dla obu wariantow motywu "Klinika" (id
+ * "clinic" dzien / "clinic_dark" noc -- patrz `AppThemes.isClinicFamily`),
+ * oddzielny od reszty 11 motywow AppThemes -- ten sam wzorzec co juz
+ * istniejace strukturalnie odmienne motywy Polaroid/Kafelki (patrz
+ * FR-49/FR-63 w RecipeListScreen.kt), tylko rozszerzony o fonty i
+ * typografie, nie tylko ksztalt karty. Oba warianty dzien/noc dziela
+ * DOKLADNIE ten sam `ClinicTypography`/`ClinicShapes` -- roznica miedzy nimi
+ * to wylacznie paleta kolorow z `AppThemes.kt`. Oba pliki .ttf w res/font/
+ * sa fontami zmiennymi (variable fonts, jeden plik = caly zakres wag) --
+ * kazdy FontWeight ponizej to ten sam plik z innym FontVariation.Settings,
+ * zgodnie z oficjalnym wzorcem Compose dla fontow zmiennych. Wymaga minSdk
+ * 26 (platformowe wsparcie Typeface.Builder.setFontVariationSettings) --
+ * projekt ma minSdk 26.
  */
 @OptIn(ExperimentalTextApi::class)
 private val SpaceGrotesk = FontFamily(

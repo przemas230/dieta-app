@@ -43,6 +43,7 @@ import androidx.compose.material3.TextButton
 import com.przemas230.dietaapp.data.ActivityLogEntry
 import com.przemas230.dietaapp.data.WeightEntry
 import com.przemas230.dietaapp.logic.ActivityLogOperations
+import com.przemas230.dietaapp.logic.AppThemes
 import com.przemas230.dietaapp.logic.HistoryOperations
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.WaterOperations
@@ -94,7 +95,7 @@ fun PostepScreen(
     // FR-87: motyw "Klinika" -- kropki wody jako pelne kolka + przyciski
     // +/-, kafelek wagi z delta 30-dniowa. Ten sam WaterViewModel.setCount/
     // WeightOperations co reszta motywow, zero nowej logiki.
-    val isClinic = LocalDietaThemeId.current == "clinic"
+    val isClinic = AppThemes.isClinicFamily(LocalDietaThemeId.current)
 
     Column(
         modifier = Modifier

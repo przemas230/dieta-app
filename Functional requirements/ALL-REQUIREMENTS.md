@@ -2772,7 +2772,7 @@ Do tej pory istniały TRZY osobne sposoby oceniania dania: przesunięcie karty w
 # FR-87: Motyw „Klinika” — czcionka i układ, nie tylko kolory
 
 **Obszar:** Wygląd aplikacji (wszystkie 5 zakładek), Android
-**Status:** Zaimplementowane (Android), Android-only
+**Status:** Zaimplementowane (Android, wariant dzień + noc), Android-only
 
 ## Opis
 Dodano 12. motyw kolorystyczny — „Klinika” (id `clinic`) — wybierany w
@@ -2821,7 +2821,30 @@ reszta motywów — zero zmian logiki):
   kółkiem wokół ikony — port dolnego paska z `diet-chef-pro-75`, na wyraźną
   prośbę użytkownika ("podobały mi się też w lovable karty na dole...
   że nie były osadzone na dole tylko jakby nad ekranem"). `FloatingBottomNav`
-  w `MainActivity.kt`, gated na `LocalDietaThemeId.current == "clinic"`.
+  w `MainActivity.kt`, gated na `AppThemes.isClinicFamily(LocalDietaThemeId.
+  current)`.
+- **Nagłówek (v3, kolko kalorii + posiłki dnia)**: v2 przestroiła TYLKO
+  paletę koloru wypełnienia istniejącego nagłówka — sam nagłówek nadal był
+  jednolitym blokiem koloru z białym tekstem, jak w pozostałych 11
+  motywach. Użytkownik trafnie to wychwycił ("nie widzę zmian w Nagłówek...
+  jest tak naprawdę w tym motywie tylko karty na dole"). Naprawione: dla
+  Klinika/Klinika (noc) nagłówek (`TopAppBar` + `HeaderWaterRow` +
+  `HeaderKcalPanel`) stoi teraz na jasnym/ciemnym tle strony (`background`),
+  a sam panel kalorii/wody renderuje się jako WŁASNA, uniesiona karta
+  (`Card`, zaokrąglenie `extraLarge`, cień) z ciemnym/jasnym tekstem zamiast
+  białego na wypełnieniu — dokładnie jak w artefakcie-podglądzie. Pierścień
+  kalorii przefarbowany na `primary` (szałwia), pierścień nawodnienia na
+  `tertiary` (przygaszony błękit) zamiast na sztywno wpisanych pomarańczu/
+  niebieskim z pozostałych motywów.
+- **"Klinika (noc)" — nowy, 13. motyw**: osobny, wybieralny ciemny wariant
+  (id `clinic_dark`) obok jasnej "Klinika", na wyraźną prośbę użytkownika
+  ("zrob klinika dzien i noc motyw taki jak w propozycji"). Ten sam akcent
+  szałwiowy co w wersji dziennej (diet-chef-pro-75's własny tryb ciemny też
+  zostawia `--primary` bez zmian), reszta palety z dark-mode tokenów OKLCH
+  tego projektu. Dzieli DOKŁADNIE ten sam `ClinicTypography`/`ClinicShapes`/
+  `FloatingBottomNav`/nagłówek-kartę co wersja dzienna — `AppThemes.
+  isClinicFamily(id)` rozpoznaje oba warianty jednym miejscem zamiast
+  osobnych porównań `== "clinic"` rozsianych po 8 plikach ekranów.
 
 ## Kryteria akceptacji
 - Wybranie motywu „Klinika” w Ustawieniach zmienia paletę, czcionkę I układ
@@ -2829,8 +2852,14 @@ reszta motywów — zero zmian logiki):
 - Wybranie dowolnego z pozostałych 11 motywów daje DOKŁADNIE taki sam
   wygląd jak przed tą zmianą (ten sam `AppShapes`/systemowa czcionka/układ).
 - Dolny pasek nawigacji (v2) "pływa" z widocznym marginesem od krawędzi
-  ekranu WYŁĄCZNIE gdy „Klinika” jest aktywna; wszystkie pozostałe motywy
-  zachowują dokowany `NavigationBar` bez zmian.
+  ekranu WYŁĄCZNIE gdy „Klinika” (dzień LUB noc) jest aktywna; wszystkie
+  pozostałe motywy zachowują dokowany `NavigationBar` bez zmian.
+- Nagłówek (kółko kalorii + posiłki dnia) renderuje się jako uniesiona
+  karta na jasnym/ciemnym tle strony WYŁĄCZNIE dla Klinika/Klinika (noc);
+  pozostałe motywy zachowują jednolity blok koloru z białym tekstem bez
+  zmian.
+- Wybranie „Klinika (noc)” daje ciemne tło/karty z tym samym akcentem
+  szałwiowym co „Klinika”, ten sam font/kształt/układ/pływający pasek.
 - `./gradlew :app:assembleDebug :logic:test` przechodzi.
 
 ## Uwagi
@@ -2879,5 +2908,28 @@ się zgadzać z web co do joty.
   przechodzi; zweryfikowane bezpośrednio na emulatorze (Medium_Phone_API_35):
   paleta, czcionki i pływający pasek z podświetloną aktywną zakładką
   potwierdzone na żywo na liście przepisów i rozwiniętej karcie.
+- **v3** (2026-08-23, Android): Użytkownik zgłosił, że v2 przestroiła TYLKO
+  wypełnienie istniejącego nagłówka, nie sam jego wygląd ("jest tak
+  naprawdę w tym motywie tylko karty na dole"), i poprosił o osobny wariant
+  dzień/noc ("zrob klinika dzien i noc motyw taki jak w propozycji").
+  Nagłówek (`TopAppBar`/`HeaderWaterRow`/`HeaderKcalPanel`/`KcalMealRow`/
+  `WaterCupIcon` w `MainActivity.kt`) przebudowany na jasne/ciemne tło
+  strony + panel kalorii/wody jako własna uniesiona karta, pierścienie
+  przefarbowane na `primary`/`tertiary` (patrz Opis). Nowy 13. motyw
+  „Klinika (noc)” (id `clinic_dark`) w `AppThemes.kt`, kolory z dark-mode
+  OKLCH tokenów `diet-chef-pro-75`, ten sam akcent szałwiowy co dzień.
+  Nowa `AppThemes.isClinicFamily(id)` zastąpiła 12 rozsianych porównań
+  `== "clinic"` w 8 plikach ekranów (`MainActivity.kt`, `PostepScreen.kt`,
+  `PlannerScreen.kt`, `PantryScreen.kt`, `RecipeListScreen.kt`,
+  `ShoppingScreen.kt`, `Theme.kt`) — jedno miejsce do zmiany, gdyby
+  przybył trzeci wariant Klinika. `AppThemesTest.kt` zaktualizowany (13
+  motywów, `clinic_dark` jako trzeci `isDark`, nowy test
+  `isClinicFamily`). `./gradlew :logic:test :app:assembleDebug` przechodzi;
+  zweryfikowane bezpośrednio na emulatorze: nagłówek jako karta na jasnym
+  tle (Klinika) potwierdzony, przełączenie na „Klinika (noc)” dało ciemne
+  tło/karty z tym samym akcentem na całej aplikacji (nagłówek, lista
+  przepisów, pływający pasek, floating buttons), przełączenie na inny
+  (niekliniczny) motyw poprawnie wróciło do dokowanego paska — potwierdza
+  że gating działa w obie strony.
 
 ---

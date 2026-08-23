@@ -83,7 +83,7 @@ private fun colorSchemeFor(def: AppThemeDef): ColorScheme {
 fun DietaAppTheme(themeId: String = AppThemes.DEFAULT_ID, content: @Composable () -> Unit) {
     val def = remember(themeId) { AppThemes.byId(themeId) }
     // FR-87: motyw "Klinika" ma wlasny font/ksztalt, nie tylko kolory -- patrz ClinicTheme.kt.
-    val isClinic = def.id == "clinic"
+    val isClinic = AppThemes.isClinicFamily(def.id)
     CompositionLocalProvider(LocalDietaThemeId provides def.id) {
         MaterialTheme(
             colorScheme = colorSchemeFor(def),

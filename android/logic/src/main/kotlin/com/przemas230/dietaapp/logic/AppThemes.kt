@@ -145,7 +145,31 @@ object AppThemes {
             bg = 0xFFF9F7F5, card = 0xFFFFFFFF, text = 0xFF1E1B16, muted = 0xFF766B59, line = 0xFFE3DFD8,
             danger = 0xFFE7000B, dangerPale = 0xFFFFE2DD, starOff = 0xFFC9C3BA, isDark = false,
         ),
+        // FR-87/v2: "Klinika (noc)" -- dark-mode sibling of "clinic", on
+        // explicit request ("zrob klinika dzien i noc motyw taki jak w
+        // propozycji"). Same sage accent as the light version (diet-chef-
+        // pro-75's own .dark block leaves --primary untouched too), every
+        // other value swapped for that project's dark OKLCH tokens --
+        // container/text roles inverted the same way "dark"/"berry" already
+        // do it above (dark container bg, LIGHT text on top of it).
+        AppThemeDef(
+            id = "clinic_dark", label = "Klinika (noc)", swatch = 0xFF6DA480, metaColor = 0xFF6DA480,
+            teal = 0xFF6DA480, tealDark = 0xFFB0DABD, tealPale = 0xFF1D3425,
+            honey = 0xFFC69B78, honeyPale = 0xFF392A1E, honeyDark = 0xFFE7C7AE,
+            plum = 0xFF7A90B4, plumPale = 0xFF252E3D,
+            bg = 0xFF1E1B16, card = 0xFF2B2823, text = 0xFFFEFAF3, muted = 0xFFABA397, line = 0xFF36322D,
+            danger = 0xFFFF6467, dangerPale = 0xFF421B1B, starOff = 0xFF534C41, isDark = true,
+        ),
     )
 
     fun byId(id: String): AppThemeDef = ALL.find { it.id == id } ?: ALL.first { it.id == DEFAULT_ID }
+
+    /**
+     * FR-87/v2: both Klinika variants ("clinic" day, "clinic_dark" night)
+     * share the same font/shape/layout treatment (see ClinicTheme.kt and
+     * every `LocalDietaThemeId.current`-branching screen) -- centralized
+     * here so a future third Klinika variant only needs updating in one
+     * place instead of at every one of those call sites.
+     */
+    fun isClinicFamily(themeId: String): Boolean = themeId == "clinic" || themeId == "clinic_dark"
 }

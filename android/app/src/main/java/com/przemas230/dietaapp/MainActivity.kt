@@ -32,6 +32,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -454,7 +455,21 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
             // itself has no such cap, so the water row and kcal panel live
             // here instead, as siblings after TopAppBar inside one
             // teal-background Column, not nested in its title.
-            Column(modifier = Modifier.background(MaterialTheme.colorScheme.primary)) {
+            // FR-87/v2: Klinika's header trades the solid teal/sage-fill
+            // block every other theme uses for a light page background with
+            // the kcal/water panel as its own elevated card below -- port of
+            // diet-chef-pro-75's (Lovable) light header, on explicit
+            // feedback that recoloring the EXISTING solid header wasn't
+            // enough ("nie widzę zmian w Nagłówek... kolor motywu dalej
+            // jest jasny" -- their own "jasny" here means the OLD design
+            // still showed through under the new color). See HeaderKcalPanel
+            // below for the card itself.
+            val isClinicHeader = AppThemes.isClinicFamily(LocalDietaThemeId.current)
+            Column(
+                modifier = Modifier.background(
+                    if (isClinicHeader) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.primary,
+                ),
+            ) {
                 TopAppBar(
                     title = {
                         Column(
@@ -495,9 +510,9 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                        containerColor = if (isClinicHeader) Color.Transparent else MaterialTheme.colorScheme.primary,
+                        titleContentColor = if (isClinicHeader) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onPrimary,
+                        actionIconContentColor = if (isClinicHeader) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onPrimary,
                     ),
                     actions = {
                         // FR-33: global quick-add, visible on every tab (matches
@@ -570,7 +585,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
             // on explicit request ("podobały mi się karty na dole... że nie
             // były osadzone na dole tylko jakby nad ekranem"). Every other
             // theme keeps the standard docked NavigationBar unchanged.
-            if (LocalDietaThemeId.current == "clinic") {
+            if (AppThemes.isClinicFamily(LocalDietaThemeId.current)) {
                 FloatingBottomNav(currentRoute = currentRoute, onNavigate = onNavigate)
             } else {
                 NavigationBar {
@@ -754,6 +769,7 @@ private fun formatWeight(value: Double): String =
 @Composable
 private fun HeaderWaterRow(viewModel: WaterViewModel) {
     val count by viewModel.count.collectAsState()
+    val isClinic = AppThemes.isClinicFamily(LocalDietaThemeId.current)
     Row(
         modifier = Modifier.padding(top = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -769,7 +785,7 @@ private fun HeaderWaterRow(viewModel: WaterViewModel) {
         Text(
             "$count/${WaterOperations.MAX_LEVEL}",
             style = MaterialTheme.typography.labelSmall,
-            color = Color.White,
+            color = if (isClinic) MaterialTheme.colorScheme.onBackground else Color.White,
             modifier = Modifier.padding(start = 4.dp),
         )
     }
@@ -784,8 +800,13 @@ private fun HeaderWaterRow(viewModel: WaterViewModel) {
  */
 @Composable
 private fun WaterCupIcon(filled: Boolean, size: Dp, modifier: Modifier = Modifier) {
-    val filledColor = Color(0xFF3E8EF5)
-    val emptyColor = Color.White.copy(alpha = 0.45f)
+    val isClinic = AppThemes.isClinicFamily(LocalDietaThemeId.current)
+    val filledColor = if (isClinic) MaterialTheme.colorScheme.tertiary else Color(0xFF3E8EF5)
+    val emptyColor = if (isClinic) {
+        MaterialTheme.colorScheme.onBackground.copy(alpha = 0.35f)
+    } else {
+        Color.White.copy(alpha = 0.45f)
+    }
     val color = if (filled) filledColor else emptyColor
     Canvas(modifier = modifier.size(size)) {
         val w = this.size.width
@@ -921,31 +942,39 @@ private fun HeaderKcalPanel(
     val kcalPct = if (targetKcal > 0) (eatenKcal.toFloat() / targetKcal).coerceIn(0f, 1f) else 0f
     val waterCount by waterViewModel.count.collectAsState()
     val waterPct = (waterCount.toFloat() / WaterOperations.MAX_LEVEL).coerceIn(0f, 1f)
-    Column(modifier = Modifier.padding(top = 8.dp)) {
+    // FR-87/v2: Klinika renders this whole panel as an elevated card on its
+    // now-light header background (see the topBar Column above) instead of
+    // white text over a solid color fill -- textColor/mutedTextColor below
+    // are the single switch every Text() in this function reads, so the
+    // other 11 themes' white-on-fill rendering stays byte-for-byte the same.
+    val isClinic = AppThemes.isClinicFamily(LocalDietaThemeId.current)
+    val textColor = if (isClinic) MaterialTheme.colorScheme.onSurface else Color.White
+    val mutedTextColor = if (isClinic) MaterialTheme.colorScheme.onSurfaceVariant else Color.White.copy(alpha = 0.75f)
+    val panelContent = @Composable {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(48.dp)) {
-                Text("POZOSTAŁO", fontSize = 8.sp, color = Color.White.copy(alpha = 0.75f), maxLines = 1)
-                Text(remaining.toString(), fontWeight = FontWeight.Bold, fontSize = 17.sp, color = Color.White)
-                Text("kcal", fontSize = 8.sp, color = Color.White.copy(alpha = 0.75f))
+                Text("POZOSTAŁO", fontSize = 8.sp, color = mutedTextColor, maxLines = 1)
+                Text(remaining.toString(), fontWeight = FontWeight.Bold, fontSize = 17.sp, color = textColor)
+                Text("kcal", fontSize = 8.sp, color = mutedTextColor)
             }
             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(78.dp)) {
                 CircularProgressIndicator(
                     progress = { kcalPct },
                     modifier = Modifier.fillMaxSize(),
                     strokeWidth = 8.dp,
-                    color = Color(0xFFF5822B),
-                    trackColor = Color.White.copy(alpha = 0.20f),
+                    color = if (isClinic) MaterialTheme.colorScheme.primary else Color(0xFFF5822B),
+                    trackColor = if (isClinic) MaterialTheme.colorScheme.surfaceVariant else Color.White.copy(alpha = 0.20f),
                 )
                 CircularProgressIndicator(
                     progress = { waterPct },
                     modifier = Modifier.fillMaxSize().padding(11.dp),
                     strokeWidth = 6.dp,
-                    color = Color(0xFF3E8EF5),
-                    trackColor = Color.White.copy(alpha = 0.20f),
+                    color = if (isClinic) MaterialTheme.colorScheme.tertiary else Color(0xFF3E8EF5),
+                    trackColor = if (isClinic) MaterialTheme.colorScheme.surfaceVariant else Color.White.copy(alpha = 0.20f),
                 )
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(eatenKcal.toString(), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
-                    Text("z $targetKcal kcal", fontSize = 8.sp, color = Color.White.copy(alpha = 0.85f))
+                    Text(eatenKcal.toString(), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = textColor)
+                    Text("z $targetKcal kcal", fontSize = 8.sp, color = mutedTextColor)
                 }
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -992,7 +1021,7 @@ private fun HeaderKcalPanel(
             ) {
                 Text(
                     "🍿 ${snack.name} · ${snack.kcal} kcal",
-                    color = Color.White,
+                    color = textColor,
                     fontSize = 10.sp,
                     modifier = Modifier.weight(1f),
                     maxLines = 1,
@@ -1000,7 +1029,7 @@ private fun HeaderKcalPanel(
                 )
                 Text(
                     "✕",
-                    color = Color.White.copy(alpha = 0.85f),
+                    color = mutedTextColor,
                     fontSize = 10.sp,
                     modifier = Modifier.clickable { onRemoveSnack(snack.id) }.padding(start = 4.dp),
                 )
@@ -1010,8 +1039,19 @@ private fun HeaderKcalPanel(
         Text(
             "🍽️ Zjedzone: $eatenKcal kcal · Zostało: $remaining kcal",
             style = MaterialTheme.typography.labelSmall,
-            color = Color.White,
+            color = textColor,
         )
+    }
+    if (isClinic) {
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+            shape = MaterialTheme.shapes.extraLarge,
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) { panelContent() }
+        }
+    } else {
+        Column(modifier = Modifier.padding(top = 8.dp)) { panelContent() }
     }
 }
 
@@ -1037,6 +1077,8 @@ private fun KcalMealRow(
     eaten: Boolean,
     onToggle: () -> Unit,
 ) {
+    val isClinic = AppThemes.isClinicFamily(LocalDietaThemeId.current)
+    val textColor = if (isClinic) MaterialTheme.colorScheme.onSurface else Color.White
     val offsetX = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -1075,14 +1117,14 @@ private fun KcalMealRow(
         Column {
             Text(
                 "${category.emoji} ${category.label} · $targetKcal kcal",
-                color = Color.White,
+                color = textColor,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
             )
             if (recipe != null) {
                 Text(
                     if (recipeKcal != null) "${recipe.name} ($recipeKcal kcal)" else recipe.name,
-                    color = Color.White.copy(alpha = if (eaten) 0.55f else 0.72f),
+                    color = textColor.copy(alpha = if (eaten) 0.55f else 0.72f),
                     fontSize = 9.sp,
                     textDecoration = if (eaten) TextDecoration.LineThrough else TextDecoration.None,
                     maxLines = 1,

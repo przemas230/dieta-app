@@ -98,7 +98,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-81 | Propozycja przeliczenia planu i listy zakupów po zapisaniu profilu | ✅ | ✅ zaimplementowane 2026-08-11 tego samego dnia co web, zweryfikowane na żywo na emulatorze (patrz uwagi niżej) |
 | FR-82 | Widoczna wersja aplikacji w Ustawieniach | ✅ | ✅ Android miał to już od wcześniej (`AppUpdateCard`'s „Zainstalowana wersja: X”) — FR dopisany 2026-08-11 tylko formalnie, bez zmian w Kotlinie |
 | FR-83 | Edycja wcześniej wpisanej wagi i historii kalorii | ✅ (waga) / ✅ (historia kalorii) | ✅ waga (edycja+usuwanie inline, zweryfikowane na emulatorze) / ✅ historia kalorii doportowana i zweryfikowana na emulatorze 2026-08-23 (przebudowa `EatenViewModel`/`EatenEntry` na `EatenDay` per-data, patrz uwagi FR-83.md i notatka niżej) |
-| FR-87 | Motyw „Klinika” — czcionka i układ, nie tylko kolory | N/D (Android-only funkcja) | ✅ v2 (2026-08-23): paleta przestrojona 1:1 na `diet-chef-pro-75` (Lovable) + nowy "pływający" dolny pasek nawigacji, zweryfikowane na żywo na emulatorze (patrz uwagi niżej) |
+| FR-87 | Motyw „Klinika” — czcionka i układ, nie tylko kolory | N/D (Android-only funkcja) | ✅ v3 (2026-08-23): nagłówek (kółko kalorii + posiłki) przebudowany na uniesioną kartę na jasnym/ciemnym tle (nie tylko przefarbowany blok), + nowy 13. motyw „Klinika (noc)” (`clinic_dark`) — oba warianty zweryfikowane na żywo na emulatorze (patrz uwagi niżej) |
 
 ## Uwagi do częściowych wpisów
 
@@ -119,6 +119,39 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 - **FR-84 — scalenie oceniania w jeden mechanizm (2026-08-11, piąta runda tego dnia)**: na wyraźną prośbę użytkownika ("scal w jedno system gwiazdek, oceny po zrobieniu dania oraz ocene i komentarz ktory mozna dodać pod przepisem, to jedno i to samo"), trzy dotychczas osobne systemy oceniania (przesunięcie karty ❤️/👎, gwiazdka za każde „✅ Zrobione", ocena+komentarz z FR-67) stały się JEDNYM — samą oceną z FR-67 (`RecipeReview`/`recipeReviews`). Android: `RecipeViewModel.setRatingQuick(recipeId, stars)` — nowa funkcja wołana zarówno przez przesunięcie karty (prawo=5★, lewo=1★, zachowuje istniejący komentarz), jak i przez nowy przycisk „⭐ Oceń to danie"/„⭐ Twoja ocena: X/5 (zmień)" w `CookHistoryDialog` (który stał się czystym logiem dat — usunięto `onSetRating`/`StarRatingRow` per-wpisowy). Plakietka w rogu karty pokazuje „★N" (zamiast dawnego 👍/👎) i po dotknięciu otwiera okienko oceny zamiast je kasować. Przełącznik sortowania „❤️ Ranking" (`RecipeRatingOperations.sortByRating`) usunięty z paska filtrów jako redundantny z „🏆 Ocena". Migracja: `RecipeViewModel.replaceRatings` (wołana przy każdym wczytaniu lokalnym i pull z chmury) jednorazowo konwertuje stare wpisy `RecipeRating` bez odpowiadającej im recenzji na recenzję (LIKE→5★, DISLIKE→1★), nigdy nie nadpisując istniejącej prawdziwej recenzji. Świadomie NIE usunięto `RecipeRatingOperations`/`CookHistoryOperations.setRating` z modułu `logic` (razem z ich testami JUnit) — zostają jako nieużywany, ale nieszkodliwy kod, żeby nie poszerzać zakresu zmiany o usuwanie testów w tej samej turze. Zweryfikowane bezpośrednio na emulatorze: ocena 5★ przez okienko poprawnie pokazała plakietkę „★5" z zieloną obwódką karty, historia gotowania pokazuje czysty log dat bez własnych gwiazdek, przycisk „⭐ Oceń to danie" poprawnie otwiera to samo okienko co plakietka. Zero crashy. `versionCode`/`versionName` bump w `app/build.gradle.kts`.
 
 - **Naprawiony realny błąd utraty danych profilu (2026-08-11, czwarta runda tego dnia)**: użytkownik zgłosił "w kotlin nie zapamiętuje mi w ustawieniach że jestem mężczyzną, przełącza mi na kobietę... cel zmieniałem a teraz widzę znów z defaultu wstawił" — realny, potwierdzony błąd, najprawdopodobniej wprowadzony/odsłonięty przez zmianę z drugiej rundy tego dnia (FR-78 dirty-field-tracking). Przyczyna: `lastKnownFields` (mapa "ostatnia wartość, co do której to urządzenie i Firestore się zgodziły") żyła WYŁĄCZNIE w pamięci (`remember`), resetując się do pustej przy KAŻDYM restarcie aplikacji. Sekwencja gubiąca dane: użytkownik edytuje profil, zamyka aplikację ZANIM 1,5-sekundowy debounce zdąży wypchnąć zmianę do chmury; po ponownym uruchomieniu edycja poprawnie wraca z lokalnego dysku, ale `lastKnownFields` startuje puste, więc PIERWSZY odebrany snapshot z Firestore (wciąż ze STARĄ wartością) wyglądał jak "coś nowego" i cicho nadpisywał świeżą lokalną edycję. Naprawione: nowy `CloudSyncBaselineStore` (`android/app/.../data/CloudSyncBaselineStore.kt`) zapisuje `lastKnownFields` na dysk (per uid, reużywa `LocalStateStore`'s JSON I/O pod inną nazwą pliku), wczytywany PRZED dopuszczeniem nasłuchiwacza Firestore do podłączenia się (`baselineLoaded` blokuje `DisposableEffect`) — więc nawet PIERWSZY snapshot po zimnym starcie poprawnie odróżnia "to pasuje do tego, co już wiedziałem" (ignoruj) od "to naprawdę inne niż ostatnio wiedziałem" (zastosuj — dotyczy też prawdziwie nowego urządzenia/logowania, gdzie baseline jest pusty celowo). Przy okazji usunięto `PushedSnapshot`/`lastPushed`/`suppressNextPush` jako w pełni zastąpione przez trwały `lastKnownFields` — mniej kodu, jeden mechanizm zamiast dwóch częściowo nakładających się. Zweryfikowane bezpośrednio na emulatorze: zmiana płci na Mężczyzna → `adb shell am force-stop` ~900ms później (po lokalnym zapisie na dysk, przed wypchnięciem do chmury) → ponowne uruchomienie → wartość poprawnie przetrwała I pozostała stabilna po pełnej synchronizacji z chmurą (sprawdzone dwoma pełnymi cyklami restart+odczekanie), zero crashy w logcat.
+
+- **FR-87/v3 — nagłówek jako karta + Klinika (noc) (2026-08-23)**: po v2
+  użytkownik trafnie zgłosił "nie widzę zmian w Nagłówek... jest tak
+  naprawdę w tym motywie tylko karty na dole" — v2 przefarbowała tylko
+  WYPEŁNIENIE istniejącego nagłówka na sage, sam nagłówek nadal był
+  jednolitym blokiem koloru z białym tekstem identycznym do pozostałych 11
+  motywów, bo `TopAppBar`/`HeaderWaterRow`/`HeaderKcalPanel`/`KcalMealRow`/
+  `WaterCupIcon` w `MainActivity.kt` to WSPÓLNE komponenty używane przez
+  wszystkie 13 motywów — retuning `AppThemes.kt`'s kolorów samo w sobie nie
+  zmienia UKŁADU tych komponentów, tylko jaki kolor wypełnia ten sam kod.
+  Naprawione: dla Klinika/Klinika (noc) nagłówek stoi teraz na jasnym/
+  ciemnym tle strony (`background`), panel kalorii/wody renderuje się jako
+  WŁASNA uniesiona `Card` (zaokrąglenie `extraLarge`, cień 3dp) z ciemnym/
+  jasnym tekstem, pierścień kalorii na `primary` (szałwia) i pierścień
+  nawodnienia na `tertiary` (przygaszony błękit) zamiast sztywno wpisanych
+  pomarańczu/niebieskiego. Przy okazji: "zrob klinika dzien i noc motyw
+  taki jak w propozycji" — nowy 13. motyw „Klinika (noc)” (`clinic_dark`
+  w `AppThemes.kt`), ten sam akcent szałwiowy co dzień (diet-chef-pro-75's
+  własny tryb ciemny też zostawia `--primary` bez zmian), reszta palety z
+  dark-mode OKLCH tokenów tego projektu. Oba warianty dzielą DOKŁADNIE ten
+  sam `ClinicTypography`/`ClinicShapes`/`FloatingBottomNav`/nagłówek-kartę
+  — nowa `AppThemes.isClinicFamily(id)` (logic module) zastąpiła 12
+  rozsianych porównań `id == "clinic"` w 8 plikach ekranów, żeby trzeci
+  ewentualny wariant Klinika wymagał zmiany w jednym miejscu, nie ośmiu.
+  `AppThemesTest.kt` zaktualizowany (13 motywów, `clinic_dark` trzecim
+  `isDark`, nowy test `isClinicFamily`). `./gradlew :logic:test
+  :app:assembleDebug` przechodzi; zweryfikowane bezpośrednio na
+  emulatorze: nagłówek-karta na jasnym tle (Klinika), przełączenie na
+  „Klinika (noc)” dało spójne ciemne tło/karty na całej aplikacji
+  (nagłówek, lista przepisów, pływający pasek, floating buttony), a
+  przełączenie na inny (niekliniczny) motyw poprawnie wróciło do
+  dokowanego paska nawigacji — `isClinicFamily` gating potwierdzony w obie
+  strony, nie tylko "wybierz Klinika i sprawdź".
 
 - **FR-87/v2 — Klinika przestrojona na diet-chef-pro-75 + pływający pasek (2026-08-23)**:
   po zatwierdzeniu artefaktu-podglądu (patrz notatka o artefakcie w sesji)

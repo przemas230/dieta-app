@@ -51,6 +51,7 @@ import androidx.compose.ui.window.Dialog
 import com.przemas230.dietaapp.data.PantryCategory
 import com.przemas230.dietaapp.data.PantryItem
 import com.przemas230.dietaapp.data.Recipe
+import com.przemas230.dietaapp.logic.AppThemes
 import com.przemas230.dietaapp.logic.PantryDisplay
 import com.przemas230.dietaapp.logic.PantryTiles
 import com.przemas230.dietaapp.logic.RecipePantryMatching
@@ -93,7 +94,7 @@ fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityL
     // AddOwnTile (gesty dodawania/odejmowania, long-press menu) sa
     // CALKOWICIE nietkniete -- tylko to, ktore kategorie w ogole trafiaja do
     // LazyVerticalGrid, sie zmienia.
-    val isClinic = LocalDietaThemeId.current == "clinic"
+    val isClinic = AppThemes.isClinicFamily(LocalDietaThemeId.current)
     var expandedCategories by remember { mutableStateOf(PantryTiles.CATEGORY_ORDER.toSet()) }
 
     Column(modifier = Modifier.fillMaxWidth()) {

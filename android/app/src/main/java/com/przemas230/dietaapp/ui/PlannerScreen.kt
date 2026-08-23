@@ -50,6 +50,7 @@ import androidx.compose.ui.window.Dialog
 import com.przemas230.dietaapp.data.PlannedMeal
 import com.przemas230.dietaapp.data.Profile
 import com.przemas230.dietaapp.data.Recipe
+import com.przemas230.dietaapp.logic.AppThemes
 import com.przemas230.dietaapp.logic.MacroGrams
 import com.przemas230.dietaapp.logic.PlannerCategory
 import com.przemas230.dietaapp.logic.PlannerOperations
@@ -99,7 +100,7 @@ fun PlannerScreen(plannerViewModel: PlannerViewModel, profileViewModel: ProfileV
     // kcal/makro (z danych juz wyliczonych wyzej, zero nowych wywolan
     // ViewModel/logiki) i przeprojektowane karty dni. Reszta motywow ma
     // dokladnie ten sam DayCard co dotychczas.
-    val isClinic = LocalDietaThemeId.current == "clinic"
+    val isClinic = AppThemes.isClinicFamily(LocalDietaThemeId.current)
     val todayIndex = remember { (LocalDate.now().dayOfWeek.value - 1).coerceIn(0, 6) }
 
     LazyColumn(

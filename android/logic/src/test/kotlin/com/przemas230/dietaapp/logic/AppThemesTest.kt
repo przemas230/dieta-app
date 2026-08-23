@@ -8,15 +8,16 @@ import org.junit.jupiter.api.Test
 class AppThemesTest {
 
     @Test
-    fun `has the 11 themes from index_html in the same order, plus the Android-only Klinika theme`() {
-        // FR-87: "clinic" is a deliberate, documented exception to the
-        // otherwise 1:1 index.html parity (see android/PARITY.md's FR-87
-        // note) -- it's the only theme with its own font/shape treatment,
-        // not just a ported palette, so it doesn't have a web counterpart
-        // (yet). Every other id below must still match index.html exactly.
+    fun `has the 11 themes from index_html in the same order, plus the Android-only Klinika day and night themes`() {
+        // FR-87: "clinic"/"clinic_dark" are a deliberate, documented
+        // exception to the otherwise 1:1 index.html parity (see
+        // android/PARITY.md's FR-87 note) -- the only themes with their own
+        // font/shape/layout treatment, not just a ported palette, so they
+        // don't have a web counterpart (yet). Every other id below must
+        // still match index.html exactly.
         val ids = AppThemes.ALL.map { it.id }
         assertEquals(
-            listOf("teal", "light", "pink", "dark", "harvest", "citrus", "mint", "berry", "polaroid", "fluent", "metro", "clinic"),
+            listOf("teal", "light", "pink", "dark", "harvest", "citrus", "mint", "berry", "polaroid", "fluent", "metro", "clinic", "clinic_dark"),
             ids,
         )
     }
@@ -59,11 +60,19 @@ class AppThemesTest {
     }
 
     @Test
-    fun `only dark and berry are marked as dark themes`() {
+    fun `only dark, berry and clinic_dark are marked as dark themes`() {
         val darkIds = AppThemes.ALL.filter { it.isDark }.map { it.id }
-        assertEquals(listOf("dark", "berry"), darkIds)
+        assertEquals(listOf("dark", "berry", "clinic_dark"), darkIds)
         assertFalse(AppThemes.byId("teal").isDark)
         assertTrue(AppThemes.byId("dark").isDark)
+    }
+
+    @Test
+    fun `isClinicFamily recognizes both Klinika variants and nothing else`() {
+        assertTrue(AppThemes.isClinicFamily("clinic"))
+        assertTrue(AppThemes.isClinicFamily("clinic_dark"))
+        assertFalse(AppThemes.isClinicFamily("dark"))
+        assertFalse(AppThemes.isClinicFamily("teal"))
     }
 
     @Test
