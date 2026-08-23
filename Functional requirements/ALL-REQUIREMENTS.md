@@ -1318,13 +1318,23 @@ Aplikacja spełnia wymogi Progressive Web App (manifest.json, ikony 192/512px) i
 **Status:** Zaimplementowane
 
 ## Opis
-Service Worker cache'uje zasoby aplikacji, serwując wersję z pamięci podręcznej natychmiast, a w tle sprawdzając i podmieniając na nowszą wersję z sieci, jeśli jest dostępna. Numer wersji cache (`CACHE_NAME`) jest podnoszony przy każdej istotnej zmianie treści aplikacji, by wymusić odświeżenie.
+Service Worker cache'uje zasoby aplikacji, serwując wersję z pamięci podręcznej natychmiast, a w tle sprawdzając i podmieniając na nowszą wersję z sieci, jeśli jest dostępna. Numer wersji cache (`CACHE_NAME`) jest podnoszony przy KAŻDEJ turze dotykającej `index.html`/`sw.js`/`manifest.json` — bez wyjątków dla zmian ocenianych jako "nieistotne" dla samego mechanizmu cache'owania — i od v85 zawsze zgodny z numerem folderu `versions/vNN` tej tury (jeden wspólny licznik, nie dwa osobne).
 
 ## Kryteria akceptacji
 - Zmiana kontrolera Service Workera (nowa wersja przejęła kontrolę) wywołuje jednorazowe automatyczne odświeżenie strony, by nowa wersja była widoczna od razu, a nie dopiero przy drugim otwarciu.
+- `CACHE_NAME` w `sw.js` jest zawsze równy numerowi najnowszego folderu `versions/vNN` — nigdy nie zostaje "w tyle" nawet o jedną turę, niezależnie od tego, czy dana zmiana subiektywnie wygląda na wymagającą wymuszonego odświeżenia cache'u (patrz FR-82, gdzie ten numer pełni rolę widocznego dla użytkownika potwierdzenia wersji, nie tylko wewnętrznego cache-bustera).
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-23): Naprawiono zgłoszony błąd użytkownika ("wersja PWA cały
+  czas pokazuje v57 w opcjach") — `CACHE_NAME` przestał być podnoszony po
+  wersji v77 (Service Worker v51), mimo że numeracja `versions/vNN` doszła
+  do v84 (w tym v84's jawna, ale błędna decyzja "CACHE_NAME zostaje bez
+  zmian, bo te poprawki nie zmieniają struktury danych" — trafne dla
+  mechaniki cache'u, ale mijające się z FR-82's właściwym celem: widoczne
+  potwierdzenie wersji dla użytkownika). Podniesiony do `dieta-app-v85`,
+  scalony z numeracją `versions/vNN` na stałe zamiast dwóch rozjeżdżających
+  się liczników — patrz zaktualizowane Kryteria akceptacji.
 
 ---
 
@@ -2653,6 +2663,13 @@ Android: karta „🔄 Aktualizacja aplikacji” w Ustawieniach już od wcześni
   było faktycznie zobaczyć czy był update"). Zaimplementowane na web
   (`versions/v77/`, Service Worker v50→v51); Android już to miał
   (`AppUpdateCard` w `SettingsScreen.kt`), więc tylko udokumentowane.
+- **v2** (2026-08-23): Użytkownik zgłosił, że linijka "Wersja aplikacji"
+  utknęła na "dieta-app-v57" mimo wielu kolejnych wydań — mechanizm
+  odczytu (ten FR) działał poprawnie, ale źródło (`sw.js`'s `CACHE_NAME`)
+  przestało być podnoszone od wersji v77. Naprawione w FR-52/v2 —
+  `CACHE_NAME` scalony z numeracją `versions/vNN` na stałe, żeby ta linijka
+  znowu spełniała swój cel (widoczne potwierdzenie, że dana zmiana
+  faktycznie dotarła), patrz FR-52.md.
 
 ---
 

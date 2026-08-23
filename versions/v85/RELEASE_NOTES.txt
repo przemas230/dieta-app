@@ -1,0 +1,28 @@
+Wersja v85 (2026-08-23)
+
+Naprawiono zgloszony blad: linijka "Wersja aplikacji" w Ustawieniach caly
+czas pokazywala "dieta-app-v57", mimo ze od tamtej pory wyszlo juz co
+najmniej kilka kolejnych wydan webowych (m.in. v84 z trzema realnymi
+poprawkami bledow spizarni/planera).
+
+Przyczyna: sw.js's CACHE_NAME to osobny, recznie bumpowany licznik,
+NIEZALEZNY od numeracji folderow versions/vNN -- i po prostu przestal byc
+podnoszony przy kolejnych zmianach web'owych (ostatni raz w wersji v77,
+Service Worker v50->v51; od tamtej pory numeracja folderow versions/
+poszla do v84, a CACHE_NAME utknal na v57). W wersji v84 padla nawet
+jawna decyzja "CACHE_NAME zostaje v57, bo te poprawki nie zmieniaja
+struktury danych" -- rozumowanie trafne dla samego mechanizmu
+odswiezania cache'u (fetch handler i tak podmienia zawartosc pod tym
+samym kluczem w tle), ale mijajace sie z faktycznym celem FR-82: linijka
+"Wersja aplikacji" ma byc WIDOCZNYM, wiarygodnym potwierdzeniem dla
+uzytkownika "czy moja przegladarka ma najnowszy build" -- a to nie dziala,
+jesli wyswietlany numer nie zmienia sie mimo realnych zmian w kodzie.
+
+Naprawa: CACHE_NAME podniesiony z "dieta-app-v57" na "dieta-app-v85" --
+scalony z numeracja folderow versions/vNN zamiast osobnego, latwego do
+zapomnienia licznika. Od teraz CACHE_NAME ma byc bumpowany przy KAZDEJ
+turze dotykajacej index.html/sw.js/manifest.json, zawsze do tego samego
+numeru co nowy folder versions/vNN tej tury -- jeden numer wersji zamiast
+dwoch rownoleglych, zeby ten sam blad nie wrocil.
+
+Zero innych zmian w tej turze -- czysto poprawka widocznosci wersji.
