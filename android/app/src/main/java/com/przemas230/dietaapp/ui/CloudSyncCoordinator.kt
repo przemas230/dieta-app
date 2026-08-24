@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import android.util.Log
 import androidx.compose.ui.platform.LocalContext
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
@@ -447,20 +448,34 @@ fun CloudSyncCoordinator(
                 .set(data, SetOptions.mergeFields(mergeFields))
                 .await()
         } catch (e: Exception) {
-            // Offline or transient failure -- Firestore's own offline cache
-            // will retry the write once connectivity returns; the next
-            // local change will also naturally re-attempt a push.
+            // Genuinely offline (not yet reconnected) doesn't throw here --
+            // Firestore's Task stays pending until the write is actually
+            // acknowledged or durably fails, so anything reaching this catch
+            // (permission-denied, invalid data, etc.) is a real failure this
+            // device would otherwise have zero visibility into. Logged (not
+            // surfaced to the user -- FR-73 has no error UI yet, matching
+            // web's own `console.warn`-only handling of the same failure)
+            // so `adb logcat` can actually show WHY a sync silently didn't
+            // happen, instead of leaving that a total mystery.
+            Log.w("CloudSyncCoordinator", "Push to users/$uid failed (fields: $mergeFields)", e)
         }
     }
 
     DisposableEffect(uid, baselineLoaded) {
         if (uid == null || !baselineLoaded) return@DisposableEffect onDispose {}
         val registration = FirebaseFirestore.getInstance().collection("users").document(uid)
-            .addSnapshotListener { snapshot, _ ->
+            .addSnapshotListener { snapshot, error ->
                 // Unblocks the push effect above regardless of what this
                 // callback finds -- even "doc doesn't exist" is a definite
                 // answer ("nothing to lose"), so it counts too.
                 hasReceivedFirstSnapshot = true
+                if (error != null) {
+                    // A genuine listener failure (e.g. permission-denied)
+                    // looks identical to "document doesn't exist yet" below
+                    // without this -- logged so it's at least visible in
+                    // `adb logcat` instead of silently doing nothing.
+                    Log.w("CloudSyncCoordinator", "Listener for users/$uid failed", error)
+                }
                 if (snapshot == null || !snapshot.exists()) return@addSnapshotListener
                 // Fast path for the SDK's own optimistic local-cache echo of
                 // a write we just made -- doesn't catch every self-echo (see

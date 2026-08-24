@@ -2041,6 +2041,38 @@ użytkownika.
   kompilować/uruchamiać Kotlin, ale nie ma jak samodzielnie zalogować się na
   prawdziwe konto Google na dwóch urządzeniach naraz). Pełny opis w
   `android/PARITY.md`.
+- **v4** (2026-08-24, w toku): użytkownik przeprowadził pierwszy realny test
+  dwóch urządzeń na żywo (wylogowanie z obu, zalogowanie TYLKO na Androida,
+  ustawienie diety + wygenerowanie posiłków/listy zakupów, potem zalogowanie
+  na to samo konto na web) i zgłosił, że kompletnie NIC się nie
+  zsynchronizowało — ani nazwa użytkownika, ani dieta, żadne pole — co jest
+  poważniejszym objawem niż pojedynczy brakujący klucz naprawiony w v3.
+  Zgłosił też, że web po zalogowaniu na tym konkretnym urządzeniu wisi/nie
+  odpowiada przez kilkanaście sekund, czego nie zauważył wcześniej na
+  przeglądarce na komputerze. Zbadano hipotezę, czy v3 (dodanie pola
+  `favorites` do `mergeFields`) mogło spowodować regresję przez odrzucenie
+  CAŁEGO zapisu przez reguły bezpieczeństwa Firestore (gdyby reguła miała
+  allowlistę dozwolonych pól) — sprawdzono udokumentowaną regułę w
+  `docs/FIREBASE_MIGRATION_PLAN.md` (`allow read, write: if request.auth !=
+  null && request.auth.uid == uid`, bez żadnej allowlisty pól), więc to
+  mało prawdopodobne, O ILE wdrożona reguła faktycznie odpowiada
+  udokumentowanej — nie ma jak tego sprawdzić z tego środowiska (reguły są
+  wklejane ręcznie w konsoli Firebase, nie ma ich w repozytorium). Znaleziony
+  i naprawiony realny brak w kodzie NIEZALEŻNIE od przyczyny źródłowej: zapis
+  do Firestore w `CloudSyncCoordinator.kt` (`try/catch` wokół `.set(...)`)
+  całkowicie połykał każdy wyjątek bez logowania — więc jeśli zapis faktycznie
+  się nie udawał (np. permission-denied), nie było ŻADNEGO śladu w logach,
+  tylko cisza. To samo dotyczyło błędu nasłuchiwania (`addSnapshotListener`'s
+  drugi parametr, dotąd ignorowany jako `_`). Oba miejsca dostały teraz
+  `Log.w("CloudSyncCoordinator", ...)` z pełnym wyjątkiem — nie zmienia to
+  zachowania synchronizacji, tylko daje `adb logcat`/Android Studio Logcat
+  realny ślad następnym razem, gdy coś się nie uda. **To NIE jest jeszcze
+  potwierdzona naprawa właściwej przyczyny** — przyczyna zgłoszenia z tej
+  wersji wciąż nieznana, wymaga odtworzenia z podłączonym Logcat (filtr
+  `CloudSyncCoordinator`) i/lub sprawdzenia w konsoli Firebase, czy dokument
+  `users/{uid}` w ogóle powstał i jakie pola zawiera. `versionCode` 73→74,
+  `versionName` 0.1.72→0.1.73. `./gradlew :logic:test :app:compileDebugKotlin`
+  przechodzi.
 
 ---
 

@@ -87,7 +87,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-70 | Licznik nawodnienia w nagłówku — pojedyncze klikalne kropelki | ✅ | ✅ oba pierwotne blokery usunięte 2026-08-10 (patrz uwagi niżej) |
 | FR-71 | Zakładki w Ustawieniach — Konto, Wygląd, Przypomnienia, Ulubione | ✅ | ✅ wszystkie 4 zakładki mają teraz realną zawartość, zweryfikowane na emulatorze (patrz uwagi niżej) |
 | FR-72 | Wymuszenie ustawienia profilu przy pierwszym uruchomieniu | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
-| FR-73 | Synchronizacja danych osobistych w chmurze między urządzeniami | ✅ | ⏳ v2 (2026-08-24): naprawiony realny błąd — ulubione przepisy (⭐/❤️) były lokalnie zapisywane, ale nigdy nie trafiały do `CloudSyncCoordinator.kt`, więc nigdy nie synchronizowały się między urządzeniami (patrz uwagi niżej); zweryfikowane budowaniem/testami + emulatorem (brak crasha), nie na dwóch prawdziwych urządzeniach jednocześnie |
+| FR-73 | Synchronizacja danych osobistych w chmurze między urządzeniami | ✅ | ⏳ v3 (2026-08-24, w toku): pierwszy realny test dwóch urządzeń pokazał, że NIC się nie zsynchronizowało z Androida na web (nie tylko ulubione z v2) — przyczyna jeszcze nie znaleziona, dodano tylko logowanie błędów zapisu/nasłuchu (dotąd całkowicie połykane) żeby dało się to zdiagnozować przy następnej próbie (patrz uwagi niżej) |
 | FR-74 | Wspólna zakładka „Śniadania” na liście przepisów, osobne sloty w Planerze | ✅ | ✅ zweryfikowane na emulatorze 2026-08-10 — pigułka „🔍 Śniadania” na Przepisach, 5 osobnych slotów (Śniadanie/II Śniadanie/Obiad/Kolacja/Deser) w Planerze |
 | FR-75 | Widok kafelkowy listy zakupów z brakującymi ilościami | ✅ | ✅ zweryfikowane na emulatorze 2026-08-10 — siatka kafelków z emoji, nazwą i czerwoną plakietką „−ilość” renderuje się poprawnie (patrz uwagi) |
 | FR-76 | Przepisy społeczności oraz przeglądana lista użytkowników i profili | ✅ (wymaga reguł Firestore w konsoli; v2 2026-08-11: limit czasu na zapytania) | ⏳ zaimplementowane 2026-08-11, wymaga wklejenia reguł Firestore + weryfikacji dwoma kontami (patrz uwagi niżej) — Android nie miał web'owego "wisi na Wczytywanie…" błędu (`UserListViewModel`/`UserProfileViewModel` miały stan `Unavailable` od początku) |
@@ -102,6 +102,56 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-88 | Planer jako pierwsza zakładka nawigacji | ✅ v1 (2026-08-23): `nav.bottom` przeorganizowany, Planer domyślnym widokiem startowym | ✅ v1 (2026-08-23), zweryfikowane na emulatorze (wszystkie motywy): `BOTTOM_NAV_SCREENS` przeorganizowana (`Screen.kt`), `startDestination = Screen.Planner.route` (`MainActivity.kt`) |
 
 ## Uwagi do częściowych wpisów
+
+- **FR-73/v3 — pierwszy realny test dwóch urządzeń: NIC się nie
+  zsynchronizowało (2026-08-24, w toku, przyczyna jeszcze nieznaleziona)**:
+  użytkownik wylogował się z obu platform, zalogował SIĘ TYLKO na Androida
+  (prawdziwe konto Google), ustawił dietę i wygenerował posiłki/listę
+  zakupów, po czym zalogował się na to samo konto na web — i zgłosił, że nie
+  pojawiło się kompletnie NIC: ani nazwa użytkownika, ani dieta, żaden ślad
+  danych z Androida. To poważniejszy objaw niż pojedyncze brakujące pole
+  (FR-73/v2 wyżej) — sugeruje, że albo zapis z Androida do Firestore w
+  ogóle się nie udał, albo dokument się zapisał, ale coś po stronie web nie
+  odczytało go poprawnie. Zgłosił też, że web po zalogowaniu na TYM
+  konkretnym urządzeniu wisi/nie odpowiada przez kilkanaście sekund —
+  którego to zachowania nie zauważył wcześniej na przeglądarce na
+  komputerze (niejasne czy to inne urządzenie/przeglądarka, czy dopiero
+  teraz zauważone na tym samym). Zbadana i odrzucona (na tyle, na ile da się
+  to zrobić bez dostępu do wdrożonych reguł) hipoteza, że FR-73/v2 (dodanie
+  `favorites` do `mergeFields`) spowodowało regresję przez odrzucenie
+  CAŁEGO zapisu regułami bezpieczeństwa Firestore (gdyby reguła miała
+  allowlistę dozwolonych pól, Firestore odrzuca zapis atomowo jeśli
+  JAKIEKOLWIEK pole go narusza — więc nowo dodane pole mogłoby zablokować
+  wszystkie pozostałe 15 w tym samym zapisie) — `docs/FIREBASE_MIGRATION_PLAN.md`
+  dokumentuje prostą regułę własności bez allowlisty pól
+  (`allow read, write: if request.auth != null && request.auth.uid == uid`),
+  więc to mało prawdopodobne, O ILE wdrożona reguła w konsoli Firebase
+  faktycznie odpowiada udokumentowanej — reguły nie są w repozytorium (są
+  ręcznie wklejane w konsoli), więc nie da się tego potwierdzić stąd.
+  Skorygowany realny brak zastany w kodzie, niezależnie od tego czy jest
+  źródłową przyczyną tego zgłoszenia: `CloudSyncCoordinator.kt`'s zapis do
+  Firestore (`try/catch` wokół `.set(...)`) całkowicie POŁYKAŁ każdy wyjątek
+  bez logowania — więc gdyby zapis faktycznie się nie udawał (np.
+  permission-denied po stronie reguł), nie było ŻADNEGO śladu w logach, tylko
+  cisza nie do odróżnienia od "wszystko działa, po prostu nic nie zmieniło
+  się do wysłania". To samo dotyczyło błędu nasłuchiwania (`addSnapshotListener`'s
+  drugi parametr `error`, dotąd ignorowany jako `_`) — permission-denied przy
+  odbiorze wygląda identycznie jak "dokument jeszcze nie istnieje" bez
+  logowania. Oba miejsca dostały `Log.w("CloudSyncCoordinator", ...)` z
+  pełnym wyjątkiem. **To NIE jest potwierdzona naprawa właściwej przyczyny
+  zgłoszenia** — tylko usunięcie ślepego punktu, który uniemożliwiał jej
+  znalezienie. `versionCode` 73→74, `versionName` 0.1.72→0.1.73. `./gradlew
+  :logic:test :app:compileDebugKotlin` przechodzi (czysto diagnostyczna
+  zmiana, bez zmiany zachowania synchronizacji). **Następny krok wymaga
+  użytkownika**: odtworzyć ten sam scenariusz z podłączonym Android Studio
+  Logcat (filtr `CloudSyncCoordinator`) i sprawdzić (a) czy pojawia się
+  jakikolwiek log ostrzegawczy z wyjątkiem, (b) w konsoli Firebase →
+  Firestore Database → kolekcja `users`, czy dokument dla tego konta w ogóle
+  istnieje i jakie pola faktycznie zawiera, (c) czy „kilkanaście sekund
+  zawieszenia” na web wystąpiło na innym urządzeniu/przeglądarce niż
+  komputer (np. telefon) czy na tym samym, co pomoże odróżnić
+  urządzenie-specyficzny problem wydajności (duża lista 229 przepisów +
+  pierwsza pełna synchronizacja na słabszym sprzęcie) od błędu logiki.
 
 - **FR-73/v2 — naprawiony rozjazd ulubionych przepisów między Web a Androidem
   (2026-08-24, Android)**: użytkownik zgłosił, że dane na tym samym koncie
