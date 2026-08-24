@@ -38,20 +38,26 @@ import java.time.ZoneOffset
  * with widening coverage to the other fields Android now has state for.
  *
  * Scope is FR-73's field list intersected with what Android actually has
- * built: displayName, profile, pantry, favIngredients, recipeRating,
- * cooked, shopping, planner/plannerScale/plannerLeftover, eaten (full
- * per-date history as of FR-83, see below), water (today only),
- * waterHistory (today's entry only -- see CloudSyncCoordinator's
- * nested-merge push for why), weights, history (the activity log, FR-42 --
- * index.html's field name, NOT "activityLog"), theme, uiScale,
- * swipeRatingStyle. `communityRecipesEnabled` (FR-68/76) is synced too, but
- * as a plain scalar directly in CloudSyncCoordinator (not through this
- * codec -- it's a bare Boolean, no encode/decode pair needed). Fields
- * FR-73/FR-78 also list that don't exist as Android state yet (myRecipes,
- * recipeReviews, customTiles, pantryUnitOverride, pantryCategoryOverride,
- * household, waterNotifEnabled, waterReminder, plain `favorites`
- * star-toggle) are simply not encoded -- nothing to sync for a feature that
- * isn't ported. Semantics are FR-73's original "last cloud write wins the
+ * built: displayName, profile, pantry, favIngredients, favorites (the
+ * per-recipe ⭐/❤️ toggle, RecipeViewModel.favoriteRecipes -- reuses this
+ * same encodeFavIngredients/decodeFavIngredients pair since the shape,
+ * Set<String> -> {name: true}, is identical to favIngredients, just a
+ * different top-level key/meaning; wired into CloudSyncCoordinator
+ * 2026-08-24 after it was found to be ported and locally-persisted but
+ * silently never actually synced to Firestore, see that file's "Seventh
+ * change"), recipeRating, cooked, shopping,
+ * planner/plannerScale/plannerLeftover, eaten (full per-date history as of
+ * FR-83, see below), water (today only), waterHistory (today's entry only
+ * -- see CloudSyncCoordinator's nested-merge push for why), weights,
+ * history (the activity log, FR-42 -- index.html's field name, NOT
+ * "activityLog"), theme, uiScale, swipeRatingStyle.
+ * `communityRecipesEnabled` (FR-68/76) is synced too, but as a plain scalar
+ * directly in CloudSyncCoordinator (not through this codec -- it's a bare
+ * Boolean, no encode/decode pair needed). Fields FR-73/FR-78 also list that
+ * don't exist as Android state yet (myRecipes, recipeReviews, customTiles,
+ * pantryUnitOverride, pantryCategoryOverride, household, waterNotifEnabled,
+ * waterReminder) are simply not encoded -- nothing to sync for a feature
+ * that isn't ported. Semantics are FR-73's original "last cloud write wins the
  * whole document" (decode replaces local state wholesale) -- NOT FR-78's
  * later per-item 3-way merge, which is a separate, bigger port (Android
  * just does whole-field replace on every touched top-level key, same as

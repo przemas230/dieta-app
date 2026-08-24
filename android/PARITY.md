@@ -87,7 +87,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-70 | Licznik nawodnienia w nagłówku — pojedyncze klikalne kropelki | ✅ | ✅ oba pierwotne blokery usunięte 2026-08-10 (patrz uwagi niżej) |
 | FR-71 | Zakładki w Ustawieniach — Konto, Wygląd, Przypomnienia, Ulubione | ✅ | ✅ wszystkie 4 zakładki mają teraz realną zawartość, zweryfikowane na emulatorze (patrz uwagi niżej) |
 | FR-72 | Wymuszenie ustawienia profilu przy pierwszym uruchomieniu | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
-| FR-73 | Synchronizacja danych osobistych w chmurze między urządzeniami | ✅ | ⏳ pantry naprawione + zakres znacznie rozszerzony 2026-08-10, w tym naprawiony błąd niszczący historię wielodniową web'a (patrz uwagi niżej), zweryfikowane budowaniem/testami, nie na dwóch prawdziwych urządzeniach jednocześnie |
+| FR-73 | Synchronizacja danych osobistych w chmurze między urządzeniami | ✅ | ⏳ v2 (2026-08-24): naprawiony realny błąd — ulubione przepisy (⭐/❤️) były lokalnie zapisywane, ale nigdy nie trafiały do `CloudSyncCoordinator.kt`, więc nigdy nie synchronizowały się między urządzeniami (patrz uwagi niżej); zweryfikowane budowaniem/testami + emulatorem (brak crasha), nie na dwóch prawdziwych urządzeniach jednocześnie |
 | FR-74 | Wspólna zakładka „Śniadania” na liście przepisów, osobne sloty w Planerze | ✅ | ✅ zweryfikowane na emulatorze 2026-08-10 — pigułka „🔍 Śniadania” na Przepisach, 5 osobnych slotów (Śniadanie/II Śniadanie/Obiad/Kolacja/Deser) w Planerze |
 | FR-75 | Widok kafelkowy listy zakupów z brakującymi ilościami | ✅ | ✅ zweryfikowane na emulatorze 2026-08-10 — siatka kafelków z emoji, nazwą i czerwoną plakietką „−ilość” renderuje się poprawnie (patrz uwagi) |
 | FR-76 | Przepisy społeczności oraz przeglądana lista użytkowników i profili | ✅ (wymaga reguł Firestore w konsoli; v2 2026-08-11: limit czasu na zapytania) | ⏳ zaimplementowane 2026-08-11, wymaga wklejenia reguł Firestore + weryfikacji dwoma kontami (patrz uwagi niżej) — Android nie miał web'owego "wisi na Wczytywanie…" błędu (`UserListViewModel`/`UserProfileViewModel` miały stan `Unavailable` od początku) |
@@ -102,6 +102,59 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-88 | Planer jako pierwsza zakładka nawigacji | ✅ v1 (2026-08-23): `nav.bottom` przeorganizowany, Planer domyślnym widokiem startowym | ✅ v1 (2026-08-23), zweryfikowane na emulatorze (wszystkie motywy): `BOTTOM_NAV_SCREENS` przeorganizowana (`Screen.kt`), `startDestination = Screen.Planner.route` (`MainActivity.kt`) |
 
 ## Uwagi do częściowych wpisów
+
+- **FR-73/v2 — naprawiony rozjazd ulubionych przepisów między Web a Androidem
+  (2026-08-24, Android)**: użytkownik zgłosił, że dane na tym samym koncie
+  Google rozjeżdżają się między platformami mimo synchronizacji w chmurze,
+  bez pewności co dokładnie ani w którą stronę. Diagnoza: przeczytano oba
+  mechanizmy end-to-end (web: `state._lastSyncedSnapshot`/
+  `applyRemoteSyncedState()`/`SYNCED_STATE_KEYS` w `index.html`; Android:
+  `CloudSyncCoordinator.kt`/`CloudSyncBaselineStore.kt`/`CloudSyncCodec.kt`)
+  i porównano DOKŁADNIE, jakie pola każda strona uznaje za „synced”. Web ma
+  29 kluczy w `SYNCED_STATE_KEYS`; Android w `CloudSyncCoordinator` miał 16.
+  Większość różnicy to świadome, udokumentowane braki (`myRecipes`,
+  `recipeReviews`, `customTiles`, `pantryUnitOverride`/`CategoryOverride`,
+  `household`, `waterNotifEnabled`/`waterReminder` — funkcje, których
+  Android jeszcze w ogóle nie ma). Jedno pole było jednak realnym błędem:
+  `favorites` — przycisk ⭐/❤️ „ulubiony przepis” na karcie (FR-2, filtr
+  „❤️ Podoba się”) — `RecipeViewModel.favoriteRecipes` istniał, poprawnie
+  zapisywał się trwale na dysk lokalnie (`LocalPersistenceCoordinator`, pod
+  web'ową nazwą pola `favorites`, reużywając `encodeFavIngredients`/
+  `decodeFavIngredients`), ale `CloudSyncCoordinator.kt` — jedyny mechanizm
+  faktycznie rozmawiający z Firestore — nigdy go nie wysyłał ani nie
+  odbierał. Dokumentacja w nagłówku `CloudSyncCodec.kt` błędnie twierdziła,
+  że `favorites` „nie istnieje jeszcze jako stan Androida” — nieaktualne od
+  czasu, gdy FR-2 dodało realny port tej funkcji, nikt jednak nie rozszerzył
+  wtedy zakresu synchronizacji chmurowej. Skutek: przepis oznaczony jako
+  ulubiony na jednym urządzeniu NIGDY nie pojawiał się na drugim, bez
+  względu na to, ile razy zsynchronizowało się cokolwiek inne — trwały,
+  cichy rozjazd JEDNEGO pola, a nie utrata danych przez nadpisanie (żaden
+  inny zbadany fragment obu mechanizmów — baseline, kolejność
+  `hasReceivedFirstSnapshot`/`canPushToCloud`, per-pole `dirtyKeys` — nie
+  wykazał realnego błędu poza tym jednym brakującym polem). Naprawione
+  dopisaniem `favoriteRecipes` do `lastKnownFields`'s encode/decode, do
+  śledzenia zmienionych pól przy wypychaniu (`fieldGroups`/
+  `currentFieldValues`) i do odbierania zdalnych zmian w
+  `CloudSyncCoordinator.kt` — dokładnie ten sam wzorzec jak pozostałe 16 pól,
+  z reużyciem tego samego kodeka co lokalna trwałość. Zaktualizowano
+  nieaktualny komentarz w `CloudSyncCodec.kt` (usunięto `favorites` z listy
+  „nieportowanych”) oraz `LocalPersistenceCoordinator.kt` (poprawiono
+  przestarzałą wzmiankę, że `weights` nie jest jeszcze synchronizowane z
+  chmurą — jest, od czasu rozszerzenia synchronizacji z FR-40).
+  `versionCode` 72→73, `versionName` 0.1.71→0.1.72. `./gradlew :logic:test
+  :app:assembleDebug` przechodzi. Zweryfikowane na emulatorze
+  (Medium_Phone_API_35): świeża instalacja, dotknięcie ☆→★→☆ na karcie
+  przepisu w zakładce Przepisy — brak crasha, stan lokalny poprawnie się
+  odwraca (potwierdzone `uiautomator dump` przed/po). **Nie zweryfikowane na
+  żywo dwoma prawdziwymi urządzeniami na tym samym koncie Google
+  jednocześnie** — to środowisko może realnie kompilować/uruchamiać/
+  instalować Kotlin na lokalnym emulatorze, ale nie ma jak samodzielnie
+  zalogować się na prawdziwe konto Google na dwóch urządzeniach naraz i
+  potwierdzić rzeczywisty transfer przez Firestore; ten sam rodzaj
+  ograniczenia co FR-78/v12-v14 (patrz `Functional requirements/FR-73.md`).
+  Czeka na ręczne potwierdzenie: zalogować się tym samym kontem na Androida
+  i web, polubić przepis na jednym, sprawdzić że pojawia się na drugim (i
+  odwrotnie).
 
 - **FR-88/v1 + FR-87/v7 + FR-3/v10 — Planer jako dashboard startowy, nowy
   pierścień kcal, jednoetapowe rozwijanie karty (2026-08-23, Web + Android)**:

@@ -46,6 +46,7 @@ private fun encodeBaselineField(key: String, value: Any?): Any? = when (key) {
     "uiScale" -> value as? Double
     "swipeStyle" -> (value as? SwipeRatingStyle)?.name
     "favIngredients" -> (value as? Set<String>)?.let(CloudSyncCodec::encodeFavIngredients)
+    "favoriteRecipes" -> (value as? Set<String>)?.let(CloudSyncCodec::encodeFavIngredients)
     "ratings" -> (value as? Map<String, RecipeRating>)?.let(CloudSyncCodec::encodeRecipeRating)
     "cooked" -> (value as? Map<String, List<com.przemas230.dietaapp.data.CookEntry>>)?.let(CloudSyncCodec::encodeCooked)
     "shoppingItems" -> (value as? Map<String, ShoppingItem>)?.let(CloudSyncCodec::encodeShopping)
@@ -73,6 +74,7 @@ private fun decodeBaselineField(key: String, raw: Any?): Any? = when (key) {
     "uiScale" -> (raw as? Number)?.toDouble()
     "swipeStyle" -> (raw as? String)?.let { name -> SwipeRatingStyle.entries.find { it.name == name } }
     "favIngredients" -> CloudSyncCodec.decodeFavIngredients(raw as? Map<*, *>)
+    "favoriteRecipes" -> CloudSyncCodec.decodeFavIngredients(raw as? Map<*, *>)
     "ratings" -> CloudSyncCodec.decodeRecipeRating(raw as? Map<*, *>)
     "cooked" -> CloudSyncCodec.decodeCooked(raw as? Map<*, *>)
     "shoppingItems" -> CloudSyncCodec.decodeShopping(raw as? Map<*, *>)
@@ -216,6 +218,22 @@ private fun decodeBaselineFields(raw: Map<String, Any?>): Map<String, Any?> =
  * for a single-user app. Documented as such in PARITY.md rather than
  * chasing full parity with web's conflict UI.
  *
+ * **Seventh change 2026-08-24** (bug: recipe favorites -- the ⭐/❤️ star
+ * toggle on each recipe card, `RecipeViewModel.favoriteRecipes` -- silently
+ * never synced between devices, even though FR-73's own field list has
+ * always named it: "ulubione przepisy i ulubione składniki (`favorites`,
+ * `favIngredients`)"). It WAS ported and correctly persisted to local disk
+ * ([LocalPersistenceCoordinator] already round-trips it under the web field
+ * name `favorites`, reusing [CloudSyncCodec.encodeFavIngredients]/
+ * `decodeFavIngredients` since the shape is identical), but this coordinator
+ * -- the only thing that talks to Firestore -- never read or wrote it, so a
+ * recipe favorited on one device stayed invisible on every other device
+ * forever, no matter how many times anything else synced. Fixed by adding
+ * `favoriteRecipes` to [lastKnownFields]'s encode/decode, the push side's
+ * dirty-field tracking, and the pull side's decode -- same pattern as every
+ * other field here, reusing the same codec functions
+ * [LocalPersistenceCoordinator] already uses for the local copy.
+ *
  * Renders nothing; called once from DietaAppRoot alongside the other
  * shared-ViewModel wiring, after every ViewModel it reads already exists.
  */
@@ -245,6 +263,7 @@ fun CloudSyncCoordinator(
     val uiScale by uiScaleViewModel.uiScale.collectAsState()
     val swipeStyle by swipeRatingStyleViewModel.style.collectAsState()
     val favIngredients by favoriteIngredientsViewModel.favorites.collectAsState()
+    val favoriteRecipes by recipeViewModel.favoriteRecipes.collectAsState()
     val cooked by recipeViewModel.cooked.collectAsState()
     val ratings by recipeViewModel.ratings.collectAsState()
     val shoppingItems by shoppingViewModel.items.collectAsState()
@@ -271,6 +290,7 @@ fun CloudSyncCoordinator(
     val currentUiScale = rememberUpdatedState(uiScale)
     val currentSwipeStyle = rememberUpdatedState(swipeStyle)
     val currentFavIngredients = rememberUpdatedState(favIngredients)
+    val currentFavoriteRecipes = rememberUpdatedState(favoriteRecipes)
     val currentCooked = rememberUpdatedState(cooked)
     val currentRatings = rememberUpdatedState(ratings)
     val currentShoppingItems = rememberUpdatedState(shoppingItems)
@@ -336,7 +356,7 @@ fun CloudSyncCoordinator(
 
     LaunchedEffect(
         uid, hasReceivedFirstSnapshot, profile, displayName, pantryItems, themeId, uiScale, swipeStyle,
-        favIngredients, cooked, ratings, shoppingItems, weekPlan, eatenDays, waterCount,
+        favIngredients, favoriteRecipes, cooked, ratings, shoppingItems, weekPlan, eatenDays, waterCount,
         waterHistory, weightEntries, activityLogEntries, communityRecipesEnabled,
     ) {
         if (uid == null || !hasReceivedFirstSnapshot) return@LaunchedEffect
@@ -356,6 +376,7 @@ fun CloudSyncCoordinator(
             "uiScale" to uiScale,
             "swipeStyle" to swipeStyle,
             "favIngredients" to favIngredients,
+            "favoriteRecipes" to favoriteRecipes,
             "ratings" to ratings,
             "cooked" to cooked,
             "shoppingItems" to shoppingItems,
@@ -376,6 +397,7 @@ fun CloudSyncCoordinator(
             "uiScale" to listOf("uiScale"),
             "swipeStyle" to listOf("swipeRatingStyle"),
             "favIngredients" to listOf("favIngredients"),
+            "favoriteRecipes" to listOf("favorites"),
             "ratings" to listOf("recipeRating"),
             "cooked" to listOf("cooked"),
             "shoppingItems" to listOf("shopping"),
@@ -406,6 +428,7 @@ fun CloudSyncCoordinator(
             // are listed in mergeFields below, so this never touches any
             // OTHER date web has stored for either field (see class doc).
             "waterHistory" to mapOf(today to (waterHistory[today] ?: waterCount)),
+            "favorites" to CloudSyncCodec.encodeFavIngredients(favoriteRecipes),
             "weights" to CloudSyncCodec.encodeWeights(weightEntries),
             "history" to CloudSyncCodec.encodeActivityLog(activityLogEntries),
             "communityRecipesEnabled" to communityRecipesEnabled,
@@ -495,6 +518,12 @@ fun CloudSyncCoordinator(
                     known["favIngredients"] = it
                     if (it != lastKnownFields["favIngredients"] && it != currentFavIngredients.value) {
                         favoriteIngredientsViewModel.replaceAll(it)
+                    }
+                }
+                CloudSyncCodec.decodeFavIngredients(data["favorites"] as? Map<*, *>)?.let {
+                    known["favoriteRecipes"] = it
+                    if (it != lastKnownFields["favoriteRecipes"] && it != currentFavoriteRecipes.value) {
+                        recipeViewModel.replaceFavoriteRecipes(it)
                     }
                 }
                 CloudSyncCodec.decodeRecipeRating(data["recipeRating"] as? Map<*, *>)?.let {

@@ -2015,6 +2015,32 @@ użytkownika.
 - **v2** (2026-08-08): Rozszerzono zakres synchronizacji na listę zakupów,
   planer i pozostałe wcześniej wyłączone pola, z prawdziwym scalaniem
   zmian — patrz FR-78.
+- **v3** (2026-08-24, Android): Naprawiono zgłoszenie użytkownika, że dane
+  między Web a Androidem na tym samym koncie Google rozjeżdżają się mimo
+  synchronizacji w chmurze. Znaleziony rzeczywisty błąd: ulubione przepisy
+  (przycisk ⭐/❤️ na karcie przepisu — pole `favorites`, wymienione w Opisie
+  tego FR-73 od samego początku obok `favIngredients`) były w Androidzie
+  poprawnie zaimplementowane (FR-2) i poprawnie zapisywane trwale na dysku
+  lokalnie, ale `CloudSyncCoordinator.kt` — jedyny mechanizm faktycznie
+  rozmawiający z Firestore — nigdy tego pola nie wysyłał ani nie odbierał.
+  Skutek: przepis oznaczony jako ulubiony na jednym urządzeniu NIGDY nie
+  pojawiał się na drugim, niezależnie od tego, ile razy zsynchronizowało się
+  cokolwiek innego — cichy, trwały rozjazd tego jednego pola, nie utrata
+  danych przy nadpisaniu. Naprawione dopisaniem `favoriteRecipes` do
+  `lastKnownFields`, śledzenia zmienionych pól przy wypychaniu i odbierania
+  zdalnych zmian w `CloudSyncCoordinator.kt` — dokładnie ten sam wzorzec co
+  pozostałe 16 już zsynchronizowanych pól, z reużyciem tego samego kodeka
+  (`encodeFavIngredients`/`decodeFavIngredients`), którego już używała
+  synchronizacja lokalna. `versionCode` 72→73, `versionName` 0.1.71→0.1.72.
+  `./gradlew :logic:test :app:assembleDebug` przechodzi. Zweryfikowane na
+  emulatorze (Medium_Phone_API_35): dotknięcie ☆→★→☆ na karcie przepisu nie
+  powoduje crasha, stan lokalny poprawnie się odwraca. **Nie zweryfikowane
+  na żywo dwoma prawdziwymi urządzeniami na tym samym koncie Google
+  jednocześnie** — wymaga ręcznego sprawdzenia przez użytkownika (ten sam
+  rodzaj ograniczenia co FR-78/v12-v14 wyżej: to środowisko może realnie
+  kompilować/uruchamiać Kotlin, ale nie ma jak samodzielnie zalogować się na
+  prawdziwe konto Google na dwóch urządzeniach naraz). Pełny opis w
+  `android/PARITY.md`.
 
 ---
 

@@ -23,9 +23,9 @@ import kotlinx.coroutines.withContext
  * every subsequent change to any of it.
  *
  * Reuses CloudSyncCodec's encode/decode functions for every field it also
- * knows how to sync to the cloud, plus three more this device tracks but
- * doesn't sync yet (myRecipes, recipeReviews, weights -- see PARITY.md's
- * FR-66/67/40 notes) -- one codec serving both destinations.
+ * knows how to sync to the cloud, plus two more this device tracks but
+ * doesn't sync yet (myRecipes, recipeReviews -- see PARITY.md's FR-66/67
+ * notes) -- one codec serving both destinations.
  *
  * Renders nothing; called once from DietaAppRoot alongside CloudSyncCoordinator.
  */
