@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,6 +39,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -118,6 +120,12 @@ fun SettingsScreen(
     // touches, so MainActivity (which already hoists every ViewModel)
     // supplies this rather than SettingsScreen collecting them all itself.
     onClearLocalData: () -> Unit = {},
+    // FR-89: unlike onClearLocalData above (local-only, cloud document
+    // untouched, always paired with signing out), this wipes BOTH the
+    // Firestore document AND local storage while STAYING signed in -- so
+    // needs the same "reach every ViewModel" hoisting as onClearLocalData,
+    // for the same reason.
+    onResetAccountData: () -> Unit = {},
     // FR-68/76: hoisted (not a default viewModel() param) so this screen
     // shares the same instance MainActivity/CommunityCoordinator use --
     // toggling here must be visible to the recipe list immediately.
@@ -173,7 +181,7 @@ fun SettingsScreen(
                             // the top of ProfileCard itself now, not a separate card
                             // above it (that was the pre-FR-71 layout).
                             ProfileCard(profileViewModel, plannerViewModel, shoppingViewModel, allRecipes)
-                            CloudAccountCard(authViewModel, onClearLocalData)
+                            CloudAccountCard(authViewModel, onClearLocalData, onResetAccountData)
                             CommunityRecipesCard(recipeViewModel, onBrowseUsers)
                             MyRecipesCard(recipeViewModel, recipeModerationViewModel)
                             RecipeModerationCard(authViewModel, recipeModerationViewModel)
@@ -765,7 +773,7 @@ private fun RecipeModerationCard(authViewModel: AuthViewModel, moderationViewMod
  * stanie niezalogowany całkowicie".
  */
 @Composable
-private fun CloudAccountCard(viewModel: AuthViewModel, onClearLocalData: () -> Unit) {
+private fun CloudAccountCard(viewModel: AuthViewModel, onClearLocalData: () -> Unit, onResetAccountData: () -> Unit) {
     val authState by viewModel.state.collectAsState()
     val busy by viewModel.busy.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -776,6 +784,20 @@ private fun CloudAccountCard(viewModel: AuthViewModel, onClearLocalData: () -> U
     // own description of the flow.
     var showSignOutConfirm by rememberSaveable { mutableStateOf(false) }
     var showClearDataChoice by rememberSaveable { mutableStateOf(false) }
+    // FR-89 (2026-08-24, added after a real data-loss incident on this
+    // account): a mandatory 5s countdown before the confirm button becomes
+    // clickable -- purely to slow down an irreversible, account-wide wipe
+    // long enough to reconsider, on the user's own explicit request.
+    var showResetAccountConfirm by rememberSaveable { mutableStateOf(false) }
+    var resetCountdown by rememberSaveable { mutableStateOf(5) }
+    LaunchedEffect(showResetAccountConfirm) {
+        if (!showResetAccountConfirm) return@LaunchedEffect
+        resetCountdown = 5
+        while (resetCountdown > 0) {
+            kotlinx.coroutines.delay(1000)
+            resetCountdown--
+        }
+    }
 
     val context = LocalContext.current
     // FR-69 (Google slice): requestIdToken needs the project's "web" OAuth
@@ -842,6 +864,10 @@ private fun CloudAccountCard(viewModel: AuthViewModel, onClearLocalData: () -> U
                         style = MaterialTheme.typography.bodySmall,
                     )
                     TextButton(onClick = { showSignOutConfirm = true }) { Text("🚪 Wyloguj się z tego urządzenia") }
+                    TextButton(
+                        onClick = { showResetAccountConfirm = true },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    ) { Text("🗑️ Resetuj wszystkie dane na koncie") }
                 }
                 is AuthState.Anonymous -> {
                     Text(
@@ -940,6 +966,34 @@ private fun CloudAccountCard(viewModel: AuthViewModel, onClearLocalData: () -> U
             },
             dismissButton = {
                 TextButton(onClick = proceedKeepingData) { Text("Nie czyść") }
+            },
+        )
+    }
+    if (showResetAccountConfirm) {
+        AlertDialog(
+            onDismissRequest = { showResetAccountConfirm = false },
+            title = { Text("⚠️ Resetuj wszystkie dane na koncie") },
+            text = {
+                Text(
+                    "Ta operacja NIEODWRACALNIE usunie WSZYSTKIE dane zapisane na tym koncie — " +
+                        "profil, spiżarnię, listę zakupów, planer, ulubione, własne przepisy, oceny, " +
+                        "historię gotowania i ustawienia — zarówno w chmurze, jak i lokalnie na tym " +
+                        "urządzeniu. Po zresetowaniu wszystkie urządzenia zalogowane na to konto " +
+                        "zobaczą świeży, pusty stan — dokładnie jak przy zupełnie nowej instalacji. " +
+                        "Tego NIE da się cofnąć.",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showResetAccountConfirm = false
+                        onResetAccountData()
+                    },
+                    enabled = resetCountdown <= 0,
+                ) { Text(if (resetCountdown > 0) "Poczekaj ($resetCountdown)…" else "🗑️ Resetuj wszystkie dane") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetAccountConfirm = false }) { Text("Anuluj") }
             },
         )
     }

@@ -1554,7 +1554,8 @@
         <div id="authLinkedSection" style="display:none;">
           <div class="hint-text" style="margin:0 0 10px;">✅ Twoje konto jest zabezpieczone i WSZYSTKIE dane — profil, spiżarnia, lista zakupów, planer, ulubione, własne przepisy, oceny, historia gotowania i ustawienia — synchronizują się automatycznie między wszystkimi urządzeniami zalogowanymi tym samym kontem. Jeśli jakieś urządzenie było offline i w międzyczasie coś zmieniło się też na innym, po powrocie do sieci aplikacja sama scala obie zmiany; jeśli dokładnie ta sama rzecz zmieniła się inaczej na obu urządzeniach naraz, pokaże Ci to do ręcznej decyzji zamiast czegokolwiek cicho nadpisywać. Wspólne gospodarstwo domowe (kilka OSÓB edytujących wspólnie tę samą listę zakupów w tym samym czasie) to osobna, jeszcze niegotowa funkcja (patrz <code>docs/FIREBASE_MIGRATION_PLAN.md</code>).</div>
           <button class="btn ghost" id="manualSyncBtn" style="width:100%; margin-bottom:8px;">🔄 Synchronizuj teraz</button>
-          <button class="btn ghost" id="signOutBtn" style="width:100%;">🚪 Wyloguj się z tego urządzenia</button>
+          <button class="btn ghost" id="signOutBtn" style="width:100%; margin-bottom:8px;">🚪 Wyloguj się z tego urządzenia</button>
+          <button class="btn ghost" id="resetAccountDataBtn" style="width:100%; color:var(--danger); border-color:var(--danger);">🗑️ Resetuj wszystkie dane na koncie</button>
         </div>
         <div id="authUnlinkedSection">
           <div class="hint-text" style="margin:0 0 6px; font-weight:700;">Pierwsze urządzenie / nowe konto:</div>
@@ -1983,6 +1984,21 @@
           <p class="hint-text" id="macroLegendMicroNote" style="margin:10px 0 0;"></p>
         </div>
       </div></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay center" id="resetAccountDataOverlay">
+  <div class="modal-sheet center-sheet">
+    <div class="modal-head">
+      <h3>⚠️ Resetuj wszystkie dane na koncie</h3>
+      <button id="resetAccountDataClose">✕</button>
+    </div>
+    <p>Ta operacja <strong>nieodwracalnie</strong> usunie WSZYSTKIE dane zapisane na tym koncie — profil, spiżarnię, listę zakupów, planer, ulubione, własne przepisy, oceny, historię gotowania i ustawienia — zarówno w chmurze, jak i lokalnie na tym urządzeniu.</p>
+    <p>Po zresetowaniu wszystkie urządzenia zalogowane na to konto zobaczą świeży, pusty stan — dokładnie jak przy zupełnie nowej instalacji. Tego NIE da się cofnąć.</p>
+    <div class="shop-actions">
+      <button class="btn ghost" id="resetAccountDataCancelBtn">Anuluj</button>
+      <button class="btn ghost" id="resetAccountDataConfirmBtn" style="color:var(--danger); border-color:var(--danger);" disabled>Poczekaj (5)…</button>
     </div>
   </div>
 </div>
@@ -4545,6 +4561,78 @@ document.getElementById("signOutBtn").addEventListener("click", ()=>{
   fbAuth.signOut().then(()=>{
     toast("Wylogowano");
   }).catch(e=> console.warn("Błąd wylogowania", e));
+});
+// FR-89 (2026-08-24, user request after a real data-loss incident on this
+// account: "chciałbym też żeby była możliwość zresetowania danych na
+// koncie"): unlike signOutBtn's "wyczyść dane" option above (local-only,
+// cloud document untouched -- the OLD cloud data would just get pulled
+// straight back on the next sign-in), this wipes BOTH the Firestore
+// document AND local storage, so a corrupted/unwanted account state
+// doesn't come back on any device. A mandatory 5s countdown (button stays
+// disabled until it elapses) exists purely to slow down an irreversible,
+// account-wide action -- long enough to reconsider, short enough not to
+// be busywork.
+let resetAccountDataCountdownTimer = null;
+function openResetAccountDataModal(){
+  if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous){ toast("Zaloguj się na prawdziwe konto, żeby zresetować dane"); return; }
+  document.getElementById("resetAccountDataOverlay").classList.add("show");
+  let remaining = 5;
+  const btn = document.getElementById("resetAccountDataConfirmBtn");
+  btn.disabled = true;
+  btn.textContent = `Poczekaj (${remaining})…`;
+  clearInterval(resetAccountDataCountdownTimer);
+  resetAccountDataCountdownTimer = setInterval(()=>{
+    remaining--;
+    if(remaining<=0){
+      clearInterval(resetAccountDataCountdownTimer);
+      btn.disabled = false;
+      btn.textContent = "🗑️ Resetuj wszystkie dane";
+    }else{
+      btn.textContent = `Poczekaj (${remaining})…`;
+    }
+  }, 1000);
+}
+function closeResetAccountDataModal(){
+  document.getElementById("resetAccountDataOverlay").classList.remove("show");
+  clearInterval(resetAccountDataCountdownTimer);
+}
+document.getElementById("resetAccountDataBtn").addEventListener("click", openResetAccountDataModal);
+document.getElementById("resetAccountDataClose").addEventListener("click", closeResetAccountDataModal);
+document.getElementById("resetAccountDataCancelBtn").addEventListener("click", closeResetAccountDataModal);
+document.getElementById("resetAccountDataOverlay").addEventListener("click", (e)=>{
+  if(e.target===document.getElementById("resetAccountDataOverlay")) closeResetAccountDataModal();
+});
+document.getElementById("resetAccountDataConfirmBtn").addEventListener("click", ()=>{
+  if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous) return;
+  closeResetAccountDataModal();
+  const uid = currentFbUser.uid;
+  localStorage.removeItem(STORE_KEY);
+  state = loadState(); // localStorage is now empty, so this returns fresh defaults
+  document.documentElement.setAttribute("data-theme", state.theme || "teal");
+  applyUiScale(state.uiScale);
+  refreshUiAfterSync(true);
+  const freshSubset = syncableStateSubset();
+  // Plain .set() with NO {merge:true} -- a full document replace, unlike
+  // pushStateToCloud()'s merge write, so any stray/legacy field the fresh
+  // default subset doesn't include gets wiped too, not just overwritten
+  // key-by-key. The listener stays attached throughout (not detached like
+  // signOutBtn's flow) -- its own hasPendingWrites self-echo guard already
+  // ignores this write's optimistic local snapshot, and setting
+  // _lastSyncedSnapshot here up front means the later server-confirmed
+  // echo sees nothing new to merge either way.
+  fbDb.collection("users").doc(uid).set(
+    Object.assign({}, freshSubset, {
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      lastEditedByDevice: getOrCreateDeviceLabel(),
+    })
+  ).then(()=>{
+    state._lastSyncedSnapshot = freshSubset;
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+    toast("🗑️ Zresetowano wszystkie dane na koncie");
+  }).catch(e=>{
+    console.warn("Reset danych na koncie nie powiódł się.", e);
+    toast("⚠️ Nie udało się zresetować danych w chmurze — spróbuj ponownie");
+  });
 });
 document.getElementById("saveSettingsBtn").addEventListener("click", ()=>{
   const p = {

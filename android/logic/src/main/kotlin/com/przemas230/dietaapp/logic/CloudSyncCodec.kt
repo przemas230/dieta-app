@@ -19,6 +19,7 @@ import com.przemas230.dietaapp.data.WeightEntry
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 /**
  * FR-73: converts the Android app's currently-syncable state to/from plain
@@ -449,15 +450,55 @@ object CloudSyncCodec {
         return result
     }
 
-    /** FR-42: ActivityLogViewModel.entries -- local-persistence only, not cloud-synced (same as kcal/water history). */
+    /** index.html's `addLog()` (state.history) writes `ts` via `new Date().toISOString()` -- an ISO-8601 STRING, not a number. */
+    private val activityLogTsFormatter: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC)
+
+    /**
+     * FR-73/FR-42: ActivityLogViewModel.entries ("Historia aktywności" / web's
+     * `state.history`), synced to/from Firestore's `history` field by
+     * CloudSyncCoordinator. `ts` is encoded as an ISO-8601 string (matching
+     * [activityLogTsFormatter], the exact shape of JS's `toISOString()`) --
+     * NOT epoch millis -- to match index.html's `addLog()` byte-for-byte.
+     *
+     * **Bug fixed 2026-08-24** (real data loss on a real account: 200
+     * web-accumulated `history` entries collapsed to a handful of Android-only
+     * ones after a single sign-in + a few pantry edits): this used to encode
+     * `ts` as a raw epoch-millis Long, while index.html has always written it
+     * as an ISO string. [decodeActivityLog] required a `Number` and silently
+     * DROPPED every entry whose `ts` didn't cast, via `mapNotNull` -- so
+     * decoding a web-authored `history` array (all string `ts`) returned an
+     * EMPTY list rather than null or an error. CloudSyncCoordinator treats an
+     * empty-but-non-null decode as a legitimate "this is Firestore's current
+     * truth", applies it (`activityLogViewModel.replaceAll(emptyList())`),
+     * and records that empty list as the new sync baseline. The next local
+     * pantry/shopping action then makes `activityLog` look "dirty" against
+     * that empty baseline, and since `history` is pushed as a whole-field
+     * `SetOptions.mergeFields` replace (it's an appendable log, not a
+     * per-date map like `eaten`/`waterHistory`), that push overwrites
+     * Firestore's entire real history with Android's own short local list --
+     * permanently, with no warning. Fixed by encoding `ts` the same way web
+     * does, and by having [decodeActivityLog] accept EITHER shape (string OR
+     * number) so it keeps reading any entries already written the old,
+     * Android-only-numeric way.
+     */
     fun encodeActivityLog(entries: List<ActivityLogEntry>): List<Map<String, Any?>> =
-        entries.map { mapOf("ts" to it.tsEpochMillis, "action" to it.action, "detail" to it.detail) }
+        entries.map {
+            mapOf(
+                "ts" to activityLogTsFormatter.format(Instant.ofEpochMilli(it.tsEpochMillis)),
+                "action" to it.action,
+                "detail" to it.detail,
+            )
+        }
 
     fun decodeActivityLog(list: List<*>?): List<ActivityLogEntry>? {
         if (list == null) return null
         return list.mapNotNull { raw ->
             val m = raw as? Map<*, *> ?: return@mapNotNull null
-            val ts = numberFrom(m["ts"])?.toLong() ?: return@mapNotNull null
+            val tsRaw = m["ts"]
+            val ts = numberFrom(tsRaw)?.toLong()
+                ?: (tsRaw as? String)?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
+                ?: return@mapNotNull null
             val action = m["action"] as? String ?: return@mapNotNull null
             val detail = m["detail"] as? String ?: return@mapNotNull null
             ActivityLogEntry(ts, action, detail)

@@ -209,6 +209,21 @@ class CloudSyncCodecTest {
     }
 
     @Test
+    fun `activity log decodes web's ISO-string ts and legacy numeric ts alike`() {
+        // index.html's addLog() writes ts via `new Date().toISOString()` -- a
+        // string, not a number. Regression test for the 2026-08-24 bug where
+        // decodeActivityLog required a Number and silently dropped every
+        // web-authored entry (see encodeActivityLog's doc comment).
+        val webAuthored = listOf(mapOf("ts" to "2026-08-08T14:08:03.400Z", "action" to "pantry_add", "detail" to "Spiżarnia: cebula (+1)"))
+        val decoded = CloudSyncCodec.decodeActivityLog(webAuthored)
+        assertEquals(listOf(ActivityLogEntry(1786198083400L, "pantry_add", "Spiżarnia: cebula (+1)")), decoded)
+
+        // Legacy Android-only numeric ts (from before this fix) must still decode.
+        val legacyAndroid = listOf(mapOf("ts" to 1_000L, "action" to "pantry_add", "detail" to "Dodano do spiżarni: cebula"))
+        assertEquals(listOf(ActivityLogEntry(1_000L, "pantry_add", "Dodano do spiżarni: cebula")), CloudSyncCodec.decodeActivityLog(legacyAndroid))
+    }
+
+    @Test
     fun `encodeAll produces the expected top-level keys`() {
         val data = CloudSyncCodec.encodeAll(
             displayName = "Przemek",

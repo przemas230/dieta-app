@@ -1,6 +1,6 @@
 // Top-level build file — plugin versions declared here, applied per-module below.
 plugins {
-    id("com.android.application") version "9.3.1" apply false
+    id("com.android.application") version "9.3.2" apply false
     id("org.jetbrains.kotlin.android") version "2.2.10" apply false
     id("org.jetbrains.kotlin.plugin.compose") version "2.2.10" apply false
     id("com.google.gms.google-services") version "4.4.2" apply false

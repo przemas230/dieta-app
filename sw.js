@@ -1,4 +1,4 @@
-const CACHE_NAME = "dieta-app-v90";
+const CACHE_NAME = "dieta-app-v92";
 const ASSETS = ["./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -18,13 +18,30 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  // Only intercept plain http(s) GET requests -- anything else (POST/PUT,
+  // or a chrome-extension:// resource some OTHER installed browser
+  // extension's content script loads into this page) should go straight to
+  // the network untouched, not through this cache logic at all. Without
+  // this guard, `caches.open(...).then(cache => cache.put(...))` below
+  // threw on every chrome-extension:// request reaching this SW (the Cache
+  // API only supports http/https), an unhandled promise rejection on EVERY
+  // such fetch -- observed 2026-08-24 flooding the console during a real
+  // "app hangs for several seconds after login" report, alongside another
+  // extension's own content script erroring out and seemingly retrying in
+  // a loop; each retry's request still passed through here and hit the
+  // same unhandled rejection, compounding whatever that other extension's
+  // own bug was already doing to the tab.
+  const url = new URL(event.request.url);
+  if (event.request.method !== "GET" || (url.protocol !== "http:" && url.protocol !== "https:")) {
+    return;
+  }
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const fetchPromise = fetch(event.request)
         .then((networkResponse) => {
-          if (event.request.method === "GET" && networkResponse && networkResponse.status === 200) {
+          if (networkResponse && networkResponse.status === 200) {
             const clone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone)).catch(() => {});
           }
           return networkResponse;
         })

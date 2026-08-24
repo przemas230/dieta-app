@@ -150,7 +150,9 @@ import com.przemas230.dietaapp.ui.navigation.BOTTOM_NAV_SCREENS
 import com.przemas230.dietaapp.ui.navigation.Screen
 import com.przemas230.dietaapp.ui.theme.DietaAppTheme
 import com.przemas230.dietaapp.ui.theme.LocalDietaThemeId
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.util.Calendar
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -401,6 +403,87 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
         uiScaleViewModel.resetToAuto()
         swipeRatingStyleViewModel.setStyle(SwipeRatingStyle.BALLOON)
         recipeViewModel.setCommunityRecipesEnabled(false)
+    }
+
+    // FR-89 (2026-08-24, added after a real data-loss incident on this
+    // account: user asked for a way to fully reset a signed-in account's
+    // data, in chmurze AND locally, from either platform). Unlike
+    // pendingLocalDataClear above, this does NOT sign out first -- resetting
+    // every ViewModel here is safe to do IMMEDIATELY (no deferral needed)
+    // because authState stays SignedIn with the SAME uid throughout, so
+    // CloudSyncCoordinator keeps pushing to the SAME account the whole time
+    // and naturally propagates every one of these resets to Firestore
+    // through its own normal debounced dirty-field mechanism -- exactly like
+    // any regular local edit, not the FR-79 race this function avoids.
+    //
+    // CloudSyncCoordinator only tracks the ~18 fields Android has ViewModels
+    // for, though -- myRecipes/customTiles/recipeReviews/pantry*Override/
+    // recipeAdded/waterNotifEnabled/waterReminder/household are web-only
+    // features Android has no local domain model for at all, so they'd
+    // silently survive a reset triggered from THIS platform, leaving the
+    // next web session still showing old data. Wiped here directly with a
+    // targeted Firestore `update()` (touches only these listed field paths,
+    // doesn't disturb whatever CloudSyncCoordinator's own push is doing to
+    // the other fields at the same time) using the exact same default
+    // shapes as index.html's loadState() fallback object, so a reset means
+    // the same thing regardless of which platform triggered it.
+    val scope = rememberCoroutineScope()
+    val resetAccountData: () -> Unit = {
+        profileViewModel.resetToDefault()
+        profileViewModel.setDisplayName("")
+        pantryViewModel.replaceAll(emptyMap())
+        shoppingViewModel.replaceAll(emptyMap())
+        plannerViewModel.replaceAll(emptyMap())
+        recipeViewModel.replaceCooked(emptyMap())
+        recipeViewModel.replaceRatings(emptyMap())
+        recipeViewModel.replaceReviews(emptyMap())
+        recipeViewModel.replaceMyRecipes(emptyList())
+        recipeViewModel.replaceFavoriteRecipes(emptySet())
+        favoriteIngredientsViewModel.replaceAll(emptySet())
+        eatenViewModel.replaceAll(emptyMap())
+        waterViewModel.setCount(0)
+        waterViewModel.replaceHistory(emptyMap())
+        weightViewModel.replaceAll(emptyList())
+        activityLogViewModel.clear()
+        themeViewModel.setTheme(com.przemas230.dietaapp.logic.AppThemes.DEFAULT_ID)
+        uiScaleViewModel.resetToAuto()
+        swipeRatingStyleViewModel.setStyle(SwipeRatingStyle.BALLOON)
+        recipeViewModel.setCommunityRecipesEnabled(false)
+        val uid = (authState as? AuthState.SignedIn)?.uid
+        if (uid != null) {
+            scope.launch {
+                try {
+                    FirebaseFirestore.getInstance().collection("users").document(uid)
+                        .update(
+                            mapOf(
+                                "myRecipes" to emptyList<Any>(),
+                                "customTiles" to emptyMap<String, Any>(),
+                                "recipeReviews" to emptyMap<String, Any>(),
+                                "pantryUnitOverride" to emptyMap<String, Any>(),
+                                "pantryCategoryOverride" to emptyMap<String, Any>(),
+                                "pantryStepOverride" to emptyMap<String, Any>(),
+                                "recipeAdded" to emptyMap<String, Any>(),
+                                "waterNotifEnabled" to false,
+                                "waterReminder" to mapOf(
+                                    "enabled" to false,
+                                    "intervalMinutes" to 90,
+                                    "activeFrom" to "08:00",
+                                    "activeTo" to "22:00",
+                                    "nextAt" to null,
+                                ),
+                                "household" to mapOf(
+                                    "id" to null,
+                                    "name" to "",
+                                    "inviteCode" to null,
+                                    "members" to emptyList<Any>(),
+                                ),
+                            ),
+                        ).await()
+                } catch (e: Exception) {
+                    android.util.Log.w("MainActivity", "Reset danych na koncie (pola web-only) nie powiódł się", e)
+                }
+            }
+        }
     }
 
     val eatenEntries by eatenViewModel.entries.collectAsState()
@@ -749,6 +832,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                         CloudSyncBaselineStore.clear(context)
                         pendingLocalDataClear = true
                     },
+                    onResetAccountData = resetAccountData,
                     onBrowseUsers = { navController.navigate(Screen.UserList.route) },
                 )
             }

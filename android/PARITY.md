@@ -87,7 +87,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-70 | Licznik nawodnienia w nagłówku — pojedyncze klikalne kropelki | ✅ | ✅ oba pierwotne blokery usunięte 2026-08-10 (patrz uwagi niżej) |
 | FR-71 | Zakładki w Ustawieniach — Konto, Wygląd, Przypomnienia, Ulubione | ✅ | ✅ wszystkie 4 zakładki mają teraz realną zawartość, zweryfikowane na emulatorze (patrz uwagi niżej) |
 | FR-72 | Wymuszenie ustawienia profilu przy pierwszym uruchomieniu | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
-| FR-73 | Synchronizacja danych osobistych w chmurze między urządzeniami | ✅ | ⏳ v3 (2026-08-24, w toku): pierwszy realny test dwóch urządzeń pokazał, że NIC się nie zsynchronizowało z Androida na web (nie tylko ulubione z v2) — przyczyna jeszcze nie znaleziona, dodano tylko logowanie błędów zapisu/nasłuchu (dotąd całkowicie połykane) żeby dało się to zdiagnozować przy następnej próbie (patrz uwagi niżej) |
+| FR-73 | Synchronizacja danych osobistych w chmurze między urządzeniami | ✅ | ⏳ v4 (2026-08-24): dokument w Firestore jednak istnieje i synchronizuje się ogólnie, ale znaleziono i naprawiono realną TRWAŁĄ UTRATĘ DANYCH — `history` (200 wpisów z web) nadpisane 7 wpisami z Androida przez niezgodność formatu `ts` (string ISO na webie vs liczba na Androidzie); poprawka zapobiega powtórce, ale nie odzyskuje już utraconych danych; nie zweryfikowane jeszcze na żywo (patrz uwagi niżej) |
 | FR-74 | Wspólna zakładka „Śniadania” na liście przepisów, osobne sloty w Planerze | ✅ | ✅ zweryfikowane na emulatorze 2026-08-10 — pigułka „🔍 Śniadania” na Przepisach, 5 osobnych slotów (Śniadanie/II Śniadanie/Obiad/Kolacja/Deser) w Planerze |
 | FR-75 | Widok kafelkowy listy zakupów z brakującymi ilościami | ✅ | ✅ zweryfikowane na emulatorze 2026-08-10 — siatka kafelków z emoji, nazwą i czerwoną plakietką „−ilość” renderuje się poprawnie (patrz uwagi) |
 | FR-76 | Przepisy społeczności oraz przeglądana lista użytkowników i profili | ✅ (wymaga reguł Firestore w konsoli; v2 2026-08-11: limit czasu na zapytania) | ⏳ zaimplementowane 2026-08-11, wymaga wklejenia reguł Firestore + weryfikacji dwoma kontami (patrz uwagi niżej) — Android nie miał web'owego "wisi na Wczytywanie…" błędu (`UserListViewModel`/`UserProfileViewModel` miały stan `Unavailable` od początku) |
@@ -100,8 +100,95 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-83 | Edycja wcześniej wpisanej wagi i historii kalorii | ✅ (waga) / ✅ (historia kalorii) | ✅ waga (edycja+usuwanie inline, zweryfikowane na emulatorze) / ✅ historia kalorii doportowana i zweryfikowana na emulatorze 2026-08-23 (przebudowa `EatenViewModel`/`EatenEntry` na `EatenDay` per-data, patrz uwagi FR-83.md i notatka niżej) |
 | FR-87 | Motyw „Klinika” — czcionka i układ, nie tylko kolory | ✅ v7 (2026-08-23): nowy dashboard na górze zakładki Planer -- powitanie/data/wylogowanie, karty CEL/pierścień+POZOSTAŁO/WODA, dekoracyjny pasek 7 dni (dziś pierwsze+wyróżnione), "Dzisiejszy Planer" (× usuwa slot, placeholder + dla pustych); stary pierścień kcal/wody USUNIĘTY z globalnego nagłówka dla tego motywu (patrz uwagi niżej) | ✅ v7 (2026-08-23), zweryfikowane na emulatorze (jasny + noc): to samo -- nowy `PlannerDashboard` w `PlannerScreen.kt`, `HeaderKcalPanel`/`.header-collapsible`-odpowiednik w `MainActivity.kt` już się NIE renderuje dla `isClinicFamily` (dane/callbacki przekazane zamiast tego do `PlannerScreen`) (patrz uwagi niżej) |
 | FR-88 | Planer jako pierwsza zakładka nawigacji | ✅ v1 (2026-08-23): `nav.bottom` przeorganizowany, Planer domyślnym widokiem startowym | ✅ v1 (2026-08-23), zweryfikowane na emulatorze (wszystkie motywy): `BOTTOM_NAV_SCREENS` przeorganizowana (`Screen.kt`), `startDestination = Screen.Planner.route` (`MainActivity.kt`) |
+| FR-89 | Reset wszystkich danych na koncie | ✅ v1 (2026-08-24): nowy przycisk „🗑️ Resetuj wszystkie dane na koncie” w karcie „☁️ Konto w chmurze”, okienko potwierdzenia + 5s odliczanie, pełne nadpisanie (nie merge) dokumentu `users/{uid}` | ⏳ v1 (2026-08-24): ten sam przycisk/dialog w `CloudAccountCard` (`SettingsScreen.kt`), reset lokalnych ViewModeli + pełne nadpisanie pól CloudSyncCoordinator ORAZ jawny `update()` na web-only polach (`myRecipes`/`customTiles`/`recipeReviews`/pantry*Override/`recipeAdded`/`waterNotifEnabled`/`waterReminder`/`household`), `versionCode` 75→76, `versionName` 0.1.74→0.1.75; `./gradlew :logic:test :app:assembleDebug` przechodzi — **nie zweryfikowane jeszcze na emulatorze/urządzeniu** (patrz uwagi niżej) |
 
 ## Uwagi do częściowych wpisów
+
+- **FR-89/v1 — reset wszystkich danych na koncie, nie zweryfikowane na
+  urządzeniu (2026-08-24)**: dodany bezpośrednio po serii incydentów utraty
+  danych opisanych w FR-73/v4 niżej, na wyraźną prośbę użytkownika o prosty
+  sposób na "świeży start" na koncie. Zamierzenie różni się od FR-79
+  ("wyloguj + wyczyść dane lokalne") w kluczowy sposób: FR-79 NIE dotyka
+  dokumentu w Firestore (stare dane wracają przy ponownym zalogowaniu na to
+  samo konto), a FR-89 celowo zostaje zalogowany i w całości NADPISUJE
+  (nie scala) dokument `users/{uid}` świeżymi domyślnymi wartościami, żeby
+  reset był widoczny na WSZYSTKICH urządzeniach zalogowanych na to konto,
+  nie tylko na tym, z którego wykonano reset. Resetowanie lokalnych
+  ViewModeli w `MainActivity.kt`'s nowym `resetAccountData` jest
+  bezpieczne do zrobienia NATYCHMIAST (w odróżnieniu od FR-79's
+  `pendingLocalDataClear`, świadomie odłożonego do czasu aż `authState`
+  faktycznie przestanie być `SignedIn`) właśnie DLATEGO, że tu nie
+  wylogowujemy — `authState` cały czas zostaje `SignedIn` z tym samym
+  `uid`, więc `CloudSyncCoordinator` nigdy nie traci kontekstu konta i jego
+  normalny, debounowany mechanizm dirty-field sam poprawnie wypycha te
+  resety do Firestore, dokładnie jak każdą zwykłą edycję użytkownika —
+  żadnego nowego ryzyka wyścigu, w odróżnieniu od bugu, który FR-79's
+  odłożenie miało naprawić. Dodatkowo, jawny `update()` na Firestore
+  czyści też pola, których Android w ogóle nie śledzi lokalnie
+  (`myRecipes`/`customTiles`/`recipeReviews`/`pantryUnitOverride`/
+  `pantryCategoryOverride`/`pantryStepOverride`/`recipeAdded`/
+  `waterNotifEnabled`/`waterReminder`/`household`) — bez tego, reset
+  wykonany z Androida zostawiałby te web-only dane nietknięte, więc kolejna
+  sesja web wciąż widziałaby stare dane, co przeczyłoby obietnicy
+  „wszystkie dane”. Domyślne kształty tych pól skopiowane 1:1 z
+  `index.html`'s `loadState()`'s fallback object (patrz `FR-89.md`'s
+  Uwagi). `versionCode` 75→76, `versionName` 0.1.74→0.1.75. `./gradlew
+  :logic:test :app:assembleDebug` przechodzi (kompiluje się i buduje
+  czysto). **Nie zweryfikowane jeszcze na emulatorze/urządzeniu** — sam
+  przycisk/dialog/odliczanie nie były jeszcze kliknięte na żywo, ani nie
+  potwierdzono manualnie, że dokument w Firestore faktycznie wraca do
+  domyślnych wartości po kliknięciu.
+
+- **FR-73/v4 — znaleziona i naprawiona TRWAŁA UTRATA DANYCH w `history`
+  (2026-08-24)**: użytkownik odtworzył scenariusz z v3 niżej z podłączonym
+  `adb logcat` (filtr `CloudSyncCoordinator`) i sprawdzonym dokumentem w
+  konsoli Firebase. Dobra wiadomość: dokument `users/{uid}` istniał i był
+  bogato wypełniony (profil, spiżarnia, ulubione, historia gotowania) —
+  ogólny mechanizm zapisu/odczytu działa, więc hipoteza "nic się nie
+  zapisuje" z v3 nie potwierdziła się w tej formie. Zła wiadomość: pole
+  `history` (dziennik akcji spiżarni/zakupów, FR-42) miało w chmurze 200
+  wpisów zebranych przez tygodnie na webie; po tym jednym teście na
+  Androidzie skurczyło się do 7 wpisów (tylko z dzisiejszej sesji). Root
+  cause: web (`index.html`'s `addLog()`) zapisuje `ts` jako string ISO-8601
+  (`new Date().toISOString()`), a Android
+  (`CloudSyncCodec.decodeActivityLog`) wymagał liczby (`epochMillis`) i
+  CICHO ODRZUCAŁ każdy wpis ze string-owym `ts` (`mapNotNull` +
+  rzutowanie `as? Number` → `null` → odrzucony). Odczyt prawdziwej,
+  200-elementowej historii z Firestore dawał więc pustą listę (NIE `null`
+  — kod traktował to jako poprawny, kompletny wynik, nie jako błąd
+  parsowania), którą `CloudSyncCoordinator` aplikował lokalnie
+  (`activityLogViewModel.replaceAll(emptyList())`) i zapisywał jako nowy
+  punkt odniesienia synchronizacji (`lastKnownFields`). Każda kolejna
+  akcja w spiżarni na Androidzie dopisywała się do tej (już pustej)
+  lokalnej listy, różniącej się od punktu odniesienia — a ponieważ
+  `history` jest wypychane jako CAŁKOWITE nadpisanie pola
+  (`SetOptions.mergeFields` na poziomie całego pola, nie scalanie
+  elementów tablicy, w odróżnieniu od `eaten`/`waterHistory`), ten push
+  trwale nadpisał prawdziwą, 200-wpisową historię z Firestore garścią
+  nowych wpisów z Androida. Naprawione w `CloudSyncCodec.kt`: (1)
+  `encodeActivityLog` zapisuje teraz `ts` w tym samym formacie co web
+  (string ISO-8601, dokładnie jak `toISOString()`, przez nowy
+  `activityLogTsFormatter`); (2) `decodeActivityLog` akceptuje ZARÓWNO
+  string ISO, jak i starą liczbową postać (kompatybilność wsteczna z
+  wpisami już zapisanymi przez Androida przed tą poprawką). Dodano dwa
+  testy regresyjne w `CloudSyncCodecTest.kt`. **Utracone przez ten błąd
+  ~193 wpisy historii NIE zostały odzyskane przez tę poprawkę** — ona
+  tylko zapobiega POWTÓRZENIU się utraty danych, nie cofa już wykonanego
+  nadpisania (projekt nie ma włączonego Point-in-Time Recovery w
+  Firestore, więc odzyskanie nie jest możliwe z poziomu konsoli). Przy
+  okazji potwierdzono w logach osobny, mniejszy, NIE naprawiony w tej
+  rundzie błąd: pojedynczy push pola `displayName` zakończył się
+  wyjątkiem `LeftCompositionCancellationException` (coroutine
+  `CloudSyncCoordinator`'a został anulowany, bo hostujący go composable
+  opuścił kompozycję w trakcie oczekiwania na sieć, prawdopodobnie podczas
+  przejścia ekranu logowania) — osobna, otwarta obserwacja, może być
+  częścią wyjaśnienia oryginalnego "kilkanaście sekund zawieszenia" z v3.
+  `versionCode` 74→75, `versionName` 0.1.73→0.1.74. `./gradlew
+  :logic:test :app:assembleDebug` przechodzi. **Nie zweryfikowane jeszcze
+  na żywo** — wymaga powtórzenia scenariusza (wylogowanie obu, zalogowanie
+  tylko na Androidzie, edycja spiżarni) z nową wersją APK, żeby potwierdzić
+  że `history` po tej poprawce poprawnie scala się zamiast się nadpisywać.
+  Pełny opis w `Functional requirements/FR-73.md` (v5).
 
 - **FR-73/v3 — pierwszy realny test dwóch urządzeń: NIC się nie
   zsynchronizowało (2026-08-24, w toku, przyczyna jeszcze nieznaleziona)**:

@@ -123,6 +123,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-80: Dzień tygodnia przy składniku na liście zakupów](#fr-80-dzień-tygodnia-przy-składniku-na-liście-zakupów)
 - [FR-81: Propozycja przeliczenia planu i listy zakupów po zapisaniu profilu](#fr-81-propozycja-przeliczenia-planu-i-listy-zakupów-po-zapisaniu-profilu)
 - [FR-82: Widoczna wersja aplikacji w Ustawieniach](#fr-82-widoczna-wersja-aplikacji-w-ustawieniach)
+- [FR-89: Reset wszystkich danych na koncie](#fr-89-reset-wszystkich-danych-na-koncie)
 
 ---
 
@@ -1391,6 +1392,34 @@ Service Worker cache'uje zasoby aplikacji, serwując wersję z pamięci podręcz
   potwierdzenie wersji dla użytkownika). Podniesiony do `dieta-app-v85`,
   scalony z numeracją `versions/vNN` na stałe zamiast dwóch rozjeżdżających
   się liczników — patrz zaktualizowane Kryteria akceptacji.
+- **v3** (2026-08-24): Naprawiono zgłoszony błąd użytkownika ("aplikacja
+  wisi kilkanaście sekund po zalogowaniu") — konsola przeglądarki (dostęp
+  przez DevTools użytkownika, nie przez zdalne narzędzie) pokazała
+  powtarzający się nieobsłużony wyjątek `Failed to execute 'put' on
+  'Cache': Request scheme 'chrome-extension' is unsupported` w `sw.js`'s
+  `fetch` handlerze, obok błędu we WŁASNYM skrypcie zupełnie INNEGO
+  zainstalowanego rozszerzenia przeglądarki, które wyglądało na próbujące
+  się resetować w pętli. `sw.js`'s `fetch` listener przechwytywał
+  DOSŁOWNIE każde żądanie strony (niezależnie od metody/schematu URL) i
+  bezwarunkowo próbował `caches.open(...).then(cache => cache.put(...))`
+  na wyniku — co rzuca wyjątek dla dowolnego żądania spoza http(s) (np.
+  zasobu `chrome-extension://` wstrzykniętego przez inne rozszerzenie do
+  tej strony), a `cache.put` nie miał żadnego `.catch()`, więc każde takie
+  odrzucenie leciało jako nieobsłużone. Jeśli to inne rozszerzenie
+  rzeczywiście ponawiało próby w pętli, każda ponowna próba przechodziła
+  przez ten sam, wadliwy kod, potęgując obciążenie karty. Naprawione:
+  `fetch` listener teraz od razu `return`uje (nie wywołuje
+  `event.respondWith` wcale) dla każdego żądania, które nie jest zwykłym
+  GET-em po http(s) — więc takie żądania idą prosto do sieci, bez
+  dotykania Cache API w ogóle — a `cache.put(...)` dostał też własny
+  `.catch(()=>{})` jako dodatkowe zabezpieczenie. **Nie jest pewne, czy to
+  w pełni tłumaczy całe "kilkanaście sekund zawieszenia"** — prawdziwym
+  źródłem obciążenia może być głównie to INNE rozszerzenie, na które nie
+  ma tu wpływu; ta poprawka usuwa jedyną część problemu, którą kod tej
+  aplikacji faktycznie kontroluje (własne nieobsłużone odrzucenia
+  Promise'ów przy każdym takim żądaniu). `CACHE_NAME` podniesiony do
+  `dieta-app-v92` zgodnie z Kryteriami akceptacji (zawsze równy numerowi
+  bieżącego folderu `versions/vNN`).
 
 ---
 
@@ -2073,6 +2102,52 @@ użytkownika.
   `users/{uid}` w ogóle powstał i jakie pola zawiera. `versionCode` 73→74,
   `versionName` 0.1.72→0.1.73. `./gradlew :logic:test :app:compileDebugKotlin`
   przechodzi.
+- **v5** (2026-08-24): Użytkownik odtworzył scenariusz z v4 z podłączonym
+  `adb logcat` (filtr `CloudSyncCoordinator`) i sprawdzonym dokumentem w
+  konsoli Firebase — w przeciwieństwie do v4 tym razem dokument
+  `users/{uid}` istniał i był bogato wypełniony (profil, spiżarnia,
+  ulubione, historia gotowania), więc ogólny mechanizm zapisu/odczytu
+  działa. Znaleziono jednak realny, potwierdzony błąd powodujący TRWAŁĄ
+  UTRATĘ DANYCH na prawdziwym koncie: pole `history` (dziennik akcji
+  spiżarni/zakupów, FR-42) miało w chmurze 200 wpisów zebranych przez
+  tygodnie na webie; po tym jednym teście na Androidzie skurczyło się do
+  7 wpisów (tylko z dzisiejszej sesji na Androidzie). Przyczyna: web
+  (`index.html`'s `addLog()`) zapisuje `ts` jako string ISO-8601
+  (`new Date().toISOString()`), a Android (`CloudSyncCodec.decodeActivityLog`)
+  wymagał liczby (`epochMillis`) i CICHO ODRZUCAŁ każdy wpis z `ts` w
+  postaci stringa (`mapNotNull` + rzutowanie `as? Number`). Odczyt
+  prawdziwej, 200-elementowej historii z Firestore dawał więc pustą listę
+  (nie `null` — kod traktował to jako poprawny, kompletny wynik), którą
+  `CloudSyncCoordinator` aplikował lokalnie i zapisywał jako nowy punkt
+  odniesienia synchronizacji (`lastKnownFields`). Każda kolejna akcja w
+  spiżarni na Androidzie dopisywała się do tej (już pustej) lokalnej listy,
+  która przez to różniła się od punktu odniesienia — i ponieważ `history`
+  jest wypychane jako CAŁKOWITE nadpisanie pola (`SetOptions.mergeFields`
+  na poziomie całego pola, nie scalanie elementów tablicy, w odróżnieniu od
+  `eaten`/`waterHistory`), ten push trwale nadpisał prawdziwą, 200-wpisową
+  historię z Firestore garścią nowych wpisów z Androida. Naprawione: (1)
+  `encodeActivityLog` zapisuje teraz `ts` w tym samym formacie co web
+  (string ISO-8601, dokładnie jak `toISOString()`); (2) `decodeActivityLog`
+  akceptuje ZARÓWNO string ISO, jak i starą liczbową postać (kompatybilność
+  wsteczna z wpisami już zapisanymi przez Androida przed tą poprawką).
+  Dodano dwa testy regresyjne w `CloudSyncCodecTest.kt` (dekodowanie
+  wpisu zapisanego przez web, dekodowanie starego wpisu liczbowego).
+  **Utracone przez ten błąd ~193 wpisy historii NIE zostały odzyskane
+  przez tę poprawkę** — poprawka zapobiega POWTÓRZENIU się utraty danych,
+  nie cofa już wykonanego nadpisania (Firestore nie ma włączonego
+  Point-in-Time Recovery dla tego projektu, więc odzyskanie nie jest
+  możliwe z poziomu konsoli). Przy okazji potwierdzono w logach osobny,
+  mniejszy błąd: pojedynczy push pola `displayName` zakończył się
+  wyjątkiem `LeftCompositionCancellationException` (coroutine
+  `CloudSyncCoordinator`'a został anulowany, bo hostujący go composable
+  opuścił kompozycję w trakcie oczekiwania na sieć, prawdopodobnie podczas
+  przejścia ekranu logowania) — nie naprawione w tej rundzie, opisane jako
+  osobna, otwarta obserwacja. `versionCode` 74→75, `versionName`
+  0.1.73→0.1.74. `./gradlew :logic:test :app:assembleDebug` przechodzi.
+  **Nie zweryfikowane jeszcze na żywo** — wymaga powtórzenia scenariusza
+  (wylogowanie obu, zalogowanie tylko na Androidzie, edycja spiżarni) z
+  nową wersją, żeby potwierdzić że `history` po tej poprawce poprawnie
+  scala się zamiast się nadpisywać.
 
 ---
 
@@ -3206,4 +3281,79 @@ przepisów.
   napędza jednocześnie zwykły `NavigationBar` i Klinikowy
   `FloatingBottomNav`; `startDestination` w `MainActivity.kt` zmieniony
   na `Screen.Planner.route`.
+
+---
+
+# FR-89: Reset wszystkich danych na koncie
+
+**Obszar:** Konto i chmura
+**Status:** Zaimplementowane
+
+## Opis
+Karta „☁️ Konto w chmurze” w Ustawieniach ma, dla zalogowanego (nie
+anonimowego) konta, przycisk „🗑️ Resetuj wszystkie dane na koncie” — obok
+istniejącego przycisku wylogowania (FR-79).
+
+W odróżnieniu od FR-79's „wyloguj + wyczyść dane lokalne” (które NIE dotyka
+dokumentu w Firestore — stare dane w chmurze wracają przy następnym
+zalogowaniu na to samo konto na jakimkolwiek urządzeniu), ten przycisk:
+
+- **nie wylogowuje** — użytkownik zostaje zalogowany na to samo konto,
+- czyści lokalny stan tego urządzenia do świeżych wartości domyślnych
+  (tak jak przy zupełnie nowej instalacji),
+- **nadpisuje w całości** (nie scala) dokument `users/{uid}` w Firestore
+  świeżymi domyślnymi wartościami wszystkich synchronizowanych pól
+  (profil, spiżarnia, lista zakupów, planer, ulubione, własne przepisy,
+  oceny, historia gotowania, motyw, skala interfejsu, ustawienia itd.).
+
+Po zresetowaniu każde inne urządzenie zalogowane na to samo konto zobaczy
+świeży, pusty stan po najbliższej synchronizacji — nie tylko urządzenie,
+z którego wykonano reset.
+
+Kliknięcie przycisku otwiera okienko potwierdzenia z jasnym ostrzeżeniem,
+że operacja jest nieodwracalna. Przycisk potwierdzenia w tym okienku jest
+zablokowany przez 5 sekund (widoczne odliczanie), żeby nie dało się
+kliknąć go od razu przez przypadek zaraz po otwarciu okienka.
+
+## Kryteria akceptacji
+- Przycisk widoczny wyłącznie, gdy użytkownik jest zalogowany na prawdziwe
+  konto (Google lub e-mail) — nie pojawia się przy logowaniu wyłącznie
+  anonimowym, tak samo jak przycisk wylogowania (FR-79).
+- Okienko potwierdzenia jasno mówi, że operacja jest nieodwracalna i
+  dotyczy WSZYSTKICH danych konta (nie tylko tego urządzenia).
+- Przycisk potwierdzenia w okienku jest wyłączony (disabled) i pokazuje
+  odliczanie („Poczekaj (5)…” → … → „Poczekaj (1)…”) przez dokładnie 5
+  sekund od otwarcia okienka, dopiero potem staje się klikalny.
+- Po potwierdzeniu: lokalny stan urządzenia wraca do domyślnych wartości
+  (profil nieskonfigurowany jak przy FR-72, spiżarnia/lista/planer/
+  ulubione puste, motyw domyślny itd.) I dokument `users/{uid}` w
+  Firestore zostaje w całości zastąpiony (nie scalony) tymi samymi
+  domyślnymi wartościami.
+- Użytkownik pozostaje zalogowany na to samo konto po operacji — to NIE
+  jest wylogowanie.
+- Anulowanie okienka (przycisk „Anuluj” albo zamknięcie w inny sposób)
+  nie zmienia niczego.
+
+## Uwagi
+Dokument `users/{uid}` obejmuje pola zarządzane WYŁĄCZNIE przez web
+(`myRecipes`, `customTiles`, `recipeReviews`, `pantryUnitOverride`,
+`pantryCategoryOverride`, `pantryStepOverride`, `recipeAdded`,
+`waterNotifEnabled`, `waterReminder`, `household`), dla których Android
+nie ma własnego modelu domenowego/ViewModelu. Żeby reset wykonany z
+Androida był PRAWDZIWIE pełnym resetem konta (a nie tylko „wszystkiego,
+co Android akurat śledzi”), port Android dodatkowo nadpisuje te konkretne
+pola bezpośrednio przez Firestore (`update()` na tych ścieżkach), z
+dokładnie tymi samymi domyślnymi kształtami co świeży stan web'a
+(`loadState()`'s fallback object w `index.html`) — patrz
+`android/PARITY.md` po pełny opis.
+
+## Historia rewizji
+- **v1** (2026-08-24): Pierwsza wersja wymagania, na życzenie użytkownika
+  ("chciałbym też żeby była możliwość zresetowania danych na koncie, dodaj
+  nowy przycisk resetuj wszystkie dane użytkownika z okienkiem
+  potwierdzenia i koniecznością poczekania 5 sekund zanim wyczyści") —
+  zgłoszone bezpośrednio po serii incydentów utraty/rozjazdu danych między
+  Web a Androidem tego samego dnia (patrz FR-73/v4-v5), jako sposób na
+  prosty "świeży start" na koncie zamiast ręcznego czyszczenia dokumentu
+  w konsoli Firebase.
 

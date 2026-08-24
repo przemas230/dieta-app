@@ -1,0 +1,28 @@
+Wersja v92 (2026-08-24)
+
+Zmiana w sw.js (Service Worker):
+
+- Naprawiony błąd zgłoszony przez użytkownika: "aplikacja wisi kilkanaście
+  sekund po zalogowaniu" na webie. Konsola przeglądarki pokazała
+  powtarzający się nieobsłużony wyjątek "Failed to execute 'put' on
+  'Cache': Request scheme 'chrome-extension' is unsupported" w fetch
+  handlerze Service Workera.
+- Przyczyna: fetch handler przechwytywał DOSŁOWNIE każde żądanie strony
+  (niezależnie od metody i schematu adresu URL) i bezwarunkowo próbował
+  zapisać odpowiedź w cache'u. Zasoby chrome-extension:// (wstrzykiwane
+  przez inne, zainstalowane rozszerzenie przeglądarki, które samo miało
+  błąd i wyglądało na próbujące się resetować w pętli) powodowały wyjątek
+  bez żadnej obsługi błędu.
+- Naprawa: fetch handler teraz przepuszcza bez ingerencji każde żądanie,
+  które nie jest zwykłym GET-em po http(s) — takie żądania idą prosto do
+  sieci, bez dotykania Cache API. Dodatkowo zapis do cache'a dostał własne
+  zabezpieczenie na wypadek innych, nieprzewidzianych błędów.
+- Uwaga: nie ma pewności, że to w pełni wyjaśnia całe zgłoszone
+  zawieszenie — część obciążenia może pochodzić z tego INNEGO
+  rozszerzenia przeglądarki, na które nie ma tu wpływu. Ta poprawka
+  usuwa jedyną część problemu, którą kod tej aplikacji faktycznie
+  kontroluje.
+- CACHE_NAME podniesiony do "dieta-app-v92" (zgodnie z zasadą, że zawsze
+  odpowiada numerowi folderu versions/vNN).
+
+Pełny opis w Functional requirements/FR-52.md (v3).

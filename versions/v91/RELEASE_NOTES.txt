@@ -1,0 +1,27 @@
+Wersja v91 (2026-08-24)
+
+Zmiany w index.html:
+
+- Nowy przycisk "🗑️ Resetuj wszystkie dane na koncie" w karcie
+  "☁️ Konto w chmurze" (widoczny tylko dla zalogowanych na prawdziwe konto,
+  obok istniejącego przycisku wylogowania).
+- Kliknięcie otwiera okienko potwierdzenia z ostrzeżeniem, że operacja jest
+  nieodwracalna i usuwa WSZYSTKIE dane konta (profil, spiżarnię, listę
+  zakupów, planer, ulubione, własne przepisy, oceny, historię gotowania,
+  ustawienia) — zarówno w chmurze (Firestore), jak i lokalnie na tym
+  urządzeniu.
+- Przycisk potwierdzenia jest zablokowany przez 5 sekund (odliczanie),
+  żeby nie dało się kliknąć od razu przez pomyłkę.
+- Po potwierdzeniu: lokalny stan wraca do świeżych domyślnych wartości
+  (tak jak przy nowej instalacji), a dokument użytkownika w Firestore
+  zostaje w całości nadpisany świeżymi domyślnymi wartościami (pełny
+  zapis, nie scalanie) — więc wszystkie inne urządzenia zalogowane na to
+  samo konto też zobaczą świeży, pusty stan po najbliższej synchronizacji.
+
+Powód: użytkownik poprosił o taką możliwość po serii incydentów utraty/
+rozjazdu danych między Web a Androidem tego samego dnia — chciał mieć
+prosty sposób na "świeży start" na koncie zamiast ręcznego czyszczenia
+dokumentu w konsoli Firebase.
+
+Odpowiadający port w Android (Kotlin) opisany w android/PARITY.md i
+Functional requirements/FR-89.md.
