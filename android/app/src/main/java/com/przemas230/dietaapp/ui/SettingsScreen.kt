@@ -400,13 +400,22 @@ private fun ProfileCard(
     // FR-71: rememberSaveable (not plain remember) so SettingsScreen's
     // SaveableStateHolder can restore in-progress edits after a tab switch
     // and back -- see the "zmiana zakładek nie resetuje..." comment there.
-    var sex by rememberSaveable(profile) { mutableStateOf(profile.sex) }
+    // FR-72/FR-89: null (nothing selected) until the profile is actually
+    // configured -- same "don't show a placeholder guess as if it were the
+    // user's real data" principle already applied to age/height/weight/
+    // targetWeight below, extended to the three fields that weren't
+    // previously gated on `configured` (a Kotlin enum always has SOME
+    // value, so this used to silently show Profile()'s default sex/
+    // activity/goal pre-selected even on a fresh/reset account -- exactly
+    // the "wybrana kobieta z defaultu" the user flagged after testing
+    // FR-89's account reset).
+    var sex by rememberSaveable(profile) { mutableStateOf(if (profile.configured) profile.sex else null) }
     var age by rememberSaveable(profile) { mutableStateOf(if (profile.configured) profile.age.toString() else "") }
     var height by rememberSaveable(profile) { mutableStateOf(if (profile.configured) profile.heightCm.toString() else "") }
     var weight by rememberSaveable(profile) { mutableStateOf(if (profile.configured) profile.weightKg.toString() else "") }
     var targetWeight by rememberSaveable(profile) { mutableStateOf(if (profile.configured) profile.targetWeightKg.toString() else "") }
-    var activity by rememberSaveable(profile) { mutableStateOf(profile.activity) }
-    var goal by rememberSaveable(profile) { mutableStateOf(profile.goal) }
+    var activity by rememberSaveable(profile) { mutableStateOf(if (profile.configured) profile.activity else null) }
+    var goal by rememberSaveable(profile) { mutableStateOf(if (profile.configured) profile.goal else null) }
     var glutenFree by rememberSaveable(profile) { mutableStateOf(profile.glutenFree) }
     var lactoseFree by rememberSaveable(profile) { mutableStateOf(profile.lactoseFree) }
     var strictLowGI by rememberSaveable(profile) { mutableStateOf(profile.strictLowGI) }
@@ -477,7 +486,7 @@ private fun ProfileCard(
 
             ExposedDropdownMenuBox(expanded = activityMenuExpanded, onExpandedChange = { activityMenuExpanded = it }) {
                 OutlinedTextField(
-                    value = activity.label,
+                    value = activity?.label ?: "",
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Aktywność fizyczna") },
@@ -496,7 +505,7 @@ private fun ProfileCard(
 
             ExposedDropdownMenuBox(expanded = goalMenuExpanded, onExpandedChange = { goalMenuExpanded = it }) {
                 OutlinedTextField(
-                    value = goal.label,
+                    value = goal?.label ?: "",
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Cel") },
@@ -538,13 +547,13 @@ private fun ProfileCard(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = {
                     val saved = Profile(
-                        sex = sex,
+                        sex = sex ?: Profile().sex,
                         age = age.toIntOrNull() ?: Profile().age,
                         heightCm = height.toIntOrNull() ?: Profile().heightCm,
                         weightKg = weight.toDoubleOrNull() ?: Profile().weightKg,
                         targetWeightKg = targetWeight.toDoubleOrNull() ?: Profile().targetWeightKg,
-                        activity = activity,
-                        goal = goal,
+                        activity = activity ?: Profile().activity,
+                        goal = goal ?: Profile().goal,
                         glutenFree = glutenFree,
                         lactoseFree = lactoseFree,
                         strictLowGI = strictLowGI,

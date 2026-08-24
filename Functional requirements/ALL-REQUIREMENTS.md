@@ -1950,6 +1950,26 @@ wpływa na istniejących użytkowników ani ich zapisane dane.
 - **v1** (2026-08-08): Pierwsza wersja wymagania, na życzenie użytkownika
   ("przy pierwszym otwarciu konta wyczyść domyślne ustawienia płci wieku
   wagi itp żeby ktoś musiał sam sobie ustawić zanim dopasuje dietę").
+- **v2** (2026-08-24, Web + Android): Naprawiono lukę w oryginalnym
+  wymaganiu — v1 gwarantowała puste pola tylko dla wieku/wzrostu/wagi/
+  wagi docelowej (patrz Opis), ale pola płci/aktywności/celu od zawsze
+  pokazywały domyślnie zaznaczoną opcję (Kobieta/Lekko aktywny/Redukcja
+  masy ciała) nawet dla `configured: false`, bo natywny `<select>`/enum
+  Kotlina zawsze ma JAKĄŚ wartość, w odróżnieniu od tekstowego pola liczb,
+  które może być po prostu puste. Zgłoszone przez użytkownika po
+  przetestowaniu FR-89's przycisku resetu konta — reset sprawiał wrażenie
+  "nie w pełni zadziałał", bo formularz dalej pokazywał "Kobieta"
+  zaznaczoną. Naprawione symetrycznie na obu platformach: web dostał
+  pusty placeholder `<option value="" disabled>Wybierz…</option>` w
+  `setSex`/`setActivity`/`setGoal`, ustawiany gdy `!p.configured`; Android
+  (`ProfileCard` w `SettingsScreen.kt`) zmienił lokalny stan `sex`/
+  `activity`/`goal` z nie-nullowalnego na `Sex?`/`ActivityLevel?`/`Goal?`,
+  inicjalizowany na `null` gdy `!profile.configured`, dokładnie tym samym
+  wzorcem co już istniejące pola liczbowe. Zapisanie formularza bez
+  wybrania tych pól nadal działa (kryterium akceptacji "niezależnie od
+  tego, czy user zmienił wszystkie pola" pozostaje w mocy) — spada na te
+  same domyślne wartości co wcześniej, tylko już nie POKAZUJE ich jako
+  rzekomo wybranych, dopóki user faktycznie czegoś nie kliknie.
 
 ---
 
@@ -3397,4 +3417,25 @@ dokładnie tymi samymi domyślnymi kształtami co świeży stan web'a
   Web a Androidem tego samego dnia (patrz FR-73/v4-v5), jako sposób na
   prosty "świeży start" na koncie zamiast ręcznego czyszczenia dokumentu
   w konsoli Firebase.
+- **v2** (2026-08-24, Android): Użytkownik przetestował przycisk na żywo
+  (drugie fizyczne urządzenie) i zgłosił, że mimo resetu formularz
+  profilu dalej pokazywał "Kobieta" zaznaczoną oraz przykładowe liczby —
+  reset sprawiał wrażenie niepełnego. Przyczyna: `resetAccountData` w
+  `MainActivity.kt` wywoływał `profileViewModel.resetToDefault()`, ta sama
+  metoda co istniejący przycisk "Domyślne" WEWNĄTRZ formularza profilu —
+  a ta metoda CELOWO ustawia `configured: true` (zgodnie z FR-72's
+  Kryterium akceptacji dla TEGO konkretnego przycisku: "reset nie ma
+  cofać użytkownika do stanu pierwsze uruchomienie"). Dla pełnego resetu
+  konta to zachowanie jest odwrotne od zamierzonego — reset konta MA
+  cofnąć do stanu pierwszego uruchomienia. Naprawione: nowa metoda
+  `ProfileViewModel.resetToUnconfigured()` (`_profile.value = Profile()`,
+  czyli `configured: false` z domyślnego konstruktora), użyta zamiast
+  `resetToDefault()` wyłącznie w `resetAccountData`. Przy okazji naprawiono
+  też głębszą, ogólniejszą lukę w samym FR-72 — patrz FR-72's v2: pola
+  płci/aktywności/celu od zawsze pokazywały domyślnie zaznaczoną opcję
+  niezależnie od `configured`, w odróżnieniu od pól liczbowych.
+  `versionCode` 77→78, `versionName` 0.1.76→0.1.77. Odpowiadająca poprawka
+  na webie: puste placeholdery w `setSex`/`setActivity`/`setGoal` (patrz
+  FR-72's v2), `dieta-app-v93`. `./gradlew :logic:test :app:assembleDebug`
+  przechodzi.
 

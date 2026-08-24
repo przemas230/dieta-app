@@ -100,7 +100,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-83 | Edycja wcześniej wpisanej wagi i historii kalorii | ✅ (waga) / ✅ (historia kalorii) | ✅ waga (edycja+usuwanie inline, zweryfikowane na emulatorze) / ✅ historia kalorii doportowana i zweryfikowana na emulatorze 2026-08-23 (przebudowa `EatenViewModel`/`EatenEntry` na `EatenDay` per-data, patrz uwagi FR-83.md i notatka niżej) |
 | FR-87 | Motyw „Klinika” — czcionka i układ, nie tylko kolory | ✅ v7 (2026-08-23): nowy dashboard na górze zakładki Planer -- powitanie/data/wylogowanie, karty CEL/pierścień+POZOSTAŁO/WODA, dekoracyjny pasek 7 dni (dziś pierwsze+wyróżnione), "Dzisiejszy Planer" (× usuwa slot, placeholder + dla pustych); stary pierścień kcal/wody USUNIĘTY z globalnego nagłówka dla tego motywu (patrz uwagi niżej) | ✅ v7 (2026-08-23), zweryfikowane na emulatorze (jasny + noc): to samo -- nowy `PlannerDashboard` w `PlannerScreen.kt`, `HeaderKcalPanel`/`.header-collapsible`-odpowiednik w `MainActivity.kt` już się NIE renderuje dla `isClinicFamily` (dane/callbacki przekazane zamiast tego do `PlannerScreen`) (patrz uwagi niżej) |
 | FR-88 | Planer jako pierwsza zakładka nawigacji | ✅ v1 (2026-08-23): `nav.bottom` przeorganizowany, Planer domyślnym widokiem startowym | ✅ v1 (2026-08-23), zweryfikowane na emulatorze (wszystkie motywy): `BOTTOM_NAV_SCREENS` przeorganizowana (`Screen.kt`), `startDestination = Screen.Planner.route` (`MainActivity.kt`) |
-| FR-89 | Reset wszystkich danych na koncie | ✅ v1 (2026-08-24): nowy przycisk „🗑️ Resetuj wszystkie dane na koncie” w karcie „☁️ Konto w chmurze”, okienko potwierdzenia + 5s odliczanie, pełne nadpisanie (nie merge) dokumentu `users/{uid}` | ⏳ v1 (2026-08-24): ten sam przycisk/dialog w `CloudAccountCard` (`SettingsScreen.kt`), reset lokalnych ViewModeli + pełne nadpisanie pól CloudSyncCoordinator ORAZ jawny `update()` na web-only polach (`myRecipes`/`customTiles`/`recipeReviews`/pantry*Override/`recipeAdded`/`waterNotifEnabled`/`waterReminder`/`household`), `versionCode` 75→76, `versionName` 0.1.74→0.1.75; `./gradlew :logic:test :app:assembleDebug` przechodzi — **nie zweryfikowane jeszcze na emulatorze/urządzeniu** (patrz uwagi niżej) |
+| FR-89 | Reset wszystkich danych na koncie | ✅ v2 (2026-08-24): przycisk „🗑️ Resetuj wszystkie dane na koncie”, okienko potwierdzenia + 5s odliczanie, pełne nadpisanie (nie merge) dokumentu `users/{uid}`; formularz profilu po resecie nie pokazuje już domyślnie zaznaczonej płci/aktywności/celu (patrz FR-72/v2) | ✅ v2 (2026-08-24), zweryfikowane na żywo na fizycznym urządzeniu: przycisk działa, dane w Firestore i lokalnie się resetują; znaleziony i naprawiony bug zgłoszony po tym teście — `resetAccountData` używał `resetToDefault()` (ustawia `configured:true`, właściwe dla przycisku "Domyślne" w formularzu, ale NIE dla pełnego resetu konta), zamienione na nową `ProfileViewModel.resetToUnconfigured()` (`configured:false`, jak świeża instalacja); `ProfileCard`'s `sex`/`activity`/`goal` też przestały pokazywać domyślnie zaznaczoną opcję dla nieskonfigurowanego profilu. `versionCode` 76→78, `versionName` 0.1.75→0.1.77. `./gradlew :logic:test :app:assembleDebug` przechodzi (patrz uwagi niżej) |
 
 ## Uwagi do częściowych wpisów
 
@@ -140,8 +140,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
   (FR-89) jest naturalnym sposobem wyczyszczenia takiego dokumentu od
   zera, jeśli ktoś tego potrzebuje.
 
-- **FR-89/v1 — reset wszystkich danych na koncie, nie zweryfikowane na
-  urządzeniu (2026-08-24)**: dodany bezpośrednio po serii incydentów utraty
+- **FR-89/v1 — reset wszystkich danych na koncie (2026-08-24)**: dodany bezpośrednio po serii incydentów utraty
   danych opisanych w FR-73/v4 niżej, na wyraźną prośbę użytkownika o prosty
   sposób na "świeży start" na koncie. Zamierzenie różni się od FR-79
   ("wyloguj + wyczyść dane lokalne") w kluczowy sposób: FR-79 NIE dotyka
@@ -170,10 +169,33 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
   `index.html`'s `loadState()`'s fallback object (patrz `FR-89.md`'s
   Uwagi). `versionCode` 75→76, `versionName` 0.1.74→0.1.75. `./gradlew
   :logic:test :app:assembleDebug` przechodzi (kompiluje się i buduje
-  czysto). **Nie zweryfikowane jeszcze na emulatorze/urządzeniu** — sam
-  przycisk/dialog/odliczanie nie były jeszcze kliknięte na żywo, ani nie
-  potwierdzono manualnie, że dokument w Firestore faktycznie wraca do
-  domyślnych wartości po kliknięciu.
+  czysto).
+
+- **FR-89/v2 — reset zweryfikowany na żywo, znaleziony i naprawiony bug
+  (2026-08-24)**: przetestowano przycisk na fizycznym urządzeniu (drugi
+  telefon Android, połączony przez Wi-Fi debugging po tym jak USB adb
+  padało powtarzalnie) — przycisk, okienko potwierdzenia i 5s odliczanie
+  działają poprawnie, dane w Firestore i lokalnie faktycznie się
+  resetują. Użytkownik zgłosił jednak, że formularz profilu po resecie
+  dalej pokazywał "Kobieta" zaznaczoną i przykładowe liczby — reset
+  sprawiał wrażenie niepełnego. Przyczyna: `resetAccountData` wywoływał
+  `profileViewModel.resetToDefault()`, ta sama metoda co przycisk
+  "Domyślne" WEWNĄTRZ formularza profilu — ta metoda CELOWO ustawia
+  `configured: true` (zgodnie z FR-72's Kryterium akceptacji dla TEGO
+  konkretnego przycisku). Dla pełnego resetu konta to jest odwrotność
+  zamierzonego zachowania. Naprawione: nowa `ProfileViewModel.
+  resetToUnconfigured()` (`configured: false`, jak świeża instalacja),
+  użyta zamiast `resetToDefault()` wyłącznie w `resetAccountData`. Przy
+  okazji naprawiono głębszą, ogólniejszą lukę w samym FR-72 (patrz
+  `FR-72.md`'s v2) — pola płci/aktywności/celu od zawsze pokazywały
+  domyślnie zaznaczoną opcję niezależnie od `configured`, w odróżnieniu
+  od już poprawnie działających pól liczbowych; naprawione symetrycznie
+  na Web i Androidzie. `versionCode` 76→78, `versionName` 0.1.75→0.1.77.
+  `./gradlew :logic:test :app:assembleDebug` przechodzi. **Poprawka sama
+  nie została jeszcze ponownie zweryfikowana na żywo** (tylko skompilowana
+  i zbudowana) — wymaga jeszcze jednego przejścia przez reset na
+  urządzeniu, żeby potwierdzić że formularz faktycznie pokazuje puste
+  pola bez zaznaczonej płci.
 
 - **FR-73/v4 — znaleziona i naprawiona TRWAŁA UTRATA DANYCH w `history`
   (2026-08-24)**: użytkownik odtworzył scenariusz z v3 niżej z podłączonym

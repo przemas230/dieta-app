@@ -35,6 +35,18 @@ class ProfileViewModel : ViewModel() {
         _profile.value = Profile(configured = true)
     }
 
+    /**
+     * FR-89: unlike [resetToDefault] (the in-form "Domyślne" button, which
+     * per FR-72 deliberately keeps `configured = true` since the user is
+     * already mid-session, not starting fresh), a full account reset should
+     * behave exactly like a brand-new install -- `configured = false`, so
+     * [ProfileCard] shows the "Ustaw swój profil" prompt and blank/
+     * unselected fields again instead of a pre-filled placeholder profile.
+     */
+    fun resetToUnconfigured() {
+        _profile.value = Profile()
+    }
+
     /** Saves on every keystroke, same as index.html's setDisplayName input listener -- no separate "Zapisz" button. */
     fun setDisplayName(name: String) {
         _displayName.value = name.take(30)

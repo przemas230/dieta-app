@@ -429,7 +429,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // the same thing regardless of which platform triggered it.
     val scope = rememberCoroutineScope()
     val resetAccountData: () -> Unit = {
-        profileViewModel.resetToDefault()
+        profileViewModel.resetToUnconfigured()
         profileViewModel.setDisplayName("")
         pantryViewModel.replaceAll(emptyMap())
         shoppingViewModel.replaceAll(emptyMap())

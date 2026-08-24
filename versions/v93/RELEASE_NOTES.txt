@@ -1,0 +1,20 @@
+Wersja v93 (2026-08-24)
+
+Zmiany w index.html i sw.js:
+
+- Formularz profilu (Ustawienia): pola "Płeć", "Aktywność fizyczna" i "Cel"
+  nie pokazują już domyślnie zaznaczonej opcji (Kobieta/Lekko aktywny/
+  Redukcja) dla nieskonfigurowanego profilu (świeża instalacja albo po
+  użyciu przycisku "Resetuj wszystkie dane na koncie"). Zamiast tego
+  pokazują pusty placeholder "Wybierz…", dokładnie tak jak pola wieku/
+  wzrostu/wagi/wagi docelowej już się zachowywały.
+- Zapisanie formularza bez wybrania tych pól nadal działa (zgodnie z
+  FR-72) — po prostu używa tych samych domyślnych wartości co wcześniej.
+- CACHE_NAME podniesiony do "dieta-app-v93".
+
+Powód: użytkownik przetestował nowy przycisk "Resetuj wszystkie dane na
+koncie" (FR-89) i zauważył, że mimo resetu formularz profilu dalej
+pokazywał "Kobieta" i przykładowe liczby jako zaznaczone/wpisane, co
+sprawiało wrażenie że reset nie zadziałał w pełni.
+
+Pełny opis w Functional requirements/FR-72.md i FR-89.md.
