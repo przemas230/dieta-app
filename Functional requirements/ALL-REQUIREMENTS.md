@@ -2148,6 +2148,47 @@ użytkownika.
   (wylogowanie obu, zalogowanie tylko na Androidzie, edycja spiżarni) z
   nową wersją, żeby potwierdzić że `history` po tej poprawce poprawnie
   scala się zamiast się nadpisywać.
+- **v6** (2026-08-24): Podczas testowania v5 na żywo (drugie fizyczne
+  urządzenie Android) użytkownik zgłosił nowy, realny objaw: zalogował się
+  na web, uzupełnił profil, potem otworzył Androida na tym samym koncie —
+  Android pokazał STARE dane, nie te właśnie wpisane na web. Sprawdzenie
+  dokumentu w konsoli Firebase ujawniło, że pole `profile` zawierało
+  DWA równoległe zestawy kluczy naraz: `heightCm: 189` (stary zapis
+  Androida) OBOK `height: 178` (świeży zapis web), podobnie
+  `weightKg`/`weight`, `targetWeightKg`/`targetWeight`. Przyczyna:
+  `CloudSyncCodec.encodeProfile`/`decodeProfile` od zawsze używały
+  WŁASNYCH, Kotlinowych nazw pól (`heightCm`/`weightKg`/`targetWeightKg`)
+  i nazw enumów (`sex: "MEZCZYZNA"`, `activity: "LEKKO_AKTYWNY"`,
+  `goal: "BUDOWANIE"`), podczas gdy `index.html` od zawsze zapisuje
+  `height`/`weight`/`targetWeight` oraz `sex: "m"/"k"`,
+  `activity: "1.2".."1.725"` (sam współczynnik jako string),
+  `goal: "loss"/"maintain"/"gain"` — z całego obiektu `profile` tylko
+  `age`/`glutenFree`/`lactoseFree`/`strictLowGI`/`configured` miały
+  identyczne nazwy po obu stronach. Ponieważ oba pushe używają Firestore
+  `{merge:true}` (scalanie PO LIŚCIACH ścieżek, nie całego mapa naraz),
+  te różnie nazwane pola nigdy się nie nadpisywały wzajemnie — po prostu
+  cicho współistniały w tym samym dokumencie w nieskończoność, a
+  `decodeProfile` Androida czytał WYŁĄCZNIE własne nazwy pól, więc nigdy
+  nie zauważał edycji z web. To oznacza, że synchronizacja profilu
+  między Web a Androidem prawdopodobnie NIGDY realnie nie działała dla
+  płci/wzrostu/wagi/wagi docelowej/aktywności/celu — tylko dla tych 5
+  pól, które przypadkiem miały tę samą nazwę po obu stronach. Naprawione:
+  `encodeProfile`/`decodeProfile` używają teraz DOKŁADNIE tych samych
+  nazw pól i formatów wartości co `index.html` (nowe funkcje mapujące
+  `sexToWeb`/`sexFromWeb`, `goalToWeb`/`goalFromWeb`,
+  `activityToWeb`/`activityFromWeb`), ten sam wzorzec naprawy co `ts` w
+  v5. Dodane testy regresyjne w `CloudSyncCodecTest.kt` (dekodowanie
+  mapy w dokładnym kształcie web, kodowanie do dokładnego kształtu web).
+  `versionCode` 76→77, `versionName` 0.1.75→0.1.76. `./gradlew
+  :logic:test :app:assembleDebug` przechodzi. **Nie zweryfikowane jeszcze
+  na żywo** — wymaga powtórzenia: uzupełnić profil na web, otworzyć
+  Androida na tym samym koncie, sprawdzić że pokazuje te same dane (nie
+  stare). Istniejące, już zdesynchronizowane duplikaty pól (`heightCm`
+  obok `height` itp.) w dokumentach kont, które już mają ten problem,
+  NIE są automatycznie sprzątane przez tę poprawkę — sam kod przestaje
+  pogłębiać rozjazd, ale stare, osierocone Kotlin-owe klucze zostają w
+  dokumencie, dopóki ktoś ich nie wyczyści (np. przyciskiem resetu konta,
+  FR-89).
 
 ---
 

@@ -87,7 +87,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-70 | Licznik nawodnienia w nagłówku — pojedyncze klikalne kropelki | ✅ | ✅ oba pierwotne blokery usunięte 2026-08-10 (patrz uwagi niżej) |
 | FR-71 | Zakładki w Ustawieniach — Konto, Wygląd, Przypomnienia, Ulubione | ✅ | ✅ wszystkie 4 zakładki mają teraz realną zawartość, zweryfikowane na emulatorze (patrz uwagi niżej) |
 | FR-72 | Wymuszenie ustawienia profilu przy pierwszym uruchomieniu | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
-| FR-73 | Synchronizacja danych osobistych w chmurze między urządzeniami | ✅ | ⏳ v4 (2026-08-24): dokument w Firestore jednak istnieje i synchronizuje się ogólnie, ale znaleziono i naprawiono realną TRWAŁĄ UTRATĘ DANYCH — `history` (200 wpisów z web) nadpisane 7 wpisami z Androida przez niezgodność formatu `ts` (string ISO na webie vs liczba na Androidzie); poprawka zapobiega powtórce, ale nie odzyskuje już utraconych danych; nie zweryfikowane jeszcze na żywo (patrz uwagi niżej) |
+| FR-73 | Synchronizacja danych osobistych w chmurze między urządzeniami | ✅ | ⏳ v5 (2026-08-24): dokument w Firestore jednak istnieje i synchronizuje się ogólnie, ale znaleziono i naprawiono DWA realne błędy: (1) TRWAŁA UTRATA DANYCH — `history` nadpisane przez niezgodność formatu `ts` (string ISO na webie vs liczba na Androidzie); (2) `profile` (płeć/wzrost/waga/waga docelowa/aktywność/cel) prawdopodobnie NIGDY realnie nie synchronizował się między Web a Androidem — kompletnie inne nazwy pól i formaty wartości po obu stronach (`heightCm`/`height`, `sex:"MEZCZYZNA"`/`sex:"m"` itd.), po cichu współistniejące w tym samym dokumencie zamiast się nadpisywać, dzięki Firestore's per-leaf-path `{merge:true}`. Oba naprawione tym samym wzorcem (dopasowanie do dokładnego kształtu web); nie zweryfikowane jeszcze na żywo (patrz uwagi niżej) |
 | FR-74 | Wspólna zakładka „Śniadania” na liście przepisów, osobne sloty w Planerze | ✅ | ✅ zweryfikowane na emulatorze 2026-08-10 — pigułka „🔍 Śniadania” na Przepisach, 5 osobnych slotów (Śniadanie/II Śniadanie/Obiad/Kolacja/Deser) w Planerze |
 | FR-75 | Widok kafelkowy listy zakupów z brakującymi ilościami | ✅ | ✅ zweryfikowane na emulatorze 2026-08-10 — siatka kafelków z emoji, nazwą i czerwoną plakietką „−ilość” renderuje się poprawnie (patrz uwagi) |
 | FR-76 | Przepisy społeczności oraz przeglądana lista użytkowników i profili | ✅ (wymaga reguł Firestore w konsoli; v2 2026-08-11: limit czasu na zapytania) | ⏳ zaimplementowane 2026-08-11, wymaga wklejenia reguł Firestore + weryfikacji dwoma kontami (patrz uwagi niżej) — Android nie miał web'owego "wisi na Wczytywanie…" błędu (`UserListViewModel`/`UserProfileViewModel` miały stan `Unavailable` od początku) |
@@ -103,6 +103,42 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-89 | Reset wszystkich danych na koncie | ✅ v1 (2026-08-24): nowy przycisk „🗑️ Resetuj wszystkie dane na koncie” w karcie „☁️ Konto w chmurze”, okienko potwierdzenia + 5s odliczanie, pełne nadpisanie (nie merge) dokumentu `users/{uid}` | ⏳ v1 (2026-08-24): ten sam przycisk/dialog w `CloudAccountCard` (`SettingsScreen.kt`), reset lokalnych ViewModeli + pełne nadpisanie pól CloudSyncCoordinator ORAZ jawny `update()` na web-only polach (`myRecipes`/`customTiles`/`recipeReviews`/pantry*Override/`recipeAdded`/`waterNotifEnabled`/`waterReminder`/`household`), `versionCode` 75→76, `versionName` 0.1.74→0.1.75; `./gradlew :logic:test :app:assembleDebug` przechodzi — **nie zweryfikowane jeszcze na emulatorze/urządzeniu** (patrz uwagi niżej) |
 
 ## Uwagi do częściowych wpisów
+
+- **FR-73/v5 — `profile` prawdopodobnie NIGDY realnie się nie
+  synchronizował między Web a Androidem, do dziś (2026-08-24)**: odkryte
+  podczas testowania FR-73/v4's poprawki `history` na drugim fizycznym
+  urządzeniu Android — użytkownik zalogował się na web, uzupełnił profil,
+  otworzył Androida na tym samym koncie i zobaczył STARE dane. Dokument w
+  Firestore pokazał `profile` z DWOMA równoległymi zestawami kluczy:
+  `heightCm: 189` (stary zapis Androida) OBOK `height: 178` (świeży zapis
+  web), tak samo `weightKg`/`weight`, `targetWeightKg`/`targetWeight`.
+  `CloudSyncCodec.encodeProfile`/`decodeProfile` od zawsze używały
+  WŁASNYCH, Kotlinowych nazw pól i nazw enumów
+  (`heightCm`/`weightKg`/`targetWeightKg`, `sex: "MEZCZYZNA"`,
+  `activity: "LEKKO_AKTYWNY"`, `goal: "BUDOWANIE"`), a `index.html` od
+  zawsze zapisuje `height`/`weight`/`targetWeight` oraz `sex: "m"/"k"`,
+  `activity` jako sam współczynnik w postaci stringa (`"1.375"`),
+  `goal: "loss"/"maintain"/"gain"` — z całego obiektu `profile` TYLKO
+  `age`/`glutenFree`/`lactoseFree`/`strictLowGI`/`configured` miały
+  identyczne nazwy po obu stronach. Ponieważ oba pushe używają Firestore
+  `{merge:true}` (scalanie po LIŚCIACH ścieżek zagnieżdżonych pól, nie
+  całej mapy naraz), te różnie nazwane pola nigdy się wzajemnie nie
+  nadpisywały — po prostu cicho współistniały w tym samym dokumencie w
+  nieskończoność, podczas gdy `decodeProfile` Androida czytał WYŁĄCZNIE
+  własne nazwy pól, więc nigdy nie zauważał edycji z web (i vice versa —
+  web nigdy nie czytało Androidowych nazw). Naprawione: `encodeProfile`/
+  `decodeProfile` w `CloudSyncCodec.kt` używają teraz dokładnie tych
+  samych nazw pól i formatów wartości co `index.html`, przez nowe funkcje
+  mapujące (`sexToWeb`/`sexFromWeb`, `goalToWeb`/`goalFromWeb`,
+  `activityToWeb`/`activityFromWeb`) — ten sam wzorzec naprawy co `history`'s
+  `ts` w v4. Dodane testy regresyjne w `CloudSyncCodecTest.kt`.
+  `versionCode` 76→77, `versionName` 0.1.75→0.1.76. `./gradlew
+  :logic:test :app:assembleDebug` przechodzi. **Nie zweryfikowane jeszcze
+  na żywo.** Istniejące, już zdesynchronizowane duplikaty pól (`heightCm`
+  obok `height` itp.) w kontach, które już mają ten problem, NIE są
+  automatycznie sprzątane przez tę poprawkę — przycisk resetu konta
+  (FR-89) jest naturalnym sposobem wyczyszczenia takiego dokumentu od
+  zera, jeśli ktoś tego potrzebuje.
 
 - **FR-89/v1 — reset wszystkich danych na koncie, nie zweryfikowane na
   urządzeniu (2026-08-24)**: dodany bezpośrednio po serii incydentów utraty

@@ -75,17 +75,77 @@ import java.time.format.DateTimeFormatter
  * calorie history editing, not water).
  */
 object CloudSyncCodec {
+    /**
+     * index.html's `<select id="setSex">` writes `"k"`/`"m"` (Polish
+     * initials), NOT a Kotlin enum name -- see [sexFromWeb]'s doc comment
+     * for the incident this pair fixes.
+     */
+    private fun sexToWeb(sex: Sex): String = if (sex == Sex.MEZCZYZNA) "m" else "k"
+    private fun sexFromWeb(raw: Any?): Sex? = when (raw as? String) {
+        "m" -> Sex.MEZCZYZNA
+        "k" -> Sex.KOBIETA
+        else -> null
+    }
+
+    /** index.html's `<select id="setGoal">` writes `"loss"`/`"maintain"`/`"gain"`, not a Kotlin enum name -- see [sexFromWeb]. */
+    private fun goalToWeb(goal: Goal): String = when (goal) {
+        Goal.REDUKCJA -> "loss"
+        Goal.UTRZYMANIE -> "maintain"
+        Goal.BUDOWANIE -> "gain"
+    }
+    private fun goalFromWeb(raw: Any?): Goal? = when (raw as? String) {
+        "loss" -> Goal.REDUKCJA
+        "maintain" -> Goal.UTRZYMANIE
+        "gain" -> Goal.BUDOWANIE
+        else -> null
+    }
+
+    /** index.html's `<select id="setActivity">` writes the activity factor itself as a string (`"1.375"`, ...), not a Kotlin enum name -- see [sexFromWeb]. */
+    private fun activityToWeb(activity: ActivityLevel): String = activity.factor.toString()
+    private fun activityFromWeb(raw: Any?): ActivityLevel? {
+        val factor = numberFrom(raw) ?: (raw as? String)?.toDoubleOrNull() ?: return null
+        return ActivityLevel.entries.find { it.factor == factor }
+    }
+
+    /**
+     * FR-73: `profile` field shapes and value formats MUST match
+     * index.html's Firestore writes exactly (see this file's own class doc)
+     * -- until this fix they didn't, for almost every non-boolean field.
+     *
+     * **Bug fixed 2026-08-24** (real, confirmed desync: user filled in a
+     * fresh profile on web, then opened Android and saw old/stale data
+     * instead): Android wrote/read `heightCm`/`weightKg`/`targetWeightKg`
+     * (Kotlin-style names) while index.html has always written plain
+     * `height`/`weight`/`targetWeight`; Android wrote/read `sex`/`activity`/
+     * `goal` as Kotlin enum names (`"MEZCZYZNA"`/`"LEKKO_AKTYWNY"`/
+     * `"BUDOWANIE"`) while index.html writes `"m"`/`"k"`, the activity
+     * factor itself as a string (`"1.375"`), and `"loss"`/`"maintain"`/
+     * `"gain"`. Since both platforms push `profile` through Firestore's
+     * `{merge:true}` (a per-leaf-path merge, not a whole-map replace), the
+     * two sides' differently-NAMED fields never even collided -- they just
+     * silently accumulated side by side in the same document forever (a
+     * real `profile` map inspected today held BOTH `heightCm: 189` from an
+     * old Android push AND `height: 178` from a same-day web edit) while
+     * Android's [decodeProfile] kept reading only ITS OWN field names/
+     * enum-name format, so it never even noticed the web edit existed.
+     * Fixed by having Android encode/decode profile through the exact same
+     * field names and value formats index.html itself uses ([sexToWeb]/
+     * [goalToWeb]/[activityToWeb] and their `*FromWeb` inverses) instead of
+     * Kotlin-native ones -- the same fix pattern as `history`'s `ts` format
+     * (see [encodeActivityLog]'s doc comment) applied to a different field.
+     */
     fun encodeProfile(profile: Profile): Map<String, Any?> = mapOf(
-        "sex" to profile.sex.name,
+        "sex" to sexToWeb(profile.sex),
         "age" to profile.age,
-        "heightCm" to profile.heightCm,
-        "weightKg" to profile.weightKg,
-        "targetWeightKg" to profile.targetWeightKg,
-        "activity" to profile.activity.name,
-        "goal" to profile.goal.name,
+        "height" to profile.heightCm,
+        "weight" to profile.weightKg,
+        "targetWeight" to profile.targetWeightKg,
+        "activity" to activityToWeb(profile.activity),
+        "goal" to goalToWeb(profile.goal),
         "glutenFree" to profile.glutenFree,
         "lactoseFree" to profile.lactoseFree,
         "strictLowGI" to profile.strictLowGI,
+        "custom" to true,
         "configured" to profile.configured,
     )
 
@@ -94,13 +154,13 @@ object CloudSyncCodec {
         if (map == null) return null
         return try {
             Profile(
-                sex = enumFrom<Sex>(map["sex"]) ?: Sex.KOBIETA,
+                sex = sexFromWeb(map["sex"]) ?: Sex.KOBIETA,
                 age = numberFrom(map["age"])?.toInt() ?: Profile().age,
-                heightCm = numberFrom(map["heightCm"])?.toInt() ?: Profile().heightCm,
-                weightKg = numberFrom(map["weightKg"]) ?: Profile().weightKg,
-                targetWeightKg = numberFrom(map["targetWeightKg"]) ?: Profile().targetWeightKg,
-                activity = enumFrom<ActivityLevel>(map["activity"]) ?: ActivityLevel.LEKKO_AKTYWNY,
-                goal = enumFrom<Goal>(map["goal"]) ?: Goal.REDUKCJA,
+                heightCm = numberFrom(map["height"])?.toInt() ?: Profile().heightCm,
+                weightKg = numberFrom(map["weight"]) ?: Profile().weightKg,
+                targetWeightKg = numberFrom(map["targetWeight"]) ?: Profile().targetWeightKg,
+                activity = activityFromWeb(map["activity"]) ?: ActivityLevel.LEKKO_AKTYWNY,
+                goal = goalFromWeb(map["goal"]) ?: Goal.REDUKCJA,
                 glutenFree = map["glutenFree"] as? Boolean ?: false,
                 lactoseFree = map["lactoseFree"] as? Boolean ?: false,
                 strictLowGI = map["strictLowGI"] as? Boolean ?: true,

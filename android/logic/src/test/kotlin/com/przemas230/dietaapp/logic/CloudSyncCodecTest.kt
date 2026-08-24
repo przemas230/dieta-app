@@ -39,7 +39,7 @@ class CloudSyncCodecTest {
     @Test
     fun `decodeProfile handles Firestore Long instead of Int for numeric fields`() {
         // Firestore's SDK commonly returns whole numbers as java.lang.Long, not Int/Double.
-        val map = mapOf("age" to 25L, "heightCm" to 170L, "weightKg" to 65L, "targetWeightKg" to 60L)
+        val map = mapOf("age" to 25L, "height" to 170L, "weight" to 65L, "targetWeight" to 60L)
         val decoded = CloudSyncCodec.decodeProfile(map)
         assertEquals(25, decoded?.age)
         assertEquals(170, decoded?.heightCm)
@@ -48,9 +48,43 @@ class CloudSyncCodecTest {
     }
 
     @Test
-    fun `decodeProfile ignores an unrecognized enum value and falls back to default`() {
+    fun `decodeProfile ignores an unrecognized value and falls back to default`() {
         val decoded = CloudSyncCodec.decodeProfile(mapOf("sex" to "NIEZNANE"))
         assertEquals(Sex.KOBIETA, decoded?.sex)
+    }
+
+    @Test
+    fun `decodeProfile reads index_html's actual field names and value formats`() {
+        // Regression test for the 2026-08-24 bug where Android wrote/read
+        // heightCm/weightKg/targetWeightKg and Kotlin enum names
+        // (MEZCZYZNA/LEKKO_AKTYWNY/BUDOWANIE), while index.html has always
+        // written height/weight/targetWeight and "m"/"k",
+        // "1.2".."1.725", "loss"/"maintain"/"gain" -- Android silently never
+        // read a web-authored profile edit because of this mismatch.
+        val webProfile = mapOf(
+            "sex" to "m", "age" to 37L, "height" to 178L, "weight" to 74.0, "targetWeight" to 78.0,
+            "activity" to "1.375", "goal" to "gain",
+            "glutenFree" to false, "lactoseFree" to false, "strictLowGI" to false, "custom" to true, "configured" to true,
+        )
+        val decoded = CloudSyncCodec.decodeProfile(webProfile)
+        assertEquals(Sex.MEZCZYZNA, decoded?.sex)
+        assertEquals(178, decoded?.heightCm)
+        assertEquals(74.0, decoded?.weightKg)
+        assertEquals(78.0, decoded?.targetWeightKg)
+        assertEquals(ActivityLevel.LEKKO_AKTYWNY, decoded?.activity)
+        assertEquals(Goal.BUDOWANIE, decoded?.goal)
+    }
+
+    @Test
+    fun `encodeProfile writes index_html's exact field names and value formats`() {
+        val profile = Profile(sex = Sex.KOBIETA, activity = ActivityLevel.UMIARKOWANIE_AKTYWNY, goal = Goal.REDUKCJA)
+        val encoded = CloudSyncCodec.encodeProfile(profile)
+        assertEquals("k", encoded["sex"])
+        assertEquals("1.55", encoded["activity"])
+        assertEquals("loss", encoded["goal"])
+        assertEquals(profile.heightCm, encoded["height"])
+        assertEquals(profile.weightKg, encoded["weight"])
+        assertEquals(profile.targetWeightKg, encoded["targetWeight"])
     }
 
     @Test
