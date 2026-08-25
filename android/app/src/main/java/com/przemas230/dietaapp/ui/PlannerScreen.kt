@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -82,6 +83,7 @@ import com.przemas230.dietaapp.logic.PlannerCategory
 import com.przemas230.dietaapp.logic.PlannerOperations
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.RecipeMatching
+import com.przemas230.dietaapp.logic.ShoppingOperations
 import com.przemas230.dietaapp.logic.WaterOperations
 import com.przemas230.dietaapp.logic.WeekPlan
 import com.przemas230.dietaapp.logic.forCategory
@@ -122,10 +124,21 @@ fun PlannerScreen(
     onWaterTap: (Int) -> Unit = {},
     onWaterSetCount: (Int) -> Unit = {},
     onSetEaten: (cat: String, eaten: Boolean, plannedKcal: Int?, plannedName: String?) -> Unit = { _, _, _, _ -> },
+    // Requested 2026-08-25 ("zrównaj dzień tygodnia/datę i Cześć, nazwę
+    // użytkownika z plusikiem i kołem zębatym... żeby było w jednej
+    // linii"): MainActivity's global quick-add/settings icons, rendered
+    // here (Klinika only) on the same Row as the date/greeting text
+    // instead of their own separate row above -- see MainActivity.kt's
+    // isClinicHeader gate, which skips its own copy for this tab.
+    headerActions: @Composable RowScope.() -> Unit = {},
 ) {
     val allRecipes by plannerViewModel.allRecipes.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
     val profile by profileViewModel.profile.collectAsState()
+    // Requested 2026-08-25 (recipe preview dialog enrichment, see
+    // RecipePreviewDialog's own comment): only new dependency needed to
+    // add the "dodaj do listy zakupów" toggle to the preview.
+    val shoppingItems by shoppingViewModel.items.collectAsState()
 
     if (allRecipes.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -191,10 +204,21 @@ fun PlannerScreen(
                     onClearSlot = { cat -> plannerViewModel.clearSlot(todayIndex, cat) },
                     onSlotClick = { cat -> slotPicker = todayIndex to cat },
                     onSignOut = onSignOut,
+                    profile = profile,
+                    targetGramsFor = { recipe -> macroTargets.forCategory(recipe.cat) },
+                    isRecipeAddedToShopping = { recipe -> ShoppingOperations.isRecipeAdded(shoppingItems, recipe.id) },
+                    onToggleAddToShopping = { recipe ->
+                        if (ShoppingOperations.isRecipeAdded(shoppingItems, recipe.id)) {
+                            shoppingViewModel.removeRecipe(recipe)
+                        } else {
+                            shoppingViewModel.addRecipe(recipe)
+                        }
+                    },
                     onDayJump = { di -> scrollScope.launch { listState.animateScrollToItem(1 + di) } },
                     onWaterTap = onWaterTap,
                     onWaterSetCount = onWaterSetCount,
                     onSetEaten = onSetEaten,
+                    headerActions = headerActions,
                     modifier = Modifier.fillParentMaxHeight(),
                 )
             }
@@ -313,7 +337,21 @@ fun PlannerScreen(
     }
 
     previewRecipe?.let { (recipe, scale) ->
-        RecipePreviewDialog(recipe = recipe, scale = scale, onDismiss = { previewRecipe = null })
+        RecipePreviewDialog(
+            recipe = recipe,
+            scale = scale,
+            profile = profile,
+            targetGrams = macroTargets.forCategory(recipe.cat),
+            isAddedToShopping = ShoppingOperations.isRecipeAdded(shoppingItems, recipe.id),
+            onToggleAddToShopping = {
+                if (ShoppingOperations.isRecipeAdded(shoppingItems, recipe.id)) {
+                    shoppingViewModel.removeRecipe(recipe)
+                } else {
+                    shoppingViewModel.addRecipe(recipe)
+                }
+            },
+            onDismiss = { previewRecipe = null },
+        )
     }
 
     val confirm = pendingConfirm
@@ -484,6 +522,14 @@ private fun PlannerDashboard(
     onClearSlot: (cat: String) -> Unit,
     onSlotClick: (cat: String) -> Unit,
     onSignOut: () -> Unit,
+    // Requested 2026-08-25: feeds RecipePreviewDialog's enrichment (match
+    // score, "dodaj do listy zakupów") -- kept as plain data/lambdas
+    // (not the ViewModels themselves) matching this composable's existing
+    // style of never taking a ViewModel directly.
+    profile: Profile,
+    targetGramsFor: (Recipe) -> MacroGrams?,
+    isRecipeAddedToShopping: (Recipe) -> Boolean,
+    onToggleAddToShopping: (Recipe) -> Unit,
     onDayJump: (dayIndex: Int) -> Unit = {},
     onWaterTap: (Int) -> Unit = {},
     onWaterSetCount: (Int) -> Unit = {},
@@ -495,6 +541,7 @@ private fun PlannerDashboard(
     // already in that state did the opposite of what it looked like it
     // should.
     onSetEaten: (cat: String, eaten: Boolean, plannedKcal: Int?, plannedName: String?) -> Unit = { _, _, _, _ -> },
+    headerActions: @Composable RowScope.() -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val eatenKcal = EatenOperations.dailyEatenKcal(eatenEntries) + EatenOperations.snacksKcal(snacks)
@@ -534,13 +581,16 @@ private fun PlannerDashboard(
         // (onSignOut is kept as a param, unused for now, rather than
         // threading a removal through every call site, in case this is
         // ever reversed the way the web header text was).
-        Column {
-            Text(dateLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(
-                if (displayName.isNotBlank()) "Cześć, $displayName!" else "Cześć!",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(dateLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    if (displayName.isNotBlank()) "Cześć, $displayName!" else "Cześć!",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            headerActions()
         }
         Spacer(modifier = Modifier.height(10.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -549,43 +599,50 @@ private fun PlannerDashboard(
             // left to fill that space instead of leaving a gap (weight 2.3
             // vs the old Cel(1)+this(1.5)=2.5 combined, matching the web
             // CSS's 2.3fr/1fr split closely enough).
+            // Requested 2026-08-25 ("powiększ prostokątek z kołem liczącym
+            // kalorie... oraz prostokąt ze znacznikiem ile wypitych
+            // szklanek wody, powiększ 150%"): ring box, strokes, paddings
+            // and font sizes below all scaled ×1.5 from their previous
+            // values (48dp→72dp, 3dp→4.5dp, 9sp→13.5sp, etc.) -- fits fine
+            // since the flex:1 meal list below absorbs the size change,
+            // same as web's equivalent .pd-card scale-up.
             Card(
                 modifier = Modifier.weight(2.3f),
                 shape = MaterialTheme.shapes.large,
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
             ) {
-                Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp)) {
+                Row(modifier = Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(72.dp)) {
                         CircularProgressIndicator(
                             progress = { 1f },
                             modifier = Modifier.fillMaxSize(),
-                            strokeWidth = 3.dp,
+                            strokeWidth = 4.5.dp,
                             color = MaterialTheme.colorScheme.surfaceVariant,
                         )
                         CircularProgressIndicator(
                             progress = { kcalPct },
                             modifier = Modifier.fillMaxSize(),
-                            strokeWidth = 3.dp,
+                            strokeWidth = 4.5.dp,
                             color = MaterialTheme.colorScheme.primary,
                         )
-                        Text("$eatenKcal/$kcalTarget", style = MaterialTheme.typography.labelSmall, fontSize = 9.sp)
+                        Text("$eatenKcal/$kcalTarget", fontSize = 13.5.sp)
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
                     Column(
                         modifier = Modifier
                             .weight(1f)
                             .background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.medium)
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                            .padding(horizontal = 15.dp, vertical = 12.dp),
                     ) {
                         Text(
                             "POZOSTAŁO",
-                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 13.5.sp,
                             color = MaterialTheme.colorScheme.onPrimary,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
                             "$remaining kcal",
-                            style = MaterialTheme.typography.titleMedium,
+                            fontSize = 27.sp,
                             color = MaterialTheme.colorScheme.onPrimary,
                             fontWeight = FontWeight.Bold,
                         )
@@ -815,7 +872,15 @@ private fun PlannerDashboard(
         }
     }
     previewRecipe?.let { (recipe, scale) ->
-        RecipePreviewDialog(recipe = recipe, scale = scale, onDismiss = { previewRecipe = null })
+        RecipePreviewDialog(
+            recipe = recipe,
+            scale = scale,
+            profile = profile,
+            targetGrams = targetGramsFor(recipe),
+            isAddedToShopping = isRecipeAddedToShopping(recipe),
+            onToggleAddToShopping = { onToggleAddToShopping(recipe) },
+            onDismiss = { previewRecipe = null },
+        )
     }
 }
 
@@ -826,15 +891,19 @@ private fun DashboardStatCard(label: String, value: String, unit: String, modifi
         shape = MaterialTheme.shapes.large,
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Column(modifier = Modifier.padding(10.dp)) {
+        // Requested 2026-08-25: enlarged 150% along with the kcal-ring
+        // card next to it (see PlannerDashboard) -- this composable has
+        // only that one call site, so scaled directly rather than adding
+        // a flag.
+        Column(modifier = Modifier.padding(15.dp)) {
             Text(
                 label.uppercase(),
-                style = MaterialTheme.typography.labelSmall,
+                fontSize = 15.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
             )
-            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(unit, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+            Text(unit, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -1039,6 +1108,9 @@ private fun DayCardClinic(
 private fun formatScale(scale: Double): String =
     (if (scale == scale.toLong().toDouble()) scale.toLong().toString() else scale.toString()) + "×"
 
+private fun formatMacroNum(value: Double): String =
+    if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()
+
 /**
  * 2026-08-11 (user request, "dodaj możliwość podglądnięcia przepisu z
  * poziomu planera... żeby wyświetliło kartę jak na karcie z przepisami"):
@@ -1046,19 +1118,38 @@ private fun formatScale(scale: Double): String =
  * `PlannerOperations.scaleIngredients`/`scaledKcal`, not the recipe's base
  * 1x amounts) and preparation method, plus the same "tap title -> Google
  * search" idiom `RecipeListScreen.kt`'s `RecipeCardBody` already uses
- * (`ACTION_VIEW` + `google.com/search?q=`). Deliberately NOT a reuse of
- * `RecipeCard`/`RecipeCardBody` -- those are tightly coupled to
- * RecipeListScreen's own ViewModels (swipe-rate, pantry-check, reviews,
- * comments, favorites) that make no sense to fake from here; this is a
- * lighter, planner-scoped subset of the same content.
+ * (`ACTION_VIEW` + `google.com/search?q=`).
+ *
+ * Enriched 2026-08-25 ("bardzo ubogi opis karty dania, ma być taka sama
+ * karta jak w przepisach i na web wersji"): match score/goal/GI/source
+ * badges, the full macro breakdown row (protein/carbs/fat/fiber/GI/GL --
+ * `RecipeCardBody`'s expanded macro line) and a "dodaj do listy zakupów"
+ * toggle now match the Przepisy tab's card, since all of that only needs
+ * data already on `Recipe`/`Profile` plus `shoppingViewModel` (already a
+ * `PlannerScreen` param) -- no new ViewModel wiring required. Still
+ * deliberately NOT a reuse of the full `RecipeCard`/`RecipeCardBody` --
+ * favorite-star, pantry-check, cook-history, reviews and comments are
+ * tightly coupled to RecipeListScreen's own ViewModels (not currently
+ * passed into PlannerScreen) and are a separate, larger wiring job than
+ * this round's scope; noted in android/PARITY.md as a known, intentional
+ * gap rather than silently dropped.
  */
 @Composable
-private fun RecipePreviewDialog(recipe: Recipe, scale: Double, onDismiss: () -> Unit) {
+private fun RecipePreviewDialog(
+    recipe: Recipe,
+    scale: Double,
+    profile: Profile,
+    targetGrams: MacroGrams?,
+    isAddedToShopping: Boolean,
+    onToggleAddToShopping: () -> Unit,
+    onDismiss: () -> Unit,
+) {
     val context = LocalContext.current
     val scaledIngredients = remember(recipe, scale) { PlannerOperations.scaleIngredients(recipe.ingredients, scale) }
     val kcal = remember(recipe, scale) { PlannerOperations.scaledKcal(recipe, scale) }
+    val matchScore = remember(recipe, targetGrams, profile) { RecipeMatching.matchScore(recipe, targetGrams, profile) }
     Dialog(onDismissRequest = onDismiss) {
-        Card(modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp)) {
+        Card(modifier = Modifier.fillMaxWidth().heightIn(max = 640.dp)) {
             Column(
                 modifier = Modifier
                     .padding(16.dp)
@@ -1079,13 +1170,41 @@ private fun RecipePreviewDialog(recipe: Recipe, scale: Double, onDismiss: () -> 
                                 )
                             },
                     )
+                    if (recipe.source == "custom" || recipe.source == "community") {
+                        Text(
+                            if (recipe.source == "custom") "✍️ Twój przepis" else "🌍 ${recipe.authorDisplayName ?: "Anonimowy użytkownik"}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
                     TextButton(onClick = onDismiss) { Text("✕") }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
+                val matchSuffix = matchScore?.let { "   🎯 $it%" } ?: ""
                 Text(
-                    "⏱ ${recipe.time}   🔥 $kcal kcal" + if (scale != 1.0) "  (porcja ${formatScale(scale)})" else "",
+                    "⏱ ${recipe.time}   🔥 $kcal kcal" + (if (scale != 1.0) "  (porcja ${formatScale(scale)})" else "") + matchSuffix,
                     style = MaterialTheme.typography.bodyMedium,
                 )
+                // Port of RecipeCardBody's expanded macro-breakdown line --
+                // same B/W/T + fiber/IG/ŁG format as Przepisy's card.
+                val protein = recipe.protein
+                val carbs = recipe.carbs
+                val fat = recipe.fat
+                if (protein != null && carbs != null && fat != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    val fiberPart = recipe.fiber?.let { " · Błonnik ${formatMacroNum(it)}g" } ?: ""
+                    val giPart = recipe.gi?.let { " · IG ~${formatMacroNum(it)}" } ?: ""
+                    val glPart = recipe.gl?.let { " (ŁG ${formatMacroNum(it)})" } ?: ""
+                    Text(
+                        "B ${formatMacroNum(protein)}g · W ${formatMacroNum(carbs)}g · T ${formatMacroNum(fat)}g$fiberPart$giPart$glPart",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Spacer(modifier = Modifier.height(12.dp))
                 Text("Składniki", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(4.dp))
@@ -1121,6 +1240,10 @@ private fun RecipePreviewDialog(recipe: Recipe, scale: Double, onDismiss: () -> 
                         },
                         modifier = Modifier.weight(1f),
                     ) { Text("▶️ YouTube") }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = onToggleAddToShopping, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (isAddedToShopping) "✓ Na liście zakupów" else "🛒 Dodaj do listy zakupów")
                 }
             }
         }

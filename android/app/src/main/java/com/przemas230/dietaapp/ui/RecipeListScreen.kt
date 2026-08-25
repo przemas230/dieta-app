@@ -1378,6 +1378,33 @@ private fun RecipeCardBody(
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // Requested 2026-08-25 ("karty z przepisami... są dużo niższe niż
+        // web wersja"): port of index.html's always-visible .expand-toggle
+        // button ("Składniki i przygotowanie" + chevron rotating 180° when
+        // .expanded) -- this row was simply missing from the collapsed
+        // Android card entirely (RecipeCardBody used to render NOTHING
+        // between the meta line and the `if(expanded)` block), which is
+        // most of why the collapsed card measured noticeably shorter than
+        // web's. No onClick of its own needed -- the whole Card already has
+        // one `.clickable{ onToggleExpanded() }` (RecipeCard, one level up)
+        // that this Row sits inside, same as index.html's card-wide click
+        // handler that the button's own listener is redundant with.
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "Składniki i przygotowanie",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                if (expanded) "⌃" else "⌄",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
         if (expanded) {
             val protein = recipe.protein

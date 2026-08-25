@@ -544,37 +544,37 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
             }
     }
 
-    Scaffold(
-        topBar = {
-            // FR-36's ring/meal-list/summary panel is tall enough that it
-            // does NOT fit inside TopAppBar's own `title` slot -- that slot
-            // silently clips content past a fixed max height (confirmed by
-            // testing: even a single always-composed debug Text placed after
-            // HeaderWaterRow there never appeared). Scaffold's topBar slot
-            // itself has no such cap, so the water row and kcal panel live
-            // here instead, as siblings after TopAppBar inside one
-            // teal-background Column, not nested in its title.
-            // FR-87/v2: Klinika's header trades the solid teal/sage-fill
-            // block every other theme uses for a light page background with
-            // the kcal/water panel as its own elevated card below -- port of
-            // diet-chef-pro-75's (Lovable) light header, on explicit
-            // feedback that recoloring the EXISTING solid header wasn't
-            // enough ("nie widzę zmian w Nagłówek... kolor motywu dalej
-            // jest jasny" -- their own "jasny" here means the OLD design
-            // still showed through under the new color). See HeaderKcalPanel
-            // below for the card itself.
-            val isClinicHeader = AppThemes.isClinicFamily(LocalDietaThemeId.current)
-            // Requested 2026-08-25 (screenshot follow-up): for Klinika, the
-            // action icons sat inside a full-size TopAppBar whose title slot
-            // is always empty (`return@TopAppBar` below) -- TopAppBar's own
-            // fixed minimum height still reserved its usual space regardless,
-            // leaving a visible empty band above the icons that plain padding
-            // tweaks on the title can't remove ("puste miejsce... zacznij od
-            // samej góry strony"). A lightweight Row with just
-            // WindowInsets.statusBars padding replaces TopAppBar entirely for
-            // Klinika, landing the icons right below the status bar; the
-            // other 11 themes keep the unchanged TopAppBar below.
-            val headerActions: @Composable RowScope.() -> Unit = {
+    // FR-36's ring/meal-list/summary panel is tall enough that it does NOT
+    // fit inside TopAppBar's own `title` slot -- that slot silently clips
+    // content past a fixed max height (confirmed by testing: even a single
+    // always-composed debug Text placed after HeaderWaterRow there never
+    // appeared). Scaffold's topBar slot itself has no such cap, so the
+    // water row and kcal panel live there instead, as siblings after
+    // TopAppBar inside one teal-background Column, not nested in its title.
+    // FR-87/v2: Klinika's header trades the solid teal/sage-fill block
+    // every other theme uses for a light page background with the
+    // kcal/water panel as its own elevated card below -- port of
+    // diet-chef-pro-75's (Lovable) light header, on explicit feedback that
+    // recoloring the EXISTING solid header wasn't enough ("nie widzę zmian
+    // w Nagłówek... kolor motywu dalej jest jasny" -- their own "jasny"
+    // here means the OLD design still showed through under the new color).
+    // See HeaderKcalPanel below for the card itself.
+    val isClinicHeader = AppThemes.isClinicFamily(LocalDietaThemeId.current)
+    // Requested 2026-08-25 (screenshot follow-up): for Klinika, the action
+    // icons sat inside a full-size TopAppBar whose title slot is always
+    // empty (`return@TopAppBar` below) -- TopAppBar's own fixed minimum
+    // height still reserved its usual space regardless, leaving a visible
+    // empty band above the icons that plain padding tweaks on the title
+    // can't remove ("puste miejsce... zacznij od samej góry strony"). A
+    // lightweight Row with just WindowInsets.statusBars padding replaces
+    // TopAppBar entirely for Klinika, landing the icons right below the
+    // status bar; the other 11 themes keep the unchanged TopAppBar below.
+    // Hoisted out of `topBar` (was defined inline there) so PlannerScreen's
+    // `content` composable below can also call it -- on the Planer tab
+    // these icons render inside PlannerDashboard itself, on the same row
+    // as "Wtorek, 25 sierpnia / Cześć, {imię}!" (requested 2026-08-25,
+    // "zrównaj datę i Cześć z plusikiem i kołem zębatym").
+    val headerActions: @Composable RowScope.() -> Unit = {
                 // FR-33: global quick-add, visible on every tab (matches
                 // index.html's header "➕" button) -- the Postęp tab's OWN
                 // floating-button entry point to this same dialog isn't
@@ -594,24 +594,35 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     Icon(Screen.Settings.icon, contentDescription = Screen.Settings.label)
                 }
             }
+
+    Scaffold(
+        topBar = {
             Column(
-                modifier = Modifier.background(
-                    if (isClinicHeader) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.primary,
-                ),
+                modifier = Modifier
+                    .background(
+                        if (isClinicHeader) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.primary,
+                    )
+                    .then(if (isClinicHeader) Modifier.windowInsetsPadding(WindowInsets.statusBars) else Modifier),
             ) {
-                if (isClinicHeader) {
+                // Requested 2026-08-25: on the Planer tab, these two icons
+                // should sit on the SAME line as "Wtorek, 25 sierpnia /
+                // Cześć, {imię}!" instead of their own row above it --
+                // PlannerDashboard renders headerActions() itself, in a Row
+                // alongside the date/greeting text (see its onHeaderActions
+                // param below), so this row is skipped entirely there. The
+                // other tabs (no such text to share a row with) keep it.
+                if (isClinicHeader && currentRoute != Screen.Planner.route) {
                     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .windowInsetsPadding(WindowInsets.statusBars)
                             .padding(top = 4.dp),
                         horizontalArrangement = Arrangement.End,
                     ) {
                         headerActions()
                     }
                     }
-                } else {
+                } else if (!isClinicHeader) {
                 TopAppBar(
                     title = {
                         // Requested 2026-08-25 (Web FR-87/v9, ported here): the
@@ -838,6 +849,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     onWaterTap = { i -> waterViewModel.tapDroplet(i) },
                     onWaterSetCount = { n -> waterViewModel.setCount(n) },
                     onSetEaten = { cat, eaten, kcal, name -> eatenViewModel.setEaten(cat, eaten, kcal, name) },
+                    headerActions = headerActions,
                 )
             }
             composable(Screen.Progress.route) {
@@ -986,11 +998,17 @@ private fun HeaderWaterRow(viewModel: WaterViewModel) {
 }
 
 /**
- * Small hand-drawn mug icon (Canvas, no vector-asset dependency -- same "no
- * extra Gradle deps" spirit as WeightChart/KcalHistoryChart) replacing the
- * old 💧/⚪ emoji, matching index.html's new cupIconSvg (FR-36/v2 redesign):
- * a rounded-bottom mug body with a small handle loop, solid ring-water blue
- * when filled, thin outline in a neutral color when empty.
+ * Small hand-drawn droplet icon (Canvas, no vector-asset dependency -- same
+ * "no extra Gradle deps" spirit as WeightChart/KcalHistoryChart), matching
+ * index.html's cupIconSvg: solid ring-water blue teardrop when filled, thin
+ * outline in a neutral color when empty.
+ *
+ * Requested 2026-08-25 ("zamiast kubeczków wody w całej aplikacji zmień na
+ * kropelki w każdym możliwym temacie"): was a hand-drawn MUG (rounded body
+ * + handle loop, port of web's now-replaced cupIconSvg mug shape, FR-36/v2)
+ * -- swapped for a classic teardrop, mirroring web's new SVG path. Kept the
+ * function name (call sites unaffected) since this is a pure shape swap,
+ * not a behavior change.
  */
 @Composable
 private fun WaterCupIcon(filled: Boolean, size: Dp, modifier: Modifier = Modifier) {
@@ -1006,34 +1024,29 @@ private fun WaterCupIcon(filled: Boolean, size: Dp, modifier: Modifier = Modifie
         val w = this.size.width
         val h = this.size.height
         val strokeWidth = w * 0.12f
-        val bodyWidth = w * 0.62f
-        val bodyHeight = h * 0.7f
-        val bodyLeft = w * 0.06f
-        val bodyTop = h * 0.12f
-        val corner = CornerRadius(bodyWidth * 0.22f, bodyWidth * 0.22f)
-        val bodyPath = Path().apply {
-            addRoundRect(
-                RoundRect(
-                    rect = Rect(Offset(bodyLeft, bodyTop), Size(bodyWidth, bodyHeight)),
-                    bottomLeft = corner,
-                    bottomRight = corner,
-                ),
+        val cx = w / 2f
+        val topY = h * 0.04f
+        val bottomY = h * 0.96f
+        val halfWidth = w * 0.40f
+        val dropPath = Path().apply {
+            moveTo(cx, topY)
+            cubicTo(
+                cx + halfWidth * 1.15f, h * 0.42f,
+                cx + halfWidth, bottomY - halfWidth * 0.15f,
+                cx, bottomY,
             )
+            cubicTo(
+                cx - halfWidth, bottomY - halfWidth * 0.15f,
+                cx - halfWidth * 1.15f, h * 0.42f,
+                cx, topY,
+            )
+            close()
         }
         if (filled) {
-            drawPath(bodyPath, color)
+            drawPath(dropPath, color)
         } else {
-            drawPath(bodyPath, color, style = Stroke(width = strokeWidth))
+            drawPath(dropPath, color, style = Stroke(width = strokeWidth))
         }
-        drawArc(
-            color = color,
-            startAngle = -80f,
-            sweepAngle = 160f,
-            useCenter = false,
-            topLeft = Offset(bodyLeft + bodyWidth - w * 0.05f, h * 0.26f),
-            size = Size(w * 0.34f, h * 0.4f),
-            style = Stroke(width = strokeWidth),
-        )
     }
 }
 

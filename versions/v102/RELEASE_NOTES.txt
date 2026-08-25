@@ -1,0 +1,39 @@
+v102 — dopracowanie motywu Klinika + karty przepisów + ikona wody (Web + Android)
+
+Duża runda poprawek na wyraźną prośbę użytkownika, obejmująca zarówno Web
+jak i Androida:
+
+1. Kafelek z pierścieniem kcal/"Pozostało" oraz kafelek "Woda" na
+   dashboardzie Planera powiększone o 150% (padding, czcionki, rozmiar
+   pierścienia) — proporcje zachowane, całość nadal mieści się w pełni na
+   ekranie dzięki elastycznemu układowi listy posiłków poniżej.
+
+2. Na karcie z przepisem otwieranej z "Dzisiejszego Planera" usunięty
+   redundantny nagłówek "🍽️ Podgląd przepisu" — nazwa przepisu (już
+   wyświetlana jako link niżej) pełni teraz funkcję tytułu, oszczędzając
+   miejsce.
+
+3. Ikona wody w całej aplikacji zmieniona z kubka/kufla (z uszkiem) na
+   klasyczną kroplę — dotyczy paska wody w nagłówku i widoku "Postęp"
+   (wszystkie motywy poza Kliniką, która ma własny, osobny piker z
+   kółkami — bez zmian).
+
+Świadomie NIE dotyczy: kółek wyboru wody w motywie Klinika (to nie są
+"kubeczki" w dosłownym sensie, zostawione bez zmian).
+
+CACHE_NAME: v101 → v102.
+
+Android (ten sam moment, patrz android/PARITY.md i FR-87.md):
+- Ikony "+"/ustawień na zakładce Planer przeniesione na WSPÓLNY wiersz z
+  datą/powitaniem (wcześniej osobny rząd nad nim) — TopAppBar zastąpiony
+  lekkim Row dla Kliniki, bo jego własna minimalna wysokość i tak
+  rezerwowała miejsce mimo pustego tytułu.
+- Kafelek kcal/Woda powiększony 150%, tak samo jak web.
+- Podgląd przepisu z Planera znacząco wzbogacony: wynik dopasowania,
+  odznaki źródła (własny/społecznościowy), pełny wiersz makro
+  (B/W/T/błonnik/IG/ŁG), przycisk "Dodaj do listy zakupów" — wcześniej
+  pokazywał tylko składniki i sposób przygotowania.
+- Karty przepisów na zakładce Przepisy dostały brakujący wiersz-przełącznik
+  "Składniki i przygotowanie ⌄" (obecny na web, wcześniej całkiem
+  nieobecny na Androidzie) — przywraca też brakującą wysokość kart.
+- Ikona wody (Canvas) zmieniona z kubka na kroplę, tak samo jak web.

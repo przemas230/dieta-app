@@ -859,22 +859,28 @@
      same width it always had (former 1fr) and gives the remaining card
      roughly what IT (1.5fr) + Cel (1fr) used to occupy together. */
   .pd-cards{display:grid; grid-template-columns:2.3fr 1fr; gap:8px; margin-bottom:14px;}
-  .pd-card{background:var(--card); border-radius:20px; padding:12px 10px; box-shadow:0 1px 3px rgba(0,0,0,.06); display:flex; flex-direction:column; justify-content:center;}
+  /* Requested 2026-08-25: kcal-ring/POZOSTAŁO card and WODA card enlarged
+     150% (padding/font-sizes/ring size all scaled by 1.5x, proportions
+     unchanged) -- fits fine because #plannerTodayWrap/.pd-today-list's
+     flex:1 meal list just absorbs the difference, same mechanism that
+     already makes the whole "Dzisiejszy Planer" section fill the screen
+     regardless of how tall the fixed-size pieces above it are. */
+  .pd-card{background:var(--card); border-radius:20px; padding:18px 15px; box-shadow:0 1px 3px rgba(0,0,0,.06); display:flex; flex-direction:column; justify-content:center;}
   /* Requested 2026-08-25: the WODA card is now a real <button> (opens the
      floating water picker, see openWaterPickerModal()) instead of inert
      text -- reset the default button chrome so it still looks exactly
      like a .pd-card. */
   .pd-card-water{border:none; font:inherit; color:inherit; text-align:inherit; cursor:pointer; width:100%;}
-  .pd-card-label{font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--muted);}
-  .pd-card-value{font-family:var(--font-heading); font-size:20px; font-weight:700; margin-top:4px;}
-  .pd-card-unit{font-size:10px; color:var(--muted);}
-  .pd-card-remaining{flex-direction:row; align-items:center; gap:8px; padding:10px;}
-  .pd-ring-wrap{position:relative; width:52px; height:52px; flex:0 0 auto;}
+  .pd-card-label{font-size:15px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--muted);}
+  .pd-card-value{font-family:var(--font-heading); font-size:30px; font-weight:700; margin-top:6px;}
+  .pd-card-unit{font-size:15px; color:var(--muted);}
+  .pd-card-remaining{flex-direction:row; align-items:center; gap:12px; padding:15px;}
+  .pd-ring-wrap{position:relative; width:78px; height:78px; flex:0 0 auto;}
   .pd-ring-svg{width:100%; height:100%; display:block;}
-  .pd-ring-center{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:9.5px; font-weight:700; color:var(--text);}
-  .pd-remaining-box{flex:1; min-width:0; background:var(--teal); border-radius:14px; padding:8px 10px;}
-  .pd-remaining-label{font-size:9px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#fff; opacity:.85;}
-  .pd-remaining-value{font-family:var(--font-heading); font-size:18px; font-weight:700; color:#fff; margin-top:2px; white-space:nowrap;}
+  .pd-ring-center{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:var(--text);}
+  .pd-remaining-box{flex:1; min-width:0; background:var(--teal); border-radius:14px; padding:12px 15px;}
+  .pd-remaining-label{font-size:13.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#fff; opacity:.85;}
+  .pd-remaining-value{font-family:var(--font-heading); font-size:27px; font-weight:700; color:#fff; margin-top:3px; white-space:nowrap;}
   /* Requested 2026-08-25: stretched to the full row width (was a
      horizontally-scrolling, fixed-width chip strip) now that today's chip
      needs the full day name instead of a 2-letter abbreviation -- flex:1
@@ -2239,8 +2245,15 @@
 
 <div class="modal-overlay" id="recipePreviewOverlay">
   <div class="modal-sheet">
-    <div class="modal-head">
-      <h3>🍽️ Podgląd przepisu</h3>
+    <!-- Requested 2026-08-25: "zamiast napisu podgląd przepisu... daj
+         nazwę przepisu z hyperlinkiem" -- the "🍽️ Podgląd przepisu" label
+         was pure redundancy: recipeCard() (below, filled by
+         openRecipePreviewModal) already shows the recipe's own name as a
+         clickable/underlined heading. Dropping the label lets that name
+         serve as the modal's title, saving a full row of vertical space;
+         justify-content:flex-end (inline, not the shared .modal-head rule
+         used by every OTHER modal) keeps the ✕ where it was, top-right. -->
+    <div class="modal-head" style="justify-content:flex-end; margin-bottom:0;">
       <button id="recipePreviewClose">✕</button>
     </div>
     <div id="recipePreviewBody"></div>
@@ -7696,16 +7709,22 @@ plannerModalOverlay.addEventListener("click", (e)=>{ if(e.target===plannerModalO
 // ---------- PROGRESS ----------
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 
-// Small inline-SVG cup/mug icon shared by the header water strip and the
-// Postęp "Nawodnienie" cup row -- replaces the old plain 💧 emoji with a
-// graphic closer to the reference design's blue mug icons. Filled = solid
-// blue mug (water logged for that slot), empty = light outline only.
+// Small inline-SVG icon shared by the header water strip and the Postęp
+// "Nawodnienie" cup row. Filled = solid blue (water logged for that slot),
+// empty = light outline only.
+// Requested 2026-08-25 ("zamiast kubeczków wody... zmień na kropelki w
+// każdym możliwym temacie"): swapped from the mug/cup shape (see the OLD
+// two-path <svg> this replaced -- a rectangle body + handle) to a classic
+// teardrop water-drop shape, same as the icon Klinika's dashboard/settings
+// already use elsewhere for water. Function/CSS class names below
+// (cupIconSvg, .cup) intentionally left unrenamed -- purely cosmetic
+// shape swap, renaming would touch every call site for zero behavior
+// change and risk an unrelated typo.
 function cupIconSvg(filled, size){
   size = size || 20;
   const color = filled ? "var(--ring-water)" : "var(--line)";
   return `<svg viewBox="0 0 24 24" width="${size}" height="${size}">
-    <path d="M5 4h11v9a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V4z" fill="${filled ? color : "none"}" stroke="${color}" stroke-width="1.8" stroke-linejoin="round"/>
-    <path d="M16 7.5h1.3a2 2 0 0 1 0 4H16" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M12 2.4C12 2.4 5.4 11.2 5.4 15.6a6.6 6.6 0 0 0 13.2 0C18.6 11.2 12 2.4 12 2.4z" fill="${filled ? color : "none"}" stroke="${color}" stroke-width="1.8" stroke-linejoin="round"/>
   </svg>`;
 }
 
