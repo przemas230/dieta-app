@@ -13,14 +13,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -39,6 +43,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -559,11 +564,54 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
             // still showed through under the new color). See HeaderKcalPanel
             // below for the card itself.
             val isClinicHeader = AppThemes.isClinicFamily(LocalDietaThemeId.current)
+            // Requested 2026-08-25 (screenshot follow-up): for Klinika, the
+            // action icons sat inside a full-size TopAppBar whose title slot
+            // is always empty (`return@TopAppBar` below) -- TopAppBar's own
+            // fixed minimum height still reserved its usual space regardless,
+            // leaving a visible empty band above the icons that plain padding
+            // tweaks on the title can't remove ("puste miejsce... zacznij od
+            // samej góry strony"). A lightweight Row with just
+            // WindowInsets.statusBars padding replaces TopAppBar entirely for
+            // Klinika, landing the icons right below the status bar; the
+            // other 11 themes keep the unchanged TopAppBar below.
+            val headerActions: @Composable RowScope.() -> Unit = {
+                // FR-33: global quick-add, visible on every tab (matches
+                // index.html's header "➕" button) -- the Postęp tab's OWN
+                // floating-button entry point to this same dialog isn't
+                // ported, since that tab is still a placeholder.
+                IconButton(onClick = { showQuickAddDialog = true }) {
+                    Icon(Icons.Filled.Add, contentDescription = "Dodaj przekąskę lub dodatkowe danie")
+                }
+                IconButton(onClick = {
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
+                    navController.navigate(Screen.Settings.route) {
+                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }) {
+                    Icon(Screen.Settings.icon, contentDescription = Screen.Settings.label)
+                }
+            }
             Column(
                 modifier = Modifier.background(
                     if (isClinicHeader) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.primary,
                 ),
             ) {
+                if (isClinicHeader) {
+                    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .windowInsetsPadding(WindowInsets.statusBars)
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        headerActions()
+                    }
+                    }
+                } else {
                 TopAppBar(
                     title = {
                         // Requested 2026-08-25 (Web FR-87/v9, ported here): the
@@ -663,6 +711,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                         }
                     },
                 )
+                }
                 // FR-87/v7: this whole panel (ring + today's meal list + snacks)
                 // moved into a new dashboard at the top of the Planer tab for
                 // Klinika/Klinika (noc) -- see PlannerScreen's clinicDashboard

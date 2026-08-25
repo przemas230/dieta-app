@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,6 +58,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -150,16 +153,34 @@ fun PlannerScreen(
     // dokladnie ten sam DayCard co dotychczas.
     val isClinic = AppThemes.isClinicFamily(LocalDietaThemeId.current)
     val todayIndex = remember { (LocalDate.now().dayOfWeek.value - 1).coerceIn(0, 6) }
+    // Requested 2026-08-25 (Web FR-87/v14 day-strip follow-up, ported here):
+    // tapping a day-strip chip on the dashboard scrolls the matching day's
+    // now-full-screen card (see DayCardClinic's fillParentMaxHeight() call
+    // below) into view -- item index 1+day because the dashboard itself is
+    // always item index 0 for Klinika (the AutoPlanWeekButton that occupies
+    // index 0 for the other 11 themes moves to the END of the list for
+    // Klinika instead, see below).
+    val listState = rememberLazyListState()
+    val scrollScope = rememberCoroutineScope()
 
     LazyColumn(
+        state = listState,
         contentPadding = PaddingValues(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (isClinic) {
+            // Requested 2026-08-25 (screenshot follow-up to FR-87/v15):
+            // "Dzisiejszy Planer" only filled about half the screen, with
+            // Monday's day-card already visible below it. fillParentMaxHeight()
+            // gives PlannerDashboard a bounded height to actually stretch
+            // into (see its own weight(1f) meal-list + DailyTargetBento
+            // call inside it, moved in from its own separate item{} here)
+            // -- matches web's #plannerTodayWrap{min-height:100dvh-...}.
             item {
                 PlannerDashboard(
                     displayName = displayName,
                     kcalTarget = kcalTargets.daily,
+                    dailyMacros = macroTargets.daily,
                     todayMeals = weekPlan[todayIndex].orEmpty(),
                     recipesById = recipesById,
                     eatenEntries = eatenEntries,
@@ -170,13 +191,12 @@ fun PlannerScreen(
                     onClearSlot = { cat -> plannerViewModel.clearSlot(todayIndex, cat) },
                     onSlotClick = { cat -> slotPicker = todayIndex to cat },
                     onSignOut = onSignOut,
+                    onDayJump = { di -> scrollScope.launch { listState.animateScrollToItem(1 + di) } },
                     onWaterTap = onWaterTap,
                     onWaterSetCount = onWaterSetCount,
                     onSetEaten = onSetEaten,
+                    modifier = Modifier.fillParentMaxHeight(),
                 )
-            }
-            item {
-                DailyTargetBento(kcalTarget = kcalTargets.daily, macros = macroTargets.daily)
             }
         }
         // Requested 2026-08-25 (Web FR-87/v9, ported here): moved below the
@@ -211,6 +231,13 @@ fun PlannerScreen(
             val addDayToShopping: () -> Unit = { shoppingViewModel.addDayPlan(weekPlan[day].orEmpty(), recipesById) }
 
             if (isClinic) {
+                // Requested 2026-08-25: the 7 day cards below "Dzisiejszy
+                // Planer" should ALSO fill the screen (one day per scroll),
+                // matching web's .clinic-day-card{min-height:100dvh-...} --
+                // fillParentMaxHeight() is the same LazyItemScope API the
+                // dashboard item above uses. Paired with the day-strip
+                // chips' onDayJump (PlannerDashboard below), which scrolls
+                // this exact item into view.
                 DayCardClinic(
                     day = day,
                     dayName = dayName,
@@ -228,6 +255,7 @@ fun PlannerScreen(
                     onRandomizeDay = randomizeDay,
                     onClearDay = clearDay,
                     onAddDayToShopping = addDayToShopping,
+                    modifier = Modifier.fillParentMaxHeight(),
                 )
             } else {
                 DayCard(
@@ -431,10 +459,12 @@ private fun DayCard(
  * -equivalent map, EatenOperations, WaterOperations -- only the layout
  * differs). Greeting/date/sign-out, a CEL/POZOSTAŁO(ring)/WODA card row (the
  * ring replaces the kcal ring the global header used to show, see
- * MainActivity.kt's isClinicHeader gate on HeaderKcalPanel), a decorative
- * "today first, today highlighted" day strip (does NOT switch which day's
- * meals show below -- confirmed with the user before building this, see
- * FR-87.md v7), and "Dzisiejszy Planer" cards for today's 5 meal slots (tap
+ * MainActivity.kt's isClinicHeader gate on HeaderKcalPanel), a "today first,
+ * today highlighted" day strip (still does NOT switch which day's meals
+ * show in THIS dashboard -- confirmed with the user before building this,
+ * see FR-87.md v7; tapping a chip now scrolls the matching full-screen day
+ * card further down into view instead, via onDayJump, requested 2026-08-25),
+ * and "Dzisiejszy Planer" cards for today's 5 meal slots (tap
  * toggles eaten same as the old header's swipe-to-eat rows, × clears the
  * slot same as the picker dialog's "— brak / wyczyść —" row, empty slots
  * are a dashed "+ [category]" placeholder opening that same picker).
@@ -443,6 +473,7 @@ private fun DayCard(
 private fun PlannerDashboard(
     displayName: String,
     kcalTarget: Int,
+    dailyMacros: MacroGrams,
     todayMeals: Map<String, PlannedMeal>,
     recipesById: Map<String, Recipe>,
     eatenEntries: Map<String, EatenEntry>,
@@ -453,6 +484,7 @@ private fun PlannerDashboard(
     onClearSlot: (cat: String) -> Unit,
     onSlotClick: (cat: String) -> Unit,
     onSignOut: () -> Unit,
+    onDayJump: (dayIndex: Int) -> Unit = {},
     onWaterTap: (Int) -> Unit = {},
     onWaterSetCount: (Int) -> Unit = {},
     // Requested 2026-08-25 (Web FR-87/v14, ported here): directional swipe
@@ -463,6 +495,7 @@ private fun PlannerDashboard(
     // already in that state did the opposite of what it looked like it
     // should.
     onSetEaten: (cat: String, eaten: Boolean, plannedKcal: Int?, plannedName: String?) -> Unit = { _, _, _, _ -> },
+    modifier: Modifier = Modifier,
 ) {
     val eatenKcal = EatenOperations.dailyEatenKcal(eatenEntries) + EatenOperations.snacksKcal(snacks)
     val remaining = (kcalTarget - eatenKcal).coerceAtLeast(0)
@@ -483,7 +516,18 @@ private fun PlannerDashboard(
     // onSetEaten above).
     var previewRecipe by remember { mutableStateOf<Pair<Recipe, Double>?>(null) }
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    // Requested 2026-08-25 (Web FR-87/v14+screenshot follow-up, ported
+    // here): "Dzisiejszy Planer" only filled about half the screen, with
+    // Monday's day-card already peeking in below it -- caller now passes
+    // Modifier.fillParentMaxHeight() (see LazyColumn item below) so this
+    // Column has a bounded height to actually stretch into; the meal-slot
+    // list further down gets weight(1f) (each row ALSO weight(1f), same as
+    // web's #plannerDashboard{flex:1}+.pd-today-list{flex:1}+per-card
+    // flex:1) so the 5 rows grow to fill whatever's left, and
+    // DailyTargetBento (moved inside from the caller) lands pinned right
+    // after them at the bottom of the full-height column instead of
+    // leaving a gap above it.
+    Column(modifier = modifier.fillMaxWidth()) {
         // Requested 2026-08-25 (Web FR-87/v9, ported here): the sign-out
         // shortcut duplicated the one already in Ustawienia → Konto and was
         // reported as unwanted on the main screen -- dropped from this Row
@@ -575,6 +619,13 @@ private fun PlannerDashboard(
                                 Modifier
                             },
                         )
+                        // Requested 2026-08-25 (Web FR-87/v14 day-strip
+                        // follow-up, ported here): the strip was purely
+                        // decorative -- now doubles as a shortcut, scrolling
+                        // the matching day's now-full-screen card into view
+                        // (see onDayJump/DayCardClinic's fillParentMaxHeight()
+                        // above/below).
+                        .clickable { onDayJump(di) }
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                 ) {
                     // Requested 2026-08-25 (Web FR-87/v9, ported here):
@@ -594,6 +645,12 @@ private fun PlannerDashboard(
         Spacer(modifier = Modifier.height(10.dp))
         Text("Dzisiejszy Planer", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         Spacer(modifier = Modifier.height(6.dp))
+        // weight(1f) here (bounded by the outer Column's own
+        // fillParentMaxHeight, see caller) is what actually makes the 5
+        // meal rows below grow to fill the screen -- each row ALSO gets
+        // weight(1f) so the extra space is distributed across all of them
+        // instead of leaving one gap after the last one.
+        Column(modifier = Modifier.weight(1f)) {
         PlannerOperations.PLANNER_CATEGORIES.forEachIndexed { index, category ->
             if (index > 0) Spacer(modifier = Modifier.height(6.dp))
             val meal = todayMeals[category.id]
@@ -602,6 +659,7 @@ private fun PlannerDashboard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .weight(1f)
                         .clip(MaterialTheme.shapes.large)
                         .dashedBorder(MaterialTheme.colorScheme.outlineVariant, 16.dp)
                         .clickable { onSlotClick(category.id) }
@@ -631,16 +689,25 @@ private fun PlannerDashboard(
                 val swipeCommitPx = with(LocalDensity.current) { 32.dp.toPx() }
                 val dragIntensity = (kotlin.math.abs(offsetX.value) / swipeCommitPx).coerceIn(0f, 1f)
                 val dragTint = when {
-                    offsetX.value > 4f -> Color(0xFF3CAA6E).copy(alpha = 0.14f * dragIntensity)
-                    offsetX.value < -4f -> Color(0xFFBE463C).copy(alpha = 0.14f * dragIntensity)
+                    offsetX.value > 4f -> Color(0xFF3CAA6E).copy(alpha = 0.35f * dragIntensity)
+                    offsetX.value < -4f -> Color(0xFFBE463C).copy(alpha = 0.35f * dragIntensity)
                     else -> Color.Transparent
                 }
-                Box {
+                // Bug reported 2026-08-25 ("przy przesuwaniu nie ma kolorów"):
+                // Card/Surface always paints its OWN containerColor on top of
+                // whatever the incoming modifier already drew, so an outer
+                // `.background(dragTint)` on Card's modifier chain (the first
+                // attempt) was invisible -- silently painted over. Blending
+                // the tint into `colors.containerColor` instead (the color
+                // Card itself paints) is the only place a Card's background
+                // can actually be influenced from outside.
+                val cardContainerColor = dragTint.compositeOver(MaterialTheme.colorScheme.surface)
+                Box(modifier = Modifier.weight(1f)) {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .fillMaxHeight()
                             .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                            .background(dragTint, MaterialTheme.shapes.large)
                             .pointerInput(category.id) {
                                 detectHorizontalDragGestures(
                                     onDragEnd = {
@@ -662,9 +729,10 @@ private fun PlannerDashboard(
                             }
                             .clickable { previewRecipe = recipe to meal.scale },
                         shape = MaterialTheme.shapes.large,
+                        colors = CardDefaults.cardColors(containerColor = cardContainerColor),
                         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                     ) {
-                        Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(modifier = Modifier.fillMaxHeight().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(category.emoji, fontSize = 18.sp)
                             Spacer(modifier = Modifier.width(10.dp))
                             Column(modifier = Modifier.weight(1f)) {
@@ -705,6 +773,9 @@ private fun PlannerDashboard(
                 }
             }
         }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        DailyTargetBento(kcalTarget = kcalTarget, macros = dailyMacros)
     }
     if (showWaterPicker) {
         // Requested 2026-08-25 (Web FR-87/v9, ported here): same tap-a-
@@ -845,9 +916,10 @@ private fun DayCardClinic(
     onRandomizeDay: () -> Unit,
     onClearDay: () -> Unit,
     onAddDayToShopping: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isToday) 3.dp else 1.dp),

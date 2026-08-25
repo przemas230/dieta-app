@@ -704,17 +704,24 @@
      as pd-header's first line. main's top padding is widened to match, so
      the OTHER 10 themes' tabs (which have no pd-header to align with)
      still clear the floating icons instead of their own heading text
-     landing underneath them. */
+     landing underneath them.
+     Revised same day: user reported the resulting 56px/100px offsets still
+     left a visible empty band above the icons ("zostało puste miejsce po
+     headerze, zacznij od samej góry strony") -- both trimmed down to
+     10px/54px (kept in the same 44px relative relationship to each other
+     and to #view-planner's -44px pull-up below, so the icon/pd-header
+     alignment and the other themes' 44px clearance under the icons are
+     both unaffected, just closer to the top of the screen overall). */
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top{
     background:transparent; color:var(--text); box-shadow:none;
     border-bottom-left-radius:0; border-bottom-right-radius:0;
     height:0; padding:0; overflow:visible;
   }
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top .header-title-row{
-    padding:56px 18px 0;
+    padding:10px 18px 0;
   }
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) main{
-    padding-top:100px;
+    padding-top:54px;
   }
   /* Requested 2026-08-25: "Dzisiejszy Planer" (pd-header + pd-cards +
      day-strip + today's meal cards, all built by renderPlannerDashboard())
@@ -722,12 +729,20 @@
      the bento tiles pinned to the very bottom -- the 7-day list below only
      becomes visible by scrolling, instead of sitting immediately under
      today's cards. min-height subtracts roughly what main's own top+bottom
-     padding above/below already reserves (100px header clearance + 100px
-     nav clearance), so the wrap's bottom edge lands at the visible
-     viewport's bottom rather than overshooting it. */
+     padding above/below already reserves, so the wrap's bottom edge lands
+     at the visible viewport's bottom rather than overshooting it.
+     Revised same day (10px/54px header retune above): the wrap's actual
+     top offset from the screen's top edge is now ~10px (main's 54px
+     padding-top minus #view-planner's -44px pull-up, same as the header
+     icons' own 10px), not the original 100px this constant was written
+     against -- subtracted amount corrected from 200px to 110px
+     (10px top + 100px bottom nav clearance) so the wrap actually reaches
+     the visible bottom of the screen instead of stopping short and letting
+     Monday's card peek in underneath it (reported via screenshot: "nie
+     jest wypełniona cala strona planer, zajmuje tylko pół strony"). */
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) #plannerTodayWrap{
     display:flex; flex-direction:column;
-    min-height:calc(100dvh - 200px);
+    min-height:calc(100dvh - 110px);
   }
   /* Requested 2026-08-25: was `margin-top:auto` on the bento row alone,
      which left one big empty gap directly above it whenever today's meal
@@ -867,7 +882,7 @@
      larger flex-grow gives it the extra room its longer label needs; the
      ellipsis fallback only kicks in on screens too narrow for even that. */
   .pd-strip{display:flex; gap:6px; margin-bottom:14px;}
-  .pd-day-chip{flex:1; min-width:0; text-align:center; padding:8px 4px; border-radius:14px; background:var(--card); font-size:10.5px; font-weight:600; color:var(--muted); border:1.5px solid transparent; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .pd-day-chip{flex:1; min-width:0; text-align:center; padding:8px 4px; border-radius:14px; background:var(--card); font-size:10.5px; font-family:inherit; font-weight:600; color:var(--muted); border:1.5px solid transparent; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer;}
   .pd-day-chip.today{flex:2.2; border-color:var(--text); color:var(--text); font-weight:700;}
   .pd-section-title{font-family:var(--font-heading); font-size:14px; font-weight:600; margin:0 0 8px;}
   /* Requested 2026-08-25: "Dzisiejszy Planer" was leaving dead empty space
@@ -996,7 +1011,20 @@
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) .bento-label{
     font-size:9.5px; color:var(--muted); margin-top:2px;
   }
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .clinic-day-card{ border-radius:22px; }
+  /* Requested 2026-08-25: each of the 7 day cards below "Dzisiejszy
+     Planer" should ALSO fill the screen, one day per swipe/scroll, instead
+     of several partial cards being visible at once -- same min-height
+     formula as #plannerTodayWrap above (~10px top clearance once scrolled
+     to the top of #plannerDays, since #plannerDays itself isn't pulled up
+     by view-planner's -44px the way plannerTodayWrap is, but scroll
+     position makes that irrelevant here; 100px bottom nav clearance is the
+     part that actually matters while a day card is scrolled into view).
+     Paired with the day-strip chips (renderPlannerDashboard()) gaining
+     click handlers that scroll the matching card to the vertical center of
+     the screen. */
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .clinic-day-card{
+    border-radius:22px; min-height:calc(100dvh - 110px); box-sizing:border-box;
+  }
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-head{
     display:flex; align-items:center; gap:8px; margin-bottom:10px;
   }
@@ -7229,7 +7257,7 @@ function renderPlannerDashboard(){
   const stripHtml = Array.from({length:7}, (_,i)=>{
     const di = (todayIdx + i) % 7;
     const label = i===0 ? DAYS[di] : DAYS[di].slice(0,2);
-    return `<div class="pd-day-chip${i===0?' today':''}">${label}</div>`;
+    return `<button type="button" class="pd-day-chip${i===0?' today':''}" data-pd-day-jump="${di}">${label}</button>`;
   }).join("");
 
   const meals = todaysPlannerMeals();
@@ -7287,6 +7315,19 @@ function renderPlannerDashboard(){
     document.getElementById("signOutBtn").click();
   });
   document.getElementById("pdWaterCard").addEventListener("click", openWaterPickerModal);
+  // Requested 2026-08-25: the decorative day-strip chips (previously inert
+  // <div>s) now double as shortcuts -- tapping one scrolls the matching
+  // day's card (below, in #plannerDays, now itself full-screen-height --
+  // see .clinic-day-card's min-height) to the vertical center of the
+  // screen, so it's actually usable as a "jump to that day" affordance now
+  // that the day list is one full-screen card per day instead of several
+  // partial ones stacked closely together.
+  box.querySelectorAll("[data-pd-day-jump]").forEach(chip=>{
+    chip.addEventListener("click", ()=>{
+      const target = document.getElementById(`day-card-${chip.dataset.pdDayJump}`);
+      if(target) target.scrollIntoView({behavior:"smooth", block:"center"});
+    });
+  });
   // Requested 2026-08-25: tapping a "Dzisiejszy Planer" card used to
   // toggle eaten directly -- swapped so swipe (either direction) toggles
   // eaten instead (matching the header's own swipe-to-eat gesture,
@@ -7345,6 +7386,7 @@ function renderPlanner(){
     state.planner[di] = state.planner[di] || {};
     const card = document.createElement("div");
     card.className = isClinic ? "day-card clinic-day-card" : "day-card";
+    card.id = `day-card-${di}`;
     let total = 0;
     const prevDi = (di + 6) % 7;
     const rowsHtml = CATS.map(c=>{

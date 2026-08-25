@@ -1,0 +1,44 @@
+v101 — poprawki po zrzutach ekranu z telefonu (motyw Klinika, zakładka Planer)
+
+Użytkownik przesłał zrzuty ekranu pokazujące, że poprzednia runda poprawek
+(v100) nie do końca zadziałała tak jak zakładano:
+
+1. Nad ikonkami "+"/ustawień w nagłówku wciąż zostawało widoczne, puste
+   pole zamiast zaczynać się od samej góry ekranu. Odstępy zmniejszone
+   (56px→10px dla ikon, 100px→54px dla głównej treści), z zachowaniem tej
+   samej wzajemnej relacji, więc ikony nadal są w jednym rzędzie z datą/
+   powitaniem — po prostu bliżej góry ekranu.
+
+2. "Dzisiejszy Planer" nadal nie wypełniał całego ekranu (widać było kawałek
+   karty "Poniedziałek" pod spodem) — stała odejmowana w
+   `calc(100dvh - Npx)` była wyliczona względem starego, większego odstępu
+   nagłówka (200px), poprawiona na 110px zgodnie z nowymi, mniejszymi
+   odstępami z punktu 1.
+
+3. Nowość: 7 kart dni tygodnia pod "Dzisiejszym Planerem" TEŻ dostało
+   pełnoekranową wysokość (ta sama formuła co punkt 2) — każdy dzień zajmuje
+   teraz z grubsza cały ekran zamiast kilku widocznych naraz w skrócie.
+
+4. Nowość: pasek 7 dni na karcie "Dzisiejszy Planer" (dotąd czysto
+   dekoracyjny) można teraz kliknąć — przewija do pełnoekranowej karty
+   wybranego dnia, wyśrodkowanej na ekranie (`scrollIntoView({block:
+   "center"})`).
+
+Wszystkie 4 zmiany zweryfikowane bezpośrednio w lokalnym Chrome poprzez
+pomiary `getBoundingClientRect`/`getComputedStyle` (nie tylko wizualnie) —
+odstęp nagłówka, wysokość `#plannerTodayWrap` i kart dni dokładnie zgadzają
+się z nowymi wzorami. Kliknięcie w pasek dni potwierdzone jako poprawnie
+wywołujące `scrollIntoView` z właściwym celem (przechwycone przez tymczasowy
+monkey-patch) — sama animacja płynnego przewijania nie dała się zaobserwować
+w tej konkretnej zautomatyzowanej sesji Chrome, bo karta była w tle
+(`document.hidden === true`), a Chrome usypia animacje przewijania w
+niewidocznych kartach — nie jest to błąd aplikacji, tylko ograniczenie tego
+narzędzia testowego.
+
+CACHE_NAME: v100 → v101.
+
+Ten sam komplet zmian doportowany na Androida w tej samej turze (patrz
+android/PARITY.md i Functional requirements/FR-87.md) — w tym naprawiony
+osobny, realny błąd Androida: podświetlenie karty w trakcie przesuwania
+(swipe) było niewidoczne, bo Compose'owy `Card`/`Surface` maluje własne
+tło NAD tłem ustawionym przez zewnętrzny modyfikator `.background()`.
