@@ -1,0 +1,28 @@
+Wersja v97 (2026-08-25)
+
+Zmiany w index.html i sw.js (Web only — motyw Klinika / Klinika (noc)):
+
+1. Nagłówek aplikacji ukryty całkowicie — zamiast duplikować datę i
+   powitanie, które i tak widać niżej na karcie Planer (dodane w v96),
+   zostały tylko ikonka ustawień i plusik (dodaj przekąskę), w prawym
+   górnym rogu, żeby nie zaburzać wyglądu strony.
+2. Naprawiony błąd: dolny pasek nawigacji (pływająca "pigułka") wyglądał
+   na ucięty na długich, przewijanych listach (np. 87-pozycyjna lista
+   zakupów) — `main` miało tylko 6px dolnego marginesu, za mało żeby
+   ostatnie elementy listy nie chowały się pod paskiem. Dodany osobny,
+   większy margines dla Kliniki/Kliniki (noc) (100px + safe area).
+3. Dotknięcie kwadracika "WODA" na karcie Planer teraz otwiera floating
+   panel z tym samym interaktywnym wybieraniem liczby szklanek (kółka,
+   +/-), co wcześniej istniało tylko w zakładce Postęp — wcześniej
+   dotknięcie nie robiło nic.
+4. Zielony przycisk "🎲 Wygeneruj losowo cały tydzień" przeniesiony na
+   sam dół karty Planer (pod listą dni) zamiast nad nią — tylko dla
+   Kliniki/Kliniki (noc), pozostałe 11 motywów bez zmian.
+- CACHE_NAME podniesiony do "dieta-app-v97".
+
+Wszystkie zmiany zweryfikowane lokalnie w Chrome (zrzuty ekranu + sprawdzenie
+stanu DOM/CSS przez zdalne sterowanie), nie tylko sprawdzone składniowo.
+
+Android nadal NIE dostał odpowiadających zmian z v96/v97 — patrz
+android/PARITY.md, świadomie odłożone razem z resztą poprawek motywu
+Klinika z tej sesji.

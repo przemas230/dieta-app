@@ -3379,6 +3379,54 @@ się zgadzać z web co do joty.
   kryterium akceptacji "web i Android dają dokładnie ten sam wygląd" z
   wcześniejszych wersji tego FR — udokumentowane tu jawnie jako znany,
   tymczasowy rozjazd, nie przeoczenie (patrz `android/PARITY.md`).
+- **v9** (2026-08-25, Web only): Tego samego dnia, po zobaczeniu v8 na
+  żywo (dwa zrzuty ekranu telefonu), użytkownik poprosił o cztery kolejne
+  poprawki:
+  1. Nagłówek (v8 wypełnił go datą + powitaniem, duplikując pd-header)
+     zamiast tego ukryty CAŁKOWICIE — zostały tylko ikonka ustawień i
+     plusik, wyrównane do prawej (`header.app-top h1{display:none}` +
+     `.header-title-row{justify-content:flex-end}`), "żeby nie zaburzał
+     wyglądowi strony". `renderHeader()` wrócił do wcześniejszej,
+     jednolitej (bez rozgałęzienia na motyw) treści `#headerSub` — i tak
+     niewidocznej, skoro `h1` jest ukryte; `clinicDateLabel()`/
+     `clinicGreetingText()` (v8) zostały jako współdzielone funkcje, nadal
+     używane przez `renderPlannerDashboard()`.
+  2. Zgłoszony (zrzut ekranu) błąd: pływający pasek dolnej nawigacji
+     wyglądał na ucięty na długiej, przewijanej liście zakupów (87
+     pozycji). Przyczyna: `main{padding:14px 14px 6px}` — te same 6px
+     dolnego marginesu dla WSZYSTKICH motywów — nie starczały żeby
+     ostatnie pozycje listy nie chowały się pod pływającą "pigułką"
+     Kliniki (własna wysokość + 12px odstępu od krawędzi + safe area).
+     Naprawione osobnym, większym marginesem (`calc(100px + env(safe-
+     area-inset-bottom))`) TYLKO dla Kliniki/Kliniki (noc) — pozostałych
+     11 motywów (dokowany pasek, inna wysokość) nikt nie zgłosił jako
+     zepsute, więc ich `main` zostaje bez zmian.
+  3. Dotknięcie kwadracika "WODA" na karcie Planer (v7) nie robiło nic —
+     był to zwykły, nieinteraktywny tekst. Dodany floating panel
+     (`#waterPickerOverlay`, ten sam wzorzec `.modal-overlay.center` co
+     reszta modali w apce) z DOKŁADNIE tym samym interaktywnym
+     wybieraniem (kółka do stuknięcia, +/-), które już istniało w
+     `#waterRow` (zakładka Postęp) — logika budowania tego widżetu
+     wydzielona do współdzielonej `renderWaterRow(container)`, żeby nie
+     duplikować kodu w dwóch miejscach. `setWaterCount()` odświeża teraz
+     też panel (jeśli otwarty) i `renderPlannerDashboard()` (żeby sama
+     karta WODA na Planerze też się aktualizowała na bieżąco, nie tylko
+     po zamknięciu panelu).
+  4. Zielony przycisk "🎲 Wygeneruj losowo cały tydzień" (siedzący nad
+     paskiem bento/listą dni) przeniesiony na sam dół karty Planer, pod
+     listę dni — TYLKO dla Kliniki/Kliniki (noc) (`renderPlanner()`
+     przenosi realny węzeł DOM-u, `#plannerAutoPlanRow`, na koniec
+     `#view-planner` dla tego motywu i z powrotem na oryginalne miejsce
+     dla pozostałych 11, więc przełączanie motywu tam i z powrotem bez
+     przeładowania strony działa poprawnie w obie strony).
+
+  Wszystkie 4 zweryfikowane lokalnie w Chrome: zrzuty ekranu (nagłówek
+  ukryty, przycisk przeniesiony) + bezpośrednie sprawdzenie stanu DOM/CSS
+  (`getComputedStyle`, kolejność dzieci `#view-planner` dla obu wariantów
+  motywu, kliknięcie kółka w panelu wody i potwierdzenie że karta WODA na
+  Planerze zaktualizowała się na żywo bez zamykania panelu). Web only, z
+  tego samego powodu co v8 — Android nadal czeka na osobny przegląd tych
+  poprawek na emulatorze (patrz `android/PARITY.md`).
 
 # FR-88: Planer jako pierwsza zakładka nawigacji
 

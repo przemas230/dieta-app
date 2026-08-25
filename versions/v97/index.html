@@ -732,22 +732,24 @@
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top .header-chevron{
     display:none;
   }
-  /* Requested 2026-08-25, revised same day: first tried replacing the
-     header's "🍲 Dieta App" title + profile summary with the same date +
-     "Cześć, {name}!" the Planer dashboard below already shows -- user then
-     asked to just hide the whole header instead (it duplicated the
-     dashboard's own greeting one scroll down), keeping only the settings
-     gear + quick-add "+" so they don't disrupt the page's look. `h1` is
-     the ONLY thing hidden (not header.app-top itself) so the button row
-     stays put; header-title-row's justify-content flips to flex-end so
-     that lone remaining row doesn't jump to the left once h1 stops taking
-     up space (renderHeader() no longer writes anything clinic-specific
-     into #headerSub -- see its own comment). */
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top h1{
+  /* Requested 2026-08-25: the header's "🍲 Dieta App" title + profile
+     summary line don't earn their space once the ring/meal-list above are
+     already gone for Klinika (nothing left to expand into by tapping it) --
+     replaced with the same date + "Cześć, {name}!" greeting the Planer
+     dashboard below already shows (renderHeader() writes this markup into
+     #headerSub only for Klinika/Klinika (noc), see clinicGreetingHtml()). */
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top h1 .app-name{
     display:none;
   }
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top .header-title-row{
-    justify-content:flex-end;
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top h1 .header-profile-inline{
+    display:flex; flex-direction:column; gap:1px; white-space:normal; overflow:visible;
+    -webkit-mask-image:none; mask-image:none; opacity:1;
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top h1 .header-profile-inline .hdr-clinic-date{
+    font-size:11px; font-weight:500; color:var(--muted); text-transform:capitalize;
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top h1 .header-profile-inline .hdr-clinic-greeting{
+    font-family:var(--font-heading); font-size:16px; font-weight:700; color:var(--text);
   }
   /* Requested 2026-08-25: same "Wyloguj się" action already exists in
      Ustawienia → Konto -- the Planer dashboard's own 🚪 shortcut next to
@@ -778,11 +780,6 @@
      roughly what IT (1.5fr) + Cel (1fr) used to occupy together. */
   .pd-cards{display:grid; grid-template-columns:2.3fr 1fr; gap:8px; margin-bottom:14px;}
   .pd-card{background:var(--card); border-radius:20px; padding:12px 10px; box-shadow:0 1px 3px rgba(0,0,0,.06); display:flex; flex-direction:column; justify-content:center;}
-  /* Requested 2026-08-25: the WODA card is now a real <button> (opens the
-     floating water picker, see openWaterPickerModal()) instead of inert
-     text -- reset the default button chrome so it still looks exactly
-     like a .pd-card. */
-  .pd-card-water{border:none; font:inherit; color:inherit; text-align:inherit; cursor:pointer; width:100%;}
   .pd-card-label{font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--muted);}
   .pd-card-value{font-family:var(--font-heading); font-size:20px; font-weight:700; margin-top:4px;}
   .pd-card-unit{font-size:10px; color:var(--muted);}
@@ -812,20 +809,6 @@
   .pd-meal-kcal{font-size:12px; color:var(--muted); flex:0 0 auto;}
   .pd-meal-remove{background:none; border:none; color:var(--muted); font-size:15px; line-height:1; padding:4px; cursor:pointer; flex:0 0 auto;}
   .pd-meal-card-empty{border:1.5px dashed var(--line); background:transparent; box-shadow:none; color:var(--muted); justify-content:center; font-size:13px; font-weight:600;}
-  /* Bug reported 2026-08-25 ("jak ucięty jest pasek z ikonami na dole"):
-     `main` only reserves 6px of bottom padding (shared by every theme),
-     nowhere near enough to clear Klinika's floating pill nav -- ~64px of
-     its own content height, PLUS the 12px gap it floats above the screen
-     edge, PLUS env(safe-area-inset-bottom). On a long scrollable view
-     (87-item shopping list) that meant the last item(s) sat behind/under
-     the pill once scrolled all the way down, reading as the nav bar
-     itself being cut off. Scoped to Klinika/Klinika (noc) only -- the
-     other 11 themes' docked nav is a different height and this padding
-     was presumably already tuned (or at least not reported broken) for
-     them; not touching their layout without being asked. */
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) main{
-    padding-bottom:calc(100px + env(safe-area-inset-bottom));
-  }
   /* Same "floating pill" bottom nav as Android's FloatingBottomNav -- visible
      margin from the screen edge instead of docking flush, active tab's icon
      in a filled sage circle instead of a color-only change. */
@@ -1556,7 +1539,7 @@
   <!-- VIEW: PLANER -->
   <section id="view-planner" class="view active">
     <div id="plannerDashboard"></div>
-    <div class="shop-actions" style="margin-top:0;" id="plannerAutoPlanRow">
+    <div class="shop-actions" style="margin-top:0;">
       <button class="btn primary" id="autoPlanBtn">🎲 Wygeneruj losowo cały tydzień</button>
     </div>
     <div id="plannerBento" class="clinic-bento"></div>
@@ -2067,17 +2050,6 @@
         </div>
       </div></div>
     </div>
-  </div>
-</div>
-
-<div class="modal-overlay center" id="waterPickerOverlay">
-  <div class="modal-sheet center-sheet">
-    <div class="modal-head">
-      <h3>💧 Ile szklanek wody?</h3>
-      <button id="waterPickerClose">✕</button>
-    </div>
-    <div class="water-row" id="waterPickerRow"></div>
-    <div class="hint-text" id="waterPickerLabel" style="text-align:center; margin-top:10px;"></div>
   </div>
 </div>
 
@@ -4283,12 +4255,10 @@ function updateWaterRing(){
   const waterCircumference = 2 * Math.PI * 39;
   el.setAttribute("stroke-dasharray", `${(waterPct*waterCircumference).toFixed(1)} ${waterCircumference.toFixed(1)}`);
 }
-// Shared "date + Cześć, {name}!" content -- used in the Planer dashboard's
-// own pd-header (renderPlannerDashboard()), Klinika/Klinika (noc) only.
-// (Used to also feed the global header's #headerSub, replacing the app
-// icon+name -- reverted 2026-08-25, same day, when the user asked to hide
-// that header entirely instead of duplicating this content into it; kept
-// here as shared helpers since renderPlannerDashboard() still needs them.)
+// Shared "date + Cześć, {name}!" content -- used both in the header
+// (Klinika/Klinika (noc) only, replacing the app icon+name, see
+// renderHeader() below) and in the Planer dashboard's own pd-header
+// (renderPlannerDashboard()), kept in one place so the two never drift.
 function clinicDateLabel(){
   return new Date().toLocaleDateString("pl-PL", {weekday:"long", day:"numeric", month:"long"});
 }
@@ -4301,9 +4271,14 @@ function renderHeader(){
   const sexLabel = p.sex==="m" ? "Mężczyzna" : "Kobieta";
   const goalLabel = {loss:"redukcja",maintain:"utrzymanie",gain:"budowanie masy"}[p.goal];
   const namePrefix = state.displayName ? `${state.displayName} · ` : "";
-  document.getElementById("headerSub").textContent = !p.configured
-        ? `${namePrefix}👋 Ustaw swój profil w Ustawieniach, aby dopasować dietę do siebie`
-        : `${namePrefix}${sexLabel}, ${p.age} lat · ${p.height} cm · ${p.weight}\u00A0kg → cel ${p.targetWeight}\u00A0kg · ${goalLabel} · ~${t.daily}\u00A0kcal/dzień`;
+  const isClinic = state.theme==="clinic" || state.theme==="clinic_dark";
+  if(isClinic){
+    document.getElementById("headerSub").innerHTML = `<span class="hdr-clinic-date">${clinicDateLabel()}</span><span class="hdr-clinic-greeting">${clinicGreetingText()}</span>`;
+  }else{
+    document.getElementById("headerSub").textContent = !p.configured
+      ? `${namePrefix}👋 Ustaw swój profil w Ustawieniach, aby dopasować dietę do siebie`
+      : `${namePrefix}${sexLabel}, ${p.age} lat · ${p.height} cm · ${p.weight}\u00A0kg → cel ${p.targetWeight}\u00A0kg · ${goalLabel} · ~${t.daily}\u00A0kcal/dzień`;
+  }
   const meals = todaysPlannerMeals();
   const today = todayStr();
   // FR-36/v2: the ring reflects what's actually been EATEN today (not the
@@ -5555,10 +5530,6 @@ document.getElementById("quickAddOverlay").addEventListener("click", (e)=>{
 document.getElementById("macroInfoClose").addEventListener("click", ()=> document.getElementById("macroInfoOverlay").classList.remove("show"));
 document.getElementById("macroInfoOverlay").addEventListener("click", (e)=>{
   if(e.target===document.getElementById("macroInfoOverlay")) e.target.classList.remove("show");
-});
-document.getElementById("waterPickerClose").addEventListener("click", ()=> document.getElementById("waterPickerOverlay").classList.remove("show"));
-document.getElementById("waterPickerOverlay").addEventListener("click", (e)=>{
-  if(e.target===document.getElementById("waterPickerOverlay")) e.target.classList.remove("show");
 });
 document.getElementById("macroLegendMicroNote").textContent = MICRO_APPROX_NOTE;
 document.getElementById("macroLegendToggle").addEventListener("click", ()=>{
@@ -7041,11 +7012,11 @@ function renderPlannerDashboard(){
           <div class="pd-remaining-value">${remaining} kcal</div>
         </div>
       </div>
-      <button type="button" class="pd-card pd-card-water" id="pdWaterCard">
+      <div class="pd-card">
         <div class="pd-card-label">Woda</div>
         <div class="pd-card-value">${waterCount}/8</div>
         <div class="pd-card-unit">szklanek</div>
-      </button>
+      </div>
     </div>
     <div class="pd-strip">${stripHtml}</div>
     <h3 class="pd-section-title">Dzisiejszy Planer</h3>
@@ -7055,7 +7026,6 @@ function renderPlannerDashboard(){
   document.getElementById("pdSignOutBtn").addEventListener("click", ()=>{
     document.getElementById("signOutBtn").click();
   });
-  document.getElementById("pdWaterCard").addEventListener("click", openWaterPickerModal);
   box.querySelectorAll("[data-pd-toggle-cat]").forEach(el=>{
     el.addEventListener("click", (e)=>{
       if(e.target.closest("[data-pd-remove-cat]")) return;
@@ -7085,21 +7055,6 @@ function renderPlanner(){
   renderPlannerBento();
   renderPlannerDashboard();
   const isClinic = state.theme==="clinic" || state.theme==="clinic_dark";
-  // Requested 2026-08-25 (Klinika/Klinika (noc) only -- the other 11 themes
-  // keep the button where it always was, right after the dashboard/bento
-  // placeholders, since nothing about their layout was reported broken):
-  // "🎲 Wygeneruj losowo cały tydzień" moves to the very bottom of the
-  // Planer view, after the day cards, instead of sitting above them.
-  // Actually moving the DOM node (not just a CSS reorder) so it stays a
-  // single real element -- idempotent either direction in case the theme
-  // gets switched back and forth without a full page reload.
-  const viewPlanner = document.getElementById("view-planner");
-  const autoPlanRow = document.getElementById("plannerAutoPlanRow");
-  if(isClinic){
-    viewPlanner.appendChild(autoPlanRow);
-  }else{
-    viewPlanner.insertBefore(autoPlanRow, document.getElementById("plannerBento"));
-  }
   const jsDay = new Date().getDay();
   const todayIdx = jsDay===0 ? 6 : jsDay-1;
   const box = document.getElementById("plannerDays");
@@ -7437,15 +7392,10 @@ function setWaterCount(n){
   if(document.getElementById("headerWaterRow")) renderHeaderWater();
   updateWaterRing();
   refreshWaterNotification();
-  if(document.getElementById("waterPickerOverlay")?.classList.contains("show")) renderWaterPickerModal();
-  renderPlannerDashboard();
 }
-// Builds the tappable water-count widget (8 cups, or Klinika's -/circles/+
-// row) into ANY given container -- factored out of renderWater() so the
-// same interactive picker can also live in the Planer dashboard's floating
-// "WODA" modal (openWaterPickerModal()) without duplicating the click-to-
-// set logic in two places.
-function renderWaterRow(row){
+function renderWater(){
+  const row = document.getElementById("waterRow");
+  if(state.water.date !== todayStr()){ state.water = {date:todayStr(), count:0}; saveState(); }
   row.innerHTML = "";
   const isClinic = state.theme==="clinic" || state.theme==="clinic_dark";
   if(isClinic){
@@ -7473,27 +7423,9 @@ function renderWaterRow(row){
       row.appendChild(cup);
     }
   }
-}
-function renderWater(){
-  if(state.water.date !== todayStr()){ state.water = {date:todayStr(), count:0}; saveState(); }
-  renderWaterRow(document.getElementById("waterRow"));
   document.getElementById("waterLabel").textContent = state.water.count + " / 8 szklanek (~" + (state.water.count*250) + " ml z 2000 ml celu)";
   const btn = document.getElementById("enableWaterNotifBtn");
   if(btn) btn.textContent = state.waterNotifEnabled ? "🔔 Powiadomienie włączone (stuknij, by wyłączyć)" : "🔔 Włącz szybkie dodawanie z powiadomienia";
-}
-// Requested 2026-08-25: tapping the Planer dashboard's "WODA" card did
-// nothing (it's plain text, not a control) -- opens the same tap-to-set
-// water picker as the Postęp tab's own water-row, in a floating modal, so
-// water can be logged without leaving Planer.
-function renderWaterPickerModal(){
-  const row = document.getElementById("waterPickerRow");
-  if(!row) return;
-  renderWaterRow(row);
-  document.getElementById("waterPickerLabel").textContent = state.water.count + " / 8 szklanek (~" + (state.water.count*250) + " ml)";
-}
-function openWaterPickerModal(){
-  renderWaterPickerModal();
-  document.getElementById("waterPickerOverlay").classList.add("show");
 }
 
 let weightChartInstance = null;
