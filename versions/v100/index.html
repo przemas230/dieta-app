@@ -619,24 +619,6 @@
   }
   .card.recipe-card.no-expand{ cursor:default; }
   .card.recipe-card.swipeable{ touch-action:pan-y; will-change:transform; -webkit-user-select:none; user-select:none; }
-  /* Requested 2026-08-25 ("tak samo daj strzałki na przepisie że podoba
-     się dla mnie i nie podoba"): discrete, always-visible hint that this
-     card can be swiped to rate -- the existing gesture (attachSwipeRating,
-     "Podoba się/Nie podoba się" label + border glow) only gave feedback
-     DURING a swipe, nothing beforehand suggested it was possible. Pure
-     static hints (pointer-events:none, don't intercept the swipe/tap
-     handlers already on the card) using the same red=dislike/green=like
-     colors the live drag feedback already uses. */
-  .card.recipe-card.swipeable::before,
-  .card.recipe-card.swipeable::after{
-    /* Fixed offset (not top:50%) so the hint stays near the title instead
-       of drifting into the ingredients/method text once a card is
-       expanded and much taller. */
-    position:absolute; top:22px;
-    font-size:15px; font-weight:700; opacity:.3; pointer-events:none; z-index:1;
-  }
-  .card.recipe-card.swipeable::before{ content:"‹"; left:6px; color:var(--danger); }
-  .card.recipe-card.swipeable::after{ content:"›"; right:6px; color:var(--teal); }
   .card.recipe-card.rated-like{ border-left:4px solid #3CAA6E; }
   .card.recipe-card.rated-dislike{ border-left:4px solid #BE463C; }
   .rating-badge{
@@ -727,16 +709,10 @@
      viewport's bottom rather than overshooting it. */
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) #plannerTodayWrap{
     display:flex; flex-direction:column;
-    min-height:calc(100dvh - 200px);
+    min-height:calc(100vh - 200px);
   }
-  /* Requested 2026-08-25: was `margin-top:auto` on the bento row alone,
-     which left one big empty gap directly above it whenever today's meal
-     list didn't already reach the bottom -- #plannerDashboard{flex:1} +
-     .pd-today-list{flex:1} (see their own rules above) now claim that
-     space instead, growing the meal-slot rows themselves, so the bento
-     row simply follows right after with its normal spacing. */
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) #plannerTodayWrap .clinic-bento{
-    padding-top:14px;
+    margin-top:auto; padding-top:14px;
   }
   /* Only the Planer tab has a pd-header row to align the floating icons
      with (see clinicGreetingHtml() et al) -- pulled back up by roughly
@@ -870,43 +846,7 @@
   .pd-day-chip{flex:1; min-width:0; text-align:center; padding:8px 4px; border-radius:14px; background:var(--card); font-size:10.5px; font-weight:600; color:var(--muted); border:1.5px solid transparent; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .pd-day-chip.today{flex:2.2; border-color:var(--text); color:var(--text); font-weight:700;}
   .pd-section-title{font-family:var(--font-heading); font-size:14px; font-weight:600; margin:0 0 8px;}
-  /* Requested 2026-08-25: "Dzisiejszy Planer" was leaving dead empty space
-     above the kcal/macro bento tiles once the whole section was stretched
-     to fill the screen (see #plannerTodayWrap below) -- rather than one
-     big gap in one place, the 5 meal-slot rows themselves now grow to
-     fill that space, so the screen actually looks used instead of empty. */
-  .pd-today-list{display:flex; flex-direction:column; gap:8px;}
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) #plannerDashboard{
-    display:flex; flex-direction:column; flex:1; min-height:0;
-  }
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .pd-today-list{
-    flex:1;
-  }
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .pd-meal-card,
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .pd-meal-card-empty{
-    flex:1;
-  }
-  .pd-meal-card{
-    display:flex; align-items:center; gap:10px; width:100%; text-align:left; background:var(--card);
-    border:none; border-radius:16px; padding:10px 12px; margin-bottom:8px; box-shadow:0 1px 2px rgba(0,0,0,.05);
-    font-family:inherit; color:var(--text); cursor:pointer; position:relative;
-    touch-action:pan-y; -webkit-user-select:none; user-select:none;
-  }
-  /* Requested 2026-08-25: swiping to toggle "eaten" wasn't discoverable
-     (no hint it was even possible) and, on a real touchscreen, didn't
-     reliably register at all -- missing `touch-action:pan-y` above meant
-     the browser's own scroll-gesture recognizer could claim a touch-move
-     before this card's own pointermove handler (attachPdMealCardSwipe())
-     got a chance to preventDefault() it, exactly the reason
-     .kcal-meal-row/.card.recipe-card.swipeable already set the same
-     property. `content` uses a low-opacity two-way arrow, not clickable
-     (pointer-events:none) -- purely a static "you can swipe this" hint,
-     unrelated to the live drag feedback attachPdMealCardSwipe() applies
-     via inline style while actually dragging. */
-  .pd-meal-card:not(.pd-meal-card-empty)::after{
-    content:"↔"; position:absolute; right:10px; top:50%; transform:translateY(-50%);
-    font-size:13px; color:var(--muted); opacity:.4; pointer-events:none;
-  }
+  .pd-meal-card{display:flex; align-items:center; gap:10px; width:100%; text-align:left; background:var(--card); border:none; border-radius:16px; padding:10px 12px; margin-bottom:8px; box-shadow:0 1px 2px rgba(0,0,0,.05); font-family:inherit; color:var(--text); cursor:pointer;}
   .pd-meal-avatar{font-size:18px; flex:0 0 auto;}
   .pd-meal-text{flex:1; min-width:0; display:flex; flex-direction:column;}
   .pd-meal-cat{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.03em;}
@@ -4562,7 +4502,6 @@ function attachPdMealCardSwipe(box, today){
   const AXIS_LOCK = 10, SWIPE_MAX = 60, SWIPE_COMMIT = 32;
   box.querySelectorAll(".pd-meal-card:not(.pd-meal-card-empty)").forEach(card=>{
     let startX=null, startY=null, dx=0, axis=null;
-    const clearDragStyle = ()=>{ card.style.backgroundColor = ""; };
     card.addEventListener("pointerdown", (e)=>{
       if(e.target.closest("button")) return;
       startX = e.clientX; startY = e.clientY; dx = 0; axis = null;
@@ -4578,41 +4517,17 @@ function attachPdMealCardSwipe(box, today){
         if(e.cancelable) e.preventDefault();
         dx = Math.max(-SWIPE_MAX, Math.min(SWIPE_MAX, ddx));
         card.style.transform = `translateX(${dx}px)`;
-        // Requested 2026-08-25: "niech się podświetla przy przesuwaniu ...
-        // żeby było widać ślizg" -- live color feedback while dragging, so
-        // the gesture itself is visible, not just its end result. Green
-        // toward "will mark eaten" (right), the same red
-        // attachSwipeRating() already uses for its "dislike" direction
-        // toward "will mark not eaten" (left) -- reusing this app's
-        // existing swipe-feedback color language rather than inventing a
-        // third one.
-        const intensity = Math.min(1, Math.abs(dx) / SWIPE_COMMIT);
-        if(dx > 4){
-          card.style.backgroundColor = `rgba(60,170,110,${(0.14*intensity).toFixed(2)})`;
-        }else if(dx < -4){
-          card.style.backgroundColor = `rgba(190,70,60,${(0.14*intensity).toFixed(2)})`;
-        }else{
-          clearDragStyle();
-        }
       }
     });
     const finish = ()=>{
       if(startX===null) return;
-      card.style.transition = "transform .15s ease, background-color .2s ease";
+      card.style.transition = "transform .15s ease";
       card.style.transform = "translateX(0)";
-      clearDragStyle();
       if(axis==="x" && Math.abs(dx) > SWIPE_COMMIT){
         card.dataset.pdSwiped = "1";
         const cat = card.dataset.pdToggleCat;
-        // Requested 2026-08-25: directional, not a toggle -- "w prawo jak
-        // zjedzone i w lewo jak nie zjedzone" -- right always marks eaten,
-        // left always marks not-eaten, regardless of the card's current
-        // state (idempotent, unlike the header's own attachSwipeToEat()
-        // which only swipes one way and flips whatever the current state
-        // is -- that reversal is exactly what read as "broken" here,
-        // since swiping the "wrong" way when already in that state did
-        // the opposite of what it looked like it should).
-        setEaten(today, cat, dx > 0);
+        const wasEaten = isEaten(today, cat);
+        setEaten(today, cat, !wasEaten);
         saveState();
         setTimeout(()=>{ renderPlannerDashboard(); renderHeader(); renderTodayTracker(); }, 140);
       }

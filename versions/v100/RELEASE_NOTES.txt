@@ -1,0 +1,38 @@
+Wersja v100 (2026-08-25)
+
+Zmiany w index.html i sw.js — motyw Klinika / Klinika (noc):
+
+1. Naprawiony realny błąd: przesuwanie kart w "Dzisiejszym Planerze" nie
+   działało na prawdziwym telefonie (działało tylko w symulacji na
+   desktopie). Przyczyna: brakowało `touch-action:pan-y` na kartach —
+   przeglądarka mobilna przejmowała gest jako przewijanie strony, zanim
+   JS zdążył go obsłużyć (dokładnie ten sam mechanizm, który już
+   wcześniej wymagał tej samej właściwości na kartach przepisów i
+   wierszach w nagłówku).
+2. Gest zmieniony z przełącznika (toggle) na kierunkowy: przesunięcie w
+   PRAWO zawsze oznacza "zjedzone", w LEWO zawsze "niezjedzone" — zgodnie
+   z tym, jak użytkownik opisał oczekiwane działanie (poprzednia wersja
+   przełączała stan niezależnie od kierunku, co przy "złym" kierunku
+   robiło coś przeciwnego niż wyglądało na to, że powinno).
+3. Dodane podświetlenie karty w trakcie przesuwania (zielone w prawo,
+   czerwone w lewo, rosnące z intensywnością przesunięcia) — widać ślizg,
+   nie tylko wynik końcowy.
+4. Dodane dyskretne, statyczne podpowiedzi wizualne: strzałka "↔" na
+   kartach Dzisiejszego Planera, strzałki "‹ ›" (czerwona/zielona) na
+   kartach przepisów (przy okazji tej samej prośby o istniejący gest
+   "podoba się/nie podoba się") — sygnalizują, że kartę można przesunąć,
+   zanim ktoś spróbuje.
+5. Naprawiony wygląd karty Planer: pełnoekranowa sekcja "Dzisiejszy
+   Planer" zostawiała puste, martwe pole nad kafelkami kcal/makro. Zamiast
+   jednej dużej pustej przerwy, 5 wierszy posiłków (Śniadania/II
+   Śniadanie/Obiady/Kolacje/Deser) samo rozciąga się i wypełnia dostępną
+   przestrzeń, więc ekran wygląda na w pełni wykorzystany.
+- CACHE_NAME podniesiony do "dieta-app-v100".
+
+Wszystko zweryfikowane lokalnie (składniowo) — poprawka touch-action
+wymaga potwierdzenia przez użytkownika na prawdziwym telefonie (mobilny
+dotyk zachowuje się inaczej niż symulacja w desktopowym Chrome).
+
+Android w TEJ SAMEJ turze dostaje odpowiadający port (patrz osobny commit
+Kotlin) — po wcześniejszych zgłoszeniach użytkownika, że kolejne rundy web
+nie miały odpowiednika na Androidzie.
