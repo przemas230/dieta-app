@@ -465,10 +465,6 @@
     background:rgba(255,255,255,.16); border:none; color:#fff; width:32px; height:32px; border-radius:10px;
     display:flex; align-items:center; justify-content:center; cursor:pointer; flex:0 0 auto;
   }
-  header.app-top .header-settings-btn{
-    background:rgba(255,255,255,.16); border:none; color:#fff; width:36px; height:36px; border-radius:10px;
-    display:flex; align-items:center; justify-content:center; cursor:pointer; flex:0 0 auto;
-  }
   header.app-top .quick-add-btn{
     background:rgba(90,210,140,.32);
     transition:transform var(--dur-fast,.2s) var(--ease,ease), background var(--dur-fast,.2s) var(--ease,ease);
@@ -681,19 +677,8 @@
     border-bottom-left-radius:0; border-bottom-right-radius:0;
   }
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top .header-collapse-btn,
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top .header-settings-btn,
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top .quick-add-btn{
     background:var(--card); color:var(--text); box-shadow:0 1px 2px rgba(0,0,0,.08);
-  }
-  /* Bug reported 2026-08-25: sync spinner + settings gear were still a
-     flat white (only ever legible against the old dark teal header block
-     above) -- invisible against Klinika's light page background now that
-     the header sits directly on --bg (see the FR-87/v4 comment above).
-     :not(.sync-error) keeps the error state's own red border-top-color
-     (set on .cloud-sync-indicator.sync-error, same specificity) from being
-     clobbered regardless of which of the two rules the cascade puts last. */
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cloud-sync-indicator:not(.sync-error){
-    border-color:rgba(0,0,0,.15); border-top-color:var(--text);
   }
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top .header-water-row{ color:var(--muted); }
   /* NOT touching max-height here on purpose: header.app-top.collapsed
@@ -732,34 +717,6 @@
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top .header-chevron{
     display:none;
   }
-  /* Requested 2026-08-25: the header's "🍲 Dieta App" title + profile
-     summary line don't earn their space once the ring/meal-list above are
-     already gone for Klinika (nothing left to expand into by tapping it) --
-     replaced with the same date + "Cześć, {name}!" greeting the Planer
-     dashboard below already shows (renderHeader() writes this markup into
-     #headerSub only for Klinika/Klinika (noc), see clinicGreetingHtml()). */
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top h1 .app-name{
-    display:none;
-  }
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top h1 .header-profile-inline{
-    display:flex; flex-direction:column; gap:1px; white-space:normal; overflow:visible;
-    -webkit-mask-image:none; mask-image:none; opacity:1;
-  }
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top h1 .header-profile-inline .hdr-clinic-date{
-    font-size:11px; font-weight:500; color:var(--muted); text-transform:capitalize;
-  }
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top h1 .header-profile-inline .hdr-clinic-greeting{
-    font-family:var(--font-heading); font-size:16px; font-weight:700; color:var(--text);
-  }
-  /* Requested 2026-08-25: same "Wyloguj się" action already exists in
-     Ustawienia → Konto -- the Planer dashboard's own 🚪 shortcut next to
-     the greeting was reported as unwanted on the main screen for Klinika/
-     Klinika (noc). Hidden rather than removed from renderPlannerDashboard()
-     so the element (and its click handler) still exist if this is ever
-     reversed. */
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .pd-signout{
-    display:none;
-  }
   /* FR-87/v7: Klinika's Planer dashboard (greeting/logout, CEL+ring+WODA
      cards, decorative day strip, "Dzisiejszy Planer" cards) -- built by
      renderPlannerDashboard(), which only ever fills #plannerDashboard's
@@ -772,13 +729,7 @@
   .pd-date{font-size:12px; color:var(--muted); text-transform:capitalize;}
   .pd-greeting{font-family:var(--font-heading); font-size:19px; font-weight:600; margin-top:2px;}
   .pd-signout{width:38px; height:38px; border-radius:50%; border:none; background:var(--card); color:var(--muted); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.08); cursor:pointer; flex:0 0 auto; font-size:16px; padding:0;}
-  /* Requested 2026-08-25: the "Cel" square (target kcal) was dropped from
-     renderPlannerDashboard()'s markup -- the remaining-kcal card (ring +
-     "Pozostało") now stretches left to fill that space instead of leaving
-     a gap, so the grid is 2 columns, not 3; ratio keeps the Woda card the
-     same width it always had (former 1fr) and gives the remaining card
-     roughly what IT (1.5fr) + Cel (1fr) used to occupy together. */
-  .pd-cards{display:grid; grid-template-columns:2.3fr 1fr; gap:8px; margin-bottom:14px;}
+  .pd-cards{display:grid; grid-template-columns:1fr 1.5fr 1fr; gap:8px; margin-bottom:14px;}
   .pd-card{background:var(--card); border-radius:20px; padding:12px 10px; box-shadow:0 1px 3px rgba(0,0,0,.06); display:flex; flex-direction:column; justify-content:center;}
   .pd-card-label{font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--muted);}
   .pd-card-value{font-family:var(--font-heading); font-size:20px; font-weight:700; margin-top:4px;}
@@ -790,15 +741,9 @@
   .pd-remaining-box{flex:1; min-width:0; background:var(--teal); border-radius:14px; padding:8px 10px;}
   .pd-remaining-label{font-size:9px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#fff; opacity:.85;}
   .pd-remaining-value{font-family:var(--font-heading); font-size:18px; font-weight:700; color:#fff; margin-top:2px; white-space:nowrap;}
-  /* Requested 2026-08-25: stretched to the full row width (was a
-     horizontally-scrolling, fixed-width chip strip) now that today's chip
-     needs the full day name instead of a 2-letter abbreviation -- flex:1
-     with min-width:0 lets each chip shrink/grow to share the row, today's
-     larger flex-grow gives it the extra room its longer label needs; the
-     ellipsis fallback only kicks in on screens too narrow for even that. */
-  .pd-strip{display:flex; gap:6px; margin-bottom:14px;}
-  .pd-day-chip{flex:1; min-width:0; text-align:center; padding:8px 4px; border-radius:14px; background:var(--card); font-size:10.5px; font-weight:600; color:var(--muted); border:1.5px solid transparent; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .pd-day-chip.today{flex:2.2; border-color:var(--text); color:var(--text); font-weight:700;}
+  .pd-strip{display:flex; gap:6px; overflow-x:auto; margin-bottom:14px; padding-bottom:2px;}
+  .pd-day-chip{flex:0 0 auto; min-width:38px; text-align:center; padding:8px 6px; border-radius:14px; background:var(--card); font-size:11px; font-weight:600; color:var(--muted); border:1.5px solid transparent;}
+  .pd-day-chip.today{border-color:var(--text); color:var(--text); font-weight:700;}
   .pd-section-title{font-family:var(--font-heading); font-size:14px; font-weight:600; margin:0 0 8px;}
   .pd-meal-card{display:flex; align-items:center; gap:10px; width:100%; text-align:left; background:var(--card); border:none; border-radius:16px; padding:10px 12px; margin-bottom:8px; box-shadow:0 1px 2px rgba(0,0,0,.05); font-family:inherit; color:var(--text); cursor:pointer;}
   .pd-meal-avatar{font-size:18px; flex:0 0 auto;}
@@ -828,15 +773,7 @@
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) nav.bottom button.active .ic{
     background:var(--teal); transform:none;
   }
-  /* Bug reported 2026-08-25: the active tab's icon was invisible inside its
-     own filled-teal circle. `lucide.createIcons()` (called once, at the
-     bottom of the page) replaces every `<i data-lucide="...">` with an
-     inline `<svg>` -- so a selector targeting `i` never matches the icon
-     that's actually in the DOM after that runs, and the SVG's stroke
-     (currentColor) fell through to nav.bottom button.active{color:var(--teal)}
-     below instead: a teal icon on a teal circle. Targeting the real `svg`
-     element fixes it. */
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) nav.bottom button.active .ic svg{ color:#fff; }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) nav.bottom button.active .ic i{ color:#fff; }
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) nav.bottom button::after{ display:none; }
   /* FR-87/v5: Klinika's Planer -- bento target strip + redesigned day cards,
      port of PlannerScreen.kt's DailyTargetBento/DayCardClinic. Every other
@@ -1442,7 +1379,7 @@
     <h1><span class="app-name">🍲 Dieta App</span><span class="header-chevron" id="headerChevron" aria-hidden="true">⌃</span><span class="header-profile-inline" id="headerSub"></span></h1>
     <div class="header-btn-row">
       <span id="cloudSyncIndicator" class="cloud-sync-indicator" aria-hidden="true"></span>
-      <button id="settingsBtn" class="header-settings-btn"><i data-lucide="settings" style="width:18px;height:18px;"></i></button>
+      <button id="settingsBtn" style="background:rgba(255,255,255,.16); border:none; color:#fff; width:36px; height:36px; border-radius:10px; flex:0 0 auto; display:flex; align-items:center; justify-content:center;"><i data-lucide="settings" style="width:18px;height:18px;"></i></button>
       <button id="quickAddBtn" class="header-collapse-btn quick-add-btn" title="Dodaj przekąskę lub dodatkowe danie" aria-label="Dodaj przekąskę lub dodatkowe danie"><span style="font-size:17px; line-height:1;">➕</span></button>
     </div>
   </div>
@@ -3086,7 +3023,7 @@ function loadState(){
       if(!s.pantryCategoryOverride) s.pantryCategoryOverride = {};
       if(!s.pantryStepOverride) s.pantryStepOverride = {};
       if(s.waterNotifEnabled===undefined) s.waterNotifEnabled = false;
-      if(!s.theme) s.theme = "clinic";
+      if(!s.theme) s.theme = "teal";
       if(!s.waterReminder) s.waterReminder = {...DEFAULT_WATER_REMINDER};
       if(!s.plannerScale) s.plannerScale = {};
       if(!s.plannerLeftover) s.plannerLeftover = {};
@@ -3124,10 +3061,10 @@ function loadState(){
       return s;
     }
   }catch(e){}
-  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, plannerLeftover:{}, water:{date:"",count:0}, waterHistory:{}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, pantryCategoryOverride:{}, pantryStepOverride:{}, waterNotifEnabled:false, theme:"clinic", waterReminder:{...DEFAULT_WATER_REMINDER}, uiScale:detectDefaultUiScale(), recipeRating:{}, swipeRatingStyle:"balloon", displayName:"", myRecipes:[], recipeReviews:{}, communityRecipesEnabled:false, household:{id:null, name:"", inviteCode:null, members:[]}, _lastSyncedSnapshot:null};
+  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, plannerLeftover:{}, water:{date:"",count:0}, waterHistory:{}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, pantryCategoryOverride:{}, pantryStepOverride:{}, waterNotifEnabled:false, theme:"teal", waterReminder:{...DEFAULT_WATER_REMINDER}, uiScale:detectDefaultUiScale(), recipeRating:{}, swipeRatingStyle:"balloon", displayName:"", myRecipes:[], recipeReviews:{}, communityRecipesEnabled:false, household:{id:null, name:"", inviteCode:null, members:[]}, _lastSyncedSnapshot:null};
 }
 let state = loadState();
-document.documentElement.setAttribute("data-theme", state.theme || "clinic");
+document.documentElement.setAttribute("data-theme", state.theme || "teal");
 function applyUiScale(scale){
   document.documentElement.style.zoom = scale;
 }
@@ -3476,7 +3413,7 @@ function manualSyncNow(){
 // feel like the whole app was freezing, since every single one of those
 // syncs rebuilt all ~229 recipe cards even for e.g. just a weight entry.
 function refreshUiAfterSync(silent, changedKeys){
-  document.documentElement.setAttribute("data-theme", state.theme || "clinic");
+  document.documentElement.setAttribute("data-theme", state.theme || "teal");
   applyUiScale(state.uiScale);
   renderHeader();
   renderPills();
@@ -3953,7 +3890,7 @@ document.getElementById("userProfileOverlay").addEventListener("click", (e)=>{
 });
 // ---------- THEME ----------
 const THEMES = [
-  {id:"teal", label:"Zielony", swatch:"#1F6B5C", metaColor:"#1F6B5C"},
+  {id:"teal", label:"Zielony (domyślny)", swatch:"#1F6B5C", metaColor:"#1F6B5C"},
   {id:"light", label:"Jasny", swatch:"#2C6FE0", metaColor:"#2C6FE0"},
   {id:"pink", label:"Różowy", swatch:"#D6497B", metaColor:"#D6497B"},
   {id:"dark", label:"Ciemny", swatch:"#151A18", metaColor:"#0D211C"},
@@ -3964,12 +3901,12 @@ const THEMES = [
   {id:"polaroid", label:"Polaroid", swatch:"#C1503A", metaColor:"#C1503A"},
   {id:"fluent", label:"Fluent", swatch:"#0F6CBD", metaColor:"#0F6CBD"},
   {id:"metro", label:"Kafelki", swatch:"#2D89EF", metaColor:"#2D89EF"},
-  {id:"clinic", label:"Klinika (domyślny)", swatch:"#6DA480", metaColor:"#6DA480"},
+  {id:"clinic", label:"Klinika", swatch:"#6DA480", metaColor:"#6DA480"},
   {id:"clinic_dark", label:"Klinika (noc)", swatch:"#6DA480", metaColor:"#1E1B16"}
 ];
 (function syncMetaColor(){
   const meta = document.querySelector('meta[name="theme-color"]');
-  const t = THEMES.find(x=>x.id===(state.theme||"clinic"));
+  const t = THEMES.find(x=>x.id===(state.theme||"teal"));
   if(meta && t) meta.setAttribute("content", t.metaColor);
 })();
 function applyTheme(id){
@@ -3981,14 +3918,6 @@ function applyTheme(id){
   if(meta && t) meta.setAttribute("content", t.metaColor);
   renderThemePicker();
   renderWeights();
-  // Bug found 2026-08-25 while testing Klinika's new header content
-  // (date + greeting replacing "Dieta App", see renderHeader()): switching
-  // theme never re-ran renderHeader() or renderPlannerDashboard(), so the
-  // OLD theme's header/dashboard content stayed on screen -- invisible
-  // before this since header content never depended on the theme, but
-  // Klinika's does now.
-  renderHeader();
-  renderPlannerDashboard();
 }
 function renderThemePicker(){
   const box = document.getElementById("themeGrid");
@@ -3997,7 +3926,7 @@ function renderThemePicker(){
   THEMES.forEach(t=>{
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "theme-opt" + ((state.theme||"clinic")===t.id ? " active" : "");
+    btn.className = "theme-opt" + ((state.theme||"teal")===t.id ? " active" : "");
     btn.innerHTML = `<span class="theme-swatch" style="background:${t.swatch}"></span>${t.label}`;
     btn.addEventListener("click", ()=> applyTheme(t.id));
     box.appendChild(btn);
@@ -4255,30 +4184,15 @@ function updateWaterRing(){
   const waterCircumference = 2 * Math.PI * 39;
   el.setAttribute("stroke-dasharray", `${(waterPct*waterCircumference).toFixed(1)} ${waterCircumference.toFixed(1)}`);
 }
-// Shared "date + Cześć, {name}!" content -- used both in the header
-// (Klinika/Klinika (noc) only, replacing the app icon+name, see
-// renderHeader() below) and in the Planer dashboard's own pd-header
-// (renderPlannerDashboard()), kept in one place so the two never drift.
-function clinicDateLabel(){
-  return new Date().toLocaleDateString("pl-PL", {weekday:"long", day:"numeric", month:"long"});
-}
-function clinicGreetingText(){
-  return `Cześć${state.displayName?`, ${state.displayName}`:""}!`;
-}
 function renderHeader(){
   const p = state.profile;
   const t = calcTargets(p);
   const sexLabel = p.sex==="m" ? "Mężczyzna" : "Kobieta";
   const goalLabel = {loss:"redukcja",maintain:"utrzymanie",gain:"budowanie masy"}[p.goal];
   const namePrefix = state.displayName ? `${state.displayName} · ` : "";
-  const isClinic = state.theme==="clinic" || state.theme==="clinic_dark";
-  if(isClinic){
-    document.getElementById("headerSub").innerHTML = `<span class="hdr-clinic-date">${clinicDateLabel()}</span><span class="hdr-clinic-greeting">${clinicGreetingText()}</span>`;
-  }else{
-    document.getElementById("headerSub").textContent = !p.configured
-      ? `${namePrefix}👋 Ustaw swój profil w Ustawieniach, aby dopasować dietę do siebie`
-      : `${namePrefix}${sexLabel}, ${p.age} lat · ${p.height} cm · ${p.weight}\u00A0kg → cel ${p.targetWeight}\u00A0kg · ${goalLabel} · ~${t.daily}\u00A0kcal/dzień`;
-  }
+  document.getElementById("headerSub").textContent = !p.configured
+    ? `${namePrefix}👋 Ustaw swój profil w Ustawieniach, aby dopasować dietę do siebie`
+    : `${namePrefix}${sexLabel}, ${p.age} lat · ${p.height} cm · ${p.weight}\u00A0kg → cel ${p.targetWeight}\u00A0kg · ${goalLabel} · ~${t.daily}\u00A0kcal/dzień`;
   const meals = todaysPlannerMeals();
   const today = todayStr();
   // FR-36/v2: the ring reflects what's actually been EATEN today (not the
@@ -4705,7 +4619,7 @@ document.getElementById("signOutBtn").addEventListener("click", ()=>{
   if(alsoClear){
     localStorage.removeItem(STORE_KEY);
     state = loadState(); // localStorage is now empty, so this returns fresh defaults
-    document.documentElement.setAttribute("data-theme", state.theme || "clinic");
+    document.documentElement.setAttribute("data-theme", state.theme || "teal");
     applyUiScale(state.uiScale);
     refreshUiAfterSync(true);
   }else{
@@ -4762,7 +4676,7 @@ document.getElementById("resetAccountDataConfirmBtn").addEventListener("click", 
   const uid = currentFbUser.uid;
   localStorage.removeItem(STORE_KEY);
   state = loadState(); // localStorage is now empty, so this returns fresh defaults
-  document.documentElement.setAttribute("data-theme", state.theme || "clinic");
+  document.documentElement.setAttribute("data-theme", state.theme || "teal");
   applyUiScale(state.uiScale);
   refreshUiAfterSync(true);
   const freshSubset = syncableStateSubset();
@@ -6958,18 +6872,13 @@ function renderPlannerDashboard(){
   const circumference = 2 * Math.PI * 24;
   const jsDay = new Date().getDay();
   const todayIdx = jsDay===0 ? 6 : jsDay-1;
+  const dateLabel = new Date().toLocaleDateString("pl-PL", {weekday:"long", day:"numeric", month:"long"});
   if(state.water.date !== today){ state.water = {date:today, count:0}; }
   const waterCount = state.water.count;
 
-  // Requested 2026-08-25: today's own chip spells out the full day name
-  // (i===0 is always today, see the (todayIdx+i)%7 rotation below) so it
-  // reads at a glance instead of needing the same 2-letter abbreviation as
-  // every other day -- the .today border (kept, unchanged) already marked
-  // it visually, this just makes the label itself say so too.
   const stripHtml = Array.from({length:7}, (_,i)=>{
     const di = (todayIdx + i) % 7;
-    const label = i===0 ? DAYS[di] : DAYS[di].slice(0,2);
-    return `<div class="pd-day-chip${i===0?' today':''}">${label}</div>`;
+    return `<div class="pd-day-chip${i===0?' today':''}">${DAYS[di].slice(0,2)}</div>`;
   }).join("");
 
   const meals = todaysPlannerMeals();
@@ -6993,12 +6902,17 @@ function renderPlannerDashboard(){
   box.innerHTML = `
     <div class="pd-header">
       <div>
-        <div class="pd-date">${clinicDateLabel()}</div>
-        <div class="pd-greeting">${clinicGreetingText()}</div>
+        <div class="pd-date">${dateLabel}</div>
+        <div class="pd-greeting">Cześć${state.displayName?`, ${state.displayName}`:""}!</div>
       </div>
       <button class="pd-signout" id="pdSignOutBtn" title="Wyloguj się z tego urządzenia">🚪</button>
     </div>
     <div class="pd-cards">
+      <div class="pd-card">
+        <div class="pd-card-label">Cel</div>
+        <div class="pd-card-value">${t.daily}</div>
+        <div class="pd-card-unit">kcal</div>
+      </div>
       <div class="pd-card pd-card-remaining">
         <div class="pd-ring-wrap">
           <svg viewBox="0 0 56 56" class="pd-ring-svg">

@@ -3328,6 +3328,57 @@ się zgadzać z web co do joty.
   (wszystkie motywy) zmiany kolejności zakładek nawigacji, ustalonej przy
   tej samej okazji, ale udokumentowanej osobno, bo nie jest specyficzna
   dla Kliniki.
+- **v8** (2026-08-25, Web only): Użytkownik zgłosił sześć osobnych usterek/
+  próśb naraz w motywie Klinika/Klinika (noc), wszystkie zweryfikowane
+  wizualnie lokalnie w Chrome (nie tylko składniowo):
+  1. Ikona synchronizacji z chmurą i ikona ustawień w nagłówku były białe
+     (`color:#fff`, w tym `#settingsBtn` na sztywno w atrybucie `style`) —
+     niewidoczne na jasnym tle, ten sam błąd co v6 naprawił dla pierścienia
+     kcal, tylko w innych elementach, które v6 nie objął. Poprawione na
+     `var(--text)`; `#settingsBtn` przeniesiony z inline `style` na klasę
+     `.header-settings-btn`, żeby dało się go nadpisać per motyw bez
+     `!important`.
+  2. Klinika ustawiona jako motyw domyślny dla nowych instalacji (wszystkie
+     `state.theme || "teal"` fallbacki → `"clinic"`; istniejące konta z już
+     zapisanym motywem — bez zmian).
+  3. Kwadrat "CEL" usunięty z rzędu kart dashboardu Plannera (v7) —
+     środkowa karta POZOSTAŁO (pierścień + kcal) rozciąga się w lewo w to
+     miejsce (`grid-template-columns` 2 kolumny zamiast 3, proporcja
+     2.3fr/1fr).
+  4. Pasek 7 dni (v7, dekoracyjny) rozciągnięty na pełną szerokość
+     (`flex:1` zamiast stałej szerokości ze scrollem); dzisiejszy dzień
+     pokazuje pełną nazwę (np. "Wtorek") zamiast 2-literowego skrótu jak
+     pozostałe dni, z większym `flex-grow` na jego własnym miejscu w
+     rzędzie żeby to zmieściło; ramka na dzisiejszym dniu (v7) bez zmian.
+  5. Przycisk "Wyloguj się" (🚪, v7's `pd-signout`) ukryty z dashboardu
+     Plannera (nadal dostępny w Ustawieniach) — CSS `display:none`, nie
+     usunięty z DOM-u/JS-a. Globalny nagłówek (ikonka + "Dieta App") w
+     Klinice/Klinice (noc) pokazuje teraz to samo, co dashboard Plannera
+     już pokazywał: datę + "Cześć, {imię}!" (nowe współdzielone
+     `clinicDateLabel()`/`clinicGreetingText()`, użyte w obu miejscach,
+     żeby treść nigdy się nie rozjechała). Przy tej okazji naprawiony
+     dodatkowy, wcześniej niewidoczny błąd: `applyTheme()` nie wywoływało
+     `renderHeader()`/`renderPlannerDashboard()`, więc przełączenie motywu
+     zostawiało starą zawartość nagłówka/dashboardu na ekranie aż do
+     następnej niepowiązanej akcji — nieszkodliwe, dopóki treść nagłówka
+     nie zależała od motywu, ale teraz zależy.
+  6. Aktywna zakładka dolnego paska nawigacji: ikonka znikała w wypełnionym
+     zielonym kółku (zielona ikonka na zielonym tle). Przyczyna: CSS
+     celował w `.ic i`, element który już nie istnieje w DOM-ie po starcie
+     — `lucide.createIcons()` (wywoływane raz, na końcu strony) zamienia
+     każde `<i data-lucide="...">` na `<svg>`, więc selektor nigdy nie
+     trafiał i kolor ikony spadał kaskadowo z `nav.bottom button.active`
+     (teal) zamiast z tej reguły (biały). Poprawione na `.ic svg`.
+
+  Web only — Android ma osobną, natywną implementację motywu Klinika
+  (`AppThemes.kt`/`PlannerScreen.kt`) i wymaga osobnego sprawdzenia, czy
+  te same sześć usterek tam występuje, zanim zostaną tam naprawione tym
+  samym wzorcem; świadomie odłożone w tej turze, zamiast piętrzyć
+  niezweryfikowane zmiany w Kotlinie bez możliwości sprawdzenia na
+  emulatorze w tej samej sesji co wszystko inne. Narusza to literalnie
+  kryterium akceptacji "web i Android dają dokładnie ten sam wygląd" z
+  wcześniejszych wersji tego FR — udokumentowane tu jawnie jako znany,
+  tymczasowy rozjazd, nie przeoczenie (patrz `android/PARITY.md`).
 
 # FR-88: Planer jako pierwsza zakładka nawigacji
 

@@ -1,0 +1,43 @@
+Wersja v96 (2026-08-25)
+
+Zmiany w index.html i sw.js (Web only — motyw Klinika / Klinika (noc)):
+
+1. Ikona synchronizacji z chmurą i ikona ustawień (koło zębate) w nagłówku
+   były białe — niewidoczne na jasnym tle motywu Klinika (nagłówek od
+   FR-87/v4 nie jest już ciemnym blokiem). Poprawione na kolor tekstu
+   motywu. Przy okazji: `#settingsBtn` miał kolor wpisany na sztywno w
+   atrybucie `style` — przeniesiony do klasy CSS (`.header-settings-btn`),
+   żeby dało się go nadpisać per-motyw bez `!important`.
+2. Motyw "Klinika" jest teraz motywem domyślnym (dla nowych instalacji;
+   istniejące konta zachowują swój wybrany motyw). Etykieta w wyborze
+   motywu: "Klinika (domyślny)", "Zielony" stracił dopisek "(domyślny)".
+3. Na karcie Planer (ekran główny w motywie Klinika) usunięty kwadrat
+   "CEL" z górnej sekcji — środkowy prostokąt z kółkiem i pozostałymi
+   kaloriami rozciąga się teraz w lewo, wypełniając zwolnione miejsce.
+4. Pasek dni na karcie Planer: dzisiejszy dzień pokazuje pełną nazwę
+   (np. "Wtorek"), pozostałe dni tylko 2-literowy skrót — cały pasek
+   rozciągnięty na pełną szerokość ekranu (wcześniej przewijany poziomo,
+   stałej szerokości). Obramowanie na dzisiejszym dniu zostało bez zmian.
+5. Przycisk "Wyloguj się" (🚪) usunięty z widoku głównego ekranu (karta
+   Planer) w motywie Klinika/Klinika (noc) — nadal dostępny w Ustawieniach.
+   Nagłówek aplikacji (ikonka + "Dieta App") w tych dwóch motywach pokazuje
+   teraz to samo, co już było widoczne niżej: datę i "Cześć, {imię}!".
+   Przy okazji naprawiony błąd: zmiana motywu (`applyTheme()`) nie
+   odświeżała nagłówka/karty Planer, więc po przełączeniu na Klinikę stara
+   zawartość zostawała na ekranie do najbliższej innej akcji.
+6. Aktywna zakładka na dolnym pasku nawigacji w motywie Klinika/Klinika
+   (noc) robiła się zielonym kółkiem, w którym ikonka stawała się
+   niewidoczna (zielona na zielonym). Przyczyna: reguła CSS celowała w
+   nieistniejący już element `<i>` — `lucide.createIcons()` podmienia go
+   na `<svg>` przy starcie aplikacji, więc selektor nigdy nie trafiał.
+   Poprawiony na `.ic svg`.
+- CACHE_NAME podniesiony do "dieta-app-v96".
+
+Wszystkie zmiany zweryfikowane wizualnie lokalnie (Chrome, oba warianty
+Klinika/Klinika (noc)) przez zdalne sterowanie przeglądarką — nie tylko
+sprawdzone składniowo.
+
+Android NIE dostał odpowiadających zmian w tej turze — ma osobną, natywną
+implementację motywu Klinika (AppThemes.kt, PlannerScreen.kt) i wymaga
+osobnego sprawdzenia, czy te same 6 usterek tam występują. Zanotowane w
+android/PARITY.md jako świadomie odłożone.
