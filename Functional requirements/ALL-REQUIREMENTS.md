@@ -1751,6 +1751,16 @@ Zrewidowane 2026-08-08: dodano automatyczne obliczanie kalorii/makroskładników
   ukryte wyszukiwanie Google po kliknięciu w sam tytuł przepisu, bez
   żadnego widocznego przycisku/afordancji. Oba mechanizmy zweryfikowane
   lokalnie w Chrome (nie tylko składniowo).
+- **v6** (2026-08-25, Android): Port v5 na Androida. `Recipe.inspirationSource`
+  (nullable, `:logic`), `CustomRecipeOperations.Input.inspirationSourceText`
+  + `build()` ustawiające pole (trim → null gdy puste, ta sama semantyka
+  co web). `AddCustomRecipeDialog` (RecipeListScreen.kt) dostał pole
+  „Źródło inspiracji” po polu sposobu przygotowania. Karta przepisu
+  (`RecipeCardBody`) pokazuje „💡 Inspiracja: …” gdy ustawione oraz dwa
+  `OutlinedButton` „🔎 Google”/„▶️ YouTube” (dla KAŻDEGO przepisu, jak na
+  web) otwierające wyszukiwarkę/YouTube przez `Intent(ACTION_VIEW)`.
+  `./gradlew :app:assembleDebug :logic:test` przeszły; wizualna weryfikacja
+  w Android Studio/na urządzeniu jeszcze ⏳ (patrz `android/PARITY.md`).
 
 ---
 
@@ -3678,6 +3688,44 @@ się zgadzać z web co do joty.
   potwierdzenia przez użytkownika na prawdziwym telefonie** — mobilny
   dotyk zachowuje się inaczej niż jakakolwiek symulacja dostępna z tej
   sesji.
+- **v15** (2026-08-25, Android): Faktyczny port punktów 1-4 z v14 na
+  Androida (v14 zapowiadał go "w tej samej turze", ale kod nie był jeszcze
+  skompilowany/przetestowany w momencie zapisu tamtej rewizji — ta rewizja
+  to potwierdzenie, że rzeczywiście powstał i przeszedł build).
+  `PlannerScreen.kt`'s karty posiłków w `PlannerDashboard` dostały
+  `Animatable` offset + `detectHorizontalDragGestures` (ten sam wzorzec co
+  już istniejący gest "podoba/nie podoba się" w `RecipeListScreen.kt`,
+  FR-55/61) z kierunkowym `onSetEaten(cat, dx > 0, ...)` (nie toggle),
+  żywym podświetleniem tła (`dragTint`, zielony/czerwony, ten sam odcień co
+  web) oraz dyskretną strzałką „↔” widoczną gdy karta nie jest przesuwana.
+  Zwykłe dotknięcie (bez przesunięcia) otwiera `RecipePreviewDialog`
+  zamiast przełączać zjedzone — jak na web. `RecipeListScreen.kt`'s
+  istniejący gest oceny dostał analogiczne strzałki „‹”/„›” (czerwona/
+  zielona, `alpha=0.3`). Nowa metoda `EatenViewModel.setEaten(cat, eaten,
+  kcal, name)` (kierunkowa, obok istniejącego `toggle()`) wpięta przez
+  `MainActivity.kt` → `PlannerScreen`/`PlannerDashboard`'s nowy parametr
+  `onSetEaten`.
+
+  Punkt 5 z v14 (pełnoekranowa sekcja "Dzisiejszy Planer" z kafelkami
+  makro przypiętymi na dole) **świadomie NIE ma odpowiednika na
+  Androidzie** — architektura tam jest fundamentalnie inna: cały ekran
+  Planera to JEDNA przewijalna `LazyColumn` z `PlannerDashboard` (dziś) +
+  paskiem celu kcal/makro + wszystkimi 7 kartami dni jako kolejne elementy
+  listy, nie osobny, w pełni ekranowy widok "dziś" jak na web. Compose
+  `LazyColumn` mierzy każdy `item{}` naturalną wysokością treści — nie ma
+  tu odpowiednika CSS-owego "brzydkiego pustego pola nad kafelkami", bo
+  nic nigdy nie próbowało rozciągać się na `100dvh`. Rozciągnięcie
+  `PlannerDashboard` na pełną wysokość ekranu wymagałoby przeprojektowania
+  całej zakładki Planer w osobny widok "dziś" + oddzielną nawigację do
+  pozostałych dni tygodnia — realna zmiana architektury UX, nie port 1:1,
+  więc odłożone do osobnej, jawnej decyzji użytkownika zamiast robione
+  przy okazji tej rundy.
+
+  `./gradlew :app:assembleDebug` i `./gradlew :logic:test` przeszły
+  (versionCode 82, versionName 0.1.81, `android/dist/` zaktualizowane).
+  Wizualna/dotykowa weryfikacja gestów na prawdziwym urządzeniu — jak przy
+  v14 na web — jeszcze ⏳, nieskompilowany kod nie dowodzi, że gest
+  "czuje się" dobrze w praktyce (patrz `android/PARITY.md`).
 
 # FR-88: Planer jako pierwsza zakładka nawigacji
 

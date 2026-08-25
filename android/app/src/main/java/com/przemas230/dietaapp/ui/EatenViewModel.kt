@@ -60,6 +60,21 @@ class EatenViewModel : ViewModel() {
         applyDays(_days.value + (key to day.copy(entries = newEntries)))
     }
 
+    /**
+     * FR-87/v14: the Planer dashboard's directional swipe (right = eaten,
+     * left = not eaten) -- unlike [toggle], always sets to a SPECIFIC
+     * state regardless of what it currently is, matching index.html's
+     * `setEaten(today, cat, dx > 0)` (a plain toggle read as "broken" when
+     * swiping the "wrong" way on a card already in that state did the
+     * opposite of what it looked like it should).
+     */
+    fun setEaten(cat: String, eaten: Boolean, plannedKcal: Int?, plannedName: String?) {
+        val key = todayUtc().toString()
+        val day = _days.value[key] ?: EatenDay()
+        val newEntries = EatenOperations.setEaten(day.entries, cat, eaten, plannedKcal, plannedName)
+        applyDays(_days.value + (key to day.copy(entries = newEntries)))
+    }
+
     /** FR-33/34: the global "➕" quick-add dialog's "+ Dodaj" button -- always today. */
     fun addSnack(name: String, kcal: Int) = addSnackForDate(todayUtc(), name, kcal)
 

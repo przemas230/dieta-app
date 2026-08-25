@@ -2,9 +2,11 @@ package com.przemas230.dietaapp.ui
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -43,18 +46,24 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -77,6 +86,8 @@ import com.przemas230.dietaapp.ui.theme.LocalDietaThemeId
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 /**
  * FR-18/20/21/22/23/24: 7 day cards, each with the 5 meal-slot rows from
@@ -107,6 +118,7 @@ fun PlannerScreen(
     onSignOut: () -> Unit = {},
     onWaterTap: (Int) -> Unit = {},
     onWaterSetCount: (Int) -> Unit = {},
+    onSetEaten: (cat: String, eaten: Boolean, plannedKcal: Int?, plannedName: String?) -> Unit = { _, _, _, _ -> },
 ) {
     val allRecipes by plannerViewModel.allRecipes.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
@@ -160,6 +172,7 @@ fun PlannerScreen(
                     onSignOut = onSignOut,
                     onWaterTap = onWaterTap,
                     onWaterSetCount = onWaterSetCount,
+                    onSetEaten = onSetEaten,
                 )
             }
             item {
@@ -442,6 +455,14 @@ private fun PlannerDashboard(
     onSignOut: () -> Unit,
     onWaterTap: (Int) -> Unit = {},
     onWaterSetCount: (Int) -> Unit = {},
+    // Requested 2026-08-25 (Web FR-87/v14, ported here): directional swipe
+    // (right = eaten, left = not eaten) on the meal cards below --
+    // separate from onToggleEaten (which just flips whatever the current
+    // state is, still used by header/other call sites) because a plain
+    // toggle read as "broken" here: swiping the "wrong" way on a card
+    // already in that state did the opposite of what it looked like it
+    // should.
+    onSetEaten: (cat: String, eaten: Boolean, plannedKcal: Int?, plannedName: String?) -> Unit = { _, _, _, _ -> },
 ) {
     val eatenKcal = EatenOperations.dailyEatenKcal(eatenEntries) + EatenOperations.snacksKcal(snacks)
     val remaining = (kcalTarget - eatenKcal).coerceAtLeast(0)
@@ -455,6 +476,12 @@ private fun PlannerDashboard(
     // already used elsewhere (PostepScreen's Klinika water card), see the
     // dialog at the end of this composable.
     var showWaterPicker by remember { mutableStateOf(false) }
+    // Requested 2026-08-25 (Web FR-87/v12, ported here): tapping a meal
+    // card used to toggle eaten directly -- now opens a preview of the
+    // recipe instead (RecipePreviewDialog, same one FR-86's day-card "👁️"
+    // button already opens), while toggling eaten moved to swipe (see
+    // onSetEaten above).
+    var previewRecipe by remember { mutableStateOf<Pair<Recipe, Double>?>(null) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         // Requested 2026-08-25 (Web FR-87/v9, ported here): the sign-out
@@ -591,39 +618,89 @@ private fun PlannerDashboard(
             } else {
                 val kcal = PlannerOperations.scaledKcal(recipe, meal.scale)
                 val eaten = EatenOperations.isEaten(eatenEntries, category.id)
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onToggleEaten(category.id, kcal, recipe.name) },
-                    shape = MaterialTheme.shapes.large,
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                ) {
-                    Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(category.emoji, fontSize = 18.sp)
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column(modifier = Modifier.weight(1f)) {
+                // Requested 2026-08-25 (Web FR-87/v12+v14, ported here):
+                // same drag-gesture shape as RecipeListScreen's existing
+                // swipe-to-rate (Animatable offset, detectHorizontalDragGestures,
+                // live color feedback) -- but directional here (right =
+                // eaten, left = not eaten, via onSetEaten) rather than a
+                // like/dislike rating, and a plain tap opens a recipe
+                // preview instead of toggling.
+                val offsetX = remember(category.id) { Animatable(0f) }
+                val swipeScope = rememberCoroutineScope()
+                val swipeMaxPx = with(LocalDensity.current) { 60.dp.toPx() }
+                val swipeCommitPx = with(LocalDensity.current) { 32.dp.toPx() }
+                val dragIntensity = (kotlin.math.abs(offsetX.value) / swipeCommitPx).coerceIn(0f, 1f)
+                val dragTint = when {
+                    offsetX.value > 4f -> Color(0xFF3CAA6E).copy(alpha = 0.14f * dragIntensity)
+                    offsetX.value < -4f -> Color(0xFFBE463C).copy(alpha = 0.14f * dragIntensity)
+                    else -> Color.Transparent
+                }
+                Box {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                            .background(dragTint, MaterialTheme.shapes.large)
+                            .pointerInput(category.id) {
+                                detectHorizontalDragGestures(
+                                    onDragEnd = {
+                                        val committed = offsetX.value
+                                        swipeScope.launch {
+                                            if (kotlin.math.abs(committed) > swipeCommitPx) {
+                                                onSetEaten(category.id, committed > 0, kcal, recipe.name)
+                                            }
+                                            offsetX.animateTo(0f)
+                                        }
+                                    },
+                                    onDragCancel = { swipeScope.launch { offsetX.animateTo(0f) } },
+                                ) { change, dragAmount ->
+                                    change.consume()
+                                    swipeScope.launch {
+                                        offsetX.snapTo((offsetX.value + dragAmount).coerceIn(-swipeMaxPx, swipeMaxPx))
+                                    }
+                                }
+                            }
+                            .clickable { previewRecipe = recipe to meal.scale },
+                        shape = MaterialTheme.shapes.large,
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                    ) {
+                        Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(category.emoji, fontSize = 18.sp)
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    category.label.uppercase(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    recipe.name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textDecoration = if (eaten) TextDecoration.LineThrough else TextDecoration.None,
+                                )
+                            }
                             Text(
-                                category.label.uppercase(),
-                                style = MaterialTheme.typography.labelSmall,
+                                "$kcal kcal",
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            Text(
-                                recipe.name,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                textDecoration = if (eaten) TextDecoration.LineThrough else TextDecoration.None,
-                            )
+                            IconButton(onClick = { onClearSlot(category.id) }, modifier = Modifier.size(32.dp)) {
+                                Text("✕", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
+                    }
+                    // Discrete, static swipe-hint -- hidden while actively
+                    // dragging so it doesn't clash with the live tint above.
+                    if (offsetX.value == 0f) {
                         Text(
-                            "$kcal kcal",
-                            style = MaterialTheme.typography.bodySmall,
+                            "↔",
+                            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 44.dp).alpha(0.3f),
+                            fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        IconButton(onClick = { onClearSlot(category.id) }, modifier = Modifier.size(32.dp)) {
-                            Text("✕", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
                     }
                 }
             }
@@ -665,6 +742,9 @@ private fun PlannerDashboard(
                 }
             }
         }
+    }
+    previewRecipe?.let { (recipe, scale) ->
+        RecipePreviewDialog(recipe = recipe, scale = scale, onDismiss = { previewRecipe = null })
     }
 }
 
@@ -944,6 +1024,32 @@ private fun RecipePreviewDialog(recipe: Recipe, scale: Double, onDismiss: () -> 
                 Text("Przygotowanie", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(recipe.method, style = MaterialTheme.typography.bodyMedium)
+                if (recipe.inspirationSource != null) {
+                    Text(
+                        "💡 Inspiracja: ${recipe.inspirationSource}",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+                // Requested 2026-08-25 (Web FR-66/v5, ported here): explicit
+                // buttons, not just the title's hidden Google link above.
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            val query = Uri.encode("${recipe.name} przepis")
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=$query")))
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) { Text("🔎 Google") }
+                    OutlinedButton(
+                        onClick = {
+                            val query = Uri.encode("${recipe.name} przepis")
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/results?search_query=$query")))
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) { Text("▶️ YouTube") }
+                }
             }
         }
     }

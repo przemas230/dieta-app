@@ -569,6 +569,7 @@ private fun AddCustomRecipeDialog(
     var time by remember { mutableStateOf("") }
     var ingredientsText by remember { mutableStateOf("") }
     var method by remember { mutableStateOf("") }
+    var inspirationSourceText by remember { mutableStateOf("") }
     var kcalText by remember { mutableStateOf("") }
     var proteinText by remember { mutableStateOf("") }
     var carbsText by remember { mutableStateOf("") }
@@ -675,6 +676,14 @@ private fun AddCustomRecipeDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
+                    value = inspirationSourceText,
+                    onValueChange = { inspirationSourceText = it },
+                    label = { Text("Źródło inspiracji (opcjonalnie)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
                     value = kcalText,
                     onValueChange = { kcalText = it; kcalDirty = true },
                     label = { Text("Kalorie (kcal)") },
@@ -720,6 +729,7 @@ private fun AddCustomRecipeDialog(
                     Button(onClick = {
                         val input = CustomRecipeOperations.Input(
                             name, cat, time, ingredientsText, method, kcalText, proteinText, carbsText, fatText,
+                            inspirationSourceText,
                         )
                         val result = onAdd(input)
                         if (result == null) onDismiss() else error = result
@@ -1148,6 +1158,23 @@ private fun RecipeCard(
                 color = if (offsetX.value > 0) Color(0xFF43A047) else Color(0xFFE53935),
             )
         }
+        // Requested 2026-08-25 (Web FR-87/v14, ported here): discrete,
+        // always-visible hint that this card can be swiped to rate -- the
+        // gesture above only ever gave feedback DURING a swipe (the
+        // balloon label), nothing suggested it was possible beforehand.
+        // Hidden while actively dragging so it doesn't clash with that
+        // label; purely visual (no pointerInput/clickable), same
+        // red=dislike/green=like colors the drag feedback already uses.
+        if (offsetX.value == 0f) {
+            Text(
+                "‹", modifier = Modifier.align(Alignment.CenterStart).padding(start = 4.dp).alpha(0.3f),
+                fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFFBE463C),
+            )
+            Text(
+                "›", modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp).alpha(0.3f),
+                fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF3CAA6E),
+            )
+        }
     }
 
     if (showInfoDialog) {
@@ -1424,6 +1451,35 @@ private fun RecipeCardBody(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (recipe.inspirationSource != null) {
+                Text(
+                    "💡 Inspiracja: ${recipe.inspirationSource}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
+            // Requested 2026-08-25 (Web FR-66/v5, ported here): explicit
+            // search buttons for the full dish name -- previously the only
+            // way to search it was tapping the recipe title, with no
+            // visible button/affordance suggesting that was possible.
+            Row(modifier = Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val context = LocalContext.current
+                OutlinedButton(
+                    onClick = {
+                        val uri = Uri.parse("https://www.google.com/search?q=" + Uri.encode("${recipe.name} przepis"))
+                        context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                    },
+                    modifier = Modifier.weight(1f),
+                ) { Text("🔎 Google") }
+                OutlinedButton(
+                    onClick = {
+                        val uri = Uri.parse("https://www.youtube.com/results?search_query=" + Uri.encode("${recipe.name} przepis"))
+                        context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                    },
+                    modifier = Modifier.weight(1f),
+                ) { Text("▶️ YouTube") }
+            }
             if (review?.comment != null) {
                 Text(
                     "💬 Twój komentarz: „${review.comment}”",

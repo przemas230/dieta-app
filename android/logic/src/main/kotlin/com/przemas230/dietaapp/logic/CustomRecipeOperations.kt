@@ -24,6 +24,10 @@ object CustomRecipeOperations {
         val proteinText: String,
         val carbsText: String,
         val fatText: String,
+        // FR-66/v5: optional -- ported from index.html's "Źródło
+        // inspiracji" field, blank means "not provided" like the other
+        // optional text fields here.
+        val inspirationSourceText: String = "",
     )
 
     sealed class ValidationError {
@@ -70,6 +74,7 @@ object CustomRecipeOperations {
             gi = null,
             gl = null,
             source = "custom",
+            inspirationSource = input.inspirationSourceText.trim().ifEmpty { null },
         )
     }
 }

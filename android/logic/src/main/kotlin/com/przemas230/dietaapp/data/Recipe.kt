@@ -55,4 +55,9 @@ data class Recipe(
     // linking to their public profile.
     val authorUid: String? = null,
     val authorDisplayName: String? = null,
+    // FR-66/v5: optional, set only when the user filled in "Źródło
+    // inspiracji" while adding their own recipe -- shown at the end of the
+    // recipe card if present. Never backfilled for builtin recipes (no
+    // real data for them) or fabricated.
+    val inspirationSource: String? = null,
 )
