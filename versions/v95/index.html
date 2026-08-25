@@ -2034,28 +2034,7 @@ try{
     firebase.initializeApp(firebaseConfig);
     fbAuth = firebase.auth();
     fbDb = firebase.firestore();
-    // FR-73/v7 (2026-08-25, "dalej się zacina" po FR-76/v3's fix): confirmed
-    // via remote-debugger CPU profiling on the user's phone that even with
-    // FR-76/v3's community-recipes limit+debounce in place, the SAME
-    // Firestore-internal red-black-tree churn (comparator/insert/remove/
-    // fixUp) kept recurring every ~30-45s -- correlated with the WebChannel
-    // long-polling transport's normal periodic channel-restart cycle, NOT
-    // network flakiness. Root cause: `{synchronizeTabs:true}` (Firestore's
-    // "multi-tab" IndexedDB persistence) requires cross-tab lease
-    // coordination through IndexedDB on every reconnect, which is exactly
-    // the `onsuccess` IndexedDB-transaction cost that dominated the profile.
-    // This app doesn't need it: `state` is already independently persisted,
-    // synchronously, to localStorage on every change (saveState(), see
-    // applyRemoteSyncedState above) -- Firestore's own offline cache was
-    // only ever incidental, mainly benefiting the few one-off `.get()` calls
-    // (e.g. openUserListModal, which already has its own 12s timeout for
-    // "genuinely offline" per FR-76's v2 fix) and multi-TAB-of-the-SAME-
-    // browser sharing (irrelevant to this app's actual real device-to-
-    // device sync, which always goes through the server regardless of local
-    // persistence). Removed entirely rather than just dropping
-    // `synchronizeTabs` -- no code path here depends on Firestore surviving
-    // a page reload while offline, so there is no upside left to pay
-    // IndexedDB's cost for.
+    fbDb.enablePersistence({synchronizeTabs:true}).catch(()=>{});
     firebaseReady = true;
   }
 }catch(e){ console.warn("Firebase init failed — działam wyłącznie lokalnie.", e); }

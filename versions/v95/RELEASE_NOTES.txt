@@ -1,0 +1,33 @@
+Wersja v95 (2026-08-25)
+
+Zmiany w index.html i sw.js (Web-only, bez zmian w Androidzie — patrz uzasadnienie):
+
+- Po wdrożeniu v94 (limit + debounce na przepisach społeczności) użytkownik
+  zgłosił, że zacinanie się aplikacji ustępuje wolniej, ale nadal
+  występuje. Ponowny zdalny debug (adb + Chrome DevTools Protocol) na
+  żywym telefonie pokazał ten sam rodzaj obciążenia (wewnętrzne drzewo
+  czerwono-czarne Firestore SDK: comparator/insert/remove/fixUp), ale
+  teraz powracający regularnie co ~30-45 sekund — skorelowany z
+  okresowym odświeżaniem wewnętrznego kanału transportu WebChannel
+  (normalne zachowanie protokołu long-polling, nie zły zasięg sieci).
+- Przyczyna: `fbDb.enablePersistence({synchronizeTabs:true})` — tryb
+  "multi-tab" offline cache Firestore w IndexedDB — wymaga koordynacji
+  między kartami przeglądarki przez IndexedDB przy każdym takim
+  odświeżeniu kanału, co było najdroższą częścią obciążenia (widoczne w
+  profilu jako `onsuccess` transakcji IndexedDB).
+- Usunięte całkowicie (nie tylko `synchronizeTabs`) — aplikacja i tak
+  zapisuje cały swój stan do localStorage niezależnie od Firestore
+  (saveState()), więc offline'owy cache Firestore nie był tu do niczego
+  faktycznie potrzebny. Jedyny efekt uboczny: zapytania Firestore typu
+  `.get()` (np. lista użytkowników w Ustawieniach) przestają działać w
+  trybie offline — ale mają już własny 12-sekundowy limit czasu na taki
+  wypadek (FR-76/v2), więc zachowują się bezpiecznie, tylko już bez
+  próby serwowania z lokalnego cache'u.
+- CACHE_NAME podniesiony do "dieta-app-v95".
+- Android NIE dostał odpowiadającej zmiany — natywny SDK Firestore na
+  Androidzie ma domyślnie włączoną trwałość opartą o SQLite w jednym
+  procesie, bez koncepcji "multi-tab" ani jej narzutu koordynacji przez
+  IndexedDB (to specyficzny problem web'owej implementacji w
+  przeglądarce). Świadoma, uzasadniona rozbieżność — patrz PARITY.md.
+
+Pełny opis w Functional requirements/FR-73.md (Historia rewizji v7).
