@@ -33,7 +33,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -59,8 +58,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Logout
 import com.przemas230.dietaapp.data.EatenEntry
 import com.przemas230.dietaapp.data.PlannedMeal
 import com.przemas230.dietaapp.data.Profile
@@ -108,6 +105,8 @@ fun PlannerScreen(
     onToggleEaten: (cat: String, plannedKcal: Int?, plannedName: String?) -> Unit = { _, _, _ -> },
     waterCount: Int = 0,
     onSignOut: () -> Unit = {},
+    onWaterTap: (Int) -> Unit = {},
+    onWaterSetCount: (Int) -> Unit = {},
 ) {
     val allRecipes by plannerViewModel.allRecipes.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
@@ -159,24 +158,23 @@ fun PlannerScreen(
                     onClearSlot = { cat -> plannerViewModel.clearSlot(todayIndex, cat) },
                     onSlotClick = { cat -> slotPicker = todayIndex to cat },
                     onSignOut = onSignOut,
+                    onWaterTap = onWaterTap,
+                    onWaterSetCount = onWaterSetCount,
                 )
             }
             item {
                 DailyTargetBento(kcalTarget = kcalTargets.daily, macros = macroTargets.daily)
             }
         }
-        item {
-            // FR-21: whole-week random generation, always requires confirmation since it overwrites every day.
-            Button(
-                onClick = {
-                    pendingConfirm = PendingConfirm(
-                        "To nadpisze wszystkie dania zaplanowane w całym tygodniu. Na pewno chcesz wygenerować nowy plan?",
-                    ) { plannerViewModel.randomizeWeek(profile) }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("🎲 Wygeneruj losowo cały tydzień")
-            }
+        // Requested 2026-08-25 (Web FR-87/v9, ported here): moved below the
+        // day-card list instead of above it -- Klinika/Klinika (noc) only,
+        // the other 11 themes keep it exactly where it always was.
+        if (!isClinic) {
+            item { AutoPlanWeekButton(onClick = {
+                pendingConfirm = PendingConfirm(
+                    "To nadpisze wszystkie dania zaplanowane w całym tygodniu. Na pewno chcesz wygenerować nowy plan?",
+                ) { plannerViewModel.randomizeWeek(profile) }
+            }) }
         }
         itemsIndexed(PlannerOperations.DAYS_PL) { day, dayName ->
             val slotClick: (String) -> Unit = { cat -> slotPicker = day to cat }
@@ -237,6 +235,13 @@ fun PlannerScreen(
                 )
             }
         }
+        if (isClinic) {
+            item { AutoPlanWeekButton(onClick = {
+                pendingConfirm = PendingConfirm(
+                    "To nadpisze wszystkie dania zaplanowane w całym tygodniu. Na pewno chcesz wygenerować nowy plan?",
+                ) { plannerViewModel.randomizeWeek(profile) }
+            }) }
+        }
     }
 
     val picker = slotPicker
@@ -290,6 +295,16 @@ fun PlannerScreen(
 }
 
 private class PendingConfirm(val message: String, val action: () -> Unit)
+
+// FR-21: whole-week random generation, always requires confirmation since it
+// overwrites every day. Extracted (was inline) since PlannerScreen now calls
+// this from two different LazyColumn positions depending on isClinic.
+@Composable
+private fun AutoPlanWeekButton(onClick: () -> Unit) {
+    Button(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+        Text("🎲 Wygeneruj losowo cały tydzień")
+    }
+}
 
 @Composable
 private fun DayCard(
@@ -425,6 +440,8 @@ private fun PlannerDashboard(
     onClearSlot: (cat: String) -> Unit,
     onSlotClick: (cat: String) -> Unit,
     onSignOut: () -> Unit,
+    onWaterTap: (Int) -> Unit = {},
+    onWaterSetCount: (Int) -> Unit = {},
 ) {
     val eatenKcal = EatenOperations.dailyEatenKcal(eatenEntries) + EatenOperations.snacksKcal(snacks)
     val remaining = (kcalTarget - eatenKcal).coerceAtLeast(0)
@@ -433,30 +450,36 @@ private fun PlannerDashboard(
         val raw = LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale("pl")))
         raw.replaceFirstChar { it.uppercase() }
     }
+    // Requested 2026-08-25 (Web FR-87/v9, ported here): tapping the Woda
+    // card used to do nothing -- opens the same tap-a-circle picker
+    // already used elsewhere (PostepScreen's Klinika water card), see the
+    // dialog at the end of this composable.
+    var showWaterPicker by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top,
-        ) {
-            Column {
-                Text(dateLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(
-                    if (displayName.isNotBlank()) "Cześć, $displayName!" else "Cześć!",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-            IconButton(onClick = onSignOut) {
-                Icon(Icons.Filled.Logout, contentDescription = "Wyloguj się z tego urządzenia")
-            }
+        // Requested 2026-08-25 (Web FR-87/v9, ported here): the sign-out
+        // shortcut duplicated the one already in Ustawienia → Konto and was
+        // reported as unwanted on the main screen -- dropped from this Row
+        // (onSignOut is kept as a param, unused for now, rather than
+        // threading a removal through every call site, in case this is
+        // ever reversed the way the web header text was).
+        Column {
+            Text(dateLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                if (displayName.isNotBlank()) "Cześć, $displayName!" else "Cześć!",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
         Spacer(modifier = Modifier.height(10.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            DashboardStatCard(label = "Cel", value = "$kcalTarget", unit = "kcal", modifier = Modifier.weight(1f))
+            // Requested 2026-08-25 (Web FR-87/v9, ported here): the "Cel"
+            // card was dropped -- the remaining-kcal card below stretches
+            // left to fill that space instead of leaving a gap (weight 2.3
+            // vs the old Cel(1)+this(1.5)=2.5 combined, matching the web
+            // CSS's 2.3fr/1fr split closely enough).
             Card(
-                modifier = Modifier.weight(1.5f),
+                modifier = Modifier.weight(2.3f),
                 shape = MaterialTheme.shapes.large,
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
             ) {
@@ -503,6 +526,7 @@ private fun PlannerDashboard(
                 value = "$waterCount/${WaterOperations.MAX_LEVEL}",
                 unit = "szklanek",
                 modifier = Modifier.weight(1f),
+                onClick = { showWaterPicker = true },
             )
         }
         Spacer(modifier = Modifier.height(10.dp))
@@ -526,8 +550,13 @@ private fun PlannerDashboard(
                         )
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                 ) {
+                    // Requested 2026-08-25 (Web FR-87/v9, ported here):
+                    // today's chip spells out the full day name instead of
+                    // the same 2-letter abbreviation as every other day --
+                    // the border above already marked it, this makes the
+                    // label itself say so too.
                     Text(
-                        PlannerOperations.DAYS_PL[di].take(2),
+                        if (isToday) PlannerOperations.DAYS_PL[di] else PlannerOperations.DAYS_PL[di].take(2),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
                         color = if (isToday) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -600,12 +629,49 @@ private fun PlannerDashboard(
             }
         }
     }
+    if (showWaterPicker) {
+        // Requested 2026-08-25 (Web FR-87/v9, ported here): same tap-a-
+        // circle picker as PostepScreen's Klinika water card (156-173),
+        // in a dialog instead of inline, so water can be logged from
+        // Planer without switching tabs.
+        Dialog(onDismissRequest = { showWaterPicker = false }) {
+            Card(shape = MaterialTheme.shapes.large) {
+                Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("💧 Ile szklanek wody?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = { onWaterSetCount((waterCount - 1).coerceAtLeast(0)) }) { Text("–") }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(horizontal = 4.dp)) {
+                            for (i in 0 until WaterOperations.MAX_LEVEL) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(22.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (i < waterCount) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                        )
+                                        .clickable { onWaterTap(i) },
+                                )
+                            }
+                        }
+                        TextButton(onClick = { onWaterSetCount((waterCount + 1).coerceAtMost(WaterOperations.MAX_LEVEL)) }) { Text("+") }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "$waterCount/${WaterOperations.MAX_LEVEL} szklanek",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
-private fun DashboardStatCard(label: String, value: String, unit: String, modifier: Modifier = Modifier) {
+private fun DashboardStatCard(label: String, value: String, unit: String, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
     Card(
-        modifier = modifier,
+        modifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier,
         shape = MaterialTheme.shapes.large,
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {

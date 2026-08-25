@@ -35,7 +35,10 @@ data class AppThemeDef(
 )
 
 object AppThemes {
-    const val DEFAULT_ID = "teal"
+    // Requested 2026-08-25 (Web FR-87/v8, ported here): "Klinika" is now the
+    // default theme for fresh installs -- matches index.html's `theme:"clinic"`
+    // default (was "teal" on both platforms before).
+    const val DEFAULT_ID = "clinic"
 
     /** Same order as index.html's THEMES array, so the picker UI matches the web app. */
     val ALL: List<AppThemeDef> = listOf(

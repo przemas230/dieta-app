@@ -3427,6 +3427,87 @@ się zgadzać z web co do joty.
   Planerze zaktualizowała się na żywo bez zamykania panelu). Web only, z
   tego samego powodu co v8 — Android nadal czeka na osobny przegląd tych
   poprawek na emulatorze (patrz `android/PARITY.md`).
+- **v10** (2026-08-25, Android): użytkownik zauważył, że dwa poprzednie
+  commity (v8, v9) nie miały odpowiednika w Androidzie ("nie widzę zmian
+  na androidzie ostatnich i przedostatnich, nie zaktualizowałeś wersji
+  albo nie dokodowałeś tego samego") — port wszystkich 10 poprawek z v8+v9
+  do Kotlina w tej turze, zamiast dalej odkładać. Zanim cokolwiek
+  napisane, sprawdzone (subagentem badawczym, bez zmian w kodzie), która
+  część z 10 poprawek MA odpowiadający błąd w natywnym Compose UI, a
+  która była specyficznie web'owym problemem bez odpowiednika:
+  - **(1) kolor ikon w headerze i (6) aktywna zakładka nawigacji — BEZ
+    ZMIAN, bo Android nigdy nie miał tych błędów**: `MainActivity.kt`'s
+    `TopAppBar`/`FloatingBottomNav` już od początku używały
+    `MaterialTheme.colorScheme.*` (kontener/tekst/ikony), nie żadnego
+    odpowiednika web'owego zaszytego na sztywno `color:#fff` w
+    `style="..."` — więc kontrast był zawsze poprawny; podobnie aktywna
+    ikonka w kółku nawigacji miała od zawsze osobne, kontrastowe tokeny
+    (`colorScheme.primary` dla tła kółka, `colorScheme.onPrimary` dla
+    ikony), nie ten sam token dla obu jak web'owy martwy CSS selektor
+    powodował.
+  - **(2) motyw domyślny → Klinika**: `AppThemes.DEFAULT_ID` (jedno
+    źródło prawdy, `logic/.../AppThemes.kt`) `"teal"` → `"clinic"` —
+    automatycznie ogarnia `ThemeViewModel`, `DietaAppTheme`,
+    `LocalDietaThemeId` i reset-do-domyślnego (wszystkie referencjonują tę
+    samą stałą symbolicznie, nie duplikują wartości). `AppThemesTest.kt`'s
+    test na fallback nieznanego id zaktualizowany (asercja na stałą, nie
+    na sztywne `"teal"`, żeby nie mogło znów po cichu się rozjechać).
+  - **(3) usunięty "Cel", karta POZOSTAŁO rozciągnięta**: `PlannerScreen.kt`'s
+    `PlannerDashboard` — usunięty `DashboardStatCard(label="Cel"...)`,
+    waga środkowej karty 1.5f→2.3f (odpowiednik web'owego `.pd-cards`
+    `2.3fr 1fr`, dawne `1f+1.5f=2.5f` Cel+Pozostało teraz w jednej karcie).
+  - **(4) dzisiejszy dzień pełną nazwą**: dawne `DAYS_PL[di].take(2)` dla
+    KAŻDEGO dnia zastąpione `if (isToday) DAYS_PL[di] else
+    DAYS_PL[di].take(2)` — pasek dni w Compose i tak już jest
+    `horizontalScroll`, więc "rozciągnięcie na pełną szerokość" (web) nie
+    miało tu odpowiednika do portowania — Compose'owy Row już się
+    dopasowuje naturalnie, nie trzeba było nic zmieniać w layoutcie.
+  - **(5) wylogowanie ukryte + nagłówek ukryty**: `IconButton(onSignOut)`
+    z `Icons.Filled.Logout` usunięty z `PlannerDashboard`'s nagłówkowego
+    `Row` (parametr `onSignOut` zostaje niewykorzystany, na wypadek
+    odwrócenia, tak jak web'owe `display:none` zamiast usunięcia z DOM-u).
+    `MainActivity.kt`'s `TopAppBar`'s `title` lambda zwraca wcześnie
+    (`return@TopAppBar`) dla `isClinicHeader` — port od razu KOŃCOWEGO
+    stanu z web'a (nagłówek całkiem ukryty), pomijając pośredni stan v8
+    (nagłówek = data+powitanie), którego Android nigdy nie dostał i nie
+    musiał dostawać, żeby zaraz go cofać w tej samej turze.
+  - **(2 z v9) ucięty pasek nawigacji na długich listach — BEZ ZMIAN,
+    Android nigdy nie miał tego błędu**: `Scaffold`'s trailing lambda
+    (`) { padding -> NavHost(..., modifier = Modifier.padding(padding))
+    }`) rezerwuje realną przestrzeń layoutu pod top/bottom bary dla CAŁEGO
+    `NavHost`-a — architektonicznie odporne na tę klasę błędu (web'owy
+    problem był `position:fixed` floating pill z ręcznie utrzymywanym w
+    CSS odstępem, który się rozjechał; Compose'owy `Scaffold` nigdy nie
+    pozwala treści renderować się pod paskiem w pierwszej kolejności).
+  - **(3 z v9) panel wyboru wody po dotknięciu karty WODA**: `DashboardStatCard`
+    dostał opcjonalny `onClick`, karta "Woda" otwiera teraz `Dialog` z
+    dokładnie tym samym widżetem kółek +/- co już istniał w `PostepScreen.kt`'s
+    Klinika-owej karcie wody (skopiowany wzorzec, nie duplikacja przez
+    nową logikę ViewModelu) — nowe `onWaterTap`/`onWaterSetCount`
+    callbacki przewleczone `PlannerScreen`→`PlannerDashboard`, spięte w
+    `MainActivity.kt` z istniejącym `WaterViewModel.tapDroplet`/`setCount`.
+    Dzięki Compose'owej reaktywności (`waterCount` pochodzi z
+    `collectAsState()` w `MainActivity`) karta WODA aktualizuje się na
+    żywo automatycznie, bez ręcznego wywoływania "renderuj ponownie" jak
+    na webie.
+  - **(4 z v9) przycisk losowania na dole**: wyodrębniony do nowego
+    `AutoPlanWeekButton` (był inline w jednym miejscu, teraz wołany z
+    dwóch), `LazyColumn`'owy `item{}` z tym przyciskiem umieszczony PRZED
+    `itemsIndexed(DAYS_PL)` dla pozostałych 11 motywów (bez zmian) i PO
+    nim dla Kliniki/Kliniki (noc) — ten sam efekt co web'owe przenoszenie
+    węzła DOM-u, tylko przez warunkowe umieszczenie w drzewie Compose
+    zamiast manipulacji istniejącym elementem.
+
+  `./gradlew :app:assembleDebug :logic:test :app:testDebugUnitTest`
+  przechodzi (zero nowych błędów/regresji w istniejących testach, w tym
+  zaktualizowanym `AppThemesTest`). `versionCode` 79→80, `versionName`
+  0.1.78→0.1.79, zweryfikowane `aapt dump badging` PRZED skopiowaniem do
+  `dist/`, `android/dist/` zsynchronizowane. **Nie zweryfikowane wizualnie
+  na emulatorze** — tylko kompilacją i testami jednostkowymi, bez
+  interaktywnego sprawdzenia UI (klikalności, wyglądu dialogu wody,
+  faktycznego układu kart) na żywym/symulowanym urządzeniu w tej turze;
+  czeka na potwierdzenie przez użytkownika po zainstalowaniu przez
+  "Sprawdź aktualizację".
 
 # FR-88: Planer jako pierwsza zakładka nawigacji
 

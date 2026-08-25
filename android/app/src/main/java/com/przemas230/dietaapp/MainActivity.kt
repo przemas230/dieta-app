@@ -566,6 +566,16 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
             ) {
                 TopAppBar(
                     title = {
+                        // Requested 2026-08-25 (Web FR-87/v9, ported here): the
+                        // title/subtitle earn no space once nothing above them
+                        // needs collapsing/expanding for Klinika (see the chevron
+                        // gate below) -- an earlier web attempt at replacing this
+                        // with a date+greeting line was itself reverted the same
+                        // day for duplicating the Planer dashboard's own greeting
+                        // one scroll down, so this ports straight to the FINAL
+                        // state: hidden entirely, leaving just the action icons
+                        // (settings gear + quick-add) at the end of the bar.
+                        if (isClinicHeader) return@TopAppBar
                         Column(
                             modifier = Modifier.clickable {
                                 // FR-45/v4 (2026-08-11): EITHER manual toggle now freezes
@@ -776,6 +786,8 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     onToggleEaten = { cat, kcal, name -> eatenViewModel.toggle(cat, kcal, name) },
                     waterCount = plannerDashboardWaterCount,
                     onSignOut = { showDashboardSignOutConfirm = true },
+                    onWaterTap = { i -> waterViewModel.tapDroplet(i) },
+                    onWaterSetCount = { n -> waterViewModel.setCount(n) },
                 )
             }
             composable(Screen.Progress.route) {

@@ -23,9 +23,12 @@ class AppThemesTest {
     }
 
     @Test
-    fun `byId falls back to the default teal theme for an unknown id`() {
-        assertEquals("teal", AppThemes.byId("nope").id)
+    fun `byId falls back to the default theme for an unknown id`() {
+        // Requested 2026-08-25 (Web FR-87/v8, ported here): default is now
+        // "clinic", not "teal" -- this asserts against DEFAULT_ID itself
+        // (not a hardcoded id) precisely so it can't silently drift again.
         assertEquals(AppThemes.DEFAULT_ID, AppThemes.byId("nope").id)
+        assertEquals("clinic", AppThemes.DEFAULT_ID)
     }
 
     @Test
