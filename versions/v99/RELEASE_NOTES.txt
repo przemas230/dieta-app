@@ -1,0 +1,33 @@
+Wersja v99 (2026-08-25)
+
+Zmiana w index.html i sw.js — motyw Klinika / Klinika (noc):
+
+Naprawiony błąd: pływający pasek dolnej nawigacji zmieniał widoczną
+pozycję (przesuwał się w dół) po wejściu na zakładkę Zakupy w porównaniu
+do innych zakładek. Zdiagnozowane zdalnym debuggerem na żywym telefonie
+użytkownika (nie zgadywane): `bottom:Npx` na elemencie `position:fixed`
+jest w mobilnym Chrome kotwiczone do `window.innerHeight`, które NIE jest
+stałe między zakładkami — rośnie (zmierzone: 499px → 508px, realna
+9-pikselowa różnica) na dłuższych/bardziej przewijalnych widokach (Zakupy),
+gdy pasek adresu Chrome automatycznie się chowa, podczas gdy `100dvh`
+(zmierzone bezpośrednio na urządzeniu) zostawało stałe na 499px w obu
+przypadkach, zgodnie z `visualViewport.height`. Odstęp paska od faktycznie
+widocznego dołu ekranu kurczył się więc niepostrzeżenie o dokładnie tę
+różnicę — potwierdzone na żywo: 12px odstępu na Planerze wobec ~2px na
+Zakupach, dokładnie ta różnica którą użytkownik widział.
+
+Naprawione: pozycjonowanie paska zmienione z `bottom:...` na
+`top:calc(100dvh - 12px - env(safe-area-inset-bottom) - 63px)` — ta sama
+jednostka (`100dvh`), która pozostawała stała we wszystkich testach na
+prawdziwym telefonie, omija niejednoznaczne zakotwiczenie `bottom` przy
+`position:fixed` w Chrome. Zweryfikowane bezpośrednio na żywym urządzeniu
+(nie tylko lokalnie w desktopowym Chrome) — pozycja paska identyczna
+(co do ułamka piksela) na wszystkich 5 zakładek po poprawce, wobec
+zauważalnej różnicy przed nią.
+
+CACHE_NAME podniesiony do "dieta-app-v99".
+
+Android nadal NIE dostał odpowiadającej zmiany — ten konkretny problem
+(mobilny Chrome + `position:fixed`) nie ma bezpośredniego odpowiednika w
+natywnym Compose UI (Scaffold zarządza tym inaczej), ale wymaga osobnego
+sprawdzenia czy jakikolwiek podobny efekt tam występuje.

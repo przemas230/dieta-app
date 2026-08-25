@@ -872,28 +872,8 @@
   /* Same "floating pill" bottom nav as Android's FloatingBottomNav -- visible
      margin from the screen edge instead of docking flush, active tab's icon
      in a filled sage circle instead of a color-only change. */
-  /* Bug reported 2026-08-25 ("po kliknieciu karty zakupy zmienia sie
-     polozenie calego paska na dole"), confirmed on the user's real phone
-     via remote debugger: `bottom:Npx` on a `position:fixed` element is
-     anchored to `window.innerHeight` in mobile Chrome, which is NOT
-     stable across tabs -- it grows (measured 499px -> 508px, a real 9px
-     difference) on longer/more-scrollable views (Zakupy) as Chrome's own
-     URL bar auto-collapses, while `100dvh` (measured via a live test
-     element) stayed at a constant 499px matching `visualViewport.height`
-     in both cases. The nav's `bottom` offset is measured against that
-     unstable, larger `innerHeight`, so its position *relative to what's
-     actually visible* silently shrinks by exactly that same delta on
-     tabs where the toolbar happens to be collapsed -- confirmed live:
-     12px gap-from-visible-bottom on Planer vs only ~2px on Zakupy, same
-     ~9-10px the user could see. Switched from `bottom` to `top` computed
-     from `100dvh` (the one metric that stayed constant across every tab
-     in testing) instead, which sidesteps `position:fixed`'s own
-     ambiguous bottom-anchoring entirely. 63px below is nav.bottom's own
-     rendered height (30px icon + button padding + label) -- update this
-     number too if that sizing ever changes. */
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) nav.bottom{
-    left:50%; right:auto; bottom:auto;
-    top:calc(100dvh - 12px - env(safe-area-inset-bottom) - 63px);
+    left:50%; right:auto; bottom:calc(12px + env(safe-area-inset-bottom));
     transform:translateX(-50%);
     width:calc(100% - 32px); max-width:568px;
     border-top:none; border-radius:28px;
