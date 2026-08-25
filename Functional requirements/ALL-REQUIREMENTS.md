@@ -1734,6 +1734,23 @@ Zrewidowane 2026-08-08: dodano automatyczne obliczanie kalorii/makroskładników
   zapisaniu — bez zmian. Web NIE zmieniony w tej turze — świadoma
   rozbieżność, patrz `android/PARITY.md`. Zatwierdzanie przepisów z
   poziomu aplikacji (nie tylko konsoli Firebase) opisane w nowym FR-85.
+- **v5** (2026-08-25, Web): Dwie zmiany na życzenie użytkownika. (1) Nowe,
+  opcjonalne pole „Źródło inspiracji” w formularzu „➕ Dodaj swój przepis”
+  — jeśli wypełnione, `recipe.inspirationSource` pokazuje się jako „💡
+  Inspiracja: …” na końcu karty przepisu (pod sposobem przygotowania).
+  Świadomie TYLKO dla nowo dodawanych własnych przepisów, na wyraźne
+  pytanie zwrotne do użytkownika — NIE dopisywano fikcyjnych/zgadywanych
+  źródeł inspiracji do 229 wbudowanych przepisów aplikacji, bo nie ma dla
+  nich prawdziwych danych, a zmyślanie źródeł dla istniejących dań
+  wprowadzałoby w błąd. Pole przechodzi też przez `pushCommunityRecipe`/
+  `sanitizeCommunityRecipeDoc` (escapowane, max 200 znaków), więc widoczne
+  jest też innym użytkownikom oglądającym zatwierdzony przepis
+  społecznościowy (FR-76), nie tylko autorowi. (2) Karta przepisu (KAŻDA,
+  nie tylko własne) dostała jawne przyciski „🔎 Google”/„▶️ YouTube”
+  wyszukujące pełną nazwę dania w nowej karcie — wcześniej istniało tylko
+  ukryte wyszukiwanie Google po kliknięciu w sam tytuł przepisu, bez
+  żadnego widocznego przycisku/afordancji. Oba mechanizmy zweryfikowane
+  lokalnie w Chrome (nie tylko składniowo).
 
 ---
 
@@ -3527,6 +3544,63 @@ się zgadzać z web co do joty.
   (`kotlin.math.round(...*100)/100.0`), zanim trafi do `formatKg()`.
   `./gradlew :app:assembleDebug :logic:test` przechodzi. **Nie
   zweryfikowane wizualnie na emulatorze.**
+- **v12** (2026-08-25, Web): W tej samej rundzie próśb co FR-66/v5, trzy
+  kolejne zmiany specyficzne dla karty Planer w Klinice/Klinice (noc):
+  1. Ikonka ustawień + plusik w headerze wyrównane wizualnie do rzędu z
+     "Wtorek, 25 Sierpnia / Cześć, {imię}!" na karcie Planer, zamiast
+     siedzieć w osobnym pasku nad nią. `header.app-top` zwinięty do
+     wysokości 0 (dalej `position:sticky`, dalej klikalny — NIE
+     `display:none`), ikony pozycjonowane przez `.header-title-row`'s
+     własny padding tak, żeby wizualnie nakładały się na tę samą linię co
+     tekst pod nimi. `main`'s górny margines zwiększony do 100px, żeby
+     pozostałych 4 zakładek (bez tego tekstu do wyrównania) treść nie
+     chowała się pod pływającymi ikonami — potwierdzone wcześniej (podczas
+     testów) realnym błędem: licznik "N pozycji" na Zakupach chował się
+     częściowo pod ikoną ustawień, zanim dodano tę poprawkę.
+  2. Karty w "Dzisiejszym Planerze": dotknięcie przełączało dotąd
+     bezpośrednio "zjedzone" — zmienione tak, że PRZESUNIĘCIE (w lewo LUB
+     w prawo, oba kierunki przełączają, w odróżnieniu od kierunkowego
+     swipe'a nagłówka z FR-36) przełącza "zjedzone" (nowa
+     `attachPdMealCardSwipe()`, ten sam wzorzec axis-lock/tap-vs-swipe co
+     `attachSwipeRating()` już używał dla kart na Przepisach), a zwykłe
+     dotknięcie otwiera teraz podgląd przepisu (`openRecipePreviewModal()`)
+     — nowy modal (`#recipePreviewOverlay`) renderujący TEN SAM
+     `recipeCard()` co zakładka Przepisy (ulubione, lista zakupów, oceny,
+     komentarze, nowe przyciski Google/YouTube z FR-66/v5 — wszystko),
+     otwarty od razu rozwinięty, zamiast budować drugi, uboższy widok
+     podglądu. Odpowiednik Androidowego FR-86 ("podgląd przepisu z
+     Planera"), którego web nigdy wcześniej nie miał.
+  3. "Dzisiejszy Planer" (nagłówek + karty POZOSTAŁO/WODA + pasek dni +
+     dzisiejsze posiłki, budowane przez `renderPlannerDashboard()`) razem
+     z kafelkami kcal/białko/tłuszcz/węgle (`#plannerBento`) owinięte w
+     nowy `#plannerTodayWrap` (`display:flex; flex-direction:column;
+     min-height:calc(100vh - 200px)`), kafelki przypięte do samego dołu
+     (`margin-top:auto`) — lista 7 dni tygodnia wymaga teraz przewinięcia,
+     zamiast siedzieć bezpośrednio pod dzisiejszymi kartami. Pozostałych
+     11 motywów (oba elementy owijające puste dla nich) bez zmian
+     wizualnych. `renderPlanner()`'s przenoszenie przycisku "🎲 Wygeneruj
+     losowo" (FR-87/v9) zaktualizowane, żeby wstawiać się WZGLĘDEM nowego
+     wrappera, nie bezpośrednio względem `#plannerBento` (który przestał
+     być bezpośrednim dzieckiem `#view-planner`).
+
+  Wszystkie 3 zweryfikowane lokalnie w Chrome: zrzuty ekranu + pomiary
+  `getBoundingClientRect` (wyrównanie ikon, brak kolizji z treścią
+  pozostałych zakładek, pozycja kafelków względem wysokości okna) +
+  symulowane gesty `PointerEvent` (swipe w obu kierunkach faktycznie
+  przełącza "zjedzone" bez otwierania podglądu; zwykłe dotknięcie otwiera
+  podgląd z widocznymi przyciskami Google/YouTube). CACHE_NAME→v98,
+  `versions/v98/`. **Android nadal NIE dostał odpowiadających zmian** —
+  świadomie odłożone razem z resztą motywu Klinika z tej sesji (patrz
+  `android/PARITY.md`).
+
+  Osobna, PIĄTA prośba z tej samej rundy — pływający pasek nawigacji
+  zmienia pozycję po wejściu na kartę Zakupy — NIE została jeszcze
+  naprawiona: wymaga pomiaru na żywym telefonie (podejrzenie: dynamiczne
+  chowanie/pokazywanie paska adresu w mobilnym Chrome przy różnicach
+  wysokości/przewijalności strony między zakładkami, nie da się tego
+  wiarygodnie zdiagnozować w desktopowym Chrome), a połączenie adb z
+  wcześniejszej sesji zdalnego debugowania tego dnia wygasło w trakcie tej
+  tury. Odłożone do ponownego podłączenia telefonu.
 
 # FR-88: Planer jako pierwsza zakładka nawigacji
 

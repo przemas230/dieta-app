@@ -676,52 +676,9 @@
      inside that used to be a flat white/rgba(255,255,255,x) (correct only
      against the old dark block) is remapped to --text/--muted here so it
      stays legible on the light/dark CARD background instead. */
-  /* Requested 2026-08-25: the settings gear + quick-add "+" should sit
-     level with the "Wtorek, 25 Sierpnia / Cześć, {imię}!" text on the
-     Planer dashboard just below, not float in their own separate row
-     above it. header.app-top collapses to zero HEIGHT (not display:none --
-     it must stay sticky and clickable) with overflow:visible, so it no
-     longer pushes #plannerDashboard's pd-header down; the icons are
-     positioned via .header-title-row's own padding to land at the same y
-     as pd-header's first line. main's top padding is widened to match, so
-     the OTHER 10 themes' tabs (which have no pd-header to align with)
-     still clear the floating icons instead of their own heading text
-     landing underneath them. */
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top{
-    background:transparent; color:var(--text); box-shadow:none;
+    background:var(--bg); color:var(--text); box-shadow:none;
     border-bottom-left-radius:0; border-bottom-right-radius:0;
-    height:0; padding:0; overflow:visible;
-  }
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top .header-title-row{
-    padding:56px 18px 0;
-  }
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) main{
-    padding-top:100px;
-  }
-  /* Requested 2026-08-25: "Dzisiejszy Planer" (pd-header + pd-cards +
-     day-strip + today's meal cards, all built by renderPlannerDashboard())
-     plus the kcal/macro bento row now fill the full screen height, with
-     the bento tiles pinned to the very bottom -- the 7-day list below only
-     becomes visible by scrolling, instead of sitting immediately under
-     today's cards. min-height subtracts roughly what main's own top+bottom
-     padding above/below already reserves (100px header clearance + 100px
-     nav clearance), so the wrap's bottom edge lands at the visible
-     viewport's bottom rather than overshooting it. */
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) #plannerTodayWrap{
-    display:flex; flex-direction:column;
-    min-height:calc(100vh - 200px);
-  }
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) #plannerTodayWrap .clinic-bento{
-    margin-top:auto; padding-top:14px;
-  }
-  /* Only the Planer tab has a pd-header row to align the floating icons
-     with (see clinicGreetingHtml() et al) -- pulled back up by roughly
-     what main's padding-top adds, so its content starts where the icons
-     are, while every other tab keeps the full 100px clearance above so
-     ITS top-right content (e.g. Zakupy's "N pozycji" count) doesn't end
-     up underneath the icons the way it briefly did during testing. */
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) #view-planner{
-    margin-top:-44px;
   }
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top .header-collapse-btn,
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) header.app-top .header-settings-btn,
@@ -1598,13 +1555,11 @@
 
   <!-- VIEW: PLANER -->
   <section id="view-planner" class="view active">
-    <div id="plannerTodayWrap">
-      <div id="plannerDashboard"></div>
-      <div id="plannerBento" class="clinic-bento"></div>
-    </div>
+    <div id="plannerDashboard"></div>
     <div class="shop-actions" style="margin-top:0;" id="plannerAutoPlanRow">
       <button class="btn primary" id="autoPlanBtn">🎲 Wygeneruj losowo cały tydzień</button>
     </div>
+    <div id="plannerBento" class="clinic-bento"></div>
     <div id="plannerDays"></div>
   </section>
 
@@ -1998,9 +1953,6 @@
       <label class="span2">Sposób przygotowania
         <textarea id="arMethod" rows="3" placeholder="Krótki opis przygotowania"></textarea>
       </label>
-      <label class="span2">Źródło inspiracji (opcjonalnie)
-        <input type="text" id="arInspiration" placeholder="np. nazwa bloga, książki, znajomego...">
-      </label>
       <label>Kalorie (kcal)<input type="number" id="arKcal" placeholder="np. 350"></label>
       <label>Białko (g, opcjonalnie)<input type="number" id="arProtein" placeholder="np. 20"></label>
       <label>Węglowodany (g, opcjonalnie)<input type="number" id="arCarbs" placeholder="np. 30"></label>
@@ -2126,16 +2078,6 @@
     </div>
     <div class="water-row" id="waterPickerRow"></div>
     <div class="hint-text" id="waterPickerLabel" style="text-align:center; margin-top:10px;"></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="recipePreviewOverlay">
-  <div class="modal-sheet">
-    <div class="modal-head">
-      <h3>🍽️ Podgląd przepisu</h3>
-      <button id="recipePreviewClose">✕</button>
-    </div>
-    <div id="recipePreviewBody"></div>
   </div>
 </div>
 
@@ -3844,7 +3786,6 @@ function sanitizeCommunityRecipeDoc(data, id){
     authorUid: typeof data.authorUid==="string" ? data.authorUid : null,
     authorDisplayName: escapeHtml(String(data.authorDisplayName||"Anonimowy użytkownik").slice(0,60)),
   };
-  if(data.inspirationSource) out.inspirationSource = escapeHtml(String(data.inspirationSource).slice(0,200));
   const p = num(data.protein), c = num(data.carbs), f = num(data.fat);
   if(p!==undefined && c!==undefined && f!==undefined){
     out.protein = p; out.carbs = c; out.fat = f;
@@ -4468,53 +4409,6 @@ function attachSwipeToEat(){
     };
     row.addEventListener("pointerup", finish);
     row.addEventListener("pointercancel", finish);
-  });
-}
-// Requested 2026-08-25: bidirectional version of attachSwipeToEat() for the
-// Planer dashboard's "Dzisiejszy Planer" cards -- swiping EITHER way
-// toggles eaten (unlike the header's rows, there's no existing "left vs
-// right means what" convention here to preserve), while a plain tap is
-// left free for openRecipePreviewModal() (wired separately in
-// renderPlannerDashboard()). axis-locks against vertical scrolling the
-// same way attachSwipeRating() does, so scrolling the page doesn't
-// accidentally register as a horizontal swipe.
-function attachPdMealCardSwipe(box, today){
-  const AXIS_LOCK = 10, SWIPE_MAX = 60, SWIPE_COMMIT = 32;
-  box.querySelectorAll(".pd-meal-card:not(.pd-meal-card-empty)").forEach(card=>{
-    let startX=null, startY=null, dx=0, axis=null;
-    card.addEventListener("pointerdown", (e)=>{
-      if(e.target.closest("button")) return;
-      startX = e.clientX; startY = e.clientY; dx = 0; axis = null;
-      card.style.transition = "none";
-    });
-    card.addEventListener("pointermove", (e)=>{
-      if(startX===null) return;
-      const ddx = e.clientX - startX, ddy = e.clientY - startY;
-      if(axis===null && (Math.abs(ddx) > AXIS_LOCK || Math.abs(ddy) > AXIS_LOCK)){
-        axis = Math.abs(ddx) > Math.abs(ddy) ? "x" : "y";
-      }
-      if(axis === "x"){
-        if(e.cancelable) e.preventDefault();
-        dx = Math.max(-SWIPE_MAX, Math.min(SWIPE_MAX, ddx));
-        card.style.transform = `translateX(${dx}px)`;
-      }
-    });
-    const finish = ()=>{
-      if(startX===null) return;
-      card.style.transition = "transform .15s ease";
-      card.style.transform = "translateX(0)";
-      if(axis==="x" && Math.abs(dx) > SWIPE_COMMIT){
-        card.dataset.pdSwiped = "1";
-        const cat = card.dataset.pdToggleCat;
-        const wasEaten = isEaten(today, cat);
-        setEaten(today, cat, !wasEaten);
-        saveState();
-        setTimeout(()=>{ renderPlannerDashboard(); renderHeader(); renderTodayTracker(); }, 140);
-      }
-      startX=null; startY=null; dx=0; axis=null;
-    };
-    card.addEventListener("pointerup", finish);
-    card.addEventListener("pointercancel", finish);
   });
 }
 
@@ -5375,11 +5269,6 @@ function recipeCard(r, onChange, opts={}){
         return `<li><button class="ing-fav ${f?'active':''}" data-ing="${canon}">${f?'★':'☆'}</button><span${(have||f)?' class="have-it"':''}>${withEmoji(i, canon)}</span></li>`;
       }).join("")}</ul>
       <p class="method">${r.method}</p>
-      ${r.inspirationSource ? `<p class="hint-text" style="margin-top:6px;">💡 Inspiracja: ${escapeHtml(r.inspirationSource)}</p>` : ""}
-      <div class="card-action-row">
-        <button type="button" class="plan-btn" data-search-google style="flex:1;">🔎 Google</button>
-        <button type="button" class="plan-btn" data-search-youtube style="flex:1;">▶️ YouTube</button>
-      </div>
       ${review && review.comment ? `<p class="hint-text" style="margin-top:8px;">💬 Twój komentarz: „${review.comment}”</p>` : ""}
       <button type="button" class="pantry-status-btn" data-pantry-check>
         <div class="pantry-status-head"><span>🏺 Stan spiżarni</span><span class="pantry-status-count">${pantryHave} / ${pantryTotal} składników</span></div>
@@ -5469,18 +5358,6 @@ function recipeCard(r, onChange, opts={}){
   card.querySelector(".recipe-title").addEventListener("click", (e)=>{
     e.stopPropagation();
     window.open("https://www.google.com/search?q=" + encodeURIComponent(r.name + " przepis"), "_blank");
-  });
-  // Requested 2026-08-25: explicit buttons for the same Google search the
-  // title already opened (undiscoverable -- no visible affordance), plus a
-  // new YouTube one, both using the full dish name so the search actually
-  // finds this specific recipe rather than a generic ingredient.
-  card.querySelector("[data-search-google]").addEventListener("click", (e)=>{
-    e.stopPropagation();
-    window.open("https://www.google.com/search?q=" + encodeURIComponent(r.name + " przepis"), "_blank");
-  });
-  card.querySelector("[data-search-youtube]").addEventListener("click", (e)=>{
-    e.stopPropagation();
-    window.open("https://www.youtube.com/results?search_query=" + encodeURIComponent(r.name + " przepis"), "_blank");
   });
   const macroInfoBtn = card.querySelector("[data-macro-info]");
   if(macroInfoBtn){
@@ -5950,7 +5827,6 @@ function openAddRecipeModal(){
   document.getElementById("arTime").value = "";
   document.getElementById("arIngredients").value = "";
   document.getElementById("arMethod").value = "";
-  document.getElementById("arInspiration").value = "";
   document.getElementById("arKcal").value = "";
   document.getElementById("arProtein").value = "";
   document.getElementById("arCarbs").value = "";
@@ -5978,7 +5854,6 @@ document.getElementById("arSaveBtn").addEventListener("click", ()=>{
   const carbs = parseFloat(document.getElementById("arCarbs").value);
   const fat = parseFloat(document.getElementById("arFat").value);
   const hasFullMacros = [protein, carbs, fat].every(Number.isFinite);
-  const inspirationSource = document.getElementById("arInspiration").value.trim();
   const recipe = {
     id: "custom-" + Date.now(),
     cat: document.getElementById("arCat").value,
@@ -5989,7 +5864,6 @@ document.getElementById("arSaveBtn").addEventListener("click", ()=>{
     method: document.getElementById("arMethod").value.trim() || "—",
     source: "custom",
   };
-  if(inspirationSource) recipe.inspirationSource = inspirationSource;
   if(hasFullMacros){
     recipe.protein = protein; recipe.carbs = carbs; recipe.fat = fat;
     recipe.fiber = 0; recipe.gi = 50; recipe.gl = Math.round(carbs*50/100*10)/10;
@@ -7134,7 +7008,7 @@ function renderPlannerDashboard(){
       return `<button class="pd-meal-card pd-meal-card-empty" data-pd-add-cat="${c.id}">+ ${c.label}</button>`;
     }
     const done = isEaten(today, c.id);
-    return `<div class="pd-meal-card${done?' eaten':''}" data-pd-toggle-cat="${c.id}" data-pd-recipe-id="${r.id}">
+    return `<div class="pd-meal-card${done?' eaten':''}" data-pd-toggle-cat="${c.id}">
       <span class="pd-meal-avatar">${c.icon}</span>
       <span class="pd-meal-text">
         <span class="pd-meal-cat">${c.label}</span>
@@ -7182,19 +7056,13 @@ function renderPlannerDashboard(){
     document.getElementById("signOutBtn").click();
   });
   document.getElementById("pdWaterCard").addEventListener("click", openWaterPickerModal);
-  // Requested 2026-08-25: tapping a "Dzisiejszy Planer" card used to
-  // toggle eaten directly -- swapped so swipe (either direction) toggles
-  // eaten instead (matching the header's own swipe-to-eat gesture,
-  // attachSwipeToEat, except bidirectional here since there's no "which
-  // way means eaten" convention for this card), and a plain tap now opens
-  // a preview of the recipe instead (openRecipePreviewModal below).
-  attachPdMealCardSwipe(box, today);
   box.querySelectorAll("[data-pd-toggle-cat]").forEach(el=>{
     el.addEventListener("click", (e)=>{
       if(e.target.closest("[data-pd-remove-cat]")) return;
-      if(el.dataset.pdSwiped==="1"){ delete el.dataset.pdSwiped; return; }
-      const recipe = findRecipeById(el.dataset.pdRecipeId);
-      if(recipe) openRecipePreviewModal(recipe);
+      const cat = el.dataset.pdToggleCat;
+      const wasEaten = isEaten(today, cat);
+      setEaten(today, cat, !wasEaten);
+      saveState(); renderPlannerDashboard(); renderHeader(); renderTodayTracker();
     });
   });
   box.querySelectorAll("[data-pd-remove-cat]").forEach(btn=>{
@@ -7230,7 +7098,7 @@ function renderPlanner(){
   if(isClinic){
     viewPlanner.appendChild(autoPlanRow);
   }else{
-    viewPlanner.insertBefore(autoPlanRow, document.getElementById("plannerTodayWrap").nextSibling);
+    viewPlanner.insertBefore(autoPlanRow, document.getElementById("plannerBento"));
   }
   const jsDay = new Date().getDay();
   const todayIdx = jsDay===0 ? 6 : jsDay-1;
@@ -7627,22 +7495,6 @@ function openWaterPickerModal(){
   renderWaterPickerModal();
   document.getElementById("waterPickerOverlay").classList.add("show");
 }
-// Requested 2026-08-25: tapping a "Dzisiejszy Planer" card (Klinika) now
-// "highlights"/previews the recipe instead of toggling eaten (that moved to
-// swipe, see attachPdMealCardSwipe()) -- reuses the exact same recipeCard()
-// used on the Przepisy tab (favorite star, shopping-list button, ratings,
-// comments, the new Google/YouTube search buttons, everything), opened
-// already-expanded, rather than building a second, thinner preview.
-function openRecipePreviewModal(recipe){
-  const body = document.getElementById("recipePreviewBody");
-  body.innerHTML = "";
-  body.appendChild(recipeCard(recipe, ()=>{ renderPlannerDashboard(); renderHeader(); }, {startExpanded:true}));
-  document.getElementById("recipePreviewOverlay").classList.add("show");
-}
-document.getElementById("recipePreviewClose").addEventListener("click", ()=> document.getElementById("recipePreviewOverlay").classList.remove("show"));
-document.getElementById("recipePreviewOverlay").addEventListener("click", (e)=>{
-  if(e.target===document.getElementById("recipePreviewOverlay")) e.target.classList.remove("show");
-});
 
 let weightChartInstance = null;
 function hexToRgba(hex, alpha){

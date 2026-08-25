@@ -1,0 +1,41 @@
+Wersja v98 (2026-08-25)
+
+Zmiany w index.html i sw.js:
+
+1. Ikonka ustawień i plusik w headerze wyrównane wizualnie do rzędu z
+   datą i powitaniem ("Wtorek, 25 Sierpnia / Cześć, {imię}!") na karcie
+   Planer — motyw Klinika/Klinika (noc). Nagłówek zwinięty do wysokości 0
+   (dalej sticky i klikalny), ikony pozycjonowane tak, żeby wizualnie
+   pokrywały się z pierwszą linią tekstu pod nimi; margines nad
+   zawartością pozostałych zakładek zwiększony, żeby ich treść nie
+   chowała się pod ikonami (sprawdzone na wszystkich 5 zakładkach).
+2. Karty w "Dzisiejszym Planerze" (karta Planer): zaznaczanie/odznaczanie
+   "zjedzone" przeniesione z dotknięcia na przesunięcie (w lewo LUB w
+   prawo — oba kierunki przełączają). Dotknięcie karty otwiera teraz
+   podgląd przepisu (ten sam pełny widok co na Przepisach — ulubione,
+   lista zakupów, oceny, komentarze — otwarty od razu rozwinięty).
+3. Karta przepisu (w tym nowy podgląd z pkt 2) dostała jawne przyciski
+   "🔎 Google" i "▶️ YouTube" wyszukujące pełną nazwę dania — wcześniej
+   istniało tylko ukryte (bez żadnego widocznego przycisku) wyszukiwanie
+   Google po kliknięciu w tytuł. Formularz "➕ Dodaj swój przepis" dostał
+   nowe, opcjonalne pole "Źródło inspiracji" — jeśli wypełnione, pokazuje
+   się na końcu przepisu. Świadomie TYLKO dla nowo dodawanych własnych
+   przepisów — nie dopisywano fikcyjnych źródeł do 229 wbudowanych dań.
+4. Karta Planer (motyw Klinika/Klinika (noc)): "Dzisiejszy Planer" (nagłówek
+   + karty POZOSTAŁO/WODA + pasek dni + dzisiejsze posiłki) razem z
+   kafelkami kcal/białko/tłuszcz/węgle rozciągnięte na wysokość ekranu,
+   kafelki przypięte na sam dół tej sekcji — lista 7 dni tygodnia widoczna
+   dopiero po przewinięciu, zamiast zaraz pod dzisiejszymi kartami.
+- CACHE_NAME podniesiony do "dieta-app-v98".
+
+Wszystkie 4 zmiany zweryfikowane lokalnie w Chrome (zrzuty ekranu +
+pomiary getBoundingClientRect + symulowane gesty pointer — swipe w obu
+kierunkach, tap otwierający podgląd), nie tylko sprawdzone składniowo.
+
+Piąta rzecz z tej samej rundy próśb — przesuwanie się paska nawigacji przy
+karcie Zakupy — WYMAGA pomiaru na żywym telefonie (podejrzenie: dynamiczne
+chowanie paska adresu w mobilnym Chrome), połączenie adb z wcześniejszej
+sesji debugowania wygasło; odłożone do ponownego podłączenia telefonu.
+
+Android nadal NIE dostał odpowiadających zmian z tej wersji — patrz
+android/PARITY.md.
