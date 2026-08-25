@@ -574,7 +574,13 @@ private fun WeightCard(
             } else {
                 sorted.first()
             }
-            latest.kg - baseline.kg
+            // Requested 2026-08-25: raw Double subtraction here could print
+            // long floating-point tails (e.g. "2.1999999999999957" instead
+            // of "2.2") since kg entries aren't guaranteed to be exact
+            // binary fractions -- rounded to 2 decimal places, same
+            // "trim a clean .00" behavior formatKg already gives every
+            // other weight value below.
+            kotlin.math.round((latest.kg - baseline.kg) * 100) / 100.0
         }
     }
 

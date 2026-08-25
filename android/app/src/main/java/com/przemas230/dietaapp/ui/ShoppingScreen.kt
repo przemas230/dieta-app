@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
@@ -57,11 +58,13 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.przemas230.dietaapp.data.PantryCategory
 import com.przemas230.dietaapp.data.PantryItem
 import com.przemas230.dietaapp.data.ShoppingItem
 import com.przemas230.dietaapp.logic.AppThemes
 import com.przemas230.dietaapp.logic.DayCardState
 import com.przemas230.dietaapp.logic.IngredientCanon
+import com.przemas230.dietaapp.logic.PantryTiles
 import com.przemas230.dietaapp.logic.RecipePantryMatching
 import com.przemas230.dietaapp.logic.ShoppingDayCard
 import com.przemas230.dietaapp.logic.ShoppingDayStrip
@@ -199,35 +202,71 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
                 )
             }
         } else if (tileView) {
-            val sorted = remember(items) { items.entries.sortedBy { it.value.name } }
+            // Requested 2026-08-25: items were sorted flat by name only --
+            // category badges existed per-tile but items from different
+            // categories were interleaved instead of grouped into visible
+            // sections, unlike the web version and unlike this app's OWN
+            // Spiżarnia grid just below. Reuses the exact grouping
+            // ShoppingOperations.buildShareText() already uses for the
+            // share-sheet text export (PantryTiles.categoryAndEmoji +
+            // CATEGORY_ORDER) rather than inventing a second scheme.
+            val grouped = remember(items) {
+                items.entries.groupBy { PantryTiles.categoryAndEmoji(it.value.name).first }
+            }
             LazyVerticalGrid(columns = GridCells.Fixed(3), contentPadding = PaddingValues(12.dp)) {
-                gridItems(sorted, key = { it.key }) { (key, item) ->
-                    ShoppingTile(
-                        item = item,
-                        pantryEntry = pantryItems[item.name] as? PantryItem.Product,
-                        dayLabel = ShoppingOperations.formatIngredientDays(ingredientDays[key], todayIdx),
-                        onToggle = { viewModel.toggleChecked(key) },
-                    )
+                PantryTiles.CATEGORY_ORDER.forEach { category ->
+                    val group = grouped[category]?.sortedBy { it.value.name } ?: return@forEach
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Text(
+                            category.label,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+                        )
+                    }
+                    gridItems(group, key = { it.key }) { (key, item) ->
+                        ShoppingTile(
+                            item = item,
+                            pantryEntry = pantryItems[item.name] as? PantryItem.Product,
+                            dayLabel = ShoppingOperations.formatIngredientDays(ingredientDays[key], todayIdx),
+                            onToggle = { viewModel.toggleChecked(key) },
+                        )
+                    }
                 }
             }
         } else {
-            val sorted = remember(items) { items.entries.sortedBy { it.value.name } }
+            // Requested 2026-08-25: same fix as the tile view above, grouped
+            // into visible category sections instead of one flat sorted list.
+            val grouped = remember(items) {
+                items.entries.groupBy { PantryTiles.categoryAndEmoji(it.value.name).first }
+            }
             LazyColumn(contentPadding = PaddingValues(12.dp)) {
-                items(sorted, key = { it.key }) { (key, item) ->
-                    if (isClinic) {
-                        ShoppingRowClinic(
-                            item = item,
-                            dayLabel = ShoppingOperations.formatIngredientDays(ingredientDays[key], todayIdx),
-                            onToggle = { viewModel.toggleChecked(key) },
-                            onRemove = { viewModel.removeItem(key) },
+                PantryTiles.CATEGORY_ORDER.forEach { category ->
+                    val group = grouped[category]?.sortedBy { it.value.name } ?: return@forEach
+                    item {
+                        Text(
+                            category.label,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
                         )
-                    } else {
-                        ShoppingRow(
-                            item = item,
-                            dayLabel = ShoppingOperations.formatIngredientDays(ingredientDays[key], todayIdx),
-                            onToggle = { viewModel.toggleChecked(key) },
-                            onRemove = { viewModel.removeItem(key) },
-                        )
+                    }
+                    items(group, key = { it.key }) { (key, item) ->
+                        if (isClinic) {
+                            ShoppingRowClinic(
+                                item = item,
+                                dayLabel = ShoppingOperations.formatIngredientDays(ingredientDays[key], todayIdx),
+                                onToggle = { viewModel.toggleChecked(key) },
+                                onRemove = { viewModel.removeItem(key) },
+                            )
+                        } else {
+                            ShoppingRow(
+                                item = item,
+                                dayLabel = ShoppingOperations.formatIngredientDays(ingredientDays[key], todayIdx),
+                                onToggle = { viewModel.toggleChecked(key) },
+                                onRemove = { viewModel.removeItem(key) },
+                            )
+                        }
                     }
                 }
             }

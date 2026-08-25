@@ -2330,6 +2330,17 @@ zawsze w pełni zsynchronizowane (nie ma dwóch niezależnych źródeł prawdy).
   ("na zakładce zakupy daj możliwość przełączania widoku na taki jak w
   spiżarni żeby było widać ikonki tego co trzeba kupić, niech będą na
   minus jak czegoś brakuje").
+- **v2** (2026-08-25, Android): użytkownik zgłosił, że pozycje na liście
+  zakupów (oba widoki: lista i kafelki) miały wprawdzie plakietki
+  kategorii przy każdej pozycji, ale same pozycje były wymieszane, nie
+  pogrupowane w widoczne sekcje jak na webie (nagłówki typu "NABIAŁ BEZ
+  LAKTOZY"). `ShoppingScreen.kt` grupuje teraz oba widoki po kategorii
+  (`PantryTiles.categoryAndEmoji` + `CATEGORY_ORDER`, ten sam schemat co
+  `ShoppingOperations.buildShareText()` już używał dla tekstu do
+  udostępnienia — nie wymyślono drugiej klasyfikacji) z nagłówkiem sekcji
+  przed każdą grupą. `./gradlew :app:assembleDebug :logic:test` przechodzi.
+  `versionCode` 80→81, `versionName` 0.1.79→0.1.80. **Nie zweryfikowane
+  wizualnie na emulatorze.**
 
 ---
 
@@ -3508,6 +3519,14 @@ się zgadzać z web co do joty.
   faktycznego układu kart) na żywym/symulowanym urządzeniu w tej turze;
   czeka na potwierdzenie przez użytkownika po zainstalowaniu przez
   "Sprawdź aktualizację".
+- **v11** (2026-08-25, Android): użytkownik zgłosił, że kafelek "Zmiana
+  (30 dni)" w bento Kliniki (`PostepScreen.kt`) czasem pokazywał wiele
+  miejsc po przecinku (surowe odejmowanie `Double` na wagach jest podatne
+  na artefakty zmiennoprzecinkowe, np. "2.1999999999999957" zamiast
+  "2.2"). Zaokrąglone do 2 miejsc po przecinku w miejscu wyliczenia
+  (`kotlin.math.round(...*100)/100.0`), zanim trafi do `formatKg()`.
+  `./gradlew :app:assembleDebug :logic:test` przechodzi. **Nie
+  zweryfikowane wizualnie na emulatorze.**
 
 # FR-88: Planer jako pierwsza zakładka nawigacji
 
