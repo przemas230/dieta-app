@@ -12,8 +12,10 @@ import androidx.compose.runtime.setValue
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.data.RecipeReview
 import com.przemas230.dietaapp.logic.CommunityRecipeOperations
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
 
 private const val ANONYMOUS_DISPLAY_NAME = "Anonimowy użytkownik"
@@ -119,11 +121,25 @@ fun CommunityCoordinator(
         publishBaseline = currentIds
     }
 
-    // refreshCommunityRecipesSubscription() (index.html:3079-3091): live
+    // refreshCommunityRecipesSubscription() (index.html:3729+): live
     // "status == approved" set while signed in AND the toggle is on,
     // otherwise cleared -- RecipeViewModel.recompute() folds this (deduped
     // against myRecipes) into the visible recipe list.
+    //
+    // FR-76/v2 (2026-08-25): this listener used to query the ENTIRE
+    // `recipes` collection with no cap and no debounce, ported from
+    // index.html verbatim including the same bug -- confirmed via remote
+    // Chrome debugger + CPU profiling on the web version to block the main
+    // thread for multiple seconds per Firestore Listen-stream reconnect
+    // (rebuilding the SDK's full local sorted index + IndexedDB persist).
+    // Fixed identically here: `.limit()` (no `.orderBy()`, so no new
+    // composite Firestore index is required) plus the same "first snapshot
+    // applied immediately, later ones debounced 3s" pattern
+    // CloudSyncCoordinator already uses for the user doc listener, via
+    // Compose's own LaunchedEffect-cancels-on-key-change debounce idiom.
     val shouldListen = uid != null && communityRecipesEnabled
+    var latestCommunitySnapshot by remember { mutableStateOf<List<Recipe>?>(null) }
+    var hasAppliedFirstCommunitySnapshot by remember(shouldListen) { mutableStateOf(false) }
     DisposableEffect(shouldListen) {
         if (!shouldListen) {
             recipeViewModel.replaceCommunityRecipes(emptyList())
@@ -131,14 +147,25 @@ fun CommunityCoordinator(
         }
         val registration = FirebaseFirestore.getInstance().collection("recipes")
             .whereEqualTo("status", "approved")
+            .limit(300)
             .addSnapshotListener { snapshot, _ ->
                 if (snapshot == null) return@addSnapshotListener
                 val recipes = snapshot.documents.mapNotNull { doc ->
                     doc.data?.let { CommunityRecipeOperations.sanitizeCommunityRecipeDoc(it, doc.id) }
                 }
-                recipeViewModel.replaceCommunityRecipes(recipes)
+                if (!hasAppliedFirstCommunitySnapshot) {
+                    hasAppliedFirstCommunitySnapshot = true
+                    recipeViewModel.replaceCommunityRecipes(recipes)
+                } else {
+                    latestCommunitySnapshot = recipes
+                }
             }
         onDispose { registration.remove() }
+    }
+    LaunchedEffect(latestCommunitySnapshot) {
+        val recipes = latestCommunitySnapshot ?: return@LaunchedEffect
+        delay(3000)
+        recipeViewModel.replaceCommunityRecipes(recipes)
     }
 
     // pushRecipeRating()/deleteRecipeRating() (index.html:3060-3076), same

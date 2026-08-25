@@ -2325,9 +2325,12 @@ Rozszerzenie synchronizacji z chmury (FR-73) o dane WSPÓLNE/publiczne, widoczne
 - Bez wdrożonych reguł bezpieczeństwa w konsoli Firebase te funkcje nie pokazują ani nie zapisują niczego (Firestore w trybie produkcyjnym domyślnie odrzuca dostęp) — nie jest to błąd aplikacji, tylko oczekiwany, bezpieczny stan „jeszcze nie skonfigurowane”.
 - Rzeczywiste działanie (widoczność między dwoma kontami, aktualizacja daty logowania) wymaga weryfikacji na urządzeniu z dostępem do internetu, po wdrożeniu reguł — środowisko deweloperskie nie ma dostępu do serwerów Firebase.
 - Zapytanie o listę użytkowników/profil, które nie zdąży się rozstrzygnąć (np. brak sieci) w rozsądnym czasie, pokazuje czytelny komunikat błędu zamiast wisieć na „Wczytywanie…” bez końca.
+- Nasłuch na przepisy społeczności jest ograniczony (`.limit(300)`) i debounce'owany (3s, poza pierwszym snapshotem po podłączeniu, stosowanym natychmiast) — seria szybkich zdarzeń (zmiana w kolekcji przez innego użytkownika, ponowne połączenie strumienia Firestore po zaniku sieci) nie może wielokrotnie z rzędu przebudowywać lokalnego cache'u ani odpalać re-renderu za każdym razem — Web i Android identycznie (patrz Historia rewizji v3).
 
 ## Uwagi
 Zgłoszony 2026-08-11 (web): użytkownik zgłosił, że przeglądanie listy użytkowników zawiesza się na „Wczytywanie…” bez końca (podczas gdy natywna aplikacja Android — zaimplementowana kilka godzin wcześniej tego samego dnia — poprawnie pokazuje pusty/błędny stan). Przyczyna: zapytanie Firestore w stanie faktycznie offline (bez pasującego zbuforowanego wyniku) może wisieć w nieskończoność, nie rozstrzygając się ani powodzeniem, ani błędem — `.catch()` istniał już wcześniej, ale nigdy się nie uruchamiał, bo obietnica po prostu nigdy się nie rozstrzygała. Naprawione dodaniem twardego limitu czasu (12 sekund) na oba zapytania (lista i profil) — po przekroczeniu limitu pokazuje się czytelny komunikat błędu zamiast nieskończonego "Wczytywanie…".
+
+Zgłoszony 2026-08-25 (web): użytkownik poprosił o podłączenie zdalnego debugera Chrome (adb + wireless debugging) do swojego telefonu, żeby zdiagnozować powtarzające się zacinanie się aplikacji webowej. CPU profiling na żywej sesji wykazał, że >60% z 15-sekundowej próbki procesora szło w wewnętrzne operacje Firestore SDK (`comparator`/`insert`/`remove`/`fixUp` drzewa czerwono-czarnego lokalnego indeksu + transakcje IndexedDB), a nie w kod aplikacji (226ms) — przyczyną był `refreshCommunityRecipesSubscription()` nasłuchujący na żywo CAŁĄ kolekcję `recipes` bez limitu ani debounce, przebudowujący pełny lokalny indeks przy każdej zmianie w kolekcji przez KTÓREGOKOLWIEK użytkownika i przy każdym ponownym połączeniu strumienia Firestore po zaniku sieci. Ten sam nasłuch, bez limitu/debounce, istniał identycznie w Androidzie (`CommunityCoordinator.kt`) — naprawiony równolegle.
 
 ## Historia rewizji
 - **v1** (2026-08-08): Pierwsza wersja wymagania, na życzenie użytkownika
@@ -2337,6 +2340,7 @@ Zgłoszony 2026-08-11 (web): użytkownik zgłosił, że przeglądanie listy uży
   logowania, ewentualnie ulubione przepisy bądź oceniane komentowane
   przepisy").
 - **v2** (2026-08-11): Naprawiono nieskończone „Wczytywanie…” przy braku szybkiej odpowiedzi z Firestore — patrz sekcja "Uwagi" powyżej.
+- **v3** (2026-08-25): Naprawiono realne zacinanie się aplikacji (potwierdzone CPU profilingiem przez zdalny debugger na telefonie użytkownika) — nasłuch przepisów społeczności ograniczony `.limit(300)` i debounce'owany 3s (poza pierwszym snapshotem), identycznie Web i Android — patrz sekcja "Uwagi" powyżej.
 
 ---
 

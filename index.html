@@ -3728,17 +3728,53 @@ function deleteRecipeRating(recipeId){
 }
 let communityRecipesCache = [];
 let communityRecipesUnsubscribe = null;
+let pendingCommunityRecipesSnapshot = null;
+let communityRecipesSnapshotTimer = null;
+let hasAppliedFirstCommunitySnapshot = false;
 function refreshCommunityRecipesSubscription(){
   const shouldListen = !!(firebaseReady && currentFbUser && !currentFbUser.isAnonymous && state.communityRecipesEnabled);
   if(!shouldListen){
     if(communityRecipesUnsubscribe){ communityRecipesUnsubscribe(); communityRecipesUnsubscribe = null; }
+    clearTimeout(communityRecipesSnapshotTimer);
+    pendingCommunityRecipesSnapshot = null;
+    hasAppliedFirstCommunitySnapshot = false;
     if(communityRecipesCache.length){ communityRecipesCache = []; renderRecipes(); }
     return;
   }
   if(communityRecipesUnsubscribe) return;
-  communityRecipesUnsubscribe = fbDb.collection("recipes").where("status","==","approved").onSnapshot(snap=>{
-    communityRecipesCache = snap.docs.map(d=> sanitizeCommunityRecipeDoc(d.data(), d.id));
-    renderRecipes();
+  hasAppliedFirstCommunitySnapshot = false;
+  // FR-76/v2 (2026-08-25, "aplikacja webowa mi się zacina" -- confirmed via
+  // remote Chrome debugger + CPU profile on the user's real phone, not just
+  // a guess): this listener used to query the ENTIRE `recipes` collection
+  // with no cap and no debounce. Every write to ANY approved community
+  // recipe by ANY user of the app -- and, worse, every reconnect of
+  // Firestore's realtime Listen stream after a mobile-network blip -- made
+  // the SDK rebuild its full local sorted index (red-black tree
+  // insert/remove/fixUp) and re-persist it to IndexedDB. Profiled: >60% of
+  // a 15s CPU sample was inside Firestore's internal tree/IndexedDB code
+  // (vs 226ms in the app's own render code), and even a trivial DevTools
+  // command took 18s to get serviced -- the main thread was genuinely
+  // blocked, not just "feeling slow". Fixed with `.limit()` (deliberately
+  // no `.orderBy()`, so this doesn't newly require a composite Firestore
+  // index) and the exact same "first snapshot applied immediately, later
+  // ones debounced" pattern attachUserDocListener already uses (FR-73),
+  // so a burst of remote writes/reconnects coalesces into one re-render
+  // instead of one per event.
+  communityRecipesUnsubscribe = fbDb.collection("recipes").where("status","==","approved").limit(300).onSnapshot(snap=>{
+    if(!hasAppliedFirstCommunitySnapshot){
+      hasAppliedFirstCommunitySnapshot = true;
+      communityRecipesCache = snap.docs.map(d=> sanitizeCommunityRecipeDoc(d.data(), d.id));
+      renderRecipes();
+      return;
+    }
+    pendingCommunityRecipesSnapshot = snap;
+    clearTimeout(communityRecipesSnapshotTimer);
+    communityRecipesSnapshotTimer = setTimeout(()=>{
+      const s = pendingCommunityRecipesSnapshot;
+      pendingCommunityRecipesSnapshot = null;
+      communityRecipesCache = s.docs.map(d=> sanitizeCommunityRecipeDoc(d.data(), d.id));
+      renderRecipes();
+    }, 3000);
   }, err=> console.warn("Błąd pobierania przepisów społeczności.", err));
 }
 // ---------- COMMUNITY: browsable user list + public profile ----------

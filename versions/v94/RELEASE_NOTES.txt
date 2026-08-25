@@ -1,0 +1,32 @@
+Wersja v94 (2026-08-25)
+
+Zmiany w index.html i sw.js (+ odpowiadająca poprawka w Androidzie,
+CommunityCoordinator.kt):
+
+- Naprawiono realne zawieszanie się aplikacji webowej ("zacina się"),
+  potwierdzone profilowaniem CPU na żywym telefonie użytkownika przez zdalny
+  debugger Chrome (adb + Chrome DevTools Protocol). Przyczyna: nasłuch na
+  żywo na CAŁĄ kolekcję Firestore `recipes` (przepisy społeczności), bez
+  żadnego limitu ani debounce. Każda zmiana w tej kolekcji przez
+  KTÓREGOKOLWIEK użytkownika aplikacji — a zwłaszcza każde ponowne
+  połączenie strumienia Firestore po zaniku sieci komórkowej — zmuszało SDK
+  do przebudowania pełnego, posortowanego lokalnego indeksu (drzewo
+  czerwono-czarne) i ponownego zapisu do IndexedDB, co w profilu CPU zajęło
+  wielosekundowo główny wątek (ponad 60% z 15-sekundowej próbki, wobec 226ms
+  faktycznego kodu aplikacji).
+- Zapytanie ograniczone do `.limit(300)` (bez `.orderBy()`, żeby nie
+  wymagało nowego złożonego indeksu Firestore) oraz nasłuch dostał ten sam
+  mechanizm co `attachUserDocListener` (FR-73): pierwszy snapshot stosowany
+  natychmiast, kolejne debounce'owane 3s, żeby seria szybkich zdarzeń nie
+  odpalała przebudowy cache'u i re-renderu za każdym razem.
+- CACHE_NAME podniesiony do "dieta-app-v94".
+- Ten sam nasłuch (bez limitu/debounce) istniał identycznie w Androidzie
+  (CommunityCoordinator.kt) — naprawiony równolegle w tej samej turze
+  (FR-76/v2, zasada równoległego rozwoju z CLAUDE.md).
+
+Powód: użytkownik poprosił o podłączenie zdalnego debugera do telefonu i
+zdiagnozowanie, dlaczego wersja webowa się zacina. Znaleziono i naprawiono
+konkretną, zmierzoną przyczynę (nie tylko domysł) zamiast wcześniejszych
+prób opartych o objawy ("bloat local storage" itd. z 2026-08-24).
+
+Pełny opis w Functional requirements/FR-76.md (Historia rewizji v2).
