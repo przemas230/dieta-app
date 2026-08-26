@@ -15,9 +15,20 @@ class AppThemesTest {
         // font/shape/layout treatment, not just a ported palette, so they
         // don't have a web counterpart (yet). Every other id below must
         // still match index.html exactly.
+        //
+        // Requested 2026-08-26 ("dodaj też kilka innych schematów
+        // kolorystycznych dla motywów klinika i klinika noc"): two more
+        // Klinika-family looks (day+night each) -- on Android these are
+        // plain new AppThemeDef entries in this same flat list (unlike
+        // index.html, which needed a separate [data-clinic-palette]
+        // attribute to avoid duplicating its structural CSS selectors --
+        // see index.html's applyClinicPaletteAttr comment).
         val ids = AppThemes.ALL.map { it.id }
         assertEquals(
-            listOf("teal", "light", "pink", "dark", "harvest", "citrus", "mint", "berry", "polaroid", "fluent", "metro", "clinic", "clinic_dark"),
+            listOf(
+                "teal", "light", "pink", "dark", "harvest", "citrus", "mint", "berry", "polaroid", "fluent", "metro",
+                "clinic", "clinic_dark", "clinic_ocean", "clinic_ocean_dark", "clinic_terracotta", "clinic_terracotta_dark",
+            ),
             ids,
         )
     }
@@ -63,17 +74,21 @@ class AppThemesTest {
     }
 
     @Test
-    fun `only dark, berry and clinic_dark are marked as dark themes`() {
+    fun `only dark, berry and the three Klinika night variants are marked as dark themes`() {
         val darkIds = AppThemes.ALL.filter { it.isDark }.map { it.id }
-        assertEquals(listOf("dark", "berry", "clinic_dark"), darkIds)
+        assertEquals(listOf("dark", "berry", "clinic_dark", "clinic_ocean_dark", "clinic_terracotta_dark"), darkIds)
         assertFalse(AppThemes.byId("teal").isDark)
         assertTrue(AppThemes.byId("dark").isDark)
     }
 
     @Test
-    fun `isClinicFamily recognizes both Klinika variants and nothing else`() {
+    fun `isClinicFamily recognizes all four Klinika variants and nothing else`() {
         assertTrue(AppThemes.isClinicFamily("clinic"))
         assertTrue(AppThemes.isClinicFamily("clinic_dark"))
+        assertTrue(AppThemes.isClinicFamily("clinic_ocean"))
+        assertTrue(AppThemes.isClinicFamily("clinic_ocean_dark"))
+        assertTrue(AppThemes.isClinicFamily("clinic_terracotta"))
+        assertTrue(AppThemes.isClinicFamily("clinic_terracotta_dark"))
         assertFalse(AppThemes.isClinicFamily("dark"))
         assertFalse(AppThemes.isClinicFamily("teal"))
     }

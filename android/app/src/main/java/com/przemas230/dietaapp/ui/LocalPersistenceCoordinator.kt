@@ -44,6 +44,8 @@ fun LocalPersistenceCoordinator(
     waterViewModel: WaterViewModel,
     weightViewModel: WeightViewModel,
     activityLogViewModel: ActivityLogViewModel,
+    remainingKcalFillViewModel: RemainingKcalFillViewModel,
+    fastingViewModel: FastingViewModel,
 ) {
     val context = LocalContext.current
 
@@ -67,6 +69,10 @@ fun LocalPersistenceCoordinator(
     val weightEntries by weightViewModel.entries.collectAsState()
     val waterHistory by waterViewModel.history.collectAsState()
     val activityLogEntries by activityLogViewModel.entries.collectAsState()
+    val remainingKcalFillEnabled by remainingKcalFillViewModel.enabled.collectAsState()
+    val fastingEnabled by fastingViewModel.enabled.collectAsState()
+    val fastingWindowStart by fastingViewModel.windowStart.collectAsState()
+    val fastingWindowEnd by fastingViewModel.windowEnd.collectAsState()
 
     // Guards the save effect below from firing (and clobbering the just-saved
     // file with the ViewModels' empty startup defaults) before the one-time
@@ -91,6 +97,10 @@ fun LocalPersistenceCoordinator(
             CloudSyncCodec.decodeMyRecipes(data["myRecipes"] as? List<*>)?.let { recipeViewModel.replaceMyRecipes(it) }
             CloudSyncCodec.decodeFavIngredients(data["favorites"] as? Map<*, *>)?.let { recipeViewModel.replaceFavoriteRecipes(it) }
             (data["communityRecipesEnabled"] as? Boolean)?.let { recipeViewModel.setCommunityRecipesEnabled(it) }
+            (data["remainingKcalFillEnabled"] as? Boolean)?.let { remainingKcalFillViewModel.setEnabled(it) }
+            (data["fastingEnabled"] as? Boolean)?.let { fastingViewModel.setEnabled(it) }
+            (data["fastingWindowStart"] as? Number)?.toInt()?.let { fastingViewModel.setWindowStart(it) }
+            (data["fastingWindowEnd"] as? Number)?.toInt()?.let { fastingViewModel.setWindowEnd(it) }
             CloudSyncCodec.decodeShopping(data["shopping"] as? Map<*, *>)?.let { shoppingViewModel.replaceAll(it) }
             CloudSyncCodec.decodeWeekPlan(
                 data["planner"] as? Map<*, *>,
@@ -113,7 +123,8 @@ fun LocalPersistenceCoordinator(
         initialLoadDone, profile, displayName, pantryItems, themeId, uiScale, swipeStyle,
         favIngredients, cooked, ratings, reviews, myRecipes, favoriteRecipes, shoppingItems, weekPlan,
         eatenDays, waterCount, weightEntries, waterHistory, activityLogEntries,
-        communityRecipesEnabled,
+        communityRecipesEnabled, remainingKcalFillEnabled,
+        fastingEnabled, fastingWindowStart, fastingWindowEnd,
     ) {
         if (!initialLoadDone) return@LaunchedEffect
         delay(500)
@@ -143,6 +154,10 @@ fun LocalPersistenceCoordinator(
             "waterHistory" to CloudSyncCodec.encodeDateIntMap(waterHistory),
             "activityLog" to CloudSyncCodec.encodeActivityLog(activityLogEntries),
             "communityRecipesEnabled" to communityRecipesEnabled,
+            "remainingKcalFillEnabled" to remainingKcalFillEnabled,
+            "fastingEnabled" to fastingEnabled,
+            "fastingWindowStart" to fastingWindowStart,
+            "fastingWindowEnd" to fastingWindowEnd,
         )
         withContext(Dispatchers.IO) { LocalStateStore.save(context, data) }
     }

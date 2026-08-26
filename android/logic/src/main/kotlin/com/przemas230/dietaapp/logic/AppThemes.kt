@@ -163,16 +163,65 @@ object AppThemes {
             bg = 0xFF1E1B16, card = 0xFF2B2823, text = 0xFFFEFAF3, muted = 0xFFABA397, line = 0xFF36322D,
             danger = 0xFFFF6467, dangerPale = 0xFF421B1B, starOff = 0xFF534C41, isDark = true,
         ),
+        // Requested 2026-08-26 ("dodaj też kilka innych schematów
+        // kolorystycznych dla motywów klinika i klinika noc") -- two more
+        // Klinika-family looks, day+night each. Same hex values as
+        // index.html's [data-clinic-palette="ocean"/"terracotta"] CSS
+        // blocks, so the two platforms actually match. Plain new AppThemeDef
+        // entries (not a separate "palette" attribute like the web CSS
+        // needed) since Android's theme system is already one flat,
+        // independently-swappable list -- no structural selectors to
+        // duplicate here, unlike index.html's dozens of
+        // :is([data-theme="clinic"], [data-theme="clinic_dark"]) rules.
+        AppThemeDef(
+            id = "clinic_ocean", label = "Klinika Ocean", swatch = 0xFF2E86AB, metaColor = 0xFF2E86AB,
+            teal = 0xFF2E86AB, tealDark = 0xFF1B5A73, tealPale = 0xFFD6EAF2,
+            honey = 0xFF5FA8A0, honeyPale = 0xFFDFF2EF, honeyDark = 0xFF2F6E67,
+            plum = 0xFF5C7FA6, plumPale = 0xFFDCE6F2,
+            bg = 0xFFF4F8FA, card = 0xFFFFFFFF, text = 0xFF132630, muted = 0xFF5C7480, line = 0xFFDCE6EA,
+            danger = 0xFFE7000B, dangerPale = 0xFFFFE2DD, starOff = 0xFFC4D3D8, isDark = false,
+        ),
+        AppThemeDef(
+            id = "clinic_ocean_dark", label = "Klinika Ocean (noc)", swatch = 0xFF4FB3D9, metaColor = 0xFF4FB3D9,
+            teal = 0xFF4FB3D9, tealDark = 0xFFBEE6F2, tealPale = 0xFF173947,
+            honey = 0xFF5FA8A0, honeyPale = 0xFF1B3B37, honeyDark = 0xFF9AD6CC,
+            plum = 0xFF7FA0C7, plumPale = 0xFF22303F,
+            bg = 0xFF0F1B21, card = 0xFF16262E, text = 0xFFEAF4F7, muted = 0xFF9CB3BC, line = 0xFF223339,
+            danger = 0xFFFF6467, dangerPale = 0xFF421B1B, starOff = 0xFF42565C, isDark = true,
+        ),
+        AppThemeDef(
+            id = "clinic_terracotta", label = "Klinika Terakota", swatch = 0xFFC1613F, metaColor = 0xFFC1613F,
+            teal = 0xFFC1613F, tealDark = 0xFF8A3F23, tealPale = 0xFFF3DED3,
+            honey = 0xFFD4A24C, honeyPale = 0xFFF7EAD2, honeyDark = 0xFF8C6420,
+            plum = 0xFFA8785F, plumPale = 0xFFEDE0D8,
+            bg = 0xFFFBF6F1, card = 0xFFFFFFFF, text = 0xFF2B1E16, muted = 0xFF8A7768, line = 0xFFE8DCD0,
+            danger = 0xFFE7000B, dangerPale = 0xFFFFE2DD, starOff = 0xFFD8C9BC, isDark = false,
+        ),
+        AppThemeDef(
+            id = "clinic_terracotta_dark", label = "Klinika Terakota (noc)", swatch = 0xFFE08556, metaColor = 0xFFE08556,
+            teal = 0xFFE08556, tealDark = 0xFFF5C7A8, tealPale = 0xFF3A2117,
+            honey = 0xFFD4A24C, honeyPale = 0xFF332510, honeyDark = 0xFFEBC985,
+            plum = 0xFFC29C86, plumPale = 0xFF2E2620,
+            bg = 0xFF1D1611, card = 0xFF29201A, text = 0xFFF7EEE6, muted = 0xFFB8A594, line = 0xFF382C24,
+            danger = 0xFFFF6467, dangerPale = 0xFF421B1B, starOff = 0xFF54453A, isDark = true,
+        ),
     )
 
     fun byId(id: String): AppThemeDef = ALL.find { it.id == id } ?: ALL.first { it.id == DEFAULT_ID }
 
     /**
-     * FR-87/v2: both Klinika variants ("clinic" day, "clinic_dark" night)
-     * share the same font/shape/layout treatment (see ClinicTheme.kt and
-     * every `LocalDietaThemeId.current`-branching screen) -- centralized
-     * here so a future third Klinika variant only needs updating in one
-     * place instead of at every one of those call sites.
+     * FR-87/v2: all Klinika variants ("clinic"/"clinic_dark" plus the
+     * 2026-08-26 "ocean"/"terracotta" siblings) share the same font/shape/
+     * layout treatment (see ClinicTheme.kt and every
+     * `LocalDietaThemeId.current`-branching screen) -- centralized here so a
+     * future new Klinika variant only needs updating in one place instead of
+     * at every one of those call sites.
      */
-    fun isClinicFamily(themeId: String): Boolean = themeId == "clinic" || themeId == "clinic_dark"
+    fun isClinicFamily(themeId: String): Boolean = themeId in CLINIC_FAMILY_IDS
+
+    private val CLINIC_FAMILY_IDS = setOf(
+        "clinic", "clinic_dark",
+        "clinic_ocean", "clinic_ocean_dark",
+        "clinic_terracotta", "clinic_terracotta_dark",
+    )
 }

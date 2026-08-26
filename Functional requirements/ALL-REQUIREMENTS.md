@@ -12,6 +12,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-5: Przycisk powrotu do góry listy przepisów](#fr-5-przycisk-powrotu-do-góry-listy-przepisów)
 - [FR-66: Dodawanie własnych przepisów przez użytkownika](#fr-66-dodawanie-własnych-przepisów-przez-użytkownika)
 - [FR-74: Wspólna zakładka „Śniadania” na liście przepisów, osobne sloty w Planerze](#fr-74-wspólna-zakładka-śniadania-na-liście-przepisów-osobne-sloty-w-planerze)
+- [FR-95: Wyszukiwanie AI (Gemini) na kartach przepisów + wyszukiwanie tylko na rozwiniętej karcie](#fr-95-wyszukiwanie-ai-gemini-na-kartach-przepisów--wyszukiwanie-tylko-na-rozwiniętej-karcie)
 
 ### Personalizacja i cele dietetyczne
 - [FR-6: Profil użytkownika i wyliczanie zapotrzebowania kalorycznego](#fr-6-profil-użytkownika-i-wyliczanie-zapotrzebowania-kalorycznego)
@@ -29,6 +30,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-15: Oznaczanie dania jako ugotowane, z historią i ocenami](#fr-15-oznaczanie-dania-jako-ugotowane-z-historią-i-ocenami)
 - [FR-16: Sprawdzenie stanu spiżarni dla konkretnego przepisu](#fr-16-sprawdzenie-stanu-spiżarni-dla-konkretnego-przepisu)
 - [FR-17: Ocena dania po ugotowaniu (gwiazdki)](#fr-17-ocena-dania-po-ugotowaniu-gwiazdki)
+- [FR-93: Podpowiedzi zamienników składników w spiżarni](#fr-93-podpowiedzi-zamienników-składników-w-spiżarni)
 
 ### Planer tygodniowy
 - [FR-18: Planer tygodniowy z 5 slotami posiłków dziennie](#fr-18-planer-tygodniowy-z-5-slotami-posiłków-dziennie)
@@ -39,6 +41,10 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-23: „Ugotuj na 2 dni” — planowanie resztek po zwiększeniu porcji](#fr-23-ugotuj-na-2-dni--planowanie-resztek-po-zwiększeniu-porcji)
 - [FR-24: Proaktywna podpowiedź gotowania na kolejny dzień](#fr-24-proaktywna-podpowiedź-gotowania-na-kolejny-dzień)
 - [FR-86: Podgląd przepisu z poziomu Planera](#fr-86-podgląd-przepisu-z-poziomu-planera)
+- [FR-90: Kopiowanie planu jednego dnia na inny dzień](#fr-90-kopiowanie-planu-jednego-dnia-na-inny-dzień)
+- [FR-91: Cofnij (Undo) usunięcie dania z „Dzisiejszy Planer”](#fr-91-cofnij-undo-usunięcie-dania-z-dzisiejszy-planer)
+- [FR-92: Udostępnianie / eksport planu tygodnia](#fr-92-udostępnianie--eksport-planu-tygodnia)
+- [FR-97: Znacznik stanu spiżarni na kartach „Dzisiejszy Planer”](#fr-97-znacznik-stanu-spiżarni-na-kartach-dzisiejszy-planer)
 
 ### Lista zakupów
 - [FR-25: Budowanie listy zakupów ze składników przepisów](#fr-25-budowanie-listy-zakupów-ze-składników-przepisów)
@@ -70,6 +76,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-42: Serie (streaks) i historia aktywności](#fr-42-serie-streaks-i-historia-aktywności)
 - [FR-60: Warunkowe wyświetlanie „Złotych zasad przy Hashimoto i insulinooporności”](#fr-60-warunkowe-wyświetlanie-złotych-zasad-przy-hashimoto-i-insulinooporności)
 - [FR-83: Edycja wcześniej wpisanej wagi i historii kalorii](#fr-83-edycja-wcześniej-wpisanej-wagi-i-historii-kalorii)
+- [FR-94: Śledzenie okna postu przerywanego (intermittent fasting)](#fr-94-śledzenie-okna-postu-przerywanego-intermittent-fasting)
 
 ### Nagłówek i nawigacja
 - [FR-43: Pasek filtrów i kategorii przyklejony pod nagłówkiem](#fr-43-pasek-filtrów-i-kategorii-przyklejony-pod-nagłówkiem)
@@ -88,6 +95,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-61: Wybór stylu oceniania kart przesunięciem w Ustawieniach](#fr-61-wybór-stylu-oceniania-kart-przesunięciem-w-ustawieniach)
 - [FR-63: Motywy „Fluent” i „Kafelki” inspirowane Windows 11 / Metro](#fr-63-motywy-fluent-i-kafelki-inspirowane-windows-11--metro)
 - [FR-87: Motyw „Klinika” — czcionka i układ, nie tylko kolory](#fr-87-motyw-klinika--czcionka-i-układ-nie-tylko-kolory)
+- [FR-96: Wypełnianie kolorem kafelka „Pozostało” w Planerze](#fr-96-wypełnianie-kolorem-kafelka-pozostało-w-planerze)
 
 ### PWA i działanie offline
 - [FR-51: Instalowalna aplikacja PWA z ikoną i manifestem](#fr-51-instalowalna-aplikacja-pwa-z-ikoną-i-manifestem)
@@ -3993,3 +4001,351 @@ dokładnie tymi samymi domyślnymi kształtami co świeży stan web'a
   FR-72's v2), `dieta-app-v93`. `./gradlew :logic:test :app:assembleDebug`
   przechodzi.
 
+---
+
+# FR-90: Kopiowanie planu jednego dnia na inny dzień
+
+**Obszar:** Planer, Android + Web
+**Status:** Zaimplementowane na obu platformach
+
+## Opis
+Na każdej karcie dnia w Planerze (obok istniejących „🎲 Losuj ten dzień” /
+„🗑️ Wyczyść ten dzień”) jest nowy przycisk „📋 Kopiuj plan z innego dnia”.
+Otwiera picker z listą pozostałych 6 dni tygodnia — dni bez żadnego
+zaplanowanego posiłku są wyszarzone/nieklikalne. Wybranie dnia źródłowego
+NADPISUJE cały plan dnia docelowego (wszystkie 5 kategorii posiłków,
+razem ze skalą porcji i flagą „resztki”) planem z wybranego dnia.
+
+Dodane po badaniu, czego najczęściej brakuje w aplikacjach dietetycznych —
+powtarzalny tygodniowy plan (np. te same śniadania w pon-pt) to częsta
+skarga na ręczne, powtarzalne klikanie tych samych dań.
+
+## Kryteria akceptacji
+- Przycisk „📋 Kopiuj plan z innego dnia” widoczny na każdej karcie dnia,
+  niezależnie od motywu.
+- Picker pokazuje 6 pozostałych dni tygodnia; dzień bez żadnego
+  zaplanowanego posiłku jest wyłączony (nieklikalny).
+- Wybranie dnia źródłowego kopiuje WSZYSTKIE 5 kategorii posiłków (razem
+  ze skalą porcji i flagą resztek) do dnia docelowego, nadpisując to, co
+  tam wcześniej było.
+- Operacja jest natychmiastowa (bez osobnego potwierdzenia — to samo
+  zachowanie co „🎲 Losuj ten dzień” dla pojedynczego dnia).
+- `./gradlew :logic:test :app:compileDebugKotlin` przechodzi.
+
+## Uwagi
+Android: `PlannerOperations.copyDay(plan, fromDay, toDay)` (`:logic`,
+testowalne jednostkowo) — trywialne, bo `PlannedMeal` już łączy
+recipeId+scale+isLeftover w jedną wartość na slot. Web: `openCopyDayModal()`
+używa `structuredClone()` do skopiowania TRZECH równoległych map
+(`state.planner`/`plannerScale`/`plannerLeftover`) na raz, bo web (w
+odróżnieniu od Androida) trzyma te trzy pola osobno zamiast w jednym
+obiekcie.
+
+## Historia rewizji
+- **v1** (2026-08-26): Pierwsza wersja, część większej nocnej rundy „co
+  najmniej 5 nowych funkcji” (użytkownik: „zrób to od razu w razie czego
+  będziemy cofać zmiany”). Zweryfikowane kompilacją i testami
+  jednostkowymi (`:logic:test`, `:app:compileDebugKotlin`) oraz składniowo
+  na webie (`node --check` na wyekstrahowanym JS) — **nie zweryfikowane
+  wizualnie/interaktywnie w przeglądarce ani na emulatorze w tej turze**.
+
+---
+
+# FR-91: Cofnij (Undo) usunięcie dania z „Dzisiejszy Planer”
+
+**Obszar:** Planer (motyw Klinika), Android + Web
+**Status:** Zaimplementowane na obu platformach
+
+## Opis
+Usunięcie dania z sekcji „Dzisiejszy Planer” (×/przycisk usuwania przy
+danej kategorii) pokazuje teraz powiadomienie z akcją „Cofnij”, zamiast
+usuwać bezpowrotnie od razu. Kliknięcie „Cofnij” przywraca DOKŁADNIE ten
+sam wpis (przepis, skalę porcji, flagę „resztki”), który został usunięty.
+
+Android: pierwsze użycie komponentu Snackbar w tej aplikacji —
+`SnackbarHostState` podpięty na poziomie `Scaffold`, generyczny callback
+`onShowUndoSnackbar(message, actionLabel, onUndo)` przewleczony do
+`PlannerScreen`.
+
+Web: rozszerzona funkcja `toast(msg, undoLabel, onUndo)` — opcjonalny
+przycisk „Cofnij” w powiadomieniu, dłuższy czas widoczności (5s zamiast
+1.8s) gdy akcja cofnięcia jest dostępna.
+
+## Kryteria akceptacji
+- Usunięcie dania z „Dzisiejszy Planer” pokazuje powiadomienie z
+  przyciskiem „Cofnij”.
+- Kliknięcie „Cofnij” przywraca dokładnie ten sam przepis, tę samą skalę
+  porcji i tę samą flagę „resztki”, jakie miał usunięty wpis — nie tylko
+  sam przepis z domyślną skalą 1×.
+- Zignorowanie powiadomienia (bez kliknięcia „Cofnij”) pozostawia danie
+  usunięte, tak jak dotychczas.
+- `./gradlew :logic:test :app:compileDebugKotlin` przechodzi.
+
+## Uwagi
+Podczas implementacji na Androidzie znaleziona i naprawiona realna pułapka
+(przed jakimkolwiek błędem kompilacji/testu): naiwna implementacja
+przywracania przez `setMeal(...)` + osobne `planLeftover(...)` cichcem
+gubiła skalę porcji, bo `planLeftover()` zawsze na sztywno ustawia
+`scale=1.0`. Naprawione nową, atomową metodą `PlannerViewModel.restoreMeal
+(day, cat, meal: PlannedMeal)`, zapisującą wszystkie trzy pola naraz z
+jednego przechwyconego obiektu. Web'owa implementacja sprawdzona i NIE ma
+tego błędu — trzy równoległe mapy (`planner`/`plannerScale`/
+`plannerLeftover`) są tam ustawiane niezależnie, bez ryzyka nadpisania.
+
+## Historia rewizji
+- **v1** (2026-08-26): Pierwsza wersja, część większej nocnej rundy „co
+  najmniej 5 nowych funkcji”. Zweryfikowane kompilacją i testami
+  jednostkowymi oraz składniowo na webie. **Nie zweryfikowane
+  wizualnie/interaktywnie** (w tym samo pojawienie się/zachowanie
+  Snackbara na Androidzie) w tej turze.
+
+---
+
+# FR-92: Udostępnianie / eksport planu tygodnia
+
+**Obszar:** Planer, Android + Web
+**Status:** Zaimplementowane na obu platformach
+
+## Opis
+Karta Planer ma teraz przyciski do udostępnienia całego zaplanowanego
+tygodnia jako zwykły tekst (dzień → kategoria → nazwa dania, ze skalą
+porcji jeśli inna niż 1×) — na wzór już istniejącego udostępniania listy
+zakupów (FR-26).
+
+Web: dwa przyciski, „🟢 WhatsApp” (otwiera `wa.me` z gotowym tekstem) i
+„📋 Kopiuj plan tygodnia” (schowek).
+
+Android: „📤 Udostępnij plan” (natywny arkusz udostępniania,
+`Intent.ACTION_SEND`, ten sam wzorzec co istniejący przycisk „Udostępnij”
+na Zakupach) i „📋 Kopiuj” (schowek systemowy).
+
+Dodane po badaniu, czego najczęściej brakuje w aplikacjach dietetycznych —
+przesłanie tygodniowego planu osobie robiącej zakupy/gotującej to częsta
+potrzeba, dotąd niemożliwa bez ręcznego przepisywania.
+
+## Kryteria akceptacji
+- Pusty tydzień (bez żadnego zaplanowanego posiłku) daje czytelny komunikat
+  zamiast pustego/mylącego tekstu.
+- Wygenerowany tekst zawiera każdy dzień z co najmniej jednym zaplanowanym
+  posiłkiem, z ikoną kategorii, nazwą dania i skalą porcji (jeśli ≠ 1×).
+- Dni bez żadnego zaplanowanego posiłku są pomijane w wygenerowanym tekście.
+- Kopiowanie do schowka pokazuje potwierdzenie (toast/Toast).
+- `./gradlew :logic:test :app:compileDebugKotlin` przechodzi.
+
+## Historia rewizji
+- **v1** (2026-08-26): Pierwsza wersja, część większej nocnej rundy „co
+  najmniej 5 nowych funkcji”. `PlannerOperations.buildWeekPlanText()`
+  (Android, `:logic`) i `buildWeekPlanText()` (web) generują identyczny
+  kształt tekstu. Zweryfikowane kompilacją i testami jednostkowymi oraz
+  składniowo na webie. **Nie zweryfikowane wizualnie/interaktywnie**
+  (w tym rzeczywiste otwarcie WhatsApp/arkusza udostępniania) w tej turze.
+
+---
+
+# FR-93: Podpowiedzi zamienników składników w spiżarni
+
+**Obszar:** Sprawdzanie spiżarni przy przepisie, Android + Web
+**Status:** Zaimplementowane na obu platformach
+
+## Opis
+W oknie „sprawdź co masz” (otwieranym z karty przepisu) — dla każdego
+składnika, którego NIE ma w spiżarni — pokazuje się teraz dyskretna
+podpowiedź: co z TEJ SAMEJ kategorii składników (`CANON_INFO.cat`, np.
+„Nabiał”, „Warzywa”) już jest w spiżarni, jako potencjalny zamiennik
+(np. brakuje „śmietana”, ale jest „jogurt naturalny” — oba to „Nabiał”).
+
+Świadomie NIE ma stałej tabeli zamienników 1:1 (np. „masło → margaryna”)
+— istniejące grupowanie kategorii już daje użyteczne, sensowne
+podpowiedzi bez ryzyka niedopasowanych/nieistniejących kluczy kanonicznych
+między platformami, i automatycznie uwzględnia to, co użytkownik REALNIE
+ma w spiżarni, a nie sztywną, generyczną listę.
+
+## Kryteria akceptacji
+- Składnik obecny w spiżarni: bez zmian (zwykły status „🏺 …”).
+- Składnik nieobecny w spiżarni, gdy w spiżarni jest coś z tej samej
+  kategorii: pokazuje się podpowiedź „🔁 Masz w spiżarni (ta sama
+  kategoria): …” z maks. 3 nazwami.
+- Składnik nieobecny w spiżarni, gdy w spiżarni NIE MA nic z tej samej
+  kategorii: bez podpowiedzi (bez zmian względem stanu sprzed tej funkcji).
+- Podpowiedź aktualizuje się na żywo po dodaniu/usunięciu pozycji w
+  spiżarni bez zamykania okna.
+- `./gradlew :logic:test :app:compileDebugKotlin` przechodzi.
+
+## Historia rewizji
+- **v1** (2026-08-26): Pierwsza wersja, część większej nocnej rundy „co
+  najmniej 5 nowych funkcji”. Zweryfikowane kompilacją i testami
+  jednostkowymi oraz składniowo na webie. **Nie zweryfikowane
+  wizualnie/interaktywnie** w tej turze.
+
+---
+
+# FR-94: Śledzenie okna postu przerywanego (intermittent fasting)
+
+**Obszar:** Ustawienia + ekran „Dziś”, Android + Web
+**Status:** Zaimplementowane na obu platformach (lokalnie, bez synchronizacji w chmurze na Androidzie — patrz Uwagi)
+
+## Opis
+Nowa, domyślnie WYŁĄCZONA opcja w Ustawieniach: śledzenie okna postu
+przerywanego (np. klasyczny 16:8). Użytkownik ustawia godziny „okna
+jedzenia” (np. od 12:00 do 20:00, jako liczby godzin 0-23) — wszystko poza
+tym oknem to „okno postu”.
+
+Po włączeniu, na ekranie „Dziś” (pod podsumowaniem zjedzonych kalorii)
+pojawia się status: „🍽️ Okno jedzenia — post zacznie się o HH:00” albo
+„⏳ Okno postu — jedzenie od HH:00”, w zależności od aktualnej godziny.
+Okno może „zawijać się” przez północ (np. 20-4).
+
+Dodane po badaniu, czego najczęściej brakuje w aplikacjach dietetycznych —
+post przerywany / time-restricted eating to jedna z najczęściej
+wymienianych, brakujących funkcji.
+
+## Kryteria akceptacji
+- Wyłączone (domyślnie): brak jakiegokolwiek statusu na ekranie „Dziś”.
+- Włączone, aktualna godzina w oknie jedzenia: status „🍽️ Okno jedzenia —
+  post zacznie się o HH:00”.
+- Włączone, aktualna godzina poza oknem jedzenia: status „⏳ Okno postu —
+  jedzenie od HH:00”.
+- Godzina początku ≥ godzina końca traktowana jako okno zawijające się
+  przez północ (np. 20-4 = je się 20:00-04:00).
+- Zmiana godzin w Ustawieniach natychmiast aktualizuje status na „Dziś”.
+- `./gradlew :logic:test :app:compileDebugKotlin` przechodzi.
+
+## Uwagi
+Świadoma decyzja o zakresie: na Androidzie to ustawienie jest
+LOKALNE-TYLKO (`FastingViewModel` + `LocalPersistenceCoordinator`, NIE
+`CloudSyncCoordinator`) — ten sam wzorzec co `RemainingKcalFillViewModel`
+(FR-96): preferencja wyświetlania/harmonogramu, nie dane warte
+trójstronnego scalania między urządzeniami. Na webie jest częścią
+`SYNCED_STATE_KEYS` (synchronizowane), bo tam koszt dodania jednego
+kolejnego pola do już istniejącego mechanizmu synchronizacji jest
+znikomy — asymetria świadoma, nie przeoczenie, patrz `android/PARITY.md`.
+
+Logika okna (`isInEatingWindow`) współdzielona z już istniejącym
+mechanizmem przypomnienia o piciu wody (`WaterReminderScheduling.
+isActiveMinute`, Android) — ten sam algorytm zawijania przez północ, nie
+duplikat.
+
+## Historia rewizji
+- **v1** (2026-08-26): Pierwsza wersja, część większej nocnej rundy „co
+  najmniej 5 nowych funkcji”. Zweryfikowane kompilacją i testami
+  jednostkowymi oraz składniowo na webie. **Nie zweryfikowane
+  wizualnie/interaktywnie** w tej turze.
+- **v2** (2026-08-26): Naprawiony realny błąd Androida znaleziony podczas
+  wizualnej weryfikacji na emulatorze: status postu był podpięty WYŁĄCZNIE
+  do `MainActivity.kt`'s `HeaderKcalPanel`, które renderuje się tylko
+  `if (!isClinicHeader)` — a Klinika jest domyślnym motywem aplikacji od
+  FR-87/v10, więc status nigdy się nie pokazywał w praktyce (na żadnym
+  urządzeniu z domyślnymi ustawieniami). Naprawione tym samym wzorcem co
+  FR-96 (który już poprawnie dostał tę samą Klinika-specyficzną ścieżkę):
+  `fastingEnabled`/`fastingWindowStart`/`fastingWindowEnd` doprowadzone
+  przez `PlannerScreen` do `PlannerDashboard`, status renderowany pod
+  „Cześć, {imię}!” tak jak opisano w Kryteriach akceptacji. Zweryfikowane
+  WIZUALNIE na emulatorze (`Medium_Phone_API_35`) — status „⏳ Okno postu —
+  jedzenie od 12:00” faktycznie widoczny na ekranie Planer po włączeniu
+  ustawienia. `./gradlew :logic:test :app:assembleDebug` przechodzą.
+  `versionCode` 84→85, `versionName` 0.1.83→0.1.84.
+
+---
+
+# FR-95: Wyszukiwanie AI (Gemini) na kartach przepisów + wyszukiwanie tylko na rozwiniętej karcie
+
+**Obszar:** Karta przepisu (Przepisy, Planer), Android + Web
+**Status:** Zaimplementowane na obu platformach
+
+## Opis
+Karta przepisu (zwinięta lub rozwinięta, wszędzie gdzie się pojawia —
+Przepisy, podgląd z Planera) ma teraz trzeci przycisk akcji, „✨ Gemini”,
+obok istniejących Google/YouTube. Otwiera Gemini z gotowym promptem
+proszącym o szczegółowy, krok-po-kroku przepis na dokładnie to danie (z
+jego nazwą).
+
+Jednocześnie: kliknięcie w SAM TYTUŁ przepisu (które otwiera wyszukiwanie
+Google) jest teraz aktywne WYŁĄCZNIE gdy karta jest rozwinięta — na
+zwiniętej karcie kliknięcie tytułu tylko rozwija kartę (jak reszta karty),
+nie otwiera już wyszukiwania w tle.
+
+## Kryteria akceptacji
+- Przycisk „✨ Gemini” widoczny obok Google/YouTube na każdej karcie
+  przepisu, niezależnie od stanu zwinięcia.
+- Kliknięcie „✨ Gemini” otwiera Gemini z promptem zawierającym nazwę
+  dania i prośbę o szczegółowy przepis krok po kroku.
+- Kliknięcie tytułu na ZWINIĘTEJ karcie: nie otwiera wyszukiwania Google
+  (tylko normalne rozwinięcie karty).
+- Kliknięcie tytułu na ROZWINIĘTEJ karcie: otwiera wyszukiwanie Google
+  dla nazwy dania, jak dotychczas.
+- `./gradlew :logic:test :app:compileDebugKotlin` przechodzi.
+
+## Historia rewizji
+- **v1** (2026-08-26): Pierwsza wersja obu zmian naraz (użytkownik
+  poprosił o nie w tym samym zdaniu, ta sama część UI karty). Zweryfikowane
+  kompilacją i testami jednostkowymi oraz składniowo na webie. **Nie
+  zweryfikowane wizualnie/interaktywnie** w tej turze.
+
+---
+
+# FR-96: Wypełnianie kolorem kafelka „Pozostało” w Planerze
+
+**Obszar:** Planer (motyw Klinika), Ustawienia, Android + Web
+**Status:** Zaimplementowane na obu platformach (lokalnie, bez synchronizacji w chmurze na Androidzie — patrz Uwagi)
+
+## Opis
+Nowa, domyślnie WYŁĄCZONA opcja w Ustawieniach → Wygląd: kafelek
+„POZOSTAŁO” na dashboardzie Planera (motyw Klinika) wypełnia się kolorem
+proporcjonalnie do zjedzonych dziś kalorii — ta sama idea, co pierścień
+kalorii obok niego, tylko na prostokątnym kafelku.
+
+## Kryteria akceptacji
+- Wyłączone (domyślnie): kafelek „POZOSTAŁO” wygląda dokładnie tak jak
+  przed tą funkcją (jednolite tło).
+- Włączone: kafelek wypełnia się półprzezroczystym nakładanym paskiem od
+  lewej, szerokość = (zjedzone kcal / cel kcal) × 100%, aktualizowana na
+  żywo przy zmianie zjedzonych posiłków.
+- Włączenie/wyłączenie w Ustawieniach natychmiast zmienia wygląd kafelka
+  bez przeładowania.
+- `./gradlew :logic:test :app:compileDebugKotlin` przechodzi.
+
+## Uwagi
+Android: zaimplementowane przez zwykły `Box` (nie `Card`/`Surface`) z
+osobnym nakładanym `Box` — `Card`/`Surface`'s własny `containerColor`
+maluje SIĘ NAD zewnętrznym modyfikatorem `.background()`, znany pułapek
+z wcześniejszej rundy (swipe-tint), świadomie ominięty tu tym samym
+sposobem.
+
+Świadoma decyzja o zakresie: na Androidzie to ustawienie jest
+LOKALNE-TYLKO (`RemainingKcalFillViewModel` + `LocalPersistenceCoordinator`,
+NIE `CloudSyncCoordinator`) — czysta preferencja wyświetlania, nie dane
+warte trójstronnego scalania między urządzeniami. Na webie jest częścią
+`SYNCED_STATE_KEYS` (synchronizowane).
+
+## Historia rewizji
+- **v1** (2026-08-26): Pierwsza wersja. Zweryfikowane kompilacją i testami
+  jednostkowymi oraz składniowo na webie. **Nie zweryfikowane
+  wizualnie/interaktywnie** w tej turze.
+
+---
+
+# FR-97: Znacznik stanu spiżarni na kartach „Dzisiejszy Planer”
+
+**Obszar:** Planer (motyw Klinika), Android + Web
+**Status:** Zaimplementowane na obu platformach
+
+## Opis
+Na kartach dań w sekcji „Dzisiejszy Planer” (dużo wolnego miejsca na
+karcie) dodany mały znacznik: ile z potrzebnych składników danego dania
+jest już w spiżarni, a ile trzeba dokupić (np. „🏺 4/6 w spiżarni”).
+
+## Kryteria akceptacji
+- Każda karta dania w „Dzisiejszy Planer” pokazuje znacznik „🏺 N/M w
+  spiżarni”, gdzie M = liczba składników przepisu, N = ile z nich jest w
+  spiżarni.
+- Znacznik aktualizuje się na żywo po zmianie zawartości spiżarni, bez
+  konieczności odświeżenia ekranu.
+- Puste sloty (bez zaplanowanego dania) nie pokazują znacznika.
+- `./gradlew :logic:test :app:compileDebugKotlin` przechodzi.
+
+## Historia rewizji
+- **v1** (2026-08-26): Pierwsza wersja. Wykorzystuje istniejące
+  dopasowywanie składnik→spiżarnia (`RecipePantryMatching`/`pantryMatch`),
+  zero nowej logiki kategoryzacji. Zweryfikowane kompilacją i testami
+  jednostkowymi oraz składniowo na webie. **Nie zweryfikowane
+  wizualnie/interaktywnie** w tej turze.

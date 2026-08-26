@@ -43,6 +43,18 @@ class PlannerViewModel(application: Application) : AndroidViewModel(application)
         _weekPlan.value = PlannerOperations.setMeal(_weekPlan.value, day, cat, PlannedMeal(recipeId, scale))
     }
 
+    /**
+     * Requested 2026-08-26 ("Cofnij" undo after removing a planned meal):
+     * restores a FULL captured PlannedMeal (recipeId+scale+isLeftover) in
+     * one write -- setMeal(day,cat,recipeId,scale) above always defaults
+     * isLeftover=false, so calling it followed by planLeftover() would
+     * silently reset scale back to 1.0 (planLeftover always writes
+     * scale=1.0), losing whatever real portion size the meal had.
+     */
+    fun restoreMeal(day: Int, cat: String, meal: PlannedMeal) {
+        _weekPlan.value = PlannerOperations.setMeal(_weekPlan.value, day, cat, meal)
+    }
+
     fun clearSlot(day: Int, cat: String) {
         _weekPlan.value = PlannerOperations.clearSlot(_weekPlan.value, day, cat)
     }
@@ -80,6 +92,11 @@ class PlannerViewModel(application: Application) : AndroidViewModel(application)
     /** FR-23/24: carry a recipe over as a leftovers entry. */
     fun planLeftover(day: Int, cat: String, recipeId: String) {
         _weekPlan.value = PlannerOperations.planLeftover(_weekPlan.value, day, cat, recipeId)
+    }
+
+    /** Requested 2026-08-26 ("📋 Kopiuj plan z innego dnia"): overwrites toDay with fromDay's plan. */
+    fun copyDay(fromDay: Int, toDay: Int) {
+        _weekPlan.value = PlannerOperations.copyDay(_weekPlan.value, fromDay, toDay)
     }
 
     /** FR-73: applies an incoming cloud snapshot wholesale (last-cloud-write-wins), replacing local state. */

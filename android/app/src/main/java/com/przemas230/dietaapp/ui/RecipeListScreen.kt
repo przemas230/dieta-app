@@ -83,6 +83,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -93,6 +97,7 @@ import androidx.compose.ui.unit.sp
 import com.przemas230.dietaapp.ui.theme.LocalDietaThemeId
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.przemas230.dietaapp.R
 import com.przemas230.dietaapp.data.CookEntry
 import com.przemas230.dietaapp.data.PantryCategory
 import com.przemas230.dietaapp.data.PantryItem
@@ -119,6 +124,22 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+
+/**
+ * Requested 2026-08-26 ("czcionka podoba się to dla mnie i nie podoba się
+ * w Android jest inna niż na Web"): matches index.html's
+ * `.swipe-label-global{font-family:"Baloo 2","Quicksand",sans-serif;
+ * font-weight:800}` (FR-56's balloon feedback label) -- a chunky, rounded
+ * display font, ExtraBold (800) being its heaviest static weight, same as
+ * web's. Same variable-font pattern as ClinicTheme.kt's SpaceGrotesk/DMSans
+ * (one .ttf file, one FontVariation.Settings per weight) -- but this one
+ * applies regardless of theme (the swipe gesture/label itself isn't
+ * Klinika-specific), so it's defined here rather than in ClinicTheme.kt.
+ */
+@OptIn(ExperimentalTextApi::class)
+private val SwipeLabelFont = FontFamily(
+    Font(R.font.baloo2_variable, FontWeight.ExtraBold, variationSettings = FontVariation.Settings(FontVariation.weight(800))),
+)
 
 /**
  * Pure screen content — no own Scaffold/TopAppBar, since the app-level
@@ -1154,7 +1175,8 @@ private fun RecipeCard(
                     .alpha(swipeProgress),
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                fontFamily = SwipeLabelFont,
+                fontWeight = FontWeight.ExtraBold,
                 color = if (offsetX.value > 0) Color(0xFF43A047) else Color(0xFFE53935),
             )
         }
@@ -1242,7 +1264,7 @@ private fun RecipeCard(
  * index.html's openRecipeReviewModal/renderRecipeReviewStars.
  */
 @Composable
-private fun RecipeReviewDialog(
+internal fun RecipeReviewDialog(
     recipeName: String,
     existing: RecipeReview?,
     onSave: (stars: Int, comment: String?) -> Boolean,
@@ -1309,7 +1331,7 @@ private fun RecipeReviewDialog(
 }
 
 @Composable
-private fun RecipeCardBody(
+internal fun RecipeCardBody(
     recipe: Recipe,
     matchScore: Int?,
     expanded: Boolean,
@@ -1336,6 +1358,16 @@ private fun RecipeCardBody(
             // Port of index.html's ".recipe-title" click handler -- opens a
             // Google search for the dish instead of toggling the card (the
             // click is consumed here, same as the web's e.stopPropagation()).
+            // Requested 2026-08-26 ("wyszukiwanie dania będzie dostępne
+            // dopiero na otwartej rozwiniętej karcie a nie na zwiniętej"):
+            // only wired up while `expanded` -- on a collapsed card, the
+            // title has no clickable of its own, so the tap falls through
+            // to RecipeCard's own `.clickable{ onToggleExpanded() }` one
+            // level up instead, same as tapping anywhere else on the card.
+            // Web ported alongside this (see index.html's own change), same
+            // reasoning: an accidental tap on a long, multi-line collapsed
+            // title used to silently open a browser tab instead of just
+            // expanding the card, which read as broken/surprising.
             Text(
                 recipe.name,
                 style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.5.sp, lineHeight = 19.sp),
@@ -1343,10 +1375,16 @@ private fun RecipeCardBody(
                 textDecoration = TextDecoration.Underline,
                 modifier = Modifier
                     .weight(1f)
-                    .clickable {
-                        val query = Uri.encode("${recipe.name} przepis")
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=$query")))
-                    },
+                    .then(
+                        if (expanded) {
+                            Modifier.clickable {
+                                val query = Uri.encode("${recipe.name} przepis")
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=$query")))
+                            }
+                        } else {
+                            Modifier
+                        },
+                    ),
             )
             // FR-66/FR-76: distinguishes a user-added recipe (own, or another
             // user's approved community recipe) from the 229 built-in ones.
@@ -1498,14 +1536,35 @@ private fun RecipeCardBody(
                         context.startActivity(Intent(Intent.ACTION_VIEW, uri))
                     },
                     modifier = Modifier.weight(1f),
-                ) { Text("🔎 Google") }
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                ) { Text("🔎 Google", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 OutlinedButton(
                     onClick = {
                         val uri = Uri.parse("https://www.youtube.com/results?search_query=" + Uri.encode("${recipe.name} przepis"))
                         context.startActivity(Intent(Intent.ACTION_VIEW, uri))
                     },
                     modifier = Modifier.weight(1f),
-                ) { Text("▶️ YouTube") }
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                ) { Text("▶️ YouTube", maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                // Requested 2026-08-26 ("dodaj też button szukają w Gemini
+                // żeby sztuczna inteligencja dostała prompt na propozycje
+                // przygotowania tego konkretnego dania rozpisane w
+                // szczegółach"): opens Gemini's web app with the prompt
+                // pre-filled via `?q=` (same unofficial-but-widely-observed
+                // pattern as chatgpt.com/?q=... -- if Gemini ever stops
+                // honoring it, the button still opens Gemini itself, just
+                // without the pre-fill, so this degrades gracefully either
+                // way).
+                OutlinedButton(
+                    onClick = {
+                        val prompt = "Rozpisz szczegółowo, krok po kroku, jak przygotować danie: ${recipe.name}. " +
+                            "Podaj dokładne czasy, temperatury, ilości składników i wskazówki przydatne dla początkujących."
+                        val uri = Uri.parse("https://gemini.google.com/app?q=" + Uri.encode(prompt))
+                        context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                    },
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                ) { Text("✨ Gemini", maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
             if (review?.comment != null) {
                 Text(
@@ -1743,7 +1802,7 @@ private fun formatNum(value: Double): String =
  * per-recipe pantry-check window) is a different button, not ported yet.
  */
 @Composable
-private fun CookHistoryDialog(
+internal fun CookHistoryDialog(
     recipe: Recipe,
     entries: List<CookEntry>,
     review: RecipeReview?,
@@ -1867,7 +1926,7 @@ private fun describePantryEntry(item: PantryItem): String = when (item) {
  * it also has isn't ported yet since there's no Planner screen (FR-18/19).
  */
 @Composable
-private fun PantryCheckDialog(
+internal fun PantryCheckDialog(
     recipe: Recipe,
     pantryItems: Map<String, PantryItem>,
     onToggleHave: (canonName: String, category: PantryCategory, unitCat: String) -> Unit,
@@ -1903,8 +1962,27 @@ private fun PantryCheckDialog(
                         PantryOperations.categoryForCanon(IngredientCanon.CANON_INFO[parsed.canonName]?.cat ?: "Inne")
                     }
                     val entry = pantryItems[parsed.canonName]
+                    // Requested 2026-08-26 (5 new features -- users flagged
+                    // not knowing what to swap in for a missing ingredient):
+                    // when missing, suggest whatever's already in the pantry
+                    // from the same category as a possible substitute, same
+                    // no-fixed-table approach as index.html's pcr-sub-hint.
+                    val siblings = remember(pantryItems, category, parsed.canonName) {
+                        pantryItems.entries
+                            .filter { it.value.category == category && it.key != parsed.canonName }
+                            .map { it.value.name }
+                    }
                     Column(modifier = Modifier.padding(vertical = 8.dp)) {
                         Text(IngredientCanon.withEmoji(ingredient, parsed.canonName), style = MaterialTheme.typography.bodyMedium)
+                        if (entry == null && siblings.isNotEmpty()) {
+                            Text(
+                                "🔁 Masz w spiżarni (ta sama kategoria): " + siblings.take(3).joinToString(", "),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Normal,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 2.dp),
+                            )
+                        }
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -1959,7 +2037,7 @@ private fun PantryCheckDialog(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PlanPickerDialog(
+internal fun PlanPickerDialog(
     recipe: Recipe,
     weekPlan: WeekPlan,
     onPick: (day: Int, cat: String) -> Unit,
@@ -2035,7 +2113,7 @@ private fun formatCookTime(epochMillis: Long): String =
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun MacroInfoDialog(recipe: Recipe, onDismiss: () -> Unit) {
+internal fun MacroInfoDialog(recipe: Recipe, onDismiss: () -> Unit) {
     var legendExpanded by remember { mutableStateOf(false) }
     Dialog(onDismissRequest = onDismiss) {
         Card(modifier = Modifier.widthIn(max = 480.dp)) {

@@ -134,6 +134,11 @@ fun SettingsScreen(
     // RecipeModerationCoordinator's doc comment.
     recipeModerationViewModel: RecipeModerationViewModel = viewModel(),
     onBrowseUsers: () -> Unit = {},
+    // Requested 2026-08-26: "POZOSTAŁO" tile fill-with-color toggle, see
+    // RemainingKcalFillCard below.
+    remainingKcalFillViewModel: RemainingKcalFillViewModel = viewModel(),
+    // Requested 2026-08-26: intermittent fasting window toggle, see FastingCard below.
+    fastingViewModel: FastingViewModel = viewModel(),
 ) {
     // FR-71: always starts on Konto -- plain remember (no key/ViewModel
     // backing), so leaving and re-entering the Ustawienia screen discards it,
@@ -190,11 +195,13 @@ fun SettingsScreen(
                             ThemeCard(themeViewModel)
                             UiScaleCard(uiScaleViewModel, effectiveUiScale)
                             SwipeRatingStyleCard(swipeRatingStyleViewModel)
+                            RemainingKcalFillCard(remainingKcalFillViewModel)
                         }
                         SettingsTab.PRZYPOMNIENIA -> {
                             WaterNotificationCard(waterNotificationViewModel, currentWaterCount)
                             WaterReminderCard(waterNotificationViewModel)
                             WaterNotificationLogCard(waterNotificationViewModel)
+                            FastingCard(fastingViewModel)
                         }
                         SettingsTab.ULUBIONE -> {
                             FavoriteIngredientsCard(favoriteIngredientsViewModel, allRecipes)
@@ -318,6 +325,91 @@ private fun SwipeRatingStyleCard(viewModel: SwipeRatingStyleViewModel) {
                 "Wpływa wyłącznie na kartę podczas samego przesuwania (FR-55) — karta w spoczynku wygląda tak samo w obu stylach.",
                 style = MaterialTheme.typography.bodySmall,
             )
+        }
+    }
+}
+
+/**
+ * Requested 2026-08-26 ("prostokąt pozostałe kcal mógłby się zapełniać
+ * kolorem... zrób to jako opcje do włączenia w opcjach"): opt-in,
+ * off by default -- fills PlannerDashboard's "POZOSTAŁO" tile (Klinika
+ * theme) with color proportionally to eaten kcal, mirroring index.html's
+ * matching checkbox in the same "Wygląd" settings tab.
+ */
+@Composable
+private fun RemainingKcalFillCard(viewModel: RemainingKcalFillViewModel) {
+    val enabled by viewModel.enabled.collectAsState()
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("🎨 Kafelek „Pozostało” w Planerze", style = MaterialTheme.typography.titleMedium)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { viewModel.setEnabled(!enabled) },
+            ) {
+                Checkbox(checked = enabled, onCheckedChange = { viewModel.setEnabled(it) })
+                Text(
+                    "Wypełniaj kolorem w miarę zjadania posiłków (motyw Klinika)",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Requested 2026-08-26 ("dodaj też przynajmniej 5 nowych funkcji" --
+ * intermittent fasting / time-restricted eating is one of the most-requested
+ * diet-app features per user reviews): enable toggle + eating-window hours,
+ * mirroring index.html's matching card in the same "Przypomnienia" settings tab.
+ */
+@Composable
+private fun FastingCard(viewModel: FastingViewModel) {
+    val enabled by viewModel.enabled.collectAsState()
+    val windowStart by viewModel.windowStart.collectAsState()
+    val windowEnd by viewModel.windowEnd.collectAsState()
+    var startText by rememberSaveable(windowStart) { mutableStateOf(windowStart.toString()) }
+    var endText by rememberSaveable(windowEnd) { mutableStateOf(windowEnd.toString()) }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("⏳ Post przerywany (okno jedzenia)", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Śledzi, czy teraz jest Twoje okno jedzenia, czy okno postu (np. klasyczny post 16:8). Status widoczny na głównym ekranie „Dziś”.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { viewModel.setEnabled(!enabled) },
+            ) {
+                Checkbox(checked = enabled, onCheckedChange = { viewModel.setEnabled(it) })
+                Text("Włącz śledzenie okna jedzenia", style = MaterialTheme.typography.bodySmall)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = startText,
+                    onValueChange = { text ->
+                        startText = text.filter(Char::isDigit).take(2)
+                        startText.toIntOrNull()?.let { viewModel.setWindowStart(it) }
+                    },
+                    label = { Text("Jedzenie od (godz.)") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedTextField(
+                    value = endText,
+                    onValueChange = { text ->
+                        endText = text.filter(Char::isDigit).take(2)
+                        endText.toIntOrNull()?.let { viewModel.setWindowEnd(it) }
+                    },
+                    label = { Text("Jedzenie do (godz.)") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }

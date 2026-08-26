@@ -1,5 +1,6 @@
 package com.przemas230.dietaapp.ui
 
+import com.przemas230.dietaapp.WaterCupIcon
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -158,15 +159,16 @@ fun PostepScreen(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
                         ) {
+                            // Requested 2026-08-26 ("dla motywów klinika i
+                            // klinika noc też zmień kółeczka od wody na
+                            // kropelki wszędzie"): was a plain filled/empty
+                            // circle -- now the same droplet WaterCupIcon
+                            // the other 11 themes' header strip uses.
                             for (i in 0 until WaterOperations.MAX_LEVEL) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(22.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            if (i < waterCount) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                                        )
-                                        .clickable { waterViewModel.tapDroplet(i) },
+                                WaterCupIcon(
+                                    filled = i < waterCount,
+                                    size = 22.dp,
+                                    modifier = Modifier.clickable { waterViewModel.tapDroplet(i) },
                                 )
                             }
                         }

@@ -49,6 +49,10 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -144,6 +148,10 @@ import com.przemas230.dietaapp.ui.ShoppingViewModel
 import com.przemas230.dietaapp.ui.SwipeRatingStyle
 import com.przemas230.dietaapp.ui.UserListScreen
 import com.przemas230.dietaapp.ui.UserProfileScreen
+import com.przemas230.dietaapp.ui.RemainingKcalFillViewModel
+import com.przemas230.dietaapp.ui.FastingViewModel
+import com.przemas230.dietaapp.logic.FastingOperations
+import java.time.LocalTime
 import com.przemas230.dietaapp.ui.SwipeRatingStyleViewModel
 import com.przemas230.dietaapp.ui.ThemeViewModel
 import com.przemas230.dietaapp.ui.UiScaleViewModel
@@ -303,6 +311,12 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // FR-42: shared for the same reason as weightViewModel above -- both
     // RecipeListScreen and PantryScreen log to it, PostepScreen displays it.
     val activityLogViewModel: ActivityLogViewModel = viewModel()
+    // Requested 2026-08-26: shared so a change on Ustawienia is reflected
+    // immediately by PlannerDashboard's "POZOSTAŁO" tile.
+    val remainingKcalFillViewModel: RemainingKcalFillViewModel = viewModel()
+    // Requested 2026-08-26 (5 new features -- intermittent fasting tracker):
+    // shared so the header status line and the Ustawienia toggle stay in sync.
+    val fastingViewModel: FastingViewModel = viewModel()
     // No UI of its own -- restores every local ViewModel's state on launch
     // and debounce-saves it to a local file on every change, regardless of
     // sign-in state (unlike CloudSyncCoordinator below, this always runs --
@@ -321,6 +335,8 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
         waterViewModel = waterViewModel,
         weightViewModel = weightViewModel,
         activityLogViewModel = activityLogViewModel,
+        remainingKcalFillViewModel = remainingKcalFillViewModel,
+        fastingViewModel = fastingViewModel,
     )
     // FR-73: no UI of its own -- pushes/pulls the syncable subset of state
     // above to/from Firestore while authViewModel reports a real (non-
@@ -498,6 +514,23 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
     // for the other 11 themes, this is the same StateFlow, just also
     // needed one level up now that Klinika reads it outside that panel.
     val plannerDashboardWaterCount by waterViewModel.count.collectAsState()
+    val remainingKcalFillEnabled by remainingKcalFillViewModel.enabled.collectAsState()
+    // Bug fixed 2026-08-26: FastingViewModel's status text was only ever
+    // wired into HeaderKcalPanel, which doesn't render at all for Klinika
+    // (see the `if (!isClinicHeader)` gate above) -- since Klinika is the
+    // app's default theme (AppThemes.DEFAULT_ID), the fasting status never
+    // actually appeared anywhere. Threaded through to PlannerScreen the same
+    // way remainingKcalFillEnabled already is, one line up.
+    val fastingEnabled by fastingViewModel.enabled.collectAsState()
+    val fastingWindowStart by fastingViewModel.windowStart.collectAsState()
+    val fastingWindowEnd by fastingViewModel.windowEnd.collectAsState()
+    // Requested 2026-08-26 ("dodaj też przynajmniej 5 nowych funkcji" --
+    // research flagged lost/broken data as a common complaint): shared
+    // SnackbarHostState so PlannerScreen's "Cofnij" (undo) after removing a
+    // planned meal has somewhere to show, same Scaffold-level pattern as
+    // showQuickAddDialog/showDashboardSignOutConfirm below.
+    val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarScope = rememberCoroutineScope()
     var showQuickAddDialog by remember { mutableStateOf(false) }
     // FR-87/v7: the Klinika Planer dashboard's icon-only sign-out button
     // gets its own lightweight confirm (not the full Ustawienia flow with
@@ -741,6 +774,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                                 eatenEntries = eatenEntries,
                                 snacks = snacks,
                                 waterViewModel = waterViewModel,
+                                fastingViewModel = fastingViewModel,
                                 onToggleEaten = { cat, kcal, name -> eatenViewModel.toggle(cat, kcal, name) },
                                 onRemoveSnack = { id -> eatenViewModel.removeSnack(id) },
                             )
@@ -749,6 +783,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                 }
             }
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             val onNavigate: (Screen) -> Unit = { screen ->
                 focusManager.clearFocus()
@@ -849,7 +884,26 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     onWaterTap = { i -> waterViewModel.tapDroplet(i) },
                     onWaterSetCount = { n -> waterViewModel.setCount(n) },
                     onSetEaten = { cat, eaten, kcal, name -> eatenViewModel.setEaten(cat, eaten, kcal, name) },
+                    remainingKcalFillEnabled = remainingKcalFillEnabled,
+                    fastingEnabled = fastingEnabled,
+                    fastingWindowStart = fastingWindowStart,
+                    fastingWindowEnd = fastingWindowEnd,
                     headerActions = headerActions,
+                    pantryViewModel = pantryViewModel,
+                    recipeViewModel = recipeViewModel,
+                    favoriteIngredientsViewModel = favoriteIngredientsViewModel,
+                    activityLogViewModel = activityLogViewModel,
+                    recipeCommentsViewModel = recipeCommentsViewModel,
+                    onShowUndoSnackbar = { message, actionLabel, onUndo ->
+                        snackbarScope.launch {
+                            val result = snackbarHostState.showSnackbar(
+                                message = message,
+                                actionLabel = actionLabel,
+                                duration = SnackbarDuration.Long,
+                            )
+                            if (result == SnackbarResult.ActionPerformed) onUndo()
+                        }
+                    },
                 )
             }
             composable(Screen.Progress.route) {
@@ -893,6 +947,8 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     // `myRecipes` list, which surfaced this.
                     recipeViewModel = recipeViewModel,
                     recipeModerationViewModel = recipeModerationViewModel,
+                    remainingKcalFillViewModel = remainingKcalFillViewModel,
+                    fastingViewModel = fastingViewModel,
                     onClearLocalData = {
                         // FR-79: "wyczyść dane lokalne". The on-disk cloud-sync
                         // baseline is cleared right away (harmless regardless of
@@ -1011,7 +1067,7 @@ private fun HeaderWaterRow(viewModel: WaterViewModel) {
  * not a behavior change.
  */
 @Composable
-private fun WaterCupIcon(filled: Boolean, size: Dp, modifier: Modifier = Modifier) {
+internal fun WaterCupIcon(filled: Boolean, size: Dp, modifier: Modifier = Modifier) {
     val isClinic = AppThemes.isClinicFamily(LocalDietaThemeId.current)
     val filledColor = if (isClinic) MaterialTheme.colorScheme.tertiary else Color(0xFF3E8EF5)
     val emptyColor = if (isClinic) {
@@ -1141,6 +1197,7 @@ private fun HeaderKcalPanel(
     eatenEntries: Map<String, EatenEntry>,
     snacks: List<Snack>,
     waterViewModel: WaterViewModel,
+    fastingViewModel: FastingViewModel,
     onToggleEaten: (cat: String, plannedKcal: Int?, plannedName: String?) -> Unit,
     onRemoveSnack: (id: String) -> Unit,
 ) {
@@ -1149,6 +1206,9 @@ private fun HeaderKcalPanel(
     val kcalPct = if (targetKcal > 0) (eatenKcal.toFloat() / targetKcal).coerceIn(0f, 1f) else 0f
     val waterCount by waterViewModel.count.collectAsState()
     val waterPct = (waterCount.toFloat() / WaterOperations.MAX_LEVEL).coerceIn(0f, 1f)
+    val fastingEnabled by fastingViewModel.enabled.collectAsState()
+    val fastingWindowStart by fastingViewModel.windowStart.collectAsState()
+    val fastingWindowEnd by fastingViewModel.windowEnd.collectAsState()
     // FR-87/v2: Klinika renders this whole panel as an elevated card on its
     // now-light header background (see the topBar Column above) instead of
     // white text over a solid color fill -- textColor/mutedTextColor below
@@ -1259,6 +1319,23 @@ private fun HeaderKcalPanel(
             style = MaterialTheme.typography.labelSmall,
             color = textColor,
         )
+        if (fastingEnabled) {
+            val now = LocalTime.now()
+            val minutesOfDay = now.hour * 60 + now.minute
+            val inWindow = FastingOperations.isInEatingWindow(fastingWindowStart, fastingWindowEnd, minutesOfDay)
+            val fastingText = if (inWindow) {
+                "🍽️ Okno jedzenia — post zacznie się o %02d:00".format(fastingWindowEnd)
+            } else {
+                "⏳ Okno postu — jedzenie od %02d:00".format(fastingWindowStart)
+            }
+            Text(
+                fastingText,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = if (inWindow) FontWeight.Normal else FontWeight.Bold,
+                color = textColor,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
     }
     if (isClinic) {
         Card(

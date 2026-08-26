@@ -115,6 +115,46 @@ object PlannerOperations {
 
     fun clearDay(plan: WeekPlan, day: Int): WeekPlan = plan + (day to emptyMap())
 
+    /**
+     * Requested 2026-08-26 ("dodaj też przynajmniej 5 nowych funkcji...
+     * czego najbardziej potrzebują użytkownicy" -- meal-planner review
+     * research consistently flags re-entering the same day's meals over
+     * and over, e.g. a repeated weekly routine, as friction): overwrites
+     * [toDay] with whatever [fromDay] currently has planned. Trivial here
+     * since PlannedMeal already bundles recipeId+scale+isLeftover into one
+     * value per slot (unlike web's three parallel planner/plannerScale/
+     * plannerLeftover maps, which need a 3-way copy there).
+     */
+    fun copyDay(plan: WeekPlan, fromDay: Int, toDay: Int): WeekPlan = plan + (toDay to (plan[fromDay] ?: emptyMap()))
+
+    /**
+     * Requested 2026-08-26 (5 new features -- users want their plan portable
+     * to send to whoever does the shopping/cooking): port of index.html's
+     * buildWeekPlanText(), same text shape, for the Android share/copy buttons.
+     */
+    fun buildWeekPlanText(plan: WeekPlan, recipesById: Map<String, Recipe>): String {
+        val hasAny = plan.values.any { dayMap -> dayMap.values.isNotEmpty() }
+        if (!hasAny) return "Plan tygodnia jest jeszcze pusty 📋"
+        val sb = StringBuilder("📅 Plan tygodnia:\n")
+        DAYS_PL.forEachIndexed { day, dayName ->
+            val dayMap = plan[day].orEmpty()
+            val lines = PLANNER_CATEGORIES.mapNotNull { cat ->
+                val meal = dayMap[cat.id] ?: return@mapNotNull null
+                val recipe = recipesById[meal.recipeId] ?: return@mapNotNull null
+                val scaleLabel = if (meal.scale != 1.0) " (${formatScale(meal.scale)})" else ""
+                "  ${cat.emoji} ${cat.label}: ${recipe.name}$scaleLabel"
+            }
+            if (lines.isEmpty()) return@forEachIndexed
+            sb.append('\n').append(dayName).append(":\n").append(lines.joinToString("\n")).append('\n')
+        }
+        return sb.toString()
+    }
+
+    private fun formatScale(scale: Double): String {
+        val plain = if (scale == scale.toLong().toDouble()) scale.toLong().toString() else scale.toString()
+        return plain.replace(".", ",") + "×"
+    }
+
     /** FR-23/24: carries a recipe over as a leftovers entry (base 1x portion, flagged so no new shopping-list entry is implied). */
     fun planLeftover(plan: WeekPlan, day: Int, cat: String, recipeId: String): WeekPlan =
         setMeal(plan, day, cat, PlannedMeal(recipeId, scale = 1.0, isLeftover = true))

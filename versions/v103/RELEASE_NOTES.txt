@@ -1,0 +1,58 @@
+Wersja v103 (2026-08-26)
+
+Duża, wieloczęściowa runda zmian (Web + Android), zrobiona w nocy na
+wyraźną prośbę użytkownika ("zrób wszystko bez pytań... rano będę
+sprawdzał"). Wszystko poniżej dotyczy OBU platform, chyba że zaznaczono
+inaczej.
+
+1. Karta dnia w Planerze (motyw Klinika) znowu zajmuje cały ekran TYLKO
+   dla dzisiejszego dnia — poprzednia zmiana robiła to dla każdego dnia,
+   co było zbyt agresywne. Pozostałe dni wróciły do normalnego,
+   kompaktowego rozmiaru.
+
+2. Nowa opcja (domyślnie wyłączona, do włączenia w Ustawieniach → Wygląd):
+   kafelek "POZOSTAŁO" w Planerze wypełnia się kolorem proporcjonalnie do
+   zjedzonych dziś kalorii — tak jak pierścień kalorii obok niego.
+
+3. Android: karta podglądu przepisu otwierana z Planera używa teraz
+   DOKŁADNIE tego samego komponentu co karta na liście Przepisów
+   (ulubione, sprawdzanie spiżarni, historia gotowania, oceny/komentarze) —
+   wcześniej był to osobny, uboższy i wizualnie inny widok.
+
+4. Nowy przycisk "✨ Gemini" na kartach przepisów — otwiera Gemini z
+   gotowym promptem o szczegółowy, krok po kroku przepis na dane danie.
+
+5. Motywy Klinika i Klinika (noc): kółka wyboru poziomu wody zamienione na
+   kropelki, tak jak w reszcie aplikacji.
+
+6. Wyszukiwanie po tytule przepisu (Google) działa teraz tylko na
+   ROZWINIĘTEJ karcie przepisu, nie na zwiniętej.
+
+7. Android: czcionka etykiety "❤️ Podoba się"/"👎 Nie podoba się" przy
+   przesuwaniu karty przepisu dopasowana do Web (Baloo 2, ExtraBold).
+
+8. Na kartach dań w "Dzisiejszy Planer" (Web i Android) dodany znacznik:
+   ile potrzebnych składników jest już w spiżarni, a ile trzeba dokupić.
+
+9. Pięć nowych funkcji (na podstawie tego, czego najczęściej brakuje w
+   aplikacjach dietetycznych):
+   a) Kopiowanie planu jednego dnia na inny dzień tygodnia.
+   b) "Cofnij" po usunięciu dania z Planera (Android: pierwsze użycie
+      Snackbara w aplikacji).
+   c) Udostępnianie/eksport planu tygodnia (WhatsApp / kopiuj do schowka;
+      Android: natywny arkusz udostępniania + kopiowanie).
+   d) Podpowiedzi zamienników składników — gdy składnika brakuje w
+      spiżarni, aplikacja pokazuje, co z tej samej kategorii już masz
+      (np. brak śmietany, ale jest jogurt naturalny — oba to "Nabiał").
+   e) Śledzenie okna postu przerywanego (intermittent fasting) — status
+      "okno jedzenia" / "okno postu" widoczny na ekranie "Dziś", z
+      konfigurowalnymi godzinami w Ustawieniach.
+
+10. Dwa nowe warianty kolorystyczne dla rodziny Klinika (dzień + noc
+    każdy): "Ocean" (chłodny błękit) i "Terakota" (ciepła, minimalistyczna).
+    Na Web wybierane niezależnie od "Klinika"/"Klinika (noc)" (nowy atrybut
+    data-clinic-palette, żeby nie duplikować istniejących reguł CSS), na
+    Androidzie jako osobne pozycje na liście motywów.
+
+Techniczne: CACHE_NAME service workera podbity do "dieta-app-v103", żeby
+powyższe zmiany faktycznie dotarły do użytkowników PWA.

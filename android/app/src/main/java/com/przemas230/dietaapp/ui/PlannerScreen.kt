@@ -1,7 +1,12 @@
 package com.przemas230.dietaapp.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
+import com.przemas230.dietaapp.WaterCupIcon
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -72,23 +77,29 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.przemas230.dietaapp.data.EatenEntry
+import com.przemas230.dietaapp.data.PantryCategory
+import com.przemas230.dietaapp.data.PantryItem
 import com.przemas230.dietaapp.data.PlannedMeal
 import com.przemas230.dietaapp.data.Profile
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.data.Snack
 import com.przemas230.dietaapp.logic.AppThemes
 import com.przemas230.dietaapp.logic.EatenOperations
+import com.przemas230.dietaapp.logic.FastingOperations
+import com.przemas230.dietaapp.logic.IngredientCanon
 import com.przemas230.dietaapp.logic.MacroGrams
 import com.przemas230.dietaapp.logic.PlannerCategory
 import com.przemas230.dietaapp.logic.PlannerOperations
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.RecipeMatching
+import com.przemas230.dietaapp.logic.RecipePantryMatching
 import com.przemas230.dietaapp.logic.ShoppingOperations
 import com.przemas230.dietaapp.logic.WaterOperations
 import com.przemas230.dietaapp.logic.WeekPlan
 import com.przemas230.dietaapp.logic.forCategory
 import com.przemas230.dietaapp.ui.theme.LocalDietaThemeId
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -108,6 +119,23 @@ fun PlannerScreen(
     plannerViewModel: PlannerViewModel,
     profileViewModel: ProfileViewModel,
     shoppingViewModel: ShoppingViewModel,
+    // Requested 2026-08-26 ("jest inna niż na Web a co za tym idzie
+    // brzydsza"): RecipePreviewDialog now reuses the REAL RecipeCardBody
+    // (favorite star, pantry-check, cook history, reviews, comments) --
+    // needs the same shared ViewModels RecipeListScreen already gets from
+    // MainActivity, hoisted here for the same reason (see RecipePreviewDialog's
+    // own doc comment).
+    pantryViewModel: PantryViewModel,
+    recipeViewModel: RecipeViewModel,
+    favoriteIngredientsViewModel: FavoriteIngredientsViewModel,
+    activityLogViewModel: ActivityLogViewModel,
+    recipeCommentsViewModel: RecipeCommentsViewModel,
+    // Requested 2026-08-26 ("dodaj też przynajmniej 5 nowych funkcji" --
+    // research flagged lost/broken data as a common complaint): shows a
+    // Snackbar with an undo action -- MainActivity owns the actual
+    // SnackbarHostState/Scaffold slot (same "hoisted at the top" pattern
+    // as every other cross-screen ViewModel here), this just requests one.
+    onShowUndoSnackbar: (message: String, actionLabel: String, onUndo: () -> Unit) -> Unit = { _, _, _ -> },
     // FR-87/v7: the rest of these params feed ONLY the Klinika-only
     // PlannerDashboard below -- they're the exact same data/callbacks
     // MainActivity's global-header HeaderKcalPanel used to receive
@@ -124,6 +152,15 @@ fun PlannerScreen(
     onWaterTap: (Int) -> Unit = {},
     onWaterSetCount: (Int) -> Unit = {},
     onSetEaten: (cat: String, eaten: Boolean, plannedKcal: Int?, plannedName: String?) -> Unit = { _, _, _, _ -> },
+    // Requested 2026-08-26: opt-in fill-with-color on the "POZOSTAŁO" tile,
+    // see RemainingKcalFillViewModel/SettingsScreen's matching card.
+    remainingKcalFillEnabled: Boolean = false,
+    // Bug fixed 2026-08-26: FastingViewModel's status text used to only be
+    // wired into MainActivity's HeaderKcalPanel, which never renders for
+    // Klinika -- same fix pattern as remainingKcalFillEnabled just above.
+    fastingEnabled: Boolean = false,
+    fastingWindowStart: Int = 12,
+    fastingWindowEnd: Int = 20,
     // Requested 2026-08-25 ("zrównaj dzień tygodnia/datę i Cześć, nazwę
     // użytkownika z plusikiem i kołem zębatym... żeby było w jednej
     // linii"): MainActivity's global quick-add/settings icons, rendered
@@ -135,6 +172,12 @@ fun PlannerScreen(
     val allRecipes by plannerViewModel.allRecipes.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
     val profile by profileViewModel.profile.collectAsState()
+    // Requested 2026-08-26 (RecipePreviewDialog's full RecipeCardBody reuse).
+    val pantryItems by pantryViewModel.items.collectAsState()
+    val cookedMap by recipeViewModel.cooked.collectAsState()
+    val reviews by recipeViewModel.reviews.collectAsState()
+    val favoriteRecipeIds by recipeViewModel.favoriteRecipes.collectAsState()
+    val favIngredients by favoriteIngredientsViewModel.favorites.collectAsState()
     // Requested 2026-08-25 (recipe preview dialog enrichment, see
     // RecipePreviewDialog's own comment): only new dependency needed to
     // add the "dodaj do listy zakupów" toggle to the preview.
@@ -153,6 +196,9 @@ fun PlannerScreen(
 
     var slotPicker by remember { mutableStateOf<Pair<Int, String>?>(null) }
     var pendingConfirm by remember { mutableStateOf<PendingConfirm?>(null) }
+    // Requested 2026-08-26 ("📋 Kopiuj plan z innego dnia"): the day INDEX
+    // being copied INTO -- non-null shows CopyDayPickerDialog below.
+    var copyDayTarget by remember { mutableStateOf<Int?>(null) }
     // 2026-08-11 (user request, "dodaj możliwość podglądnięcia przepisu z
     // poziomu planera"): (recipe, portion scale) for the currently open
     // preview, see RecipePreviewDialog. Scale is carried alongside the
@@ -201,23 +247,27 @@ fun PlannerScreen(
                     waterCount = waterCount,
                     todayIndex = todayIndex,
                     onToggleEaten = onToggleEaten,
-                    onClearSlot = { cat -> plannerViewModel.clearSlot(todayIndex, cat) },
-                    onSlotClick = { cat -> slotPicker = todayIndex to cat },
-                    onSignOut = onSignOut,
-                    profile = profile,
-                    targetGramsFor = { recipe -> macroTargets.forCategory(recipe.cat) },
-                    isRecipeAddedToShopping = { recipe -> ShoppingOperations.isRecipeAdded(shoppingItems, recipe.id) },
-                    onToggleAddToShopping = { recipe ->
-                        if (ShoppingOperations.isRecipeAdded(shoppingItems, recipe.id)) {
-                            shoppingViewModel.removeRecipe(recipe)
-                        } else {
-                            shoppingViewModel.addRecipe(recipe)
+                    onClearSlot = { cat ->
+                        val removed = weekPlan[todayIndex]?.get(cat)
+                        plannerViewModel.clearSlot(todayIndex, cat)
+                        if (removed != null) {
+                            onShowUndoSnackbar("Usunięto z planu", "Cofnij") {
+                                plannerViewModel.restoreMeal(todayIndex, cat, removed)
+                            }
                         }
                     },
+                    onSlotClick = { cat -> slotPicker = todayIndex to cat },
+                    onSignOut = onSignOut,
+                    onPreviewRecipe = { recipe, scale -> previewRecipe = recipe to scale },
+                    pantryItems = pantryItems,
                     onDayJump = { di -> scrollScope.launch { listState.animateScrollToItem(1 + di) } },
                     onWaterTap = onWaterTap,
                     onWaterSetCount = onWaterSetCount,
                     onSetEaten = onSetEaten,
+                    remainingKcalFillEnabled = remainingKcalFillEnabled,
+                    fastingEnabled = fastingEnabled,
+                    fastingWindowStart = fastingWindowStart,
+                    fastingWindowEnd = fastingWindowEnd,
                     headerActions = headerActions,
                     modifier = Modifier.fillParentMaxHeight(),
                 )
@@ -232,6 +282,7 @@ fun PlannerScreen(
                     "To nadpisze wszystkie dania zaplanowane w całym tygodniu. Na pewno chcesz wygenerować nowy plan?",
                 ) { plannerViewModel.randomizeWeek(profile) }
             }) }
+            item { SharePlanButtons(weekPlan = weekPlan, recipesById = recipesById) }
         }
         itemsIndexed(PlannerOperations.DAYS_PL) { day, dayName ->
             val slotClick: (String) -> Unit = { cat -> slotPicker = day to cat }
@@ -253,15 +304,18 @@ fun PlannerScreen(
                 ) { plannerViewModel.clearDay(day) }
             }
             val addDayToShopping: () -> Unit = { shoppingViewModel.addDayPlan(weekPlan[day].orEmpty(), recipesById) }
+            val copyDayClick: () -> Unit = { copyDayTarget = day }
 
             if (isClinic) {
-                // Requested 2026-08-25: the 7 day cards below "Dzisiejszy
-                // Planer" should ALSO fill the screen (one day per scroll),
-                // matching web's .clinic-day-card{min-height:100dvh-...} --
-                // fillParentMaxHeight() is the same LazyItemScope API the
-                // dashboard item above uses. Paired with the day-strip
-                // chips' onDayJump (PlannerDashboard below), which scrolls
-                // this exact item into view.
+                // Requested 2026-08-25, REVISED 2026-08-26: originally ALL
+                // 7 day cards got fillParentMaxHeight() (one day per
+                // scroll) -- user then asked for that to apply ONLY to
+                // today's card, with the other 6 back to their normal,
+                // content-sized height like before ("każdy dzień nie
+                // zajmował całego ekranu tylko dzisiejszy dzień"). Day-strip
+                // chips' onDayJump (PlannerDashboard below) still scrolls to
+                // any day -- it just lands on a compact card for the other
+                // 6 now instead of a full-screen one.
                 DayCardClinic(
                     day = day,
                     dayName = dayName,
@@ -279,7 +333,8 @@ fun PlannerScreen(
                     onRandomizeDay = randomizeDay,
                     onClearDay = clearDay,
                     onAddDayToShopping = addDayToShopping,
-                    modifier = Modifier.fillParentMaxHeight(),
+                    onCopyDayClick = copyDayClick,
+                    modifier = if (day == todayIndex) Modifier.fillParentMaxHeight() else Modifier,
                 )
             } else {
                 DayCard(
@@ -297,6 +352,7 @@ fun PlannerScreen(
                     onRandomizeDay = randomizeDay,
                     onClearDay = clearDay,
                     onAddDayToShopping = addDayToShopping,
+                    onCopyDayClick = copyDayClick,
                 )
             }
         }
@@ -306,6 +362,7 @@ fun PlannerScreen(
                     "To nadpisze wszystkie dania zaplanowane w całym tygodniu. Na pewno chcesz wygenerować nowy plan?",
                 ) { plannerViewModel.randomizeWeek(profile) }
             }) }
+            item { SharePlanButtons(weekPlan = weekPlan, recipesById = recipesById) }
         }
     }
 
@@ -350,6 +407,47 @@ fun PlannerScreen(
                     shoppingViewModel.addRecipe(recipe)
                 }
             },
+            isFavorite = recipe.id in favoriteRecipeIds,
+            onToggleFavorite = { recipeViewModel.toggleFavoriteRecipe(recipe.id) },
+            pantryItems = pantryItems,
+            onToggleHaveIngredient = { canonName, category, unitCat ->
+                val hadBefore = pantryItems.containsKey(canonName)
+                pantryViewModel.toggleHaveIngredient(canonName, category, unitCat)
+                if (hadBefore) {
+                    activityLogViewModel.log("pantry_delete", "Usunięto ze spiżarni: $canonName")
+                } else {
+                    activityLogViewModel.log("pantry_add", "Dodano do spiżarni: $canonName")
+                }
+            },
+            onAddIngredientToShopping = { ingredientText ->
+                val parsed = RecipePantryMatching.parseIngredient(ingredientText)
+                val sourceKey = "single:${recipe.id}:${parsed.canonName}"
+                shoppingViewModel.addSingleIngredient(ingredientText, sourceKey)
+                activityLogViewModel.log("shopping_add", "Dodano pojedynczy składnik do listy: ${parsed.canonName}")
+            },
+            favIngredients = favIngredients,
+            onToggleFavIngredient = { canonName -> favoriteIngredientsViewModel.toggle(canonName) },
+            review = reviews[recipe.id],
+            onSaveReview = { stars, comment -> recipeViewModel.setReview(recipe.id, stars, comment) },
+            onClearReview = { recipeViewModel.clearReview(recipe.id) },
+            onDeleteCustomRecipe = { recipeViewModel.removeCustomRecipe(recipe.id) },
+            cookEntries = cookedMap[recipe.id].orEmpty(),
+            onMarkDoneToday = {
+                recipeViewModel.markCookedToday(recipe.id)
+                pantryViewModel.subtractForRecipe(recipe)
+                activityLogViewModel.log("cook_subtract", "Ugotowano „${recipe.name}” — odjęto składniki ze spiżarni")
+            },
+            onRemoveCookEntry = { index ->
+                pantryViewModel.restoreForRecipe(recipe)
+                recipeViewModel.removeCookEntry(recipe.id, index)
+                activityLogViewModel.log("pantry_add", "Cofnięto wpis „${recipe.name}” — przywrócono w spiżarni")
+            },
+            weekPlan = weekPlan,
+            onPlanRecipe = { day, cat ->
+                val planScale = PlannerOperations.idealScaleFor(recipe, kcalTargets.forCategory(cat))
+                plannerViewModel.setMeal(day, cat, recipe.id, planScale)
+            },
+            commentsViewModel = recipeCommentsViewModel,
             onDismiss = { previewRecipe = null },
         )
     }
@@ -371,9 +469,67 @@ fun PlannerScreen(
             },
         )
     }
+
+    val copyTarget = copyDayTarget
+    if (copyTarget != null) {
+        CopyDayPickerDialog(
+            targetDay = copyTarget,
+            weekPlan = weekPlan,
+            onPick = { fromDay ->
+                plannerViewModel.copyDay(fromDay, copyTarget)
+                copyDayTarget = null
+            },
+            onDismiss = { copyDayTarget = null },
+        )
+    }
 }
 
 private class PendingConfirm(val message: String, val action: () -> Unit)
+
+/**
+ * Requested 2026-08-26 ("dodaj też przynajmniej 5 nowych funkcji...
+ * czego najbardziej potrzebują użytkownicy" -- meal-planner review research
+ * consistently flags re-entering the same day's meals over and over, e.g. a
+ * repeated weekly routine, as friction): pick a day to copy INTO [targetDay],
+ * overwriting whatever's currently planned there. Empty days are shown but
+ * disabled -- copying nothing would just silently clear the target, which
+ * reads as a bug rather than a no-op.
+ */
+@Composable
+private fun CopyDayPickerDialog(targetDay: Int, weekPlan: WeekPlan, onPick: (fromDay: Int) -> Unit, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.widthIn(max = 480.dp)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "📋 Kopiuj plan z innego dnia",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onDismiss) { Text("✕") }
+                }
+                Text(
+                    "Wybierz dzień, z którego skopiować plan na „${PlannerOperations.DAYS_PL[targetDay]}”. Nadpisze to, co jest już zaplanowane na „${PlannerOperations.DAYS_PL[targetDay]}”.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp, bottom = 10.dp),
+                )
+                PlannerOperations.DAYS_PL.forEachIndexed { di, dayName ->
+                    if (di == targetDay) return@forEachIndexed
+                    val hasPlan = weekPlan[di]?.values?.any { true } == true
+                    TextButton(
+                        onClick = { onPick(di) },
+                        enabled = hasPlan,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(if (hasPlan) dayName else "$dayName (pusty)", modifier = Modifier.fillMaxWidth())
+                    }
+                }
+            }
+        }
+    }
+}
 
 // FR-21: whole-week random generation, always requires confirmation since it
 // overwrites every day. Extracted (was inline) since PlannerScreen now calls
@@ -382,6 +538,45 @@ private class PendingConfirm(val message: String, val action: () -> Unit)
 private fun AutoPlanWeekButton(onClick: () -> Unit) {
     Button(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Text("🎲 Wygeneruj losowo cały tydzień")
+    }
+}
+
+/**
+ * Requested 2026-08-26 (5 new features -- users want their plan portable to
+ * send to whoever does the shopping/cooking): native equivalent of
+ * index.html's #plannerShareRow (WhatsApp link + clipboard copy), using the
+ * same ACTION_SEND chooser pattern as ShoppingScreen's "📤 Udostępnij" button
+ * plus a plain clipboard copy for parity with web's second button.
+ */
+@Composable
+private fun SharePlanButtons(weekPlan: WeekPlan, recipesById: Map<String, Recipe>) {
+    val context = LocalContext.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Button(
+            onClick = {
+                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, PlannerOperations.buildWeekPlanText(weekPlan, recipesById))
+                }
+                context.startActivity(Intent.createChooser(sendIntent, null))
+            },
+            modifier = Modifier.weight(1f),
+        ) {
+            Text("📤 Udostępnij plan")
+        }
+        OutlinedButton(
+            onClick = {
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("Plan tygodnia", PlannerOperations.buildWeekPlanText(weekPlan, recipesById)))
+                Toast.makeText(context, "Plan tygodnia skopiowany do schowka", Toast.LENGTH_SHORT).show()
+            },
+            modifier = Modifier.weight(1f),
+        ) {
+            Text("📋 Kopiuj")
+        }
     }
 }
 
@@ -401,6 +596,7 @@ private fun DayCard(
     onRandomizeDay: () -> Unit,
     onClearDay: () -> Unit,
     onAddDayToShopping: () -> Unit,
+    onCopyDayClick: () -> Unit = {},
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -487,6 +683,12 @@ private fun DayCard(
                     Text("🗑️ Wyczyść ten dzień")
                 }
             }
+            // Requested 2026-08-26 ("dodaj też przynajmniej 5 nowych
+            // funkcji" -- meal-planner review research: re-entering the
+            // same day's meals repeatedly is common friction).
+            TextButton(onClick = onCopyDayClick, modifier = Modifier.fillMaxWidth()) {
+                Text("📋 Kopiuj plan z innego dnia")
+            }
         }
     }
 }
@@ -522,14 +724,14 @@ private fun PlannerDashboard(
     onClearSlot: (cat: String) -> Unit,
     onSlotClick: (cat: String) -> Unit,
     onSignOut: () -> Unit,
-    // Requested 2026-08-25: feeds RecipePreviewDialog's enrichment (match
-    // score, "dodaj do listy zakupów") -- kept as plain data/lambdas
-    // (not the ViewModels themselves) matching this composable's existing
-    // style of never taking a ViewModel directly.
-    profile: Profile,
-    targetGramsFor: (Recipe) -> MacroGrams?,
-    isRecipeAddedToShopping: (Recipe) -> Boolean,
-    onToggleAddToShopping: (Recipe) -> Unit,
+    // Requested 2026-08-26: reports a meal-card tap up to PlannerScreen,
+    // which owns the single shared RecipePreviewDialog instance (and the
+    // ViewModels it needs) -- this composable no longer keeps its own
+    // separate preview state/dialog, matching its existing style of never
+    // taking a ViewModel directly.
+    onPreviewRecipe: (Recipe, Double) -> Unit = { _, _ -> },
+    // Requested 2026-08-26: pantry-coverage badge on each meal card.
+    pantryItems: Map<String, PantryItem> = emptyMap(),
     onDayJump: (dayIndex: Int) -> Unit = {},
     onWaterTap: (Int) -> Unit = {},
     onWaterSetCount: (Int) -> Unit = {},
@@ -541,6 +743,14 @@ private fun PlannerDashboard(
     // already in that state did the opposite of what it looked like it
     // should.
     onSetEaten: (cat: String, eaten: Boolean, plannedKcal: Int?, plannedName: String?) -> Unit = { _, _, _, _ -> },
+    remainingKcalFillEnabled: Boolean = false,
+    // Bug fixed 2026-08-26: see PlannerScreen's matching param doc comment --
+    // this is the only place fasting status can actually reach the screen
+    // for Klinika, since HeaderKcalPanel (its original and only call site)
+    // never renders under this theme.
+    fastingEnabled: Boolean = false,
+    fastingWindowStart: Int = 12,
+    fastingWindowEnd: Int = 20,
     headerActions: @Composable RowScope.() -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -560,8 +770,11 @@ private fun PlannerDashboard(
     // card used to toggle eaten directly -- now opens a preview of the
     // recipe instead (RecipePreviewDialog, same one FR-86's day-card "👁️"
     // button already opens), while toggling eaten moved to swipe (see
-    // onSetEaten above).
-    var previewRecipe by remember { mutableStateOf<Pair<Recipe, Double>?>(null) }
+    // onSetEaten above). Requested 2026-08-26 (RecipePreviewDialog's full
+    // RecipeCardBody reuse): the dialog itself (and the ViewModels it
+    // needs) now lives ONE level up, in PlannerScreen -- this composable
+    // just reports the tap via onPreviewRecipe instead of keeping its own
+    // separate previewRecipe state + second RecipePreviewDialog instance.
 
     // Requested 2026-08-25 (Web FR-87/v14+screenshot follow-up, ported
     // here): "Dzisiejszy Planer" only filled about half the screen, with
@@ -589,6 +802,22 @@ private fun PlannerDashboard(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                 )
+                if (fastingEnabled) {
+                    val now = LocalTime.now()
+                    val minutesOfDay = now.hour * 60 + now.minute
+                    val inWindow = FastingOperations.isInEatingWindow(fastingWindowStart, fastingWindowEnd, minutesOfDay)
+                    val fastingText = if (inWindow) {
+                        "🍽️ Okno jedzenia — post zacznie się o %02d:00".format(fastingWindowEnd)
+                    } else {
+                        "⏳ Okno postu — jedzenie od %02d:00".format(fastingWindowStart)
+                    }
+                    Text(
+                        fastingText,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (inWindow) FontWeight.Normal else FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             headerActions()
         }
@@ -628,12 +857,28 @@ private fun PlannerDashboard(
                         Text("$eatenKcal/$kcalTarget", fontSize = 13.5.sp)
                     }
                     Spacer(modifier = Modifier.width(12.dp))
-                    Column(
+                    // Requested 2026-08-26 ("prostokąt pozostałe kcal mógłby
+                    // się zapełniać kolorem... jak coś zjedzone i kółeczko
+                    // się zapełnia to i tu kolor"): opt-in overlay Box, same
+                    // kcalPct that drives the ring above, filling this
+                    // tile's width left-to-right -- drawn between the flat
+                    // primary background and the text, same idea as web's
+                    // .pd-remaining-fill.
+                    Box(
                         modifier = Modifier
                             .weight(1f)
-                            .background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.medium)
-                            .padding(horizontal = 15.dp, vertical = 12.dp),
+                            .clip(MaterialTheme.shapes.medium)
+                            .background(MaterialTheme.colorScheme.primary),
                     ) {
+                        if (remainingKcalFillEnabled) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(fraction = kcalPct.coerceIn(0f, 1f))
+                                    .background(Color.White.copy(alpha = 0.28f)),
+                            )
+                        }
+                        Column(modifier = Modifier.padding(horizontal = 15.dp, vertical = 12.dp)) {
                         Text(
                             "POZOSTAŁO",
                             fontSize = 13.5.sp,
@@ -648,6 +893,7 @@ private fun PlannerDashboard(
                         )
                     }
                 }
+            }
             }
             DashboardStatCard(
                 label = "Woda",
@@ -784,7 +1030,7 @@ private fun PlannerDashboard(
                                     }
                                 }
                             }
-                            .clickable { previewRecipe = recipe to meal.scale },
+                            .clickable { onPreviewRecipe(recipe, meal.scale) },
                         shape = MaterialTheme.shapes.large,
                         colors = CardDefaults.cardColors(containerColor = cardContainerColor),
                         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -805,6 +1051,22 @@ private fun PlannerDashboard(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     textDecoration = if (eaten) TextDecoration.LineThrough else TextDecoration.None,
+                                )
+                                // Requested 2026-08-26 ("na karcie dzisiejszy
+                                // planer na każdym daniu z racji że jest
+                                // dużo miejsca dodaj również... znacznik ile
+                                // produktów potrzebnych do dania jest
+                                // aktualnie w spiżarni") -- same pantryMatch
+                                // logic RecipeCardBody's own "🏺 Stan
+                                // spiżarni" widget uses.
+                                val pantryTotal = recipe.ingredients.size
+                                val pantryHave = remember(recipe.id, pantryItems) {
+                                    recipe.ingredients.count { ing -> pantryItems.containsKey(RecipePantryMatching.parseIngredient(ing).canonName) }
+                                }
+                                Text(
+                                    "🏺 $pantryHave/$pantryTotal w spiżarni",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                             Text(
@@ -847,15 +1109,16 @@ private fun PlannerDashboard(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = { onWaterSetCount((waterCount - 1).coerceAtLeast(0)) }) { Text("–") }
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(horizontal = 4.dp)) {
+                            // Requested 2026-08-26 ("dla motywów klinika i
+                            // klinika noc też zmień kółeczka od wody na
+                            // kropelki wszędzie"): was a plain filled/empty
+                            // circle -- now the same droplet WaterCupIcon
+                            // the other 11 themes' header strip uses.
                             for (i in 0 until WaterOperations.MAX_LEVEL) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(22.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            if (i < waterCount) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                                        )
-                                        .clickable { onWaterTap(i) },
+                                WaterCupIcon(
+                                    filled = i < waterCount,
+                                    size = 22.dp,
+                                    modifier = Modifier.clickable { onWaterTap(i) },
                                 )
                             }
                         }
@@ -870,17 +1133,6 @@ private fun PlannerDashboard(
                 }
             }
         }
-    }
-    previewRecipe?.let { (recipe, scale) ->
-        RecipePreviewDialog(
-            recipe = recipe,
-            scale = scale,
-            profile = profile,
-            targetGrams = targetGramsFor(recipe),
-            isAddedToShopping = isRecipeAddedToShopping(recipe),
-            onToggleAddToShopping = { onToggleAddToShopping(recipe) },
-            onDismiss = { previewRecipe = null },
-        )
     }
 }
 
@@ -985,6 +1237,7 @@ private fun DayCardClinic(
     onRandomizeDay: () -> Unit,
     onClearDay: () -> Unit,
     onAddDayToShopping: () -> Unit,
+    onCopyDayClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -1100,6 +1353,12 @@ private fun DayCardClinic(
                     Text("🗑️ Wyczyść ten dzień")
                 }
             }
+            // Requested 2026-08-26 ("dodaj też przynajmniej 5 nowych
+            // funkcji" -- meal-planner review research: re-entering the
+            // same day's meals repeatedly is common friction).
+            TextButton(onClick = onCopyDayClick, modifier = Modifier.fillMaxWidth()) {
+                Text("📋 Kopiuj plan z innego dnia")
+            }
         }
     }
 }
@@ -1114,25 +1373,26 @@ private fun formatMacroNum(value: Double): String =
 /**
  * 2026-08-11 (user request, "dodaj możliwość podglądnięcia przepisu z
  * poziomu planera... żeby wyświetliło kartę jak na karcie z przepisami"):
- * read-only preview -- ingredients (scaled to the ACTUAL planned portion,
- * `PlannerOperations.scaleIngredients`/`scaledKcal`, not the recipe's base
- * 1x amounts) and preparation method, plus the same "tap title -> Google
- * search" idiom `RecipeListScreen.kt`'s `RecipeCardBody` already uses
- * (`ACTION_VIEW` + `google.com/search?q=`).
+ * originally a lighter, hand-rolled read-only subset.
  *
- * Enriched 2026-08-25 ("bardzo ubogi opis karty dania, ma być taka sama
- * karta jak w przepisach i na web wersji"): match score/goal/GI/source
- * badges, the full macro breakdown row (protein/carbs/fat/fiber/GI/GL --
- * `RecipeCardBody`'s expanded macro line) and a "dodaj do listy zakupów"
- * toggle now match the Przepisy tab's card, since all of that only needs
- * data already on `Recipe`/`Profile` plus `shoppingViewModel` (already a
- * `PlannerScreen` param) -- no new ViewModel wiring required. Still
- * deliberately NOT a reuse of the full `RecipeCard`/`RecipeCardBody` --
- * favorite-star, pantry-check, cook-history, reviews and comments are
- * tightly coupled to RecipeListScreen's own ViewModels (not currently
- * passed into PlannerScreen) and are a separate, larger wiring job than
- * this round's scope; noted in android/PARITY.md as a known, intentional
- * gap rather than silently dropped.
+ * Rebuilt 2026-08-26 ("w Androidzie dalej nie podoba mi się karta z
+ * przepisami otwierana po kliknięciu, jest inna... a co za tym idzie
+ * brzydsza"): now a REAL reuse of `RecipeCardBody` (made `internal` in
+ * RecipeListScreen.kt for this), the exact same composable Przepisy uses --
+ * favorite star, pantry-check widget + dialog, cook history, reviews,
+ * comments, "Zaplanuj" all included, wired to the same shared ViewModels
+ * MainActivity already hoists (pantryViewModel/recipeViewModel/
+ * favoriteIngredientsViewModel/activityLogViewModel/recipeCommentsViewModel,
+ * now also threaded into PlannerScreen). This closes the gap the previous
+ * round's revision note (superseded, see git history) explicitly flagged
+ * as deferred.
+ *
+ * Portion scale (the ACTUAL planned amount, e.g. 1.5x, not the recipe's
+ * base 1x) is preserved by feeding RecipeCardBody a `scaledRecipe` --
+ * `recipe.copy()` with kcal/ingredients/protein/carbs/fat/fiber/gl scaled
+ * by `PlannerOperations`, same id (so pantry/cook/review/favorite lookups
+ * by recipe.id still resolve correctly) -- rather than losing the scaling
+ * feature just to reuse the unscaled Przepisy-tab composable as-is.
  */
 @Composable
 private fun RecipePreviewDialog(
@@ -1142,12 +1402,48 @@ private fun RecipePreviewDialog(
     targetGrams: MacroGrams?,
     isAddedToShopping: Boolean,
     onToggleAddToShopping: () -> Unit,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
+    pantryItems: Map<String, PantryItem>,
+    onToggleHaveIngredient: (canonName: String, category: PantryCategory, unitCat: String) -> Unit,
+    onAddIngredientToShopping: (ingredientText: String) -> Unit,
+    favIngredients: Set<String>,
+    onToggleFavIngredient: (canonName: String) -> Unit,
+    review: com.przemas230.dietaapp.data.RecipeReview?,
+    onSaveReview: (stars: Int, comment: String?) -> Boolean,
+    onClearReview: () -> Unit,
+    onDeleteCustomRecipe: () -> Unit,
+    cookEntries: List<com.przemas230.dietaapp.data.CookEntry>,
+    onMarkDoneToday: () -> Unit,
+    onRemoveCookEntry: (index: Int) -> Unit,
+    weekPlan: WeekPlan,
+    onPlanRecipe: (day: Int, cat: String) -> Unit,
+    commentsViewModel: RecipeCommentsViewModel,
     onDismiss: () -> Unit,
 ) {
-    val context = LocalContext.current
-    val scaledIngredients = remember(recipe, scale) { PlannerOperations.scaleIngredients(recipe.ingredients, scale) }
-    val kcal = remember(recipe, scale) { PlannerOperations.scaledKcal(recipe, scale) }
-    val matchScore = remember(recipe, targetGrams, profile) { RecipeMatching.matchScore(recipe, targetGrams, profile) }
+    val scaledRecipe = remember(recipe, scale) {
+        if (scale == 1.0) {
+            recipe
+        } else {
+            recipe.copy(
+                kcal = PlannerOperations.scaledKcal(recipe, scale),
+                ingredients = PlannerOperations.scaleIngredients(recipe.ingredients, scale),
+                protein = recipe.protein?.let { it * scale },
+                carbs = recipe.carbs?.let { it * scale },
+                fat = recipe.fat?.let { it * scale },
+                fiber = recipe.fiber?.let { it * scale },
+                gl = recipe.gl?.let { it * scale },
+            )
+        }
+    }
+    val matchScore = remember(scaledRecipe, targetGrams, profile) { RecipeMatching.matchScore(scaledRecipe, targetGrams, profile) }
+    var showInfoDialog by remember { mutableStateOf(false) }
+    var showPantryCheck by remember { mutableStateOf(false) }
+    var showReviewDialog by remember { mutableStateOf(false) }
+    var showCookHistory by remember { mutableStateOf(false) }
+    var showPlanPicker by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
     Dialog(onDismissRequest = onDismiss) {
         Card(modifier = Modifier.fillMaxWidth().heightIn(max = 640.dp)) {
             Column(
@@ -1155,98 +1451,117 @@ private fun RecipePreviewDialog(
                     .padding(16.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // Requested 2026-08-25/26 (Web FR-87/v17, ported here): a
+                // slim row with just the close button, mirroring web's
+                // trimmed `.modal-head` (the redundant "🍽️ Podgląd
+                // przepisu" title text was removed there too) -- the
+                // recipe's own name, rendered by RecipeCardBody right
+                // below, already serves as the title.
+                if (scale != 1.0) {
                     Text(
-                        recipe.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        textDecoration = TextDecoration.Underline,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                val query = Uri.encode("${recipe.name} przepis")
-                                context.startActivity(
-                                    Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=$query")),
-                                )
-                            },
-                    )
-                    if (recipe.source == "custom" || recipe.source == "community") {
-                        Text(
-                            if (recipe.source == "custom") "✍️ Twój przepis" else "🌍 ${recipe.authorDisplayName ?: "Anonimowy użytkownik"}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(6.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                    }
-                    TextButton(onClick = onDismiss) { Text("✕") }
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                val matchSuffix = matchScore?.let { "   🎯 $it%" } ?: ""
-                Text(
-                    "⏱ ${recipe.time}   🔥 $kcal kcal" + (if (scale != 1.0) "  (porcja ${formatScale(scale)})" else "") + matchSuffix,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                // Port of RecipeCardBody's expanded macro-breakdown line --
-                // same B/W/T + fiber/IG/ŁG format as Przepisy's card.
-                val protein = recipe.protein
-                val carbs = recipe.carbs
-                val fat = recipe.fat
-                if (protein != null && carbs != null && fat != null) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    val fiberPart = recipe.fiber?.let { " · Błonnik ${formatMacroNum(it)}g" } ?: ""
-                    val giPart = recipe.gi?.let { " · IG ~${formatMacroNum(it)}" } ?: ""
-                    val glPart = recipe.gl?.let { " (ŁG ${formatMacroNum(it)})" } ?: ""
-                    Text(
-                        "B ${formatMacroNum(protein)}g · W ${formatMacroNum(carbs)}g · T ${formatMacroNum(fat)}g$fiberPart$giPart$glPart",
-                        style = MaterialTheme.typography.bodySmall,
+                        "Porcja ${formatScale(scale)}",
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Spacer(modifier = Modifier.height(12.dp))
-                Text("Składniki", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(4.dp))
-                scaledIngredients.forEach { line ->
-                    Text("• $line", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 2.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("✕") }
                 }
-                Spacer(modifier = Modifier.height(12.dp))
-                Text("Przygotowanie", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(recipe.method, style = MaterialTheme.typography.bodyMedium)
-                if (recipe.inspirationSource != null) {
-                    Text(
-                        "💡 Inspiracja: ${recipe.inspirationSource}",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 6.dp),
-                    )
-                }
-                // Requested 2026-08-25 (Web FR-66/v5, ported here): explicit
-                // buttons, not just the title's hidden Google link above.
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = {
-                            val query = Uri.encode("${recipe.name} przepis")
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=$query")))
-                        },
-                        modifier = Modifier.weight(1f),
-                    ) { Text("🔎 Google") }
-                    OutlinedButton(
-                        onClick = {
-                            val query = Uri.encode("${recipe.name} przepis")
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/results?search_query=$query")))
-                        },
-                        modifier = Modifier.weight(1f),
-                    ) { Text("▶️ YouTube") }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = onToggleAddToShopping, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (isAddedToShopping) "✓ Na liście zakupów" else "🛒 Dodaj do listy zakupów")
+                Row {
+                    Column(modifier = Modifier.weight(1f)) {
+                        RecipeCardBody(
+                            recipe = scaledRecipe,
+                            matchScore = matchScore,
+                            expanded = true,
+                            onInfoClick = { showInfoDialog = true },
+                            onPantryCheckClick = { showPantryCheck = true },
+                            pantryItems = pantryItems,
+                            favIngredients = favIngredients,
+                            onToggleFavIngredient = onToggleFavIngredient,
+                            review = review,
+                            onOpenReview = { showReviewDialog = true },
+                            onDeleteCustomRecipe = { showDeleteConfirm = true },
+                            isFavorite = isFavorite,
+                            onToggleFavorite = onToggleFavorite,
+                            commentsViewModel = commentsViewModel,
+                            isAddedToShopping = isAddedToShopping,
+                            onToggleAddToShopping = onToggleAddToShopping,
+                            cookCount = cookEntries.size,
+                            onMarkDoneClick = { showCookHistory = true },
+                            onPlanClick = { showPlanPicker = true },
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        val thumbEmoji = remember(recipe.id) { IngredientCanon.mainIngredientInfo(recipe)?.emoji ?: "🍽️" }
+                        Text(thumbEmoji, fontSize = 24.sp)
+                    }
                 }
             }
         }
+    }
+
+    if (showInfoDialog) {
+        MacroInfoDialog(recipe = scaledRecipe, onDismiss = { showInfoDialog = false })
+    }
+    if (showPantryCheck) {
+        PantryCheckDialog(
+            recipe = scaledRecipe,
+            pantryItems = pantryItems,
+            onToggleHave = onToggleHaveIngredient,
+            onAddToShopping = onAddIngredientToShopping,
+            onDismiss = { showPantryCheck = false },
+        )
+    }
+    if (showReviewDialog) {
+        RecipeReviewDialog(
+            recipeName = recipe.name,
+            existing = review,
+            onSave = onSaveReview,
+            onDelete = { onClearReview(); showReviewDialog = false },
+            onDismiss = { showReviewDialog = false },
+        )
+    }
+    if (showCookHistory) {
+        CookHistoryDialog(
+            recipe = recipe,
+            entries = cookEntries,
+            review = review,
+            onMarkDoneToday = onMarkDoneToday,
+            onRateRecipe = { showCookHistory = false; showReviewDialog = true },
+            onRemoveEntry = onRemoveCookEntry,
+            onDismiss = { showCookHistory = false },
+        )
+    }
+    if (showPlanPicker) {
+        PlanPickerDialog(
+            recipe = recipe,
+            weekPlan = weekPlan,
+            onPick = { day, cat -> onPlanRecipe(day, cat); showPlanPicker = false },
+            onDismiss = { showPlanPicker = false },
+        )
+    }
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Usunąć ten przepis?") },
+            text = { Text("„${recipe.name}” zniknie z Twoich przepisów. Tego nie da się cofnąć.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeleteCustomRecipe()
+                    showDeleteConfirm = false
+                    onDismiss()
+                }) { Text("Usuń") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Anuluj") }
+            },
+        )
     }
 }
 

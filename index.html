@@ -17,6 +17,7 @@
   try{
     var s = JSON.parse(localStorage.getItem("dietaAppStateV1") || "{}");
     if(s.theme) document.documentElement.setAttribute("data-theme", s.theme);
+    if(s.clinicPalette) document.documentElement.setAttribute("data-clinic-palette", s.clinicPalette);
   }catch(e){}
 })();
 </script>
@@ -381,6 +382,51 @@
     --dur-fast:.16s; --dur-med:.28s; --ease:cubic-bezier(.16,1,.3,1);
     color-scheme: dark;
   }
+  /* Requested 2026-08-26 ("dodaj też kilka innych schematów kolorystycznych
+     dla motywów klinika i klinika noc"): a SECOND, independent attribute
+     (data-clinic-palette) that only overrides the color custom-properties
+     above -- data-theme itself stays "clinic"/"clinic_dark" so every one of
+     the many structural :is([data-theme="clinic"], [data-theme="clinic_dark"])
+     selectors throughout this file keeps matching unchanged. This is the
+     only way to add new Klinika looks without touching (and risking
+     breaking) dozens of already-working selectors overnight. "default"
+     (no attribute / value "default") = the original palette above, untouched. */
+  :root[data-theme="clinic"][data-clinic-palette="ocean"]{
+    --teal:#2E86AB; --teal-dark:#1B5A73; --teal-pale:#D6EAF2;
+    --honey:#5FA8A0; --honey-pale:#DFF2EF; --honey-dark:#2F6E67;
+    --plum:#5C7FA6; --plum-pale:#DCE6F2;
+    --bg:#F4F8FA; --card:#FFFFFF; --text:#132630; --muted:#5C7480; --line:#DCE6EA;
+    --star-off:#C4D3D8;
+    --ring-kcal:var(--teal); --ring-water:var(--plum);
+    --ring-track:rgba(92,116,128,.35);
+  }
+  :root[data-theme="clinic_dark"][data-clinic-palette="ocean"]{
+    --teal:#4FB3D9; --teal-dark:#BEE6F2; --teal-pale:#173947;
+    --honey:#5FA8A0; --honey-pale:#1B3B37; --honey-dark:#9AD6CC;
+    --plum:#7FA0C7; --plum-pale:#22303F;
+    --bg:#0F1B21; --card:#16262E; --text:#EAF4F7; --muted:#9CB3BC; --line:#223339;
+    --star-off:#42565C;
+    --ring-kcal:var(--teal); --ring-water:var(--plum);
+    --ring-track:rgba(156,179,188,.35);
+  }
+  :root[data-theme="clinic"][data-clinic-palette="terracotta"]{
+    --teal:#C1613F; --teal-dark:#8A3F23; --teal-pale:#F3DED3;
+    --honey:#D4A24C; --honey-pale:#F7EAD2; --honey-dark:#8C6420;
+    --plum:#A8785F; --plum-pale:#EDE0D8;
+    --bg:#FBF6F1; --card:#FFFFFF; --text:#2B1E16; --muted:#8A7768; --line:#E8DCD0;
+    --star-off:#D8C9BC;
+    --ring-kcal:var(--teal); --ring-water:var(--plum);
+    --ring-track:rgba(138,119,104,.35);
+  }
+  :root[data-theme="clinic_dark"][data-clinic-palette="terracotta"]{
+    --teal:#E08556; --teal-dark:#F5C7A8; --teal-pale:#3A2117;
+    --honey:#D4A24C; --honey-pale:#332510; --honey-dark:#EBC985;
+    --plum:#C29C86; --plum-pale:#2E2620;
+    --bg:#1D1611; --card:#29201A; --text:#F7EEE6; --muted:#B8A594; --line:#382C24;
+    --star-off:#54453A;
+    --ring-kcal:var(--teal); --ring-water:var(--plum);
+    --ring-track:rgba(184,165,148,.35);
+  }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0; overflow-anchor:none;}
   body{
@@ -527,6 +573,11 @@
     font-size:12px; color:rgba(255,255,255,.85);
   }
   .eaten-summary b{font-size:14px; color:#fff;}
+  .fasting-status{
+    margin-top:6px; font-size:11.5px; color:rgba(255,255,255,.78);
+    background:rgba(255,255,255,.12); border-radius:8px; padding:5px 9px; display:inline-block;
+  }
+  .fasting-status.fasting{ background:rgba(255,255,255,.2); font-weight:600; }
   main{padding:14px 14px 6px;}
   .recipes-sticky-bar{
     position:sticky; top:var(--header-h, 78px); z-index:15;
@@ -878,9 +929,17 @@
   .pd-ring-wrap{position:relative; width:78px; height:78px; flex:0 0 auto;}
   .pd-ring-svg{width:100%; height:100%; display:block;}
   .pd-ring-center{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:var(--text);}
-  .pd-remaining-box{flex:1; min-width:0; background:var(--teal); border-radius:14px; padding:12px 15px;}
-  .pd-remaining-label{font-size:13.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#fff; opacity:.85;}
-  .pd-remaining-value{font-family:var(--font-heading); font-size:27px; font-weight:700; color:#fff; margin-top:3px; white-space:nowrap;}
+  .pd-remaining-box{flex:1; min-width:0; background:var(--teal); border-radius:14px; padding:12px 15px; position:relative; overflow:hidden;}
+  /* Requested 2026-08-26: opt-in (state.remainingKcalFillEnabled, Ustawienia
+     → Wygląd) fill-with-color on this tile, same idea as the kcal ring next
+     to it filling as the day's meals get eaten -- an absolutely positioned
+     overlay growing left-to-right by kcalPct, UNDER the label/value text
+     (z-index below, see next two rules) so it reads as the tile itself
+     filling up rather than obscuring the numbers. Off by default since
+     it's a stronger visual than the flat color everyone's used to. */
+  .pd-remaining-fill{position:absolute; inset:0; right:auto; background:rgba(255,255,255,.28); transition:width .3s ease;}
+  .pd-remaining-label{font-size:13.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#fff; opacity:.85; position:relative; z-index:1;}
+  .pd-remaining-value{font-family:var(--font-heading); font-size:27px; font-weight:700; color:#fff; margin-top:3px; white-space:nowrap; position:relative; z-index:1;}
   /* Requested 2026-08-25: stretched to the full row width (was a
      horizontally-scrolling, fixed-width chip strip) now that today's chip
      needs the full day name instead of a 2-letter abbreviation -- flex:1
@@ -933,6 +992,10 @@
   .pd-meal-cat{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.03em;}
   .pd-meal-name{font-size:13.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .pd-meal-card.eaten .pd-meal-name{ text-decoration:line-through; opacity:.55; }
+  /* Requested 2026-08-26 ("na karcie dzisiejszy planer na każdym daniu z
+     racji że jest dużo miejsca dodaj również... znacznik ile produktów
+     potrzebnych do dania jest aktualnie w spiżarni a do trzeba kupić"). */
+  .pd-meal-pantry{font-size:10.5px; color:var(--muted); margin-top:1px;}
   .pd-meal-kcal{font-size:12px; color:var(--muted); flex:0 0 auto;}
   .pd-meal-remove{background:none; border:none; color:var(--muted); font-size:15px; line-height:1; padding:4px; cursor:pointer; flex:0 0 auto;}
   .pd-meal-card-empty{border:1.5px dashed var(--line); background:transparent; box-shadow:none; color:var(--muted); justify-content:center; font-size:13px; font-weight:600;}
@@ -1017,19 +1080,23 @@
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) .bento-label{
     font-size:9.5px; color:var(--muted); margin-top:2px;
   }
-  /* Requested 2026-08-25: each of the 7 day cards below "Dzisiejszy
-     Planer" should ALSO fill the screen, one day per swipe/scroll, instead
-     of several partial cards being visible at once -- same min-height
-     formula as #plannerTodayWrap above (~10px top clearance once scrolled
-     to the top of #plannerDays, since #plannerDays itself isn't pulled up
-     by view-planner's -44px the way plannerTodayWrap is, but scroll
-     position makes that irrelevant here; 100px bottom nav clearance is the
-     part that actually matters while a day card is scrolled into view).
-     Paired with the day-strip chips (renderPlannerDashboard()) gaining
-     click handlers that scroll the matching card to the vertical center of
-     the screen. */
+  /* Requested 2026-08-25, REVISED 2026-08-26: originally ALL 7 day cards
+     got full-screen height (one day per swipe/scroll) -- user then asked
+     for that to apply ONLY to today's card ("każdy dzień nie zajmował
+     całego ekranu tylko dzisiejszy dzień"), with the other 6 back to their
+     normal, content-sized height like before this whole experiment
+     (several partial cards visible per scroll again). Scoped to `.today`
+     (set on the matching card in renderPlanner(), see there) instead of
+     every `.clinic-day-card`. min-height formula unchanged from the
+     original 100dvh-110px calc (still correct for whichever card actually
+     has it now). Day-strip click-to-scroll (renderPlannerDashboard())
+     still works for every day -- it just lands on a compact card for the
+     other 6 now instead of a full-screen one. */
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) .clinic-day-card{
-    border-radius:22px; min-height:calc(100dvh - 110px); box-sizing:border-box;
+    border-radius:22px;
+  }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .clinic-day-card.today{
+    min-height:calc(100dvh - 110px); box-sizing:border-box;
   }
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-head{
     display:flex; align-items:center; gap:8px; margin-bottom:10px;
@@ -1111,12 +1178,17 @@
   }
   .clinic-water-btn:active{ background:var(--line); }
   .clinic-water-circles{ display:flex; gap:6px; flex-wrap:wrap; flex:1; padding:0 4px; }
+  /* Requested 2026-08-26: was a plain filled/empty circle (background-color
+     only) -- now hosts the same droplet SVG cupIconSvg() draws elsewhere
+     (see renderWaterRow()), so width/height/border-radius/background here
+     just size+shape the clickable hit target around the SVG rather than
+     drawing the fill themselves. */
   .clinic-water-circle{
-    width:22px; height:22px; border-radius:50%; background:var(--line); cursor:pointer;
+    width:22px; height:22px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
     transition:transform var(--dur-fast) var(--ease);
   }
   .clinic-water-circle:active{ transform:scale(.85); }
-  .clinic-water-circle.filled{ background:var(--teal); }
   /* FR-87/v8: Klinika's Spiżarnia -- category headers become an accordion
      (tap collapses/expands), port of PantryScreen.kt's isClinic branch.
      Default state (nothing collapsed yet) looks IDENTICAL to every other
@@ -1385,6 +1457,7 @@
   }
   .pcr-status.have{ color:var(--teal-dark); background:var(--teal-pale); border-color:var(--teal); font-weight:600; }
   .pcr-actions{display:flex; gap:6px; flex:0 0 auto;}
+  .pcr-sub-hint{font-size:11px; color:var(--muted); margin-top:6px; font-style:italic;}
   .pcr-have-btn{
     flex:0 0 auto; border:1.5px solid var(--teal); background:var(--card); color:var(--teal-dark);
     border-radius:10px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer;
@@ -1561,8 +1634,16 @@
     position:fixed; bottom:88px; left:50%; transform:translateX(-50%) translateY(8px);
     background:#2A2A2A; color:#fff; padding:9px 16px; border-radius:20px;
     font-size:13px; z-index:60; opacity:0; transition:opacity var(--dur-med) var(--ease), transform var(--dur-med) var(--ease); pointer-events:none;
+    display:flex; align-items:center; gap:10px; max-width:min(92vw, 420px);
   }
-  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto;}
+  /* Requested 2026-08-26 ("dodaj też przynajmniej 5 nowych funkcji" --
+     research flagged lost/broken data as a common complaint): optional
+     "Cofnij" action inline in the same toast, see toast()'s new params. */
+  .toast-undo-btn{
+    background:none; border:none; color:var(--honey); font-weight:700; font-size:13px;
+    cursor:pointer; padding:0; flex:0 0 auto; white-space:nowrap;
+  }
   .back-to-top-btn{
     position:fixed; right:16px; bottom:96px; z-index:25;
     width:42px; height:42px; border-radius:50%; border:none;
@@ -1646,6 +1727,7 @@
       </div>
     </div>
     <div class="eaten-summary" id="eatenSummary"></div>
+    <div class="fasting-status" id="fastingStatus" style="display:none;"></div>
   </div>
 </header>
 
@@ -1718,6 +1800,14 @@
     </div>
     <div class="shop-actions" style="margin-top:0;" id="plannerAutoPlanRow">
       <button class="btn primary" id="autoPlanBtn">🎲 Wygeneruj losowo cały tydzień</button>
+    </div>
+    <!-- Requested 2026-08-26 ("dodaj też przynajmniej 5 nowych funkcji" --
+         research: users want their plan portable, e.g. to send to whoever
+         does the shopping/cooking) -- same WhatsApp/Kopiuj share pattern
+         as the shopping list's own share row. -->
+    <div class="shop-actions" id="plannerShareRow">
+      <button class="btn ghost" style="flex:1;" id="plannerShareWaBtn">🟢 WhatsApp</button>
+      <button class="btn ghost" style="flex:1;" id="plannerShareCopyBtn">📋 Kopiuj plan tygodnia</button>
     </div>
     <div id="plannerDays"></div>
   </section>
@@ -1828,12 +1918,27 @@
       <div class="card">
         <h3 style="margin:0 0 10px; font-size:15px;">🎨 Wygląd aplikacji</h3>
         <div class="theme-grid" id="themeGrid"></div>
+        <!-- Requested 2026-08-26 ("dodaj też kilka innych schematów
+             kolorystycznych dla motywów klinika i klinika noc"): only
+             meaningful for the two Klinika themes, hidden otherwise
+             (see renderClinicPalettePicker). -->
+        <div id="clinicPaletteBox" style="margin-top:16px; display:none;">
+          <label style="display:block; font-size:13px; font-weight:600; margin-bottom:6px;">🎨 Schemat kolorów (Klinika)</label>
+          <div class="chip-grid" id="clinicPaletteGrid"></div>
+        </div>
         <div style="margin-top:16px;">
           <label style="display:flex; justify-content:space-between; font-size:13px; font-weight:600; margin-bottom:6px;">
             <span>🔍 Rozmiar aplikacji</span><span id="uiScaleLabel">100%</span>
           </label>
           <input type="range" id="setUiScale" min="0.7" max="1.3" step="0.05" style="width:100%; accent-color:var(--teal);">
           <div class="hint-text" style="margin:6px 0 0;">Jeśli elementy aplikacji wyglądają za duże (albo za małe) na Twoim telefonie, dostosuj tutaj. Wartość początkowa jest dobierana automatycznie na podstawie szerokości ekranu, ale to tylko przybliżenie — swobodnie ją zmień, jeśli nie pasuje.</div>
+        </div>
+        <div style="margin-top:16px;">
+          <!-- Requested 2026-08-26: opt-in fill-with-color on the Planer
+               dashboard's "POZOSTAŁO" tile (Klinika), same idea as the kcal
+               ring filling as you eat -- off by default since it's a
+               stronger visual than the current flat color. -->
+          <label class="toggle-row"><input type="checkbox" id="setRemainingKcalFill"> Wypełniaj kolorem kafelek „Pozostało” w Planerze, w miarę zjadania posiłków (motyw Klinika)</label>
         </div>
         <div style="margin-top:16px;">
           <label style="display:block; font-size:13px; font-weight:600; margin-bottom:6px;">🎈 Styl oceniania kart przesunięciem</label>
@@ -1859,6 +1964,21 @@
           <button class="btn primary" id="enableReminderBtn" style="width:100%;">🔔 Włącz przypomnienia o piciu wody</button>
         </div>
         <div id="reminderStatus" class="settings-result"></div>
+      </div>
+
+      <div class="card">
+        <!-- Requested 2026-08-26 (5 new features -- intermittent fasting /
+             time-restricted eating is a top-requested diet-app feature per
+             user reviews): tracks whether "now" falls inside the eating
+             window or the fasting window, status shown on the "Dziś" header
+             above eaten kcal (renderFastingStatus). -->
+        <h3 style="margin:0 0 10px; font-size:15px;">⏳ Post przerywany (okno jedzenia)</h3>
+        <div class="hint-text" style="margin:0 0 10px;">Śledzi, czy teraz jest Twoje okno jedzenia, czy okno postu (np. klasyczny post 16:8). Status widoczny na głównym ekranie „Dziś”, nad podsumowaniem zjedzonych kalorii.</div>
+        <label class="toggle-row"><input type="checkbox" id="setFastingEnabled"> Włącz śledzenie okna jedzenia</label>
+        <div class="settings-grid" style="margin-top:10px;">
+          <label>Jedzenie od (godz. 0-23)<input type="number" min="0" max="23" id="setFastingStart"></label>
+          <label>Jedzenie do (godz. 0-23)<input type="number" min="0" max="23" id="setFastingEnd"></label>
+        </div>
       </div>
 
       <div class="card">
@@ -2257,6 +2377,20 @@
       <button id="recipePreviewClose">✕</button>
     </div>
     <div id="recipePreviewBody"></div>
+  </div>
+</div>
+
+<!-- Requested 2026-08-26 ("dodaj też przynajmniej 5 nowych funkcji...
+     czego najbardziej potrzebują użytkownicy" -- research flagged meal-plan
+     re-entry friction as a common complaint): "Kopiuj plan z innego dnia"
+     picker, opened from each day card's own action row (renderPlanner()). -->
+<div class="modal-overlay center" id="copyDayOverlay">
+  <div class="modal-sheet center-sheet">
+    <div class="modal-head">
+      <h3>📋 Kopiuj plan z innego dnia</h3>
+      <button id="copyDayClose">✕</button>
+    </div>
+    <div id="copyDayBody"></div>
   </div>
 </div>
 
@@ -3255,6 +3389,22 @@ const STORE_KEY = "dietaAppStateV1";
 // stats (37yo/164cm/67kg) as if they were personalized.
 const DEFAULT_PROFILE = {sex:"k", age:37, height:164, weight:67, targetWeight:62, activity:"1.375", goal:"loss", glutenFree:false, lactoseFree:false, strictLowGI:true, custom:false, configured:false};
 const DEFAULT_WATER_REMINDER = {enabled:false, intervalMinutes:90, activeFrom:"08:00", activeTo:"22:00", nextAt:null};
+// Requested 2026-08-26 (5 new features -- intermittent fasting/time-restricted
+// eating is one of the most-requested diet-app features per user reviews):
+// windowStart/windowEnd are hours-of-day (0-23) marking the EATING window,
+// e.g. 12-20 for a classic 16:8 schedule -- everything outside it is "post".
+const DEFAULT_FASTING = {enabled:false, windowStart:12, windowEnd:20};
+// Requested 2026-08-26 ("dodaj też kilka innych schematów kolorystycznych
+// dla motywów klinika i klinika noc"): additional Klinika color variants,
+// see the [data-clinic-palette] CSS blocks above for the actual colors.
+const CLINIC_PALETTES = [
+  {id:"default", label:"Domyślna (szałwia)"},
+  {id:"ocean", label:"🌊 Ocean (chłodny błękit)"},
+  {id:"terracotta", label:"🧡 Terakota (ciepła, minimalistyczna)"},
+];
+function applyClinicPaletteAttr(){
+  document.documentElement.setAttribute("data-clinic-palette", state.clinicPalette || "default");
+}
 // Best-effort auto guess for the app-wide UI scale: this app's CSS is
 // almost entirely fixed px, so on a phone whose logical (CSS) viewport
 // width is narrower — either a genuinely smaller screen, or Android's
@@ -3322,6 +3472,9 @@ function loadState(){
         s.recipeReviews[id] = {stars: s.recipeRating[id]==="like" ? 5 : 1, comment:"", at:new Date().toISOString()};
       });
       if(s.communityRecipesEnabled===undefined) s.communityRecipesEnabled = false;
+      if(s.remainingKcalFillEnabled===undefined) s.remainingKcalFillEnabled = false;
+      if(!s.fasting) s.fasting = {...DEFAULT_FASTING};
+      if(s.clinicPalette===undefined) s.clinicPalette = "default";
       if(!s.household) s.household = {id:null, name:"", inviteCode:null, members:[]};
       if(s._lastSyncedSnapshot===undefined) s._lastSyncedSnapshot = null;
       const shoppingVals = Object.values(s.shopping||{});
@@ -3331,10 +3484,11 @@ function loadState(){
       return s;
     }
   }catch(e){}
-  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, plannerLeftover:{}, water:{date:"",count:0}, waterHistory:{}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, pantryCategoryOverride:{}, pantryStepOverride:{}, waterNotifEnabled:false, theme:"clinic", waterReminder:{...DEFAULT_WATER_REMINDER}, uiScale:detectDefaultUiScale(), recipeRating:{}, swipeRatingStyle:"balloon", displayName:"", myRecipes:[], recipeReviews:{}, communityRecipesEnabled:false, household:{id:null, name:"", inviteCode:null, members:[]}, _lastSyncedSnapshot:null};
+  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, plannerLeftover:{}, water:{date:"",count:0}, waterHistory:{}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, pantryCategoryOverride:{}, pantryStepOverride:{}, waterNotifEnabled:false, theme:"clinic", waterReminder:{...DEFAULT_WATER_REMINDER}, uiScale:detectDefaultUiScale(), recipeRating:{}, swipeRatingStyle:"balloon", displayName:"", myRecipes:[], recipeReviews:{}, communityRecipesEnabled:false, remainingKcalFillEnabled:false, fasting:{...DEFAULT_FASTING}, clinicPalette:"default", household:{id:null, name:"", inviteCode:null, members:[]}, _lastSyncedSnapshot:null};
 }
 let state = loadState();
 document.documentElement.setAttribute("data-theme", state.theme || "clinic");
+applyClinicPaletteAttr();
 function applyUiScale(scale){
   document.documentElement.style.zoom = scale;
 }
@@ -3350,7 +3504,7 @@ function saveState(){
 // explicitly asked for EVERY field to round-trip through the cloud today —
 // so instead of excluding collision-prone keys (shopping/planner/history),
 // they're included here and protected by a real 3-way merge below instead.
-const SYNCED_STATE_KEYS = ["displayName","profile","theme","uiScale","communityRecipesEnabled","pantry","pantryUnitOverride","pantryCategoryOverride","pantryStepOverride","favorites","favIngredients","myRecipes","recipeReviews","recipeRating","customTiles","swipeRatingStyle","shopping","recipeAdded","planner","plannerScale","plannerLeftover","cooked","eaten","waterHistory","water","weights","history","waterNotifEnabled","waterReminder","household"];
+const SYNCED_STATE_KEYS = ["displayName","profile","theme","uiScale","communityRecipesEnabled","remainingKcalFillEnabled","fasting","clinicPalette","pantry","pantryUnitOverride","pantryCategoryOverride","pantryStepOverride","favorites","favIngredients","myRecipes","recipeReviews","recipeRating","customTiles","swipeRatingStyle","shopping","recipeAdded","planner","plannerScale","plannerLeftover","cooked","eaten","waterHistory","water","weights","history","waterNotifEnabled","waterReminder","household"];
 // Keys whose change can actually affect what renderRecipes() draws (matching
 // %, badges, filters) -- used to skip that expensive 229-card full rebuild
 // on syncs that only touched something unrelated (e.g. a weight entry or
@@ -3684,6 +3838,7 @@ function manualSyncNow(){
 // syncs rebuilt all ~229 recipe cards even for e.g. just a weight entry.
 function refreshUiAfterSync(silent, changedKeys){
   document.documentElement.setAttribute("data-theme", state.theme || "clinic");
+  applyClinicPaletteAttr();
   applyUiScale(state.uiScale);
   renderHeader();
   renderPills();
@@ -3805,7 +3960,8 @@ const MERGE_KEY_LABELS = {
   pantryUnitOverride:"Spiżarnia (jednostka)", pantryCategoryOverride:"Spiżarnia (kategoria)", pantryStepOverride:"Spiżarnia (skok +/-)",
   customTiles:"Własne kafelki spiżarni", recipeReviews:"Oceny i komentarze", recipeRating:"Oceny (podoba/nie podoba się)",
   myRecipes:"Własne przepisy", displayName:"Nazwa w aplikacji", theme:"Motyw", uiScale:"Skala interfejsu",
-  communityRecipesEnabled:"Przepisy społeczności (przełącznik)", swipeRatingStyle:"Styl oceniania przesunięciem",
+  communityRecipesEnabled:"Przepisy społeczności (przełącznik)", remainingKcalFillEnabled:"Wypełnianie kolorem kafelka Pozostało",
+  swipeRatingStyle:"Styl oceniania przesunięciem", fasting:"Okno postu przerywanego", clinicPalette:"Schemat kolorów (Klinika)",
   profile:"Profil diety", water:"Dzisiejsze nawodnienie", weights:"Historia wagi", history:"Log aktywności",
   waterNotifEnabled:"Powiadomienia o wodzie", waterReminder:"Przypomnienie o piciu wody", household:"Gospodarstwo domowe",
 };
@@ -4184,6 +4340,7 @@ function applyTheme(id){
   state.theme = id;
   saveState();
   document.documentElement.setAttribute("data-theme", id);
+  applyClinicPaletteAttr();
   const meta = document.querySelector('meta[name="theme-color"]');
   const t = THEMES.find(x=>x.id===id);
   if(meta && t) meta.setAttribute("content", t.metaColor);
@@ -4210,6 +4367,33 @@ function renderThemePicker(){
     btn.addEventListener("click", ()=> applyTheme(t.id));
     box.appendChild(btn);
   });
+  renderClinicPalettePicker();
+}
+// Requested 2026-08-26 ("dodaj też kilka innych schematów kolorystycznych
+// dla motywów klinika i klinika noc"): only shown for the two Klinika
+// themes -- picking a palette only sets state.clinicPalette + the
+// [data-clinic-palette] attribute, never state.theme itself.
+function renderClinicPalettePicker(){
+  const wrap = document.getElementById("clinicPaletteBox");
+  const box = document.getElementById("clinicPaletteGrid");
+  if(!wrap || !box) return;
+  const isClinic = (state.theme||"clinic") === "clinic" || state.theme === "clinic_dark";
+  wrap.style.display = isClinic ? "" : "none";
+  if(!isClinic) return;
+  box.innerHTML = "";
+  CLINIC_PALETTES.forEach(p=>{
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "ing-chip" + ((state.clinicPalette||"default")===p.id ? " active" : "");
+    btn.textContent = p.label;
+    btn.addEventListener("click", ()=>{
+      state.clinicPalette = p.id;
+      saveState();
+      applyClinicPaletteAttr();
+      renderClinicPalettePicker();
+    });
+    box.appendChild(btn);
+  });
 }
 function addLog(action, detail){
   state.history.unshift({ts: new Date().toISOString(), action, detail});
@@ -4218,12 +4402,28 @@ function addLog(action, detail){
 
 // ---------- TOAST ----------
 let toastTimer=null;
-function toast(msg){
+// Requested 2026-08-26 ("dodaj też przynajmniej 5 nowych funkcji...
+// przeszukując internet pod kątem komentarzy do aplikacji z dietą"):
+// optional inline "Cofnij" action -- pass undoLabel/onUndo to show it
+// (longer visible duration, 5s instead of 1.8s, so there's actually time
+// to tap it) or omit both for a plain toast exactly like before.
+function toast(msg, undoLabel, onUndo){
   const el = document.getElementById("toast");
-  el.textContent = msg;
+  el.innerHTML = "";
+  el.appendChild(document.createTextNode(msg));
+  if(onUndo){
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "toast-undo-btn"; btn.textContent = undoLabel || "Cofnij";
+    btn.addEventListener("click", ()=>{
+      onUndo();
+      el.classList.remove("show");
+      clearTimeout(toastTimer);
+    });
+    el.appendChild(btn);
+  }
   el.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>el.classList.remove("show"), 1800);
+  toastTimer = setTimeout(()=>el.classList.remove("show"), onUndo ? 5000 : 1800);
 }
 
 // ---------- NAV ----------
@@ -4508,6 +4708,7 @@ function renderHeader(){
   }).join("");
   attachSwipeToEat();
   renderEatenSummary(t.daily);
+  renderFastingStatus();
   document.getElementById("weightGoalTitle").textContent = `⚖️ Postęp wagi (cel: ${p.targetWeight} kg)`;
   renderHeaderWater();
   renderPlannerDashboard();
@@ -4553,6 +4754,26 @@ function renderEatenSummary(dailyTarget){
   const eaten = dailyEatenKcal(todayStr());
   const remaining = Math.max(0, dailyTarget - eaten);
   box.innerHTML = `🍽️ Zjedzone: <b>${eaten} kcal</b> · Zostało: <b>${remaining} kcal</b>`;
+}
+
+// Requested 2026-08-26 (5 new features -- intermittent fasting/time-restricted
+// eating status, shown right under the kcal summary on "Dziś"). windowStart
+// >= windowEnd is treated as a window that wraps past midnight (e.g. 20-4).
+function renderFastingStatus(){
+  const el = document.getElementById("fastingStatus");
+  if(!el) return;
+  if(!state.fasting || !state.fasting.enabled){ el.style.display = "none"; return; }
+  const {windowStart, windowEnd} = state.fasting;
+  const now = new Date();
+  const hour = now.getHours() + now.getMinutes()/60;
+  const wraps = windowStart >= windowEnd;
+  const inWindow = wraps ? (hour >= windowStart || hour < windowEnd) : (hour >= windowStart && hour < windowEnd);
+  const fmt = h => `${String(h).padStart(2,"0")}:00`;
+  el.style.display = "inline-block";
+  el.classList.toggle("fasting", !inWindow);
+  el.textContent = inWindow
+    ? `🍽️ Okno jedzenia — post zacznie się o ${fmt(windowEnd)}`
+    : `⏳ Okno postu — jedzenie od ${fmt(windowStart)}`;
 }
 
 // Swipe-right-to-mark-eaten on the header's meal rows. Pointer Events cover
@@ -4694,6 +4915,10 @@ function loadSettingsForm(){
   const p = state.profile;
   document.getElementById("setDisplayName").value = state.displayName || "";
   document.getElementById("setCommunityRecipes").checked = !!state.communityRecipesEnabled;
+  document.getElementById("setRemainingKcalFill").checked = !!state.remainingKcalFillEnabled;
+  document.getElementById("setFastingEnabled").checked = !!state.fasting.enabled;
+  document.getElementById("setFastingStart").value = state.fasting.windowStart;
+  document.getElementById("setFastingEnd").value = state.fasting.windowEnd;
   // FR-72/FR-89: sex/activity/goal now gated on `configured` the same way
   // age/height/weight/targetWeight already were below -- a Kotlin-less
   // <select> always shows SOME option as chosen, so without this a fresh/
@@ -4778,6 +5003,33 @@ document.getElementById("setCommunityRecipes").addEventListener("change", (e)=>{
   state.communityRecipesEnabled = e.target.checked;
   saveState();
   refreshCommunityRecipesSubscription();
+});
+// Requested 2026-08-26: optional fill-with-color on the "POZOSTAŁO" tile
+// (Klinika dashboard), same idea as the kcal ring filling as you eat --
+// off by default (opt-in), toggled here like communityRecipesEnabled above.
+document.getElementById("setRemainingKcalFill").addEventListener("change", (e)=>{
+  state.remainingKcalFillEnabled = e.target.checked;
+  saveState();
+  renderPlannerDashboard();
+});
+// Requested 2026-08-26 (5 new features -- intermittent fasting tracker):
+// enable toggle + eating-window hours, mirrored to Android's FastingViewModel.
+document.getElementById("setFastingEnabled").addEventListener("change", (e)=>{
+  state.fasting.enabled = e.target.checked;
+  saveState();
+  renderFastingStatus();
+});
+["setFastingStart","setFastingEnd"].forEach(id=>{
+  document.getElementById(id).addEventListener("change", ()=>{
+    let start = Math.min(23, Math.max(0, parseInt(document.getElementById("setFastingStart").value,10) || 0));
+    let end = Math.min(23, Math.max(0, parseInt(document.getElementById("setFastingEnd").value,10) || 0));
+    state.fasting.windowStart = start;
+    state.fasting.windowEnd = end;
+    document.getElementById("setFastingStart").value = start;
+    document.getElementById("setFastingEnd").value = end;
+    saveState();
+    renderFastingStatus();
+  });
 });
 
 // Reads the *actual* active Cache Storage entry rather than a manually
@@ -4983,6 +5235,7 @@ document.getElementById("signOutBtn").addEventListener("click", ()=>{
     localStorage.removeItem(STORE_KEY);
     state = loadState(); // localStorage is now empty, so this returns fresh defaults
     document.documentElement.setAttribute("data-theme", state.theme || "clinic");
+  applyClinicPaletteAttr();
     applyUiScale(state.uiScale);
     refreshUiAfterSync(true);
   }else{
@@ -5040,6 +5293,7 @@ document.getElementById("resetAccountDataConfirmBtn").addEventListener("click", 
   localStorage.removeItem(STORE_KEY);
   state = loadState(); // localStorage is now empty, so this returns fresh defaults
   document.documentElement.setAttribute("data-theme", state.theme || "clinic");
+  applyClinicPaletteAttr();
   applyUiScale(state.uiScale);
   refreshUiAfterSync(true);
   const freshSubset = syncableStateSubset();
@@ -5525,6 +5779,7 @@ function recipeCard(r, onChange, opts={}){
       <div class="card-action-row">
         <button type="button" class="plan-btn" data-search-google style="flex:1;">🔎 Google</button>
         <button type="button" class="plan-btn" data-search-youtube style="flex:1;">▶️ YouTube</button>
+        <button type="button" class="plan-btn" data-search-gemini style="flex:1;">✨ Gemini</button>
       </div>
       ${review && review.comment ? `<p class="hint-text" style="margin-top:8px;">💬 Twój komentarz: „${review.comment}”</p>` : ""}
       <button type="button" class="pantry-status-btn" data-pantry-check>
@@ -5612,7 +5867,15 @@ function recipeCard(r, onChange, opts={}){
     });
   }
   attachThumb(card, r);
+  // Requested 2026-08-26 ("wyszukiwanie dania będzie dostępne dopiero na
+  // otwartej rozwiniętej karcie a nie na zwiniętej"): only intercepts the
+  // click (stopPropagation + opens Google) while `.expanded` -- on a
+  // collapsed card the click is left alone entirely, so it falls through
+  // to the card's own toggle-expand handler like tapping anywhere else on
+  // it, instead of silently opening a browser tab when the user just meant
+  // to expand the card.
   card.querySelector(".recipe-title").addEventListener("click", (e)=>{
+    if(!card.classList.contains("expanded")) return;
     e.stopPropagation();
     window.open("https://www.google.com/search?q=" + encodeURIComponent(r.name + " przepis"), "_blank");
   });
@@ -5627,6 +5890,17 @@ function recipeCard(r, onChange, opts={}){
   card.querySelector("[data-search-youtube]").addEventListener("click", (e)=>{
     e.stopPropagation();
     window.open("https://www.youtube.com/results?search_query=" + encodeURIComponent(r.name + " przepis"), "_blank");
+  });
+  // Requested 2026-08-26 ("dodaj też button szukają w Gemini żeby sztuczna
+  // inteligencja dostała prompt na propozycje przygotowania tego
+  // konkretnego dania rozpisane w szczegółach"): opens Gemini's web app
+  // with the prompt pre-filled via ?q= (same unofficial-but-widely-observed
+  // pattern as chatgpt.com/?q=... -- if Gemini ever stops honoring it, the
+  // button still opens Gemini itself, just without the pre-fill).
+  card.querySelector("[data-search-gemini]").addEventListener("click", (e)=>{
+    e.stopPropagation();
+    const prompt = `Rozpisz szczegółowo, krok po kroku, jak przygotować danie: ${r.name}. Podaj dokładne czasy, temperatury, ilości składników i wskazówki przydatne dla początkujących.`;
+    window.open("https://gemini.google.com/app?q=" + encodeURIComponent(prompt), "_blank");
   });
   const macroInfoBtn = card.querySelector("[data-macro-info]");
   if(macroInfoBtn){
@@ -7124,6 +7398,20 @@ function openPantryModal(r){
       shopBtn.style.display = entry ? "none" : "inline-flex";
       haveBtn.classList.toggle("on", !!entry);
       haveBtn.textContent = entry ? "✓ Mam" : "+ Mam to";
+      // Requested 2026-08-26 (5 new features -- users flagged not knowing
+      // what to swap in for a missing ingredient): when missing, suggest
+      // whatever's already in the pantry from the same category as a
+      // possible substitute -- no fixed substitution table needed, since
+      // CANON_INFO's category grouping already does the useful clustering
+      // (e.g. missing "śmietana" but "jogurt naturalny" is in stock, both Nabiał).
+      let subEl = row.querySelector(".pcr-sub-hint");
+      if(!entry){
+        const siblings = Object.values(state.pantry).filter(p=>p.cat===info.cat && p.label!==canon).map(p=>p.label);
+        if(siblings.length){
+          if(!subEl){ subEl = document.createElement("div"); subEl.className = "pcr-sub-hint"; row.querySelector(".pcr-name").after(subEl); }
+          subEl.textContent = "🔁 Masz w spiżarni (ta sama kategoria): " + siblings.slice(0,3).join(", ");
+        }else if(subEl){ subEl.remove(); }
+      }else if(subEl){ subEl.remove(); }
     };
     renderStock();
     shopBtn.addEventListener("click", ()=>{
@@ -7280,11 +7568,19 @@ function renderPlannerDashboard(){
       return `<button class="pd-meal-card pd-meal-card-empty" data-pd-add-cat="${c.id}">+ ${c.label}</button>`;
     }
     const done = isEaten(today, c.id);
+    // Requested 2026-08-26: pantry coverage badge, same pantryMatch() used
+    // by the recipe card's own "🏺 Stan spiżarni" widget -- there's
+    // visibly enough room on this card now that the meal-list flexes to
+    // fill the screen (see #plannerTodayWrap), so it's shown inline
+    // instead of requiring a tap into the recipe preview to see it.
+    const pantryTotal = r.ingredients.length;
+    const pantryHave = r.ingredients.filter(i=>pantryMatch(i)).length;
     return `<div class="pd-meal-card${done?' eaten':''}" data-pd-toggle-cat="${c.id}" data-pd-recipe-id="${r.id}">
       <span class="pd-meal-avatar">${c.icon}</span>
       <span class="pd-meal-text">
         <span class="pd-meal-cat">${c.label}</span>
         <span class="pd-meal-name">${r.name}</span>
+        <span class="pd-meal-pantry">🏺 ${pantryHave}/${pantryTotal} w spiżarni</span>
       </span>
       <span class="pd-meal-kcal">${r.kcal} kcal</span>
       <button class="pd-meal-remove" data-pd-remove-cat="${c.id}" title="Usuń z planu">✕</button>
@@ -7309,6 +7605,7 @@ function renderPlannerDashboard(){
           <div class="pd-ring-center">${eaten}/${t.daily}</div>
         </div>
         <div class="pd-remaining-box">
+          ${state.remainingKcalFillEnabled ? `<div class="pd-remaining-fill" style="width:${(kcalPct*100).toFixed(1)}%"></div>` : ""}
           <div class="pd-remaining-label">Pozostało</div>
           <div class="pd-remaining-value">${remaining} kcal</div>
         </div>
@@ -7360,12 +7657,29 @@ function renderPlannerDashboard(){
     btn.addEventListener("click", (e)=>{
       e.stopPropagation();
       const cat = btn.dataset.pdRemoveCat;
+      // Requested 2026-08-26 ("dodaj też przynajmniej 5 nowych funkcji" --
+      // research flagged lost/broken data as a common complaint): captures
+      // exactly what was removed BEFORE clearing it, so "Cofnij" restores
+      // the same recipe/scale/leftover-flag rather than just re-opening
+      // the picker.
+      const removedRecipeId = (state.planner[todayIdx] || {})[cat] || "";
+      const removedScale = getPlannerScale(todayIdx, cat);
+      const removedLeftover = !!(state.plannerLeftover[todayIdx] && state.plannerLeftover[todayIdx][cat]);
       state.planner[todayIdx] = state.planner[todayIdx] || {};
       state.planner[todayIdx][cat] = "";
       clearPlannerLeftover(todayIdx, cat);
       setPlannerScale(todayIdx, cat, 1);
       saveState(); renderPlanner(); renderHeader();
-      toast("Usunięto z planu");
+      toast("Usunięto z planu", "Cofnij", removedRecipeId ? ()=>{
+        state.planner[todayIdx] = state.planner[todayIdx] || {};
+        state.planner[todayIdx][cat] = removedRecipeId;
+        setPlannerScale(todayIdx, cat, removedScale);
+        if(removedLeftover){
+          state.plannerLeftover[todayIdx] = state.plannerLeftover[todayIdx] || {};
+          state.plannerLeftover[todayIdx][cat] = true;
+        }
+        saveState(); renderPlanner(); renderHeader();
+      } : null);
     });
   });
   box.querySelectorAll("[data-pd-add-cat]").forEach(btn=>{
@@ -7398,7 +7712,12 @@ function renderPlanner(){
   DAYS.forEach((day,di)=>{
     state.planner[di] = state.planner[di] || {};
     const card = document.createElement("div");
-    card.className = isClinic ? "day-card clinic-day-card" : "day-card";
+    // Requested 2026-08-26 (revised from the previous round): only TODAY's
+    // card should fill the screen -- the other 6 go back to their normal,
+    // content-sized height (multiple visible per scroll, like before the
+    // full-height experiment). `.clinic-day-card.today` (not just
+    // `.clinic-day-card`) is what the min-height rule below now targets.
+    card.className = isClinic ? ("day-card clinic-day-card" + (di === todayIdx ? " today" : "")) : "day-card";
     card.id = `day-card-${di}`;
     let total = 0;
     const prevDi = (di + 6) % 7;
@@ -7453,7 +7772,8 @@ function renderPlanner(){
       <div class="shop-actions" style="margin:8px 0 0;">
         <button class="btn ghost" style="flex:1; font-size:12px;" data-day-random="${di}">🎲 Losuj ten dzień</button>
         <button class="btn ghost" style="flex:1; font-size:12px;" data-day-clear="${di}">🗑️ Wyczyść ten dzień</button>
-      </div>`;
+      </div>
+      <button class="btn ghost" style="width:100%; margin-top:6px; font-size:12px;" data-day-copy="${di}">📋 Kopiuj plan z innego dnia</button>`;
     card.querySelectorAll("[data-pick-day]").forEach(btn=>{
       btn.addEventListener("click", ()=> openPlannerModal(btn.dataset.pickDay, btn.dataset.pickCat));
     });
@@ -7494,6 +7814,7 @@ function renderPlanner(){
       saveState(); renderPlanner(); renderHeader();
       toast(`Wyczyszczono plan na ${day}`);
     });
+    card.querySelector("[data-day-copy]").addEventListener("click", ()=> openCopyDayModal(di));
     card.querySelectorAll("[data-scale-day]").forEach(btn=>{
       // stopPropagation: for Klinika's .cdc-row, this element is NESTED
       // inside the row's own "open picker" click target (see [data-pick-
@@ -7545,6 +7866,78 @@ function renderPlanner(){
     box.appendChild(card);
   });
 }
+
+// Requested 2026-08-26 ("dodaj też przynajmniej 5 nowych funkcji...
+// przeszukując internet pod kątem komentarzy do aplikacji z dietą czego
+// najbardziej potrzebują użytkownicy" -- research into meal-planner reviews
+// consistently flags re-entering the same day's meals over and over as
+// friction, e.g. a repeated weekly routine): copies one day's ENTIRE plan
+// (recipes, portion scale, "resztki" leftover flags) onto another day,
+// overwriting whatever was there. `structuredClone` for a real deep copy --
+// without it, edits to plannerScale[fromDay] would also silently mutate
+// the "target" day's plannerScale, since object spread is shallow.
+function openCopyDayModal(targetDay){
+  const body = document.getElementById("copyDayBody");
+  body.innerHTML = `<div class="hint-text" style="margin:0 0 10px;">Wybierz dzień, z którego skopiować plan na „${DAYS[targetDay]}". Nadpisze to, co jest już zaplanowane na „${DAYS[targetDay]}".</div>`;
+  const grid = document.createElement("div");
+  grid.style.cssText = "display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;";
+  DAYS.forEach((dayName, di)=>{
+    if(di === targetDay) return;
+    const hasPlan = Object.values(state.planner[di] || {}).some(id => !!id);
+    const btn = document.createElement("button");
+    btn.className = "btn ghost";
+    btn.style.cssText = "font-size:13px;";
+    btn.textContent = hasPlan ? dayName : `${dayName} (pusty)`;
+    btn.disabled = !hasPlan;
+    btn.addEventListener("click", ()=>{
+      state.planner[targetDay] = structuredClone(state.planner[di] || {});
+      state.plannerScale[targetDay] = structuredClone(state.plannerScale[di] || {});
+      state.plannerLeftover[targetDay] = structuredClone(state.plannerLeftover[di] || {});
+      saveState(); renderPlanner(); renderHeader();
+      document.getElementById("copyDayOverlay").classList.remove("show");
+      toast(`Skopiowano plan z „${dayName}" na „${DAYS[targetDay]}"`);
+    });
+    grid.appendChild(btn);
+  });
+  body.appendChild(grid);
+  document.getElementById("copyDayOverlay").classList.add("show");
+}
+document.getElementById("copyDayClose").addEventListener("click", ()=> document.getElementById("copyDayOverlay").classList.remove("show"));
+document.getElementById("copyDayOverlay").addEventListener("click", (e)=>{
+  if(e.target===document.getElementById("copyDayOverlay")) e.target.classList.remove("show");
+});
+
+// Requested 2026-08-26 ("dodaj też przynajmniej 5 nowych funkcji" --
+// research: users want their plan portable, e.g. to send to whoever does
+// the shopping/cooking) -- same text-building + WhatsApp/clipboard pattern
+// as buildListText()/the shopping list's own share row.
+function buildWeekPlanText(){
+  const hasAny = DAYS.some((_, di) => Object.values(state.planner[di] || {}).some(id => !!id));
+  if(!hasAny) return "Plan tygodnia jest jeszcze pusty 📋";
+  let out = "📅 Plan tygodnia:\n";
+  DAYS.forEach((day, di)=>{
+    const dayMeals = state.planner[di] || {};
+    const lines = CATS.map(c=>{
+      const rid = dayMeals[c.id];
+      if(!rid) return null;
+      const recipe = findRecipeById(rid);
+      if(!recipe) return null;
+      const scale = getPlannerScale(di, c.id);
+      const scaleLabel = scale !== 1 ? ` (${String(scale).replace(".", ",")}×)` : "";
+      return `  ${c.icon} ${c.label}: ${recipe.name}${scaleLabel}`;
+    }).filter(Boolean);
+    if(lines.length===0) return;
+    out += `\n${day}:\n` + lines.join("\n") + "\n";
+  });
+  return out;
+}
+document.getElementById("plannerShareWaBtn").addEventListener("click", ()=>{
+  window.open("https://wa.me/?text=" + encodeURIComponent(buildWeekPlanText()), "_blank");
+});
+document.getElementById("plannerShareCopyBtn").addEventListener("click", async ()=>{
+  try{ await navigator.clipboard.writeText(buildWeekPlanText()); toast("Plan tygodnia skopiowany do schowka"); }
+  catch(e){ toast("Nie udało się skopiować"); }
+});
 
 document.getElementById("autoPlanBtn").addEventListener("click", ()=>{
   if(!confirm("To nadpisze wszystkie dania zaplanowane w całym tygodniu. Na pewno chcesz wygenerować nowy plan?")) return;
@@ -7752,9 +8145,16 @@ function renderWaterRow(row){
     minus.addEventListener("click", ()=> setWaterCount(state.water.count - 1));
     const circles = document.createElement("div");
     circles.className = "clinic-water-circles";
+    // Requested 2026-08-26 ("dla motywów klinika i klinika noc też zmień
+    // kółeczka od wody na kropelki wszędzie"): plain filled/empty circles
+    // replaced with the same droplet SVG cupIconSvg() draws for the other
+    // 11 themes' cup row -- .filled class kept (still used for the
+    // hover/active CSS below) even though the fill color itself now comes
+    // from the SVG's own fill attribute, not background-color.
     for(let i=0;i<8;i++){
       const c = document.createElement("div");
       c.className = "clinic-water-circle" + (i < state.water.count ? " filled" : "");
+      c.innerHTML = cupIconSvg(i < state.water.count, 22);
       c.addEventListener("click", ()=> setWaterCount(state.water.count === i+1 ? i : i+1));
       circles.appendChild(c);
     }
