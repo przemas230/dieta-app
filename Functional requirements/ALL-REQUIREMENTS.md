@@ -636,34 +636,83 @@ Dla każdego zaplanowanego dania można zmienić mnożnik porcji (predefiniowane
 # FR-21: Losowe generowanie planu — cały tydzień lub pojedynczy dzień
 
 **Obszar:** Planer tygodniowy  
-**Status:** Zaimplementowane
+**Status:** Zaimplementowane (cofanie — v2 — na razie Web-only, patrz Uwagi)
 
 ## Opis
 Przycisk „🎲 Wygeneruj losowo cały tydzień” losuje dania dla wszystkich 7 dni × 5 kategorii z puli pasujących do profilu. Dodatkowo każda karta dnia ma własny przycisk „🎲 Losuj ten dzień”, generujący losowy plan tylko dla tego jednego dnia, bez naruszania pozostałych dni.
 
+Na webie (v2) obie akcje można cofnąć — po wygenerowaniu pojawia się powiadomienie z przyciskiem „Cofnij”, przywracającym dokładnie poprzedni plan (dania, skale porcji, flagi resztek). Losowanie pojedynczego dnia wykonuje się od razu, bez okienka potwierdzenia; losowanie całego tygodnia nadal pyta o potwierdzenie przed wykonaniem, a cofnięcie jest tam dodatkowym zabezpieczeniem.
+
 ## Kryteria akceptacji
-- Losowanie całego tygodnia i losowanie pojedynczego dnia wymagają potwierdzenia (nadpisują istniejący plan odpowiednio całego tygodnia albo tylko tego dnia).
 - Pula losowania uwzględnia dopasowanie do profilu (ta sama logika co FR-11).
+- Web (v2): losowanie POJEDYNCZEGO dnia wykonuje się natychmiast, bez okienka `confirm()`, i pokazuje powiadomienie z „Cofnij”.
+- Web (v2): losowanie CAŁEGO tygodnia nadal wymaga potwierdzenia przed wykonaniem, a po wykonaniu również pokazuje „Cofnij”.
+- Web (v2): kliknięcie „Cofnij” przywraca dokładnie ten sam plan (razem ze skalami porcji i flagami resztek), jaki był przed losowaniem — odpowiednio dla jednego dnia albo dla całego tygodnia.
+- Web (v2): zignorowanie powiadomienia pozostawia wylosowany plan.
+
+## Uwagi
+Web: `structuredClone()` na trzech równoległych mapach PRZED nadpisaniem
+(dla jednego dnia — tylko jego wpisy; dla całego tygodnia — całe
+`state.planner`/`plannerScale`/`plannerLeftover`), przekazane jako
+domknięcie do `toast(msg, undoLabel, onUndo)` (mechanizm z FR-91).
+
+Decyzja projektowa (2026-08-28): `confirm()` zostaje TYLKO dla akcji o
+zasięgu całego tygodnia (35 slotów naraz) — tam przerwanie użytkownika jest
+uzasadnione, a cofnięcie chroni przed zbyt szybkim kliknięciem „OK”. Dla
+akcji o zasięgu jednego dnia samo cofnięcie jest lepsze niż pytanie:
+nie przerywa pracy, a chroni też po fakcie. Ta sama zasada zastosowana w
+FR-22.
+
+**v2 świadomie Web-only na razie** — ta sesja pracuje w środowisku bez
+dostępu do `api.foojay.io` (toolchain JDK dla Gradle, błąd 403 przy
+`:app:compileDebugKotlin`), więc port do Compose nie może tu zostać ani
+skompilowany, ani przetestowany; odłożone do sesji z realnym dostępem do
+Gradle/emulatora, odnotowane w `android/PARITY.md`.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-28, Web only): Dodane cofanie dla obu wariantów losowania; `confirm()` usunięty z wariantu jednodniowego, zachowany dla całotygodniowego. Zmiana z własnej rekomendacji, razem z FR-22 (patrz tam pełne uzasadnienie niespójności, którą to naprawia). Zweryfikowane na żywo (headless Chromium): wylosowanie pustego dnia wypełniło 5 kategorii, „Cofnij” przywróciło go do pustego; wylosowanie całego tygodnia wypełniło dzień 0 i dzień 5, „Cofnij” przywróciło dzień 0 do pierwotnego `{"sniadania":"S1"}` i dzień 5 do pustego — czyli cofnięcie działa na całej strukturze, nie tylko na dniu, który akurat był widoczny. CACHE_NAME→v106, `versions/v106/`.
 
 ---
 
 # FR-22: Czyszczenie planu — cały tydzień lub pojedynczy dzień
 
 **Obszar:** Planer tygodniowy  
-**Status:** Zaimplementowane
+**Status:** Zaimplementowane (cofanie zamiast potwierdzenia — v2 — na razie Web-only, patrz Uwagi)
 
 ## Opis
-Oprócz generowania, każda karta dnia ma przycisk „🗑️ Wyczyść ten dzień”, kasujący zaplanowane dania tylko dla tego jednego dnia (z potwierdzeniem), niezależnie od pozostałych dni tygodnia.
+Oprócz generowania, każda karta dnia ma przycisk „🗑️ Wyczyść ten dzień”, kasujący zaplanowane dania tylko dla tego jednego dnia, niezależnie od pozostałych dni tygodnia.
+
+Na webie (v2) operacja wykonuje się od razu, bez blokującego okienka potwierdzenia — zamiast tego pokazuje powiadomienie z przyciskiem „Cofnij”, przywracającym dokładnie poprzedni stan tego dnia (dania, skale porcji i flagi resztek). To ten sam wzorzec, co przy usuwaniu pojedynczego dania z „Dzisiejszego Planera” (FR-91).
 
 ## Kryteria akceptacji
 - Czyszczenie jednego dnia nie wpływa na pozostałe dni.
-- Operacja wymaga potwierdzenia (nieodwracalna bez ponownego zaplanowania).
+- Web (v2): operacja wykonuje się natychmiast, bez okienka `confirm()`.
+- Web (v2): po wyczyszczeniu pojawia się powiadomienie z przyciskiem „Cofnij”; kliknięcie go przywraca dokładnie ten sam plan dnia, jaki był przed wyczyszczeniem (razem ze skalami porcji i flagami resztek).
+- Web (v2): zignorowanie powiadomienia pozostawia dzień wyczyszczony.
+
+## Uwagi
+Web: `structuredClone()` na trzech równoległych mapach tego dnia
+(`state.planner[di]`/`plannerScale[di]`/`plannerLeftover[di]`) PRZED
+skasowaniem, przekazane jako domknięcie do `toast(msg, undoLabel, onUndo)`
+(mechanizm dodany w FR-91). Zero nowej infrastruktury.
+
+Decyzja projektowa (2026-08-28): `confirm()` zamieniony na cofnięcie tylko
+dla akcji o zasięgu JEDNEGO dnia. Czyszczenie/generowanie CAŁEGO tygodnia
+(FR-21) zachowuje potwierdzenie ORAZ dostaje cofnięcie — przy 35 slotach
+naraz przerwanie użytkownika jest uzasadnione, a cofnięcie jest tam
+zabezpieczeniem przed zbyt szybkim kliknięciem „OK”, nie zamiennikiem
+pytania.
+
+**v2 świadomie Web-only na razie** — ta sesja pracuje w środowisku bez
+dostępu do `api.foojay.io` (toolchain JDK dla Gradle, błąd 403 przy
+`:app:compileDebugKotlin`), więc port do Compose nie może tu zostać ani
+skompilowany, ani przetestowany; odłożone do sesji z realnym dostępem do
+Gradle/emulatora, odnotowane w `android/PARITY.md`.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-28, Web only): Blokujące `confirm()` zamienione na natychmiastową akcję + „Cofnij” w powiadomieniu. Zmiana z własnej rekomendacji (użytkownik: „dodawaj swoje rekomendowane zmiany jak i refactoringi”): mechanizm cofania istniał od FR-91, ale był podpięty tylko pod JEDNĄ akcję, mimo że dwie inne, znacznie bardziej destrukcyjne (czyszczenie i losowanie całego dnia), wciąż używały natywnego okienka — niespójność UX i słabsze zabezpieczenie, bo `confirm()` chroni przed pomyłką tylko zanim ją popełnisz, a nie po. Zweryfikowane na żywo (headless Chromium): wyczyszczenie dnia z zaplanowanym śniadaniem, potwierdzone `state.planner[0] === {}`, kliknięcie „Cofnij” przywróciło `{"sniadania":"S1"}`. CACHE_NAME→v106, `versions/v106/`.
 
 ---
 
@@ -4419,12 +4468,20 @@ warte trójstronnego scalania między urządzeniami. Na webie jest częścią
 # FR-97: Znacznik stanu spiżarni na kartach „Dzisiejszy Planer”
 
 **Obszar:** Planer (motyw Klinika), Android + Web
-**Status:** Zaimplementowane na obu platformach
+**Status:** Zaimplementowane na obu platformach (klikalność znacznika — v2 — na razie Web-only, patrz Uwagi)
 
 ## Opis
 Na kartach dań w sekcji „Dzisiejszy Planer” (dużo wolnego miejsca na
 karcie) dodany mały znacznik: ile z potrzebnych składników danego dania
 jest już w spiżarni, a ile trzeba dokupić (np. „🏺 4/6 w spiżarni”).
+
+Na webie (v2) znacznik jest dodatkowo klikalny — stuknięcie otwiera od razu
+okno „sprawdź co masz” (FR-16) dla tego dania, czyli szczegółową listę
+składników z informacją, których brakuje, podpowiedziami zamienników
+(FR-93) i przyciskami „🛒”/„+ Mam to”. Dotąd znacznik pokazywał tylko
+liczbę, a żeby zobaczyć KTÓRYCH składników brakuje, trzeba było
+stuknąć kartę, otworzyć podgląd przepisu i dopiero stamtąd wejść w stan
+spiżarni.
 
 ## Kryteria akceptacji
 - Każda karta dania w „Dzisiejszy Planer” pokazuje znacznik „🏺 N/M w
@@ -4433,7 +4490,26 @@ jest już w spiżarni, a ile trzeba dokupić (np. „🏺 4/6 w spiżarni”).
 - Znacznik aktualizuje się na żywo po zmianie zawartości spiżarni, bez
   konieczności odświeżenia ekranu.
 - Puste sloty (bez zaplanowanego dania) nie pokazują znacznika.
+- Web (v2): stuknięcie znacznika otwiera okno „sprawdź co masz” dla tego
+  dania (a NIE podgląd przepisu, który otwiera stuknięcie reszty karty).
+- Web (v2): stuknięcie dowolnego innego miejsca karty nadal otwiera podgląd
+  przepisu, bez zmian względem v1.
 - `./gradlew :logic:test :app:compileDebugKotlin` przechodzi.
+
+## Uwagi
+Web: znacznik zmieniony ze `<span>` na `<button>` z pełnym resetem stylu
+(bez tła/obramowania), żeby wyglądał identycznie jak wcześniej, plus
+kropkowane podkreślenie — ta sama konwencja „ten tekst coś otwiera”, co
+istniejące `.recipe-title`. Handler wywołuje istniejące `openPantryModal(r)`
+(FR-16), zero nowej logiki. Nadrzędny handler karty (podgląd przepisu)
+dostał `closest("[data-pd-pantry-check]")` do listy wyjątków, obok już
+istniejącego wyjątku dla przycisku usuwania.
+
+**v2 (klikalność) świadomie Web-only na razie** — ta sesja pracuje w
+środowisku bez dostępu do `api.foojay.io` (toolchain JDK dla Gradle,
+błąd 403 przy `:app:compileDebugKotlin`), więc port do Compose nie może tu
+zostać ani skompilowany, ani przetestowany; odłożone do sesji z realnym
+dostępem do Gradle/emulatora, odnotowane w `android/PARITY.md`.
 
 ## Historia rewizji
 - **v1** (2026-08-26): Pierwsza wersja. Wykorzystuje istniejące
@@ -4441,3 +4517,13 @@ jest już w spiżarni, a ile trzeba dokupić (np. „🏺 4/6 w spiżarni”).
   zero nowej logiki kategoryzacji. Zweryfikowane kompilacją i testami
   jednostkowymi oraz składniowo na webie. **Nie zweryfikowane
   wizualnie/interaktywnie** w tej turze.
+- **v2** (2026-08-28, Web only): Znacznik zrobiony klikalnym — na wyraźną
+  prośbę użytkownika („zrób punkt 1, klikalny znacznik spiżarni”), z
+  wcześniejszej listy rekomendacji: sam licznik „4/6” mówi ILE brakuje, ale
+  nie CZEGO, a droga do tej informacji wiodła przez dwa dodatkowe
+  stuknięcia mimo że dane były już policzone w tym samym miejscu.
+  Zweryfikowane na żywo (headless Chromium): stuknięcie znacznika otwiera
+  `pantryModalOverlay` z 6 wierszami składników (a nie podgląd przepisu),
+  stuknięcie nazwy dania nadal otwiera podgląd przepisu (a nie spiżarnię) —
+  oba kierunki potwierdzone osobno, żeby wykluczyć przechwycenie zdarzenia
+  przez nadrzędny handler karty. CACHE_NAME→v106, `versions/v106/`.

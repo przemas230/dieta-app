@@ -1,0 +1,52 @@
+Wersja v106 (2026-08-28)
+
+Runda „dwie zmiany naraz” (Web only — patrz uwaga o Androidzie na końcu).
+
+1. Klikalny znacznik spiżarni w „Dzisiejszym Planerze” (na prośbę
+   użytkownika). Znacznik „🏺 4/6 w spiżarni” na karcie dania był dotąd
+   samym tekstem — mówił ILE składników brakuje, ale nie CZEGO, a żeby to
+   sprawdzić, trzeba było stuknąć kartę, otworzyć podgląd przepisu i
+   dopiero stamtąd wejść w stan spiżarni. Teraz znacznik jest przyciskiem:
+   jedno stuknięcie otwiera od razu okno „sprawdź co masz” dla tego dania,
+   z listą składników, podpowiedziami zamienników i przyciskami
+   „🛒”/„+ Mam to”.
+
+   Wygląda dokładnie tak jak wcześniej (pełny reset stylu przycisku),
+   dochodzi tylko kropkowane podkreślenie — ta sama konwencja „ten tekst
+   coś otwiera”, którą aplikacja już stosuje dla tytułów przepisów.
+   Stuknięcie reszty karty nadal otwiera podgląd przepisu, bez zmian.
+
+2. Cofanie zamiast okienek potwierdzenia przy operacjach na planie
+   (rekomendacja własna). Mechanizm „Cofnij” w powiadomieniu istniał w
+   aplikacji od czasu dodania go przy usuwaniu pojedynczego dania, ale był
+   podpięty tylko pod tę jedną akcję — podczas gdy trzy inne, znacznie
+   bardziej destrukcyjne, wciąż używały blokującego okienka „na pewno?”.
+   To była niespójność i słabsze zabezpieczenie, bo potwierdzenie chroni
+   tylko ZANIM popełnisz pomyłkę, a nie po.
+
+   Zmienione:
+   - „🗑️ Wyczyść ten dzień” — działa od razu, bez pytania, z „Cofnij”.
+   - „🎲 Losuj ten dzień” — jak wyżej.
+   - „🎲 Wygeneruj losowo cały tydzień” — ZACHOWUJE pytanie (kasuje 35
+     slotów naraz, więc przerwanie jest uzasadnione), ale dodatkowo
+     dostaje „Cofnij”, na wypadek zbyt szybkiego kliknięcia „OK”.
+
+   Cofnięcie przywraca dokładnie poprzedni stan: dania, skale porcji i
+   flagi resztek, dla właściwego zakresu (jeden dzień albo cały tydzień).
+
+Zweryfikowane na żywo (headless Chromium, w pełni offline), nie tylko
+składniowo: stuknięcie znacznika otwiera spiżarnię a nie podgląd przepisu
+(i odwrotnie dla reszty karty — oba kierunki sprawdzone osobno);
+wyczyszczenie dnia + cofnięcie przywróciło pierwotne śniadanie; losowanie
+pustego dnia + cofnięcie wróciło do pustego; losowanie całego tygodnia +
+cofnięcie przywróciło zarówno dzień, który miał plan, jak i dzień, który
+był pusty.
+
+Techniczne: CACHE_NAME service workera podbity do "dieta-app-v106".
+
+Android: obie zmiany świadomie NIE przeniesione w tej turze — to zdalne
+środowisko nie ma dostępu do api.foojay.io (repozytorium toolchainów JDK
+dla Gradle, błąd 403), więc kodu w Kotlinie nie da się tu ani
+skompilować, ani przetestować. Zgodnie z zasadą z CLAUDE.md nie piętrzę
+niezweryfikowanych zmian w Kotlinie — czekają na sesję z realnym dostępem
+do Gradle/emulatora. Odnotowane w android/PARITY.md.

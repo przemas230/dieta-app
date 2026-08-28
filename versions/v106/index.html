@@ -1008,16 +1008,7 @@
   /* Requested 2026-08-26 ("na karcie dzisiejszy planer na każdym daniu z
      racji że jest dużo miejsca dodaj również... znacznik ile produktów
      potrzebnych do dania jest aktualnie w spiżarni a do trzeba kupić"). */
-  /* FR-97/v2 (2026-08-28, user: "klikalny znacznik spiżarni"): was a plain
-     <span>, now a <button> so it can jump straight to "sprawdź co masz" --
-     reset to look identical to the old text (no button chrome) plus the
-     same dotted-underline affordance already used for .recipe-title's own
-     "this text opens something" convention. */
-  .pd-meal-pantry{
-    font-size:10.5px; color:var(--muted); margin-top:1px;
-    background:none; border:none; padding:0; font-family:inherit; text-align:left;
-    text-decoration:underline dotted; text-underline-offset:2px; cursor:pointer;
-  }
+  .pd-meal-pantry{font-size:10.5px; color:var(--muted); margin-top:1px;}
   .pd-meal-kcal{font-size:12px; color:var(--muted); flex:0 0 auto;}
   .pd-meal-remove{background:none; border:none; color:var(--muted); font-size:15px; line-height:1; padding:4px; cursor:pointer; flex:0 0 auto;}
   .pd-meal-card-empty{border:1.5px dashed var(--line); background:transparent; box-shadow:none; color:var(--muted); justify-content:center; font-size:13px; font-weight:600;}
@@ -7643,7 +7634,7 @@ function renderPlannerDashboard(){
       <span class="pd-meal-text">
         <span class="pd-meal-cat">${c.label}</span>
         <span class="pd-meal-name">${r.name}</span>
-        <button type="button" class="pd-meal-pantry" data-pd-pantry-check="${r.id}" title="Sprawdź, czego brakuje w spiżarni">🏺 ${pantryHave}/${pantryTotal} w spiżarni</button>
+        <span class="pd-meal-pantry">🏺 ${pantryHave}/${pantryTotal} w spiżarni</span>
       </span>
       <span class="pd-meal-kcal">${r.kcal} kcal</span>
       <button class="pd-meal-remove" data-pd-remove-cat="${c.id}" title="Usuń z planu">✕</button>
@@ -7719,21 +7710,10 @@ function renderPlannerDashboard(){
   attachPdMealCardSwipe(box, today);
   box.querySelectorAll("[data-pd-toggle-cat]").forEach(el=>{
     el.addEventListener("click", (e)=>{
-      if(e.target.closest("[data-pd-remove-cat]") || e.target.closest("[data-pd-pantry-check]")) return;
+      if(e.target.closest("[data-pd-remove-cat]")) return;
       if(el.dataset.pdSwiped==="1"){ delete el.dataset.pdSwiped; return; }
       const recipe = findRecipeById(el.dataset.pdRecipeId);
       if(recipe) openRecipePreviewModal(recipe);
-    });
-  });
-  // FR-97/v2 (2026-08-28): pantry badge is now a tap target of its own --
-  // jumps straight to "sprawdź co masz" instead of requiring a detour
-  // through the recipe preview modal just to see the same info in more
-  // detail (and get to the "🛒"/"+ Mam to" actions there).
-  box.querySelectorAll("[data-pd-pantry-check]").forEach(btn=>{
-    btn.addEventListener("click", (e)=>{
-      e.stopPropagation();
-      const recipe = findRecipeById(btn.dataset.pdPantryCheck);
-      if(recipe) openPantryModal(recipe);
     });
   });
   box.querySelectorAll("[data-pd-remove-cat]").forEach(btn=>{
@@ -7878,16 +7858,8 @@ function renderPlanner(){
         toast("Powtórzono resztki na kolejny dzień");
       });
     });
-    // Generalized undo (2026-08-28, following FR-91's toast(msg, undoLabel,
-    // onUndo) pattern): both of these used to gate a destructive rewrite of
-    // the whole day behind a blocking confirm() -- replaced with an instant
-    // action + "Cofnij" toast that restores the exact prior state of all
-    // three parallel maps for this day, same safety net as FR-91 without
-    // interrupting the tap with a native dialog.
     card.querySelector("[data-day-random]").addEventListener("click", ()=>{
-      const prevPlan = structuredClone(state.planner[di] || {});
-      const prevScale = structuredClone(state.plannerScale[di] || {});
-      const prevLeftover = structuredClone(state.plannerLeftover[di] || {});
+      if(!confirm(`Wygenerować losowo cały dzień „${day}"? Nadpisze wybrane tam dania.`)) return;
       const dailyTargets = calcTargets(state.profile);
       state.planner[di] = {};
       state.plannerScale[di] = {};
@@ -7900,27 +7872,15 @@ function renderPlanner(){
         state.plannerScale[di][c.id] = idealScaleFor(r, dailyTargets[c.id]);
       });
       saveState(); renderPlanner(); renderHeader();
-      toast(`Wygenerowano plan na ${day}`, "Cofnij", ()=>{
-        state.planner[di] = prevPlan;
-        state.plannerScale[di] = prevScale;
-        state.plannerLeftover[di] = prevLeftover;
-        saveState(); renderPlanner(); renderHeader();
-      });
+      toast(`Wygenerowano plan na ${day}`);
     });
     card.querySelector("[data-day-clear]").addEventListener("click", ()=>{
-      const prevPlan = structuredClone(state.planner[di] || {});
-      const prevScale = structuredClone(state.plannerScale[di] || {});
-      const prevLeftover = structuredClone(state.plannerLeftover[di] || {});
+      if(!confirm(`Wyczyścić wszystkie dania zaplanowane na „${day}"?`)) return;
       state.planner[di] = {};
       state.plannerScale[di] = {};
       state.plannerLeftover[di] = {};
       saveState(); renderPlanner(); renderHeader();
-      toast(`Wyczyszczono plan na ${day}`, "Cofnij", ()=>{
-        state.planner[di] = prevPlan;
-        state.plannerScale[di] = prevScale;
-        state.plannerLeftover[di] = prevLeftover;
-        saveState(); renderPlanner(); renderHeader();
-      });
+      toast(`Wyczyszczono plan na ${day}`);
     });
     card.querySelector("[data-day-copy]").addEventListener("click", ()=> openCopyDayModal(di));
     const spreadBtn = card.querySelector("[data-day-spread]");
@@ -8094,14 +8054,6 @@ document.getElementById("plannerShareCopyBtn").addEventListener("click", async (
 
 document.getElementById("autoPlanBtn").addEventListener("click", ()=>{
   if(!confirm("To nadpisze wszystkie dania zaplanowane w całym tygodniu. Na pewno chcesz wygenerować nowy plan?")) return;
-  // Generalized undo (2026-08-28): the per-day buttons dropped their
-  // confirm() in favor of an undo toast, but this one keeps BOTH -- it
-  // rewrites all 7x5 slots at once, so the blast radius justifies the
-  // interruption, and the undo is the safety net for having confirmed too
-  // fast rather than a replacement for asking.
-  const prevPlan = structuredClone(state.planner);
-  const prevScale = structuredClone(state.plannerScale);
-  const prevLeftover = structuredClone(state.plannerLeftover);
   const pools = {};
   CATS.forEach(c=>{ pools[c.id] = [...fittingPool(c.id, state.profile)].sort(()=>Math.random()-0.5); });
   const idx = {};
@@ -8120,12 +8072,7 @@ document.getElementById("autoPlanBtn").addEventListener("click", ()=>{
     });
   });
   saveState(); renderPlanner(); renderHeader();
-  toast("Wygenerowano plan na cały tydzień", "Cofnij", ()=>{
-    state.planner = prevPlan;
-    state.plannerScale = prevScale;
-    state.plannerLeftover = prevLeftover;
-    saveState(); renderPlanner(); renderHeader();
-  });
+  toast("Wygenerowano plan na cały tydzień");
 });
 
 // ---------- PLANNER RECIPE PICKER / DETAIL MODAL ----------
