@@ -1,0 +1,69 @@
+Wersja v112 (2026-08-28)
+
+Najpoważniejszy błąd znaleziony w tej sesji — daty liczone w UTC zamiast
+lokalnie (Web only).
+
+1. NAPRAWIONY BŁĄD: aplikacja liczyła „który dziś jest dzień” w strefie
+   UTC, a nie w Twojej (FR-101).
+
+   Polska jest UTC+1 zimą i UTC+2 latem, więc miało to dwa realne skutki:
+
+   a) Między północą a 01:00/02:00 aplikacja uważała, że jest jeszcze
+      WCZORAJ. Szklanka wody albo posiłek zapisane o 00:30 trafiały do
+      poprzedniego dnia, a licznik nie zerował się o północy tylko z
+      opóźnieniem.
+
+   b) Przechodzenie po wcześniejszych dniach w zakładce Postęp było
+      rozbite CAŁY CZAS, nie tylko w nocy. Zmierzone w przeglądarce
+      ustawionej na czas warszawski: strzałka „poprzedni dzień” z 28.08
+      przeskakiwała na 26.08 (pomijając 27.08), a strzałka „następny
+      dzień” nie działała w ogóle — cofnąwszy się, nie dało się wrócić do
+      dziś bez przeładowania aplikacji.
+
+   Ciekawostka wyjaśniająca, czemu to przetrwało niezauważone: w strefie
+   UTC i w strefach amerykańskich te same funkcje działały poprawnie.
+   Błąd dotyczył dokładnie tych użytkowników, dla których aplikacja
+   powstała.
+
+   Naprawione we wszystkich czterech miejscach (trzy w aplikacji, jedno w
+   mechanizmie powiadomień o wodzie — te dwa MUSZĄ liczyć dzień tak samo,
+   bo jeden zapisuje, a drugi odczytuje ten sam licznik).
+
+   Uwaga: dane zapisane przed poprawką zostają tam, gdzie były. Świadomie
+   nie ma automatycznej „naprawy historii” — nie da się odróżnić wpisu
+   źle przypisanego przez ten błąd od wpisu, który celowo przypisałeś do
+   wcześniejszego dnia (aplikacja na to pozwala), więc poprawianie tego
+   byłoby zgadywaniem na Twoich danych.
+
+2. Status postu przerywanego odświeża się teraz sam (FR-94/v4).
+
+   Dotąd przeliczał się tylko przy okazji innego odświeżenia ekranu, więc
+   aplikacja zostawiona otwarta potrafiła długo po zamknięciu okna
+   jedzenia dalej pokazywać „🍽️ Okno jedzenia”. Funkcja, której cała
+   wartość polega na pokazywaniu aktualnego stanu, pokazywała stan
+   nieaktualny.
+
+   Dodany lekki „tik zegara” (co minutę), który aktualizuje sam tekst
+   statusu w miejscu — bez przebudowywania całego ekranu, żeby nie
+   przerywać przesuwania kart ani nie resetować przewijania. Ten sam
+   mechanizm wykrywa też zmianę doby: aplikacja zostawiona otwarta na noc
+   sama przechodzi na nowy dzień (nowy licznik wody, nowy „Dzisiejszy
+   Planer”), zamiast pokazywać wczoraj do czasu ręcznego odświeżenia.
+
+Zweryfikowane na żywo (headless Chromium, w pełni offline): daty
+sprawdzone w PIĘCIU strefach czasowych (Warszawa, UTC, Nowy Jork, Tokio,
+Auckland) z identycznymi wynikami, także na granicach miesiąca i roku;
+osobno z zegarem zamrożonym na 00:30 czasu warszawskiego; oraz przez
+realne klikanie strzałek w zakładce Postęp (29→28→27→26→27→28→29, z
+poprawnym wyłączaniem przycisku „następny” na dziś). Status postu
+sprawdzony z podstawionym zegarem w obu stanach i przy włączaniu/
+wyłączaniu opcji.
+
+Techniczne: CACHE_NAME service workera podbity do "dieta-app-v112".
+
+Android: nieprzeniesione. Kotlin ma inne API dat (LocalDate.now() jest z
+definicji lokalne), więc ten konkretny błąd najprawdopodobniej tam nie
+występuje — ale warto to potwierdzić, zamiast zakładać. To zdalne
+środowisko nie ma dostępu do api.foojay.io (toolchainy JDK dla Gradle,
+błąd 403), więc nie dało się tego tu sprawdzić. Odnotowane w
+android/PARITY.md.

@@ -8602,26 +8602,7 @@ document.getElementById("plannerModalClose").addEventListener("click", ()=> plan
 plannerModalOverlay.addEventListener("click", (e)=>{ if(e.target===plannerModalOverlay) plannerModalOverlay.classList.remove("show"); });
 
 // ---------- PROGRESS ----------
-// Date keys are LOCAL calendar days, not UTC ones. Fixed 2026-08-28: every
-// one of these used `toISOString().slice(0,10)`, which is UTC -- and Poland
-// (this app's whole audience) is UTC+1/+2, so:
-//   * todayStr() returned YESTERDAY between local midnight and 01:00/02:00,
-//     meaning a glass of water or a meal logged just after midnight was
-//     filed under the previous day (and the day never rolled over on time);
-//   * addDaysToDateStr() was off by one ALL the time, because it built
-//     LOCAL midnight and then read the UTC date off it -- which is still
-//     the previous day east of Greenwich. Measured in a real browser set to
-//     Europe/Warsaw: "previous day" from 2026-08-28 landed on 2026-08-26
-//     (skipping a day each tap) and "next day" didn't move at all. The same
-//     three functions behaved correctly in UTC and America/New_York, which
-//     is exactly why this could sit here unnoticed.
-// Reading the local Y/M/D components sidesteps the timezone round-trip
-// entirely; there is no "correct" UTC offset to apply instead, because the
-// user's own calendar day IS the thing being keyed.
-function localDateStr(d){
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-}
-function todayStr(){ return localDateStr(new Date()); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
 
 // Small inline-SVG icon shared by the header water strip and the Postęp
 // "Nawodnienie" cup row. Filled = solid blue (water logged for that slot),
@@ -9199,12 +9180,12 @@ function dailyEatenKcal(date){
 function dateStrDaysAgo(n){
   const d = new Date();
   d.setDate(d.getDate()-n);
-  return localDateStr(d);
+  return d.toISOString().slice(0,10);
 }
 function addDaysToDateStr(dateStr, delta){
   const d = new Date(dateStr+"T00:00:00");
   d.setDate(d.getDate()+delta);
-  return localDateStr(d);
+  return d.toISOString().slice(0,10);
 }
 // Consecutive days (counting back from today) where eaten kcal is recorded
 // and lands within 15% of that day's target — today itself doesn't break
@@ -9597,52 +9578,6 @@ function onReminderSettingsChanged(){
 });
 document.getElementById("enableReminderBtn").addEventListener("click", enableWaterReminder);
 setInterval(checkWaterReminderSchedule, 30000);
-
-// ---------- CLOCK TICK ----------
-// Two things in this app depend on the wall clock rather than on anything
-// the user does, and both were previously only refreshed as a side effect
-// of some other render:
-//   * the intermittent-fasting status (FR-94) -- left on screen it kept
-//     claiming "okno jedzenia" long after the window had actually closed;
-//   * the calendar day itself -- as a PWA this is routinely left open
-//     overnight, and everything keyed by todayStr() (the kcal ring, water
-//     count, "Dzisiejszy Planer") kept showing YESTERDAY until the user
-//     happened to trigger a render.
-// Deliberately cheap and non-disruptive: the fasting status is patched in
-// place (no dashboard rebuild, which would interrupt an in-progress swipe
-// or reset scroll), and the full re-render happens only on the one tick a
-// day where the date actually changes.
-let lastSeenDateStr = todayStr();
-function refreshFastingStatusInPlace(){
-  const status = computeFastingStatus();
-  const headerEl = document.getElementById("fastingStatus");
-  const pdEl = document.querySelector(".pd-fasting-status");
-  // Presence changed (enabled/disabled since the last render) -- the
-  // dashboard has to be rebuilt for the element to appear or disappear.
-  if((!!status) !== (!!pdEl) && (state.theme==="clinic" || state.theme==="clinic_dark")){
-    renderPlannerDashboard();
-  }else if(status && pdEl){
-    pdEl.textContent = status.text;
-    pdEl.classList.toggle("fasting", !status.inWindow);
-  }
-  if(headerEl) renderFastingStatus();
-}
-setInterval(()=>{
-  const now = todayStr();
-  if(now !== lastSeenDateStr){
-    lastSeenDateStr = now;
-    // A new day: water rolls over, "eaten" starts empty, the planner's
-    // "today" moves on. renderHeader() already fans out to the dashboard.
-    renderHeader();
-    renderPlanner();
-    if(document.getElementById("view-progress").classList.contains("active")){
-      trackerViewDate = now;
-      renderTodayTracker();
-    }
-    return;
-  }
-  refreshFastingStatusInPlace();
-}, 60000);
 
 // ---------- WATER NOTIFICATION DIAGNOSTICS ----------
 async function renderWaterActionLog(){

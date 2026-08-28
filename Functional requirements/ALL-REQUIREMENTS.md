@@ -79,6 +79,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-60: Warunkowe wyświetlanie „Złotych zasad przy Hashimoto i insulinooporności”](#fr-60-warunkowe-wyświetlanie-złotych-zasad-przy-hashimoto-i-insulinooporności)
 - [FR-83: Edycja wcześniej wpisanej wagi i historii kalorii](#fr-83-edycja-wcześniej-wpisanej-wagi-i-historii-kalorii)
 - [FR-94: Śledzenie okna postu przerywanego (intermittent fasting)](#fr-94-śledzenie-okna-postu-przerywanego-intermittent-fasting)
+- [FR-101: Dni kalendarzowe liczone lokalnie, nie w UTC](#fr-101-dni-kalendarzowe-liczone-lokalnie-nie-w-utc)
 
 ### Nagłówek i nawigacja
 - [FR-43: Pasek filtrów i kategorii przyklejony pod nagłówkiem](#fr-43-pasek-filtrów-i-kategorii-przyklejony-pod-nagłówkiem)
@@ -156,6 +157,7 @@ Przegląd wymagań pod kątem wzajemnych sprzeczności. Żadna z poniższych par
 12. **FR-99 (wyszukiwanie na liście zakupów) vs FR-26 (udostępnianie i czyszczenie listy).** Potencjalna pułapka: filtr zawęża to, co widać, więc akcje działające „na liście” mogłyby zacząć działać na przefiltrowanym podzbiorze bez ostrzeżenia. Rozstrzygnięcie: filtr jest wyłącznie sposobem PATRZENIA na listę i nie wpływa na żadną akcję — `buildListText()` (udostępnianie/kopiowanie) eksportuje całą listę, a „Usuń odhaczone”/„Wyczyść całą listę” działają na pełnym zbiorze, niezależnie od aktywnej frazy. Zweryfikowane testem: przy aktywnym filtrze zawężającym widok do 1 pozycji udostępnianie nadal zwraca wszystkie 5.
 13. **FR-99 (wyszukiwanie na liście zakupów) vs FR-75 (widok kafelkowy listy).** Nie wykluczają się — oba widoki renderują ten sam `state.shopping`, więc filtr jest stosowany raz, wspólnie dla obu, i przełączenie widoku przy aktywnej frazie nie gubi filtrowania.
 14. **FR-98 (kopia zapasowa do pliku) vs FR-73 (synchronizacja z chmurą) i FR-89 (reset danych konta).** Nie wykluczają się, ale świadomie się pokrywają: zakres eksportu to dokładnie `SYNCED_STATE_KEYS`, czyli ten sam zbiór, który wędruje do chmury — kopia obejmująca cokolwiek innego rozjeżdżałaby się z tym, co przenosi zalogowanie na drugim urządzeniu. Import celowo przechodzi przez to samo `refreshUiAfterSync()`, co dane przychodzące z chmury, żeby nie powstała druga, równoległa ścieżka „przeładuj wszystko po podmianie stanu”. Względem FR-89 kopia jest zabezpieczeniem: reset konta jest nieodwracalny po stronie chmury, ale plik zapisany wcześniej pozwala odtworzyć dane.
+15. **FR-101 (lokalne dni kalendarzowe) vs FR-83 (edycja wcześniejszych dni) i FR-38 (licznik wody z powiadomień).** Względem FR-83: świadomie NIE ma migracji danych zapisanych przed naprawą — wpisu źle przypisanego przez błąd UTC nie da się odróżnić od wpisu, który użytkownik celowo przypisał do wcześniejszego dnia korzystając z FR-83, więc „naprawianie” historii byłoby zgadywaniem na danych, których nie wolno ruszać. Względem FR-38: Service Worker i aplikacja MUSZĄ liczyć klucz dnia identycznie, bo licznik wody jest zapisywany w jednym miejscu, a odczytywany w drugim — obie implementacje zostały zmienione w tej samej turze i celowo mają w kodzie wzajemne odwołania, żeby nie rozjechały się przy kolejnej zmianie.
 
 ---
 
@@ -4506,6 +4508,20 @@ duplikat.
   sprawdzona na motywie nie-Klinika (status nadal w starym miejscu, bez
   zmian). `node -e "new Function(...)"` na obu blokach `<script>` przechodzi.
   CACHE_NAME→v104, `versions/v104/`. Android: bez zmian (już naprawione w v2).
+- **v4** (2026-08-28, Web only): Status odświeża się teraz sam z upływem
+  czasu. Wcześniej był przeliczany wyłącznie przy okazji jakiegoś innego
+  renderowania, więc aplikacja zostawiona otwarta potrafiła długo po
+  zamknięciu okna jedzenia dalej twierdzić „🍽️ Okno jedzenia” — czyli
+  funkcja, której cała wartość polega na pokazywaniu AKTUALNEGO stanu,
+  pokazywała stan nieaktualny. Dodany wspólny „tik zegara” (co 60 s), który
+  aktualizuje tekst i styl statusu **w miejscu**, bez przebudowywania
+  dashboardu — świadomie, bo pełne renderowanie co minutę przerywałoby gest
+  przesuwania karty i resetowało pozycję przewijania. Ten sam tik wykrywa
+  też zmianę doby (patrz FR-101) i dopiero wtedy robi pełne odświeżenie.
+  Zweryfikowane na żywo (headless Chromium) z podstawionym zegarem:
+  przejście 22:00 → 14:00 → 22:00 poprawnie przełącza tekst i klasę
+  „post/jedzenie”, wyłączenie opcji usuwa element, ponowne włączenie
+  przywraca go. CACHE_NAME→v112, `versions/v112/`.
 
 ---
 
@@ -4916,3 +4932,88 @@ skompilować ani przetestować. Odnotowane w `android/PARITY.md`.
   poniżej celu). Sprawdzone też wizualnie zrzutem ekranu na pełnym,
   5-dniowym planie w domyślnym motywie Klinika. CACHE_NAME→v110,
   `versions/v110/`.
+
+---
+
+# FR-101: Dni kalendarzowe liczone lokalnie, nie w UTC
+
+**Obszar:** Śledzenie postępów / cała aplikacja (przekrojowe), Web
+**Status:** Zaimplementowane na webie (Android — do sprawdzenia, patrz Uwagi)
+
+## Opis
+Wszystkie klucze dat w aplikacji (`RRRR-MM-DD`) oznaczają **lokalny dzień
+kalendarzowy użytkownika**, a nie dzień w strefie UTC. Dotyczy to każdego
+miejsca, w którym aplikacja pyta „który dziś jest dzień?”: licznika wody,
+zjedzonych posiłków, historii kalorii, serii (streaks), nawigacji po
+wcześniejszych dniach w zakładce Postęp oraz licznika wody obsługiwanego
+przez Service Worker w powiadomieniach.
+
+To wymaganie spisane zostało przy okazji naprawy błędu (2026-08-28) —
+wcześniej daty były wyliczane z `toISOString()`, czyli w UTC. Polska jest
+UTC+1 (zima) / UTC+2 (lato), więc:
+
+- **`todayStr()` zwracało WCZORAJ** między lokalną północą a 01:00/02:00.
+  Szklanka wody albo posiłek zapisane o 00:30 trafiały do poprzedniego dnia,
+  a doba nie „przeskakiwała” o północy tylko z opóźnieniem.
+- **`addDaysToDateStr()` było przesunięte o dzień ZAWSZE**, niezależnie od
+  pory — budowało lokalną północ i odczytywało z niej datę UTC, która na
+  wschód od Greenwich jest wciąż dniem poprzednim. W praktyce, zmierzone w
+  przeglądarce ustawionej na Europe/Warsaw: strzałka „poprzedni dzień” w
+  zakładce Postęp przeskakiwała z 28.08 na **26.08** (pomijając 27.08), a
+  strzałka „następny dzień” **nie działała w ogóle** — użytkownik cofnięty
+  w przeszłość nie mógł wrócić do dziś bez przeładowania aplikacji.
+
+Te same funkcje zachowywały się poprawnie w strefie UTC i w strefach
+zachodnich (potwierdzone testem w Europe/Warsaw, UTC, America/New_York) —
+dlatego błąd mógł tu przetrwać niezauważony, mimo że dotyczył całej
+polskojęzycznej grupy użytkowników tej aplikacji.
+
+## Kryteria akceptacji
+- Klucz dnia zwracany przez aplikację odpowiada dacie z lokalnego
+  kalendarza użytkownika o każdej porze doby, w tym tuż po północy.
+- Przejście o N dni w tył/przód daje dokładnie N dni różnicy, w każdej
+  strefie czasowej.
+- Przechodzenie po dniach działa poprawnie przez granice miesiąca i roku
+  (31.08 → 01.09, 31.12.2026 → 01.01.2027 i z powrotem).
+- Strzałki „poprzedni/następny dzień” w zakładce Postęp przesuwają się o
+  dokładnie jeden dzień i pozwalają wrócić do dnia dzisiejszego; przycisk
+  „następny” jest nieaktywny, gdy pokazywany jest dzień dzisiejszy.
+- Service Worker (licznik wody z powiadomień) używa DOKŁADNIE tego samego
+  klucza dnia co aplikacja — inaczej jedna doba rozjeżdżałaby się na dwa
+  osobne wpisy.
+
+## Uwagi
+Naprawione przez odczyt lokalnych składowych daty (`getFullYear()`/
+`getMonth()`/`getDate()`) zamiast konwersji przez UTC. Nie ma tu „poprawnego
+przesunięcia UTC”, które można by zamiast tego zastosować — kluczowana jest
+własna doba kalendarzowa użytkownika, więc każda konwersja stref jest
+z definicji błędem.
+
+Dane zapisane PRZED tą poprawką pozostają tam, gdzie były: wpis zrobiony
+o 00:30 jest nadal przypisany do poprzedniego dnia. Świadomie nie ma
+migracji — nie da się odróżnić wpisu źle przypisanego przez ten błąd od
+wpisu, który użytkownik celowo przypisał do wcześniejszego dnia (FR-83
+pozwala edytować przeszłe dni), więc „naprawianie” historii byłoby
+zgadywaniem na danych, których nie wolno ruszać.
+
+**Android: do sprawdzenia.** Ta sesja pracuje w środowisku bez dostępu do
+`api.foojay.io` (toolchain JDK dla Gradle, błąd 403 przy
+`:app:compileDebugKotlin`), więc nie dało się tu ani przejrzeć zachowania
+Kotlina na żywo, ani go skompilować. Kotlin ma inne API dat niż JS
+(`LocalDate.now()` jest z definicji lokalne), więc ten konkretny błąd
+najprawdopodobniej tam nie występuje — ale warto to potwierdzić przy
+najbliższej okazji, zamiast zakładać. Odnotowane w `android/PARITY.md`.
+
+## Historia rewizji
+- **v1** (2026-08-28, Web only): Pierwsza wersja — spisana razem z naprawą
+  błędu opisanego wyżej. Naprawione trzy funkcje w `index.html`
+  (`todayStr`, `dateStrDaysAgo`, `addDaysToDateStr`, przez wspólne
+  `localDateStr`) i jedna w `sw.js` (`todayStr`). Zweryfikowane na żywo
+  (headless Chromium) w PIĘCIU strefach czasowych — Europe/Warsaw, UTC,
+  America/New_York, Asia/Tokyo, Pacific/Auckland — z identycznymi wynikami,
+  w tym na granicach miesiąca i roku; osobno, z zamrożonym zegarem na
+  00:30 czasu warszawskiego, potwierdzone że `todayStr()` zwraca już
+  właściwy (nowy) dzień; oraz przez realny przepływ UI: sześć kliknięć
+  strzałek w zakładce Postęp przechodzi 29→28→27→26→27→28→29 i poprawnie
+  wyłącza przycisk „następny” na dniu dzisiejszym.
+  CACHE_NAME→v112, `versions/v112/`.

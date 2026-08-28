@@ -1,4 +1,4 @@
-const CACHE_NAME = "dieta-app-v112";
+const CACHE_NAME = "dieta-app-v111";
 const ASSETS = ["./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -79,15 +79,7 @@ async function setKV(key, val){
     tx.onerror = () => resolve();
   });
 }
-// Must produce the SAME key as index.html's own todayStr() -- the water
-// count is written here (notification quick-actions) and read there, so a
-// mismatch would silently split one day's tally across two keys. Both are
-// local-calendar-day based since 2026-08-28; see the long comment in
-// index.html for why UTC was wrong for this app's users.
-function todayStr(){
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-}
+function todayStr(){ return new Date().toISOString().slice(0, 10); }
 
 function dropletsText(count){
   let out = "";
