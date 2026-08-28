@@ -2053,8 +2053,6 @@
           <label>Jedzenie od (godz. 0-23)<input type="number" min="0" max="23" id="setFastingStart"></label>
           <label>Jedzenie do (godz. 0-23)<input type="number" min="0" max="23" id="setFastingEnd"></label>
         </div>
-        <label class="toggle-row" style="margin-top:10px;"><input type="checkbox" id="setFastingNotify"> Powiadamiaj o otwarciu i zamknięciu okna jedzenia</label>
-        <div class="hint-text" style="margin:0;">Dwa powiadomienia dziennie, dokładnie o ustawionych godzinach. Wymaga zgody na powiadomienia — jeśli jej jeszcze nie ma, aplikacja poprosi o nią przy włączaniu tej opcji.</div>
       </div>
 
       <div class="card">
@@ -3488,13 +3486,7 @@ const DEFAULT_WATER_REMINDER = {enabled:false, intervalMinutes:90, activeFrom:"0
 // eating is one of the most-requested diet-app features per user reviews):
 // windowStart/windowEnd are hours-of-day (0-23) marking the EATING window,
 // e.g. 12-20 for a classic 16:8 schedule -- everything outside it is "post".
-// `notify` (2026-08-28) is opt-in on top of the tracker itself: knowing the
-// window boundary is only useful if something tells you when it moves, but
-// nobody should start getting notifications just because they switched the
-// status text on. `lastNotified` remembers which boundary was last
-// announced ("<date>|open" / "<date>|close") so the same one is never sent
-// twice, no matter how often the check runs.
-const DEFAULT_FASTING = {enabled:false, windowStart:12, windowEnd:20, notify:false, lastNotified:""};
+const DEFAULT_FASTING = {enabled:false, windowStart:12, windowEnd:20};
 // Requested 2026-08-26 ("dodaj też kilka innych schematów kolorystycznych
 // dla motywów klinika i klinika noc"): additional Klinika color variants,
 // see the [data-clinic-palette] CSS blocks above for the actual colors.
@@ -3575,11 +3567,6 @@ function loadState(){
       if(s.communityRecipesEnabled===undefined) s.communityRecipesEnabled = false;
       if(s.remainingKcalFillEnabled===undefined) s.remainingKcalFillEnabled = false;
       if(!s.fasting) s.fasting = {...DEFAULT_FASTING};
-      // Existing users have a `fasting` object from before the notify
-      // option existed -- fill in only what's missing, so their configured
-      // hours survive untouched.
-      if(s.fasting.notify===undefined) s.fasting.notify = false;
-      if(s.fasting.lastNotified===undefined) s.fasting.lastNotified = "";
       if(s.clinicPalette===undefined) s.clinicPalette = "default";
       if(!s.household) s.household = {id:null, name:"", inviteCode:null, members:[]};
       if(s._lastSyncedSnapshot===undefined) s._lastSyncedSnapshot = null;
@@ -4904,49 +4891,6 @@ function computeFastingStatus(){
       : `⏳ Okno postu — jedzenie od ${fmt(windowStart)}`
   };
 }
-// Decides whether a boundary notification is due, WITHOUT sending anything.
-// Split out deliberately: the actual showNotification() path needs a service
-// worker and a granted permission, neither of which can be exercised in the
-// headless checks used to verify this app -- but every rule that decides
-// "should the user be pinged right now" can be, and that is where the bugs
-// would live. `nowDate`/`todayKey` are passed in for the same reason.
-// The rule: fire once, within GRACE_MIN minutes after a boundary. Anything
-// later is stale (phone off, tab asleep) and a notification announcing an
-// eating window that opened three hours ago is worse than none. `key` makes
-// each boundary announceable exactly once per day.
-const FASTING_NOTIFY_GRACE_MIN = 10;
-function fastingNotificationDue(fasting, nowDate, todayKey){
-  if(!fasting || !fasting.enabled || !fasting.notify) return null;
-  const {windowStart, windowEnd} = fasting;
-  if(windowStart === windowEnd) return null;
-  const minutes = nowDate.getHours()*60 + nowDate.getMinutes();
-  const check = (boundaryHour, kind, title, body)=>{
-    const delta = minutes - boundaryHour*60;
-    if(delta < 0 || delta > FASTING_NOTIFY_GRACE_MIN) return null;
-    const key = `${todayKey}|${kind}`;
-    if(fasting.lastNotified === key) return null;
-    return {key, title, body};
-  };
-  return check(windowStart, "open", "🍽️ Okno jedzenia otwarte",
-               `Możesz jeść do ${String(windowEnd).padStart(2,"0")}:00.`)
-      || check(windowEnd, "close", "⏳ Okno jedzenia zamknięte",
-               `Post do ${String(windowStart).padStart(2,"0")}:00.`);
-}
-async function checkFastingNotification(){
-  const due = fastingNotificationDue(state.fasting, new Date(), todayStr());
-  if(!due) return;
-  // Marked as sent BEFORE awaiting the notification: if showNotification
-  // fails (permission revoked, no service worker), the user simply gets
-  // nothing -- retrying every minute for the rest of the grace window would
-  // be worse than staying quiet.
-  state.fasting.lastNotified = due.key;
-  saveState();
-  if(!("serviceWorker" in navigator) || !("Notification" in window) || Notification.permission!=="granted") return;
-  try{
-    const reg = await navigator.serviceWorker.ready;
-    await reg.showNotification(due.title, {body: due.body, tag:"fasting-window", icon:"icon-192.png"});
-  }catch(e){}
-}
 function renderFastingStatus(){
   const el = document.getElementById("fastingStatus");
   if(!el) return;
@@ -5098,7 +5042,6 @@ function loadSettingsForm(){
   document.getElementById("setCommunityRecipes").checked = !!state.communityRecipesEnabled;
   document.getElementById("setRemainingKcalFill").checked = !!state.remainingKcalFillEnabled;
   document.getElementById("setFastingEnabled").checked = !!state.fasting.enabled;
-  document.getElementById("setFastingNotify").checked = !!state.fasting.notify;
   document.getElementById("setFastingStart").value = state.fasting.windowStart;
   document.getElementById("setFastingEnd").value = state.fasting.windowEnd;
   // FR-72/FR-89: sex/activity/goal now gated on `configured` the same way
@@ -5213,33 +5156,10 @@ document.getElementById("setFastingEnabled").addEventListener("change", (e)=>{
     state.fasting.windowEnd = end;
     document.getElementById("setFastingStart").value = start;
     document.getElementById("setFastingEnd").value = end;
-    // Changing the hours invalidates any boundary already announced today --
-    // the old one no longer corresponds to a real boundary, and the new one
-    // deserves its own notification if it is still ahead.
-    state.fasting.lastNotified = "";
     saveState();
     renderFastingStatus();
     renderPlannerDashboard();
   });
-});
-document.getElementById("setFastingNotify").addEventListener("change", async (e)=>{
-  const wanted = e.target.checked;
-  if(wanted && "Notification" in window && Notification.permission === "default"){
-    try{ await Notification.requestPermission(); }catch(err){}
-  }
-  if(wanted && (!("Notification" in window) || Notification.permission !== "granted")){
-    e.target.checked = false;
-    state.fasting.notify = false;
-    saveState();
-    toast("Bez zgody na powiadomienia ta opcja nie zadziała");
-    return;
-  }
-  state.fasting.notify = wanted;
-  // Starting fresh: don't let a boundary key left over from an earlier
-  // enable/disable cycle swallow today's next notification.
-  if(wanted) state.fasting.lastNotified = "";
-  saveState();
-  toast(wanted ? "Powiadomienia o oknie jedzenia włączone" : "Powiadomienia o oknie jedzenia wyłączone");
 });
 
 // Reads the *actual* active Cache Storage entry rather than a manually
@@ -9756,7 +9676,6 @@ setInterval(()=>{
     return;
   }
   refreshFastingStatusInPlace();
-  checkFastingNotification();
 }, 60000);
 
 // ---------- WATER NOTIFICATION DIAGNOSTICS ----------

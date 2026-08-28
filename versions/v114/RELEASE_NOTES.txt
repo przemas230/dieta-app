@@ -1,0 +1,51 @@
+Wersja v114 (2026-08-28)
+
+Powiadomienia o oknie postu przerywanego (FR-94/v5, Web only) — ostatnia
+pozycja z listy rekomendacji, którą zaproponowałem wieczorem.
+
+Sam status na ekranie („🍽️ Okno jedzenia” / „⏳ Okno postu”) wymaga, żeby
+na niego spojrzeć — a cała wartość okna czasowego polega na tym, żeby
+wiedzieć, KIEDY się zmienia. Nowa opcja wysyła dwa powiadomienia dziennie:
+gdy okno jedzenia się otwiera i gdy się zamyka.
+
+Jak to działa:
+
+- Osobny przełącznik w Ustawieniach → Przypomnienia, obok godzin okna,
+  DOMYŚLNIE WYŁĄCZONY. Samo włączenie śledzenia okna nie zaczyna niczego
+  wysyłać — to świadoma decyzja, żeby nikt nie zaczął dostawać
+  powiadomień tylko dlatego, że włączył sobie napis na ekranie.
+
+- Przy włączaniu aplikacja poprosi o zgodę na powiadomienia, jeśli jej
+  jeszcze nie ma. Przy odmowie przełącznik wraca do pozycji wyłączonej i
+  pokazuje się komunikat — zamiast zostawiać włączoną opcję, która i tak
+  nic nie zrobi.
+
+- Powiadomienie wychodzi tylko w ciągu 10 minut od granicy. Jeśli telefon
+  był w tym czasie wyłączony albo aplikacja spała, powiadomienie jest
+  pomijane — komunikat „okno jedzenia właśnie się otworzyło” wysłany trzy
+  godziny po fakcie byłby gorszy niż jego brak.
+
+- Ta sama granica nigdy nie jest ogłaszana dwa razy tego samego dnia.
+  Zmiana godzin okna kasuje tę pamięć, więc nowa granica może zostać
+  ogłoszona jeszcze tego samego dnia.
+
+- Jeśli używasz aplikacji na kilku urządzeniach na tym samym koncie, daną
+  granicę ogłosi jedno z nich, a nie każde z osobna.
+
+Nie powstał tu żaden nowy mechanizm harmonogramowania — funkcja korzysta z
+tego samego „tiku zegara”, który w poprzedniej wersji zaczął odświeżać
+status postu i wykrywać zmianę doby.
+
+Zweryfikowane na żywo (headless Chromium, w pełni offline): 14 przypadków
+logiki decydującej o wysyłce (dokładna godzina granicy, wnętrze i koniec
+okna tolerancji, minuta przed, druga granica tego samego dnia, powtórka
+tego samego dnia, ta sama granica nazajutrz, wyłączona opcja, wyłączony
+tracker, okno 24-godzinne, okno przez północ, brak konfiguracji) oraz
+pełna ścieżka przełącznika w Ustawieniach (odmowa zgody, zgoda,
+wyłączenie, odtworzenie stanu w formularzu).
+
+Techniczne: CACHE_NAME service workera podbity do "dieta-app-v114".
+
+Android: nieprzeniesione — to zdalne środowisko nie ma dostępu do
+api.foojay.io (toolchainy JDK dla Gradle, błąd 403). Odnotowane w
+android/PARITY.md.
