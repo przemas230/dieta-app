@@ -1,0 +1,45 @@
+Wersja v111 (2026-08-28)
+
+Dokończenie naprawy z poprzedniej wersji: te same „polskie ogonki” psuły
+jeszcze dwa miejsca w aplikacji (Web only).
+
+Po naprawieniu wyszukiwarki przepisów (v110) przejrzałem WSZYSTKIE miejsca
+w aplikacji, które porównują wpisany tekst z nazwami — okazało się, że ten
+sam błąd siedział jeszcze w dwóch, w tym w jednym naprawdę dokuczliwym.
+
+1. Podpowiedzi przy dodawaniu przekąski (FR-34/v3) — najpoważniejsze.
+
+   Baza ma 336 produktów, z czego 89 nazw zawiera polski ogonek. Lista
+   podpowiedzi porównywała nazwy dosłownie, więc wszystkie te 89 pozycji
+   było nieosiągalne, jeśli nie wpisałeś ogonka: „jablko” dawało ZERO
+   podpowiedzi, mimo że „jabłko” jest w bazie. To samo z „chleb zytni”,
+   „bulka pszenna”, „ogorek”, „borowki / jagody”, „twarog bez laktozy”.
+
+   Szczególnie irytujące akurat tutaj, bo cały sens podpowiedzi polega na
+   tym, żeby NIE trzeba było wpisywać pełnej, dokładnej nazwy.
+
+   Teraz „jablko” podpowiada „🍎 jabłko / jabłko suszone / 🧃 sok
+   jabłkowy” — dokładnie tak samo jak „jabłko”. Kolejność wyników bez
+   zmian (najpierw pasujące od początku nazwy, potem zawierające frazę
+   w środku).
+
+2. Filtr listy ulubionych składników w Ustawieniach (FR-32/v2).
+
+   Ten sam problem, mniejsza skala: „platki owsiane”, „salata” czy
+   „chleb zytni” nie znajdowały niczego, mimo że wszystkie trzy są na
+   liście.
+
+Zweryfikowane na żywo (headless Chromium, w pełni offline) przez realne
+przejście przez interfejs — nie tylko wywołanie funkcji: wpisanie zapytań
+bez ogonków w polu przekąski i w filtrze ulubionych składników zwraca
+teraz te same wyniki, co wersje z ogonkami.
+
+Techniczne: CACHE_NAME service workera podbity do "dieta-app-v111".
+Wszystkie trzy naprawy (ta i wyszukiwarka przepisów z v110) używają tej
+samej funkcji, którą aplikacja miała już od dawna do rozpoznawania nazw
+składników — nie doszedł żaden nowy mechanizm.
+
+Android: nieprzeniesione — to zdalne środowisko nie ma dostępu do
+api.foojay.io (repozytorium toolchainów JDK dla Gradle, błąd 403), więc
+kodu w Kotlinie nie da się tu ani skompilować, ani przetestować.
+Odnotowane w android/PARITY.md.

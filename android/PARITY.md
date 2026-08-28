@@ -44,9 +44,9 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-29 | Odmiana gramatyczna nazw produktów w spiżarni | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-30 | Zmiana kategorii i usuwanie śledzenia kafelka spiżarni | ✅ | ✅ v2 (2026-08-11): naprawiony realny błąd "menu po przytrzymaniu nic nie robi" (stale pointerInput closure), potwierdzone na żywo na emulatorze (patrz uwagi niżej) |
 | FR-31 | Skanowanie kodu kreskowego produktu | ❌ wyłączone (przycisk ukryty, kod zostaje) | N/D — celowo nierozpoczęte, funkcja wyłączona na obu platformach na życzenie użytkownika (2026-08-10), nie będzie rozwijana na ten moment |
-| FR-32 | Podpowiedź „🏺 masz w spiżarni” i „Pomysł na danie z ulubionych składników” | ✅ (v1 — przycisk inline, 2 losowe składniki) | ✅ v2 (2026-08-11, zweryfikowane na emulatorze 2026-08-23): przycisk inline ZASTĄPIONY floating „💡” z innym algorytmem (5 zróżnicowanych składników + wyszukiwanie Google) — świadoma rozbieżność z web, patrz FR-32 v2 i uwagi niżej; ☆→★ z v1 nadal ✅ zweryfikowane 2026-08-10 |
+| FR-32 | Podpowiedź „🏺 masz w spiżarni” i „Pomysł na danie z ulubionych składników” | ✅ v2 (2026-08-28): filtr ulubionych składników też przestał być wrażliwy na ogonki (ten sam błąd co FR-2/v6 i FR-34/v3). ✅ (v1 — przycisk inline, 2 losowe składniki) | ✅ v2 (2026-08-11, zweryfikowane na emulatorze 2026-08-23): przycisk inline ZASTĄPIONY floating „💡” z innym algorytmem (5 zróżnicowanych składników + wyszukiwanie Google) — świadoma rozbieżność z web, patrz FR-32 v2 i uwagi niżej; ☆→★ z v1 nadal ✅ zweryfikowane 2026-08-10 |
 | FR-33 | Globalny przycisk szybkiego dodania przekąski/dania z każdego miejsca | ✅ | ✅ pływający przycisk na Postępie dodany 2026-08-10, zweryfikowany na emulatorze (patrz uwagi niżej) |
-| FR-34 | Automatyczne szacowanie kalorii przekąski z bazy 336 produktów | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
+| FR-34 | Automatyczne szacowanie kalorii przekąski z bazy 336 produktów | ✅ v3 (2026-08-28): **naprawiony realny błąd** — 89 z 336 nazw ma polski ogonek, a podpowiedzi porównywały surowe napisy, więc „jablko” dawało ZERO wyników; naprawione `foldDiacritics()` po obu stronach, kolejność wyników bez zmian. ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
 | FR-35 | Emotikonki przy rozpoznanych składnikach/przekąskach | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze (patrz uwagi) |
 | FR-36 | Dzienny podwójny pierścień kalorii/nawodnienia w nagłówku ze zjadanymi posiłkami | ✅ | ✅ przeprojektowane na podwójny pierścień 2026-08-11; naprawiony bug skalowania porcji tego samego dnia (patrz uwagi FR-36/v3) |
 | FR-37 | Śledzenie nawodnienia — pełny widok, kompaktowy pasek w nagłówku i wewnętrzny łuk pierścienia | ✅ | ✅ zaimplementowane 2026-08-10 (pełny widok w nowej zakładce Postęp, dzieli WaterViewModel z paskiem w nagłówku); kubeczek zamiast kropelki + trzecie zsynchronizowane miejsce (wewnętrzny łuk pierścienia) dodane 2026-08-11, zweryfikowane na emulatorze |
@@ -997,6 +997,14 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
   **Android: obie nieprzeniesione** — 403 z `api.foojay.io`, jak w poprzednich rundach.
 
   `node -e "new Function(...)"` na obu blokach `<script>` przechodzi. CACHE_NAME→v110, `versions/v110/`.
+
+- **FR-34/v3 + FR-32/v2 — dokończenie naprawy „polskich ogonków”, Web only (2026-08-28)**: po FR-2/v6 przejrzane zostały WSZYSTKIE miejsca w `index.html` porównujące wpisany tekst z nazwami (`grep` po `toLowerCase()` bez `foldDiacritics`) — ten sam błąd siedział jeszcze w dwóch. **FR-34/v3 jest z nich najpoważniejszy**: baza przekąsek ma 336 pozycji, z czego **89 nazw zawiera ogonek**, a `renderSuggestions()` robiło `n.startsWith(q)`/`n.includes(q)` na surowych napisach — więc wszystkie 89 było nieosiągalne bez wpisania ogonka („jablko” → 0 podpowiedzi mimo „jabłko” w bazie; potwierdzone pomiarowo także dla „chleb zytni”, „bulka pszenna”, „ogorek”, „borowki / jagody”, „twarog bez laktozy”). Szczególnie dotkliwe akurat w tej funkcji, której CAŁYM sensem jest nie wymagać pełnej, dokładnej nazwy. Naprawione `foldDiacritics()` po obu stronach, z zachowaniem dotychczasowej kolejności wyników (prefiks przed zawieraniem). FR-32/v2 to ten sam błąd w filtrze ulubionych składników w Ustawieniach, mniejsza skala. Oba zweryfikowane na żywo przez REALNY przepływ UI (kliknięcie „+”, wpisanie w prawdziwe pole, odczyt wyrenderowanych podpowiedzi), nie tylko przez wywołanie funkcji: „jablko” zwraca teraz „🍎 jabłko / jabłko suszone / 🧃 sok jabłkowy”, identycznie jak „jabłko”.
+
+  Wniosek do zapamiętania na przyszłość: jedno sprawdzenie zdania „działa tak samo jak X” (FR-2/v6) uruchomiło lawinę — łącznie trzy niezależne, długo obecne błędy w trzech różnych wyszukiwarkach tej samej aplikacji. Jeśli kiedyś dojdzie czwarte pole wyszukiwania, `foldDiacritics()` po obu stronach porównania jest tu domyślnym, oczekiwanym zachowaniem.
+
+  **Android: nieprzeniesione** — 403 z `api.foojay.io`. Warto sprawdzić przy okazji portu, czy Kotlinowe odpowiedniki (`RecipeBrowsing`, autouzupełnianie przekąsek) nie mają dokładnie tego samego błędu — na webie był w KAŻDYM z trzech miejsc.
+
+  `node -e "new Function(...)"` na obu blokach `<script>` przechodzi. CACHE_NAME→v111, `versions/v111/`.
 
 ## Jak to utrzymywać
 

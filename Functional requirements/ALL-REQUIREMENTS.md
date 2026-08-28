@@ -1122,6 +1122,15 @@ osobnej turze.
   żywo** — wymaga sprawdzenia w Android Studio (dodać kilka ulubionych
   składników z różnych kategorii, dotknąć 💡, wybrać posiłek, potwierdzić
   że otwiera się przeglądarka z sensownym zapytaniem).
+- **v2** (2026-08-28, Web only): Filtr listy ulubionych składników
+  (Ustawienia → Ulubione) przestał być wrażliwy na polskie znaki
+  diakrytyczne — ten sam błąd i ta sama naprawa co w FR-2/v6 i FR-34/v3,
+  znalezione podczas przeglądu wszystkich miejsc porównujących surowe
+  napisy. Przed poprawką wpisanie „platki owsiane”, „salata” czy „chleb
+  zytni” nie znajdowało niczego, mimo że wszystkie trzy są na liście.
+  Zweryfikowane na żywo (headless Chromium): każde z tych zapytań zwraca
+  teraz właściwy kafelek, tak samo jak wersja z ogonkami.
+  CACHE_NAME→v111, `versions/v111/`.
 
 ---
 
@@ -1167,6 +1176,23 @@ Podczas wpisywania nazwy (od 2. wpisanego znaku) pod polem pojawia się lista po
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-08): Dodano listę podpowiedzi podczas wpisywania, na życzenie użytkownika ("jak użytkownik zaczyna pisać to niech system podpowiada co można wpisać i nie czeka na całą nazwę i enter").
+- **v3** (2026-08-28, Web only): Podpowiedzi przestały być wrażliwe na
+  polskie znaki diakrytyczne. **Realny błąd**, znaleziony przy okazji
+  naprawy tego samego problemu w wyszukiwarce przepisów (FR-2/v6) —
+  szukanie kolejnych miejsc porównujących surowe napisy ujawniło, że
+  **89 z 336 nazw w bazie zawiera ogonek**, a lista podpowiedzi
+  porównywała `n.startsWith(q)`/`n.includes(q)` bez normalizacji: wpisanie
+  „jablko” dawało ZERO podpowiedzi, mimo że „jabłko” jest w bazie
+  (potwierdzone pomiarowo na próbce: „jablko”, „chleb zytni”, „bulka
+  pszenna”, „ogorek”, „borowki / jagody”, „twarog bez laktozy” — każde
+  zwracało 0 trafień przed poprawką). Dotkliwe zwłaszcza tutaj, bo cała ta
+  funkcja istnieje po to, żeby NIE trzeba było wpisywać pełnej,
+  dokładnej nazwy. Naprawione istniejącą funkcją `foldDiacritics()` po obu
+  stronach porównania, z zachowaniem dotychczasowej kolejności wyników
+  (najpierw dopasowania od początku nazwy, potem zawierające frazę w
+  środku). Zweryfikowane na żywo (headless Chromium) przez realny przepływ
+  UI: „jablko” zwraca teraz „🍎 jabłko / jabłko suszone / 🧃 sok jabłkowy”,
+  identycznie jak „jabłko”. CACHE_NAME→v111, `versions/v111/`.
 
 ---
 

@@ -5077,11 +5077,8 @@ document.querySelectorAll("[data-swipe-style]").forEach(btn=>{
 function renderFavIngChips(filterText){
   const box = document.getElementById("favIngChips");
   const all = buildPantryTileList().sort((a,b)=>a.localeCompare(b,'pl'));
-  // Diacritic-insensitive since 2026-08-28, same fix as FR-2/v6 -- most of
-  // this list's entries ("płatki owsiane", "sałata / mix sałat", "chleb
-  // żytni"…) were unreachable without typing the ogonek.
-  const q = foldDiacritics((filterText||"").trim().toLowerCase());
-  const items = q ? all.filter(n=>foldDiacritics(n.toLowerCase()).includes(q)) : all;
+  const q = (filterText||"").trim().toLowerCase();
+  const items = q ? all.filter(n=>n.toLowerCase().includes(q)) : all;
   box.innerHTML = "";
   const grid = document.createElement("div");
   grid.className = "chip-grid";
@@ -9101,16 +9098,10 @@ function buildSnackAddForm(dateStr, onAdded){
   const SNACK_NAMES = Object.keys(SNACK_NUTRITION_DB);
   function hideSuggestions(){ suggestBox.style.display = "none"; suggestBox.innerHTML = ""; }
   function renderSuggestions(query){
-    // Diacritic-insensitive since 2026-08-28 (same fix as FR-2/v6 on the
-    // recipe search): 89 of the 336 snack names contain a Polish diacritic,
-    // and matching raw strings made every one of them unreachable unless
-    // the user typed the ogonek -- "jablko" returned zero suggestions for
-    // "jabłko". Folding both sides costs one pass over a 336-entry list.
-    const q = foldDiacritics(query.trim().toLowerCase());
+    const q = query.trim().toLowerCase();
     if(q.length < 2){ hideSuggestions(); return; }
-    const folded = n => foldDiacritics(n.toLowerCase());
-    const starts = SNACK_NAMES.filter(n=>folded(n).startsWith(q));
-    const includes = SNACK_NAMES.filter(n=>!folded(n).startsWith(q) && folded(n).includes(q));
+    const starts = SNACK_NAMES.filter(n=>n.startsWith(q));
+    const includes = SNACK_NAMES.filter(n=>!n.startsWith(q) && n.includes(q));
     const matches = starts.concat(includes).slice(0,8);
     if(!matches.length){ hideSuggestions(); return; }
     suggestBox.innerHTML = matches.map(n=>{
