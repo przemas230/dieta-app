@@ -1828,11 +1828,8 @@
          does the shopping/cooking) -- same WhatsApp/Kopiuj share pattern
          as the shopping list's own share row. -->
     <div class="shop-actions" id="plannerShareRow">
-      <button class="btn primary" id="plannerShareNativeBtn">📤 Udostępnij plan tygodnia</button>
-    </div>
-    <div class="shop-actions">
-      <button class="btn link-sm" style="flex:1;" id="plannerShareWaBtn">🟢 WhatsApp</button>
-      <button class="btn link-sm" style="flex:1;" id="plannerShareCopyBtn">📋 Kopiuj plan tygodnia</button>
+      <button class="btn ghost" style="flex:1;" id="plannerShareWaBtn">🟢 WhatsApp</button>
+      <button class="btn ghost" style="flex:1;" id="plannerShareCopyBtn">📋 Kopiuj plan tygodnia</button>
     </div>
     <div id="plannerDays"></div>
   </section>
@@ -6809,24 +6806,15 @@ document.getElementById("addWeekBtn").addEventListener("click", ()=>{
   if(added===0) toast(already ? "Wszystkie dania z Planera są już na liście" : "Planer jest jeszcze pusty — dodaj dania w zakładce Planer");
   else toast(`Dodano składniki z ${added} dań z całego tygodnia${already?` (${already} już było na liście)`:""}`);
 });
-// Extracted 2026-08-28 from #shareBtn's own handler, so the week plan
-// (FR-92) can offer the same native share sheet the shopping list already
-// had -- it shipped with only WhatsApp/clipboard, which on a phone means
-// no Messenger/Signal/SMS/e-mail unless we hand-code a button per target.
-// navigator.share is the platform's own answer to that, and it's already
-// proven here; the clipboard path stays as the desktop/unsupported
-// fallback rather than leaving the button dead.
-async function shareOrCopyText(title, text, fallbackMsg){
+document.getElementById("shareBtn").addEventListener("click", async ()=>{
+  const text = buildListText();
   if(navigator.share){
-    try{ await navigator.share({title, text}); }
+    try{ await navigator.share({title:"Lista zakupów", text}); }
     catch(e){ /* user cancelled, ignore */ }
-    return;
+  }else{
+    try{ await navigator.clipboard.writeText(text); toast("Skopiowano — wklej w SMS lub Messengerze"); }
+    catch(e){ toast("Nie udało się skopiować"); }
   }
-  try{ await navigator.clipboard.writeText(text); toast(fallbackMsg); }
-  catch(e){ toast("Nie udało się skopiować"); }
-}
-document.getElementById("shareBtn").addEventListener("click", ()=>{
-  shareOrCopyText("Lista zakupów", buildListText(), "Skopiowano — wklej w SMS lub Messengerze");
 });
 document.getElementById("smsBtn").addEventListener("click", ()=>{
   const text = encodeURIComponent(buildListText());
@@ -6840,37 +6828,15 @@ document.getElementById("copyBtn").addEventListener("click", async ()=>{
   try{ await navigator.clipboard.writeText(buildListText()); toast("Lista skopiowana do schowka"); }
   catch(e){ toast("Nie udało się skopiować"); }
 });
-// Generalized undo (2026-08-28), same rule as the Planer's own clear/random
-// buttons: "Usuń odhaczone" was the worst offender in the app -- an
-// irreversible delete with NEITHER a confirm NOR an undo, so a mistap on a
-// long list (87 items was a real reported case) silently destroyed work with
-// no way back. It stays instant (asking would be wrong for an in-flow
-// tidy-up action) but now offers undo. "Wyczyść całą listę" keeps its
-// confirm, being the nuclear option, and gains undo on top -- exactly the
-// split applied to the Planer in FR-21/v2 + FR-22/v2.
 document.getElementById("clearCheckedBtn").addEventListener("click", ()=>{
-  const removed = Object.keys(state.shopping).filter(k => state.shopping[k].checked);
-  if(!removed.length){ toast("Nie ma odhaczonych pozycji do usunięcia"); return; }
-  const prevShopping = structuredClone(state.shopping);
-  removed.forEach(k=>{ delete state.shopping[k]; });
+  Object.keys(state.shopping).forEach(k=>{ if(state.shopping[k].checked) delete state.shopping[k]; });
   saveState(); renderShop();
-  toast(`Usunięto ${removed.length} odhaczonych pozycji`, "Cofnij", ()=>{
-    state.shopping = prevShopping;
-    saveState(); renderShop();
-  });
 });
 document.getElementById("clearAllBtn").addEventListener("click", ()=>{
   if(!confirm("Na pewno wyczyścić całą listę zakupów?")) return;
-  const prevShopping = structuredClone(state.shopping);
-  const prevRecipeAdded = structuredClone(state.recipeAdded);
   state.shopping = {};
   state.recipeAdded = {};
   saveState(); renderShop(); renderRecipes();
-  toast("Wyczyszczono listę zakupów", "Cofnij", ()=>{
-    state.shopping = prevShopping;
-    state.recipeAdded = prevRecipeAdded;
-    saveState(); renderShop(); renderRecipes();
-  });
 });
 
 // ---------- SPIŻARNIA (PANTRY) ----------
@@ -8118,11 +8084,6 @@ function buildWeekPlanText(){
   });
   return out;
 }
-// FR-92/v2 (2026-08-28): native share sheet, matching the shopping list's
-// own primary share button -- see shareOrCopyText's comment.
-document.getElementById("plannerShareNativeBtn").addEventListener("click", ()=>{
-  shareOrCopyText("Plan tygodnia", buildWeekPlanText(), "Skopiowano — wklej w SMS lub Messengerze");
-});
 document.getElementById("plannerShareWaBtn").addEventListener("click", ()=>{
   window.open("https://wa.me/?text=" + encodeURIComponent(buildWeekPlanText()), "_blank");
 });

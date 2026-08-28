@@ -858,17 +858,40 @@ Zrewidowane 2026-08-03: pierwotnie nazwa produktu na liście zakupów była wyś
 # FR-26: Odhaczanie, udostępnianie i czyszczenie listy zakupów
 
 **Obszar:** Lista zakupów  
-**Status:** Zaimplementowane
+**Status:** Zaimplementowane (cofanie kasowania — v2 — na razie Web-only, patrz Uwagi)
 
 ## Opis
-Pozycje na liście można odhaczyć jako kupione. Listę można udostępnić przez SMS/WhatsApp/skopiowanie do schowka, usunąć same odhaczone pozycje albo wyczyścić całą listę.
+Pozycje na liście można odhaczyć jako kupione. Listę można udostępnić przez systemowy arkusz udostępniania / SMS / WhatsApp / skopiowanie do schowka, usunąć same odhaczone pozycje albo wyczyścić całą listę.
+
+Na webie (v2) obie akcje kasujące można cofnąć — po wykonaniu pojawia się powiadomienie z przyciskiem „Cofnij”, przywracającym usunięte pozycje. „Usuń odhaczone” działa od razu (bez pytania), „Wyczyść całą listę” nadal pyta o potwierdzenie, a cofnięcie jest tam dodatkowym zabezpieczeniem.
 
 ## Kryteria akceptacji
 - Odhaczenie pozycji nie usuwa jej z listy, tylko oznacza wizualnie.
 - „Usuń odhaczone” i „Wyczyść całą listę” to dwie osobne, jednoznacznie opisane akcje.
+- Web (v2): „Usuń odhaczone” pokazuje powiadomienie z liczbą usuniętych pozycji i przyciskiem „Cofnij”; cofnięcie przywraca dokładnie te pozycje (razem z ilościami i powiązaniami z przepisami).
+- Web (v2): „Usuń odhaczone” przy braku odhaczonych pozycji pokazuje komunikat i nie robi nic więcej (nie oferuje cofania niczego).
+- Web (v2): „Wyczyść całą listę” nadal wymaga potwierdzenia, a po wykonaniu oferuje „Cofnij”, które przywraca zarówno listę zakupów, jak i oznaczenia „dodane z przepisu” (`recipeAdded`, sterujące etykietą „✓ Na liście zakupów” na kartach przepisów).
+
+## Uwagi
+Web: `structuredClone()` na `state.shopping` (i dodatkowo `state.recipeAdded`
+przy czyszczeniu całej listy) PRZED skasowaniem, przekazany jako domknięcie
+do `toast(msg, undoLabel, onUndo)` — mechanizm dodany w FR-91, tu użyty
+ponownie bez nowej infrastruktury.
+
+Decyzja projektowa (2026-08-28), ta sama zasada co w FR-21/FR-22:
+akcja cząstkowa, wykonywana w toku pracy („Usuń odhaczone”), nie przerywa
+pytaniem, tylko oferuje cofnięcie; akcja o zasięgu całej listy zachowuje
+potwierdzenie ORAZ dostaje cofnięcie.
+
+**v2 świadomie Web-only na razie** — ta sesja pracuje w środowisku bez
+dostępu do `api.foojay.io` (toolchain JDK dla Gradle, błąd 403 przy
+`:app:compileDebugKotlin`), więc port do Compose nie może tu zostać ani
+skompilowany, ani przetestowany; odłożone do sesji z realnym dostępem do
+Gradle/emulatora, odnotowane w `android/PARITY.md`.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-28, Web only): Dodane cofanie obu akcji kasujących. Zmiana z własnej rekomendacji, znaleziona przy przeglądzie kodu pod kątem spójności z FR-21/v2 i FR-22/v2: **„Usuń odhaczone” był najgorszym przypadkiem w całej aplikacji** — nieodwracalne kasowanie BEZ potwierdzenia I BEZ cofania, więc jedno przypadkowe stuknięcie na długiej liście (realnie zgłaszane były listy po 87 pozycji) po cichu niszczyło pracę bez żadnej drogi powrotu. Przy okazji dodany brakujący przypadek brzegowy: przy zerowej liczbie odhaczonych pozycji przycisk pokazuje teraz komunikat zamiast udawać, że coś zrobił. Zweryfikowane na żywo (headless Chromium), cztery przypadki osobno: usunięcie 2 z 3 pozycji (nieodhaczona nietknięta), cofnięcie przywracające komplet, przypadek „nic nie odhaczone” (lista nietknięta, komunikat pokazany, cofanie nieoferowane) oraz wyczyszczenie całej listy z cofnięciem przywracającym też `recipeAdded`. CACHE_NAME→v107, `versions/v107/`.
 
 ---
 
@@ -4197,8 +4220,11 @@ tygodnia jako zwykły tekst (dzień → kategoria → nazwa dania, ze skalą
 porcji jeśli inna niż 1×) — na wzór już istniejącego udostępniania listy
 zakupów (FR-26).
 
-Web: dwa przyciski, „🟢 WhatsApp” (otwiera `wa.me` z gotowym tekstem) i
-„📋 Kopiuj plan tygodnia” (schowek).
+Web: trzy przyciski — „📤 Udostępnij plan tygodnia” (natywny arkusz
+udostępniania systemu przez `navigator.share`, czyli Messenger/Signal/
+SMS/e-mail/cokolwiek użytkownik ma na telefonie; na desktopie i wszędzie
+tam, gdzie API nie jest dostępne, kopiuje do schowka), „🟢 WhatsApp”
+(otwiera `wa.me` z gotowym tekstem) i „📋 Kopiuj plan tygodnia” (schowek).
 
 Android: „📤 Udostępnij plan” (natywny arkusz udostępniania,
 `Intent.ACTION_SEND`, ten sam wzorzec co istniejący przycisk „Udostępnij”
@@ -4215,6 +4241,12 @@ potrzeba, dotąd niemożliwa bez ręcznego przepisywania.
   posiłkiem, z ikoną kategorii, nazwą dania i skalą porcji (jeśli ≠ 1×).
 - Dni bez żadnego zaplanowanego posiłku są pomijane w wygenerowanym tekście.
 - Kopiowanie do schowka pokazuje potwierdzenie (toast/Toast).
+- Web (v2): „📤 Udostępnij plan tygodnia” otwiera natywny arkusz
+  udostępniania, jeśli przeglądarka wspiera `navigator.share`.
+- Web (v2): jeśli `navigator.share` nie jest dostępne, ten sam przycisk
+  kopiuje plan do schowka i pokazuje potwierdzenie — nigdy nie jest martwy.
+- Web (v2): anulowanie arkusza udostępniania przez użytkownika nie pokazuje
+  żadnego błędu.
 - `./gradlew :logic:test :app:compileDebugKotlin` przechodzi.
 
 ## Historia rewizji
@@ -4224,6 +4256,21 @@ potrzeba, dotąd niemożliwa bez ręcznego przepisywania.
   kształt tekstu. Zweryfikowane kompilacją i testami jednostkowymi oraz
   składniowo na webie. **Nie zweryfikowane wizualnie/interaktywnie**
   (w tym rzeczywiste otwarcie WhatsApp/arkusza udostępniania) w tej turze.
+- **v2** (2026-08-28, Web only): Web dostał natywny arkusz udostępniania
+  (`navigator.share`), którego Android miał od v1 (`Intent.ACTION_SEND`) —
+  czyli **zamknięcie realnej luki w parytecie, przeoczonej przy v1**:
+  webowa wersja oferowała tylko WhatsApp i schowek, więc wysłanie planu
+  przez Messenger, Signal, SMS czy e-mail wymagało ręcznego wklejania,
+  mimo że przeglądarki na telefonach udostępniają dokładnie ten sam
+  systemowy arkusz co Android natywnie. Przy okazji refaktoring: logika
+  „udostępnij natywnie albo skopiuj do schowka” wyjęta z handlera przycisku
+  listy zakupów (jedyne miejsce, gdzie na webie istniała) do współdzielonej
+  `shareOrCopyText(title, text, fallbackMsg)`, używanej teraz przez oba
+  ekrany — zamiast kopiować ten sam `if(navigator.share)` po raz drugi.
+  Zweryfikowane na żywo (headless Chromium) OBIE ścieżki osobno: z
+  podstawionym `navigator.share` (arkusz dostaje poprawny tytuł i tekst,
+  schowek nietknięty) i z usuniętym `navigator.share` (fallback kopiuje do
+  schowka i pokazuje potwierdzenie). CACHE_NAME→v107, `versions/v107/`.
 
 ---
 
