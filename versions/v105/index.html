@@ -2407,25 +2407,6 @@
   </div>
 </div>
 
-<!-- FR-90/v2 (2026-08-28, user: "będziemy w razie czego usuwać, pracuj"):
-     the complement of the picker above -- v1 only let you pull ONE day's
-     plan INTO the day you're standing on. The feature's own stated
-     motivation ("np. te same śniadania w pon-pt") is the opposite
-     direction: stand on a day you already like and PUSH it out to several
-     others at once, which v1's one-tap-one-target flow couldn't do without
-     reopening the picker per target day. Separate modal (not a mode toggle
-     on the existing one) because multi-select needs an explicit confirm
-     step, unlike v1's instant tap-to-copy. -->
-<div class="modal-overlay center" id="copySpreadOverlay">
-  <div class="modal-sheet center-sheet">
-    <div class="modal-head">
-      <h3>📤 Kopiuj ten dzień na inne dni</h3>
-      <button id="copySpreadClose">✕</button>
-    </div>
-    <div id="copySpreadBody"></div>
-  </div>
-</div>
-
 <div class="modal-overlay center" id="resetAccountDataOverlay">
   <div class="modal-sheet center-sheet">
     <div class="modal-head">
@@ -5939,22 +5920,14 @@ function recipeCard(r, onChange, opts={}){
   });
   // Requested 2026-08-26 ("dodaj też button szukają w Gemini żeby sztuczna
   // inteligencja dostała prompt na propozycje przygotowania tego
-  // konkretnego dania rozpisane w szczegółach"), FIXED 2026-08-28 (user:
-  // "w Gemini otwiera się tylko strona do wpisania tekstu"): gemini.google.
-  // com/app?q= only ever pre-FILLS the chat composer -- it never submits,
-  // so the user always had to tap send themselves, silently defeating the
-  // "one tap, get the recipe" point of the button. There is no documented
-  // param that auto-submits Gemini's own chat UI (a plain <a>/window.open
-  // can't script a cross-origin page either), so switched to Google
-  // Search's AI Mode (`udm=50`) instead: it's the same underlying model,
-  // but a search-results GET request answers immediately on load like any
-  // other search, with nothing left to tap. Button label kept as "✨
-  // Gemini" since that's what it delivers, just via a URL shape that
-  // actually returns an answer instead of a blank compose box.
+  // konkretnego dania rozpisane w szczegółach"): opens Gemini's web app
+  // with the prompt pre-filled via ?q= (same unofficial-but-widely-observed
+  // pattern as chatgpt.com/?q=... -- if Gemini ever stops honoring it, the
+  // button still opens Gemini itself, just without the pre-fill).
   card.querySelector("[data-search-gemini]").addEventListener("click", (e)=>{
     e.stopPropagation();
     const prompt = `Rozpisz szczegółowo, krok po kroku, jak przygotować danie: ${r.name}. Podaj dokładne czasy, temperatury, ilości składników i wskazówki przydatne dla początkujących.`;
-    window.open("https://www.google.com/search?q=" + encodeURIComponent(prompt) + "&udm=50", "_blank");
+    window.open("https://gemini.google.com/app?q=" + encodeURIComponent(prompt), "_blank");
   });
   const macroInfoBtn = card.querySelector("[data-macro-info]");
   if(macroInfoBtn){
@@ -7830,18 +7803,13 @@ function renderPlanner(){
       ? `<div class="cdc-head"><h4>${day}</h4>${di===todayIdx?'<span class="cdc-badge today">Dziś</span>':''}<span class="cdc-badge kcal">${total} / ${calcTargets(state.profile).daily} kcal</span></div>`
       : `<h4>${day}</h4>`;
     const totalHtml = isClinic ? "" : `<div class="day-total">Razem: ${total} kcal</div>`;
-    // FR-90/v2: "kopiuj NA inne dni" only makes sense once this day itself
-    // has something worth spreading -- same disabled-when-empty pattern as
-    // the source-day buttons inside openCopyDayModal's own picker.
-    const hasOwnPlan = Object.values(state.planner[di] || {}).some(id => !!id);
     card.innerHTML = `${headHtml}${rowsHtml}${totalHtml}
       <button class="plan-btn" style="width:100%; margin-top:8px;" data-day-add="${di}">🛒 Dodaj składniki z tego dnia do listy zakupów</button>
       <div class="shop-actions" style="margin:8px 0 0;">
         <button class="btn ghost" style="flex:1; font-size:12px;" data-day-random="${di}">🎲 Losuj ten dzień</button>
         <button class="btn ghost" style="flex:1; font-size:12px;" data-day-clear="${di}">🗑️ Wyczyść ten dzień</button>
       </div>
-      <button class="btn ghost" style="width:100%; margin-top:6px; font-size:12px;" data-day-copy="${di}">📋 Kopiuj plan z innego dnia</button>
-      <button class="btn ghost" style="width:100%; margin-top:6px; font-size:12px;" data-day-spread="${di}" ${hasOwnPlan?"":"disabled"} title="${hasOwnPlan?"":"Ten dzień jest pusty — nie ma czego kopiować"}">📤 Kopiuj ten dzień na inne dni</button>`;
+      <button class="btn ghost" style="width:100%; margin-top:6px; font-size:12px;" data-day-copy="${di}">📋 Kopiuj plan z innego dnia</button>`;
     card.querySelectorAll("[data-pick-day]").forEach(btn=>{
       btn.addEventListener("click", ()=> openPlannerModal(btn.dataset.pickDay, btn.dataset.pickCat));
     });
@@ -7883,8 +7851,6 @@ function renderPlanner(){
       toast(`Wyczyszczono plan na ${day}`);
     });
     card.querySelector("[data-day-copy]").addEventListener("click", ()=> openCopyDayModal(di));
-    const spreadBtn = card.querySelector("[data-day-spread]");
-    if(spreadBtn && !spreadBtn.disabled) spreadBtn.addEventListener("click", ()=> openCopySpreadModal(di));
     card.querySelectorAll("[data-scale-day]").forEach(btn=>{
       // stopPropagation: for Klinika's .cdc-row, this element is NESTED
       // inside the row's own "open picker" click target (see [data-pick-
@@ -7975,49 +7941,6 @@ function openCopyDayModal(targetDay){
 document.getElementById("copyDayClose").addEventListener("click", ()=> document.getElementById("copyDayOverlay").classList.remove("show"));
 document.getElementById("copyDayOverlay").addEventListener("click", (e)=>{
   if(e.target===document.getElementById("copyDayOverlay")) e.target.classList.remove("show");
-});
-
-// FR-90/v2 (2026-08-28): the push direction -- stand on a day whose plan
-// you like and spread it to several other days in one go (checkboxes +
-// explicit confirm, unlike openCopyDayModal's instant tap-to-copy, since
-// there's more than one target to commit at once here).
-function openCopySpreadModal(fromDay){
-  const body = document.getElementById("copySpreadBody");
-  body.innerHTML = `<div class="hint-text" style="margin:0 0 10px;">Wybierz dni, na które skopiować plan z „${DAYS[fromDay]}". Nadpisze to, co jest już zaplanowane na wybranych dniach.</div>`;
-  const grid = document.createElement("div");
-  grid.style.cssText = "display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;";
-  DAYS.forEach((dayName, di)=>{
-    if(di === fromDay) return;
-    const label = document.createElement("label");
-    label.className = "btn ghost";
-    label.style.cssText = "font-size:13px; display:flex; align-items:center; gap:6px; cursor:pointer;";
-    label.innerHTML = `<input type="checkbox" data-spread-target="${di}" style="margin:0;"> ${dayName}`;
-    grid.appendChild(label);
-  });
-  body.appendChild(grid);
-  const confirmBtn = document.createElement("button");
-  confirmBtn.className = "btn";
-  confirmBtn.style.cssText = "width:100%; margin-top:12px;";
-  confirmBtn.textContent = "📤 Kopiuj na zaznaczone dni";
-  confirmBtn.addEventListener("click", ()=>{
-    const targets = Array.from(body.querySelectorAll("[data-spread-target]:checked")).map(el => parseInt(el.dataset.spreadTarget, 10));
-    if(!targets.length){ toast("Zaznacz co najmniej jeden dzień"); return; }
-    targets.forEach(di=>{
-      state.planner[di] = structuredClone(state.planner[fromDay] || {});
-      state.plannerScale[di] = structuredClone(state.plannerScale[fromDay] || {});
-      state.plannerLeftover[di] = structuredClone(state.plannerLeftover[fromDay] || {});
-    });
-    saveState(); renderPlanner(); renderHeader();
-    document.getElementById("copySpreadOverlay").classList.remove("show");
-    const targetNames = targets.map(di => DAYS[di]).join(", ");
-    toast(`Skopiowano plan z „${DAYS[fromDay]}" na: ${targetNames}`);
-  });
-  body.appendChild(confirmBtn);
-  document.getElementById("copySpreadOverlay").classList.add("show");
-}
-document.getElementById("copySpreadClose").addEventListener("click", ()=> document.getElementById("copySpreadOverlay").classList.remove("show"));
-document.getElementById("copySpreadOverlay").addEventListener("click", (e)=>{
-  if(e.target===document.getElementById("copySpreadOverlay")) e.target.classList.remove("show");
 });
 
 // Requested 2026-08-26 ("dodaj też przynajmniej 5 nowych funkcji" --

@@ -4006,15 +4006,22 @@ dokładnie tymi samymi domyślnymi kształtami co świeży stan web'a
 # FR-90: Kopiowanie planu jednego dnia na inny dzień
 
 **Obszar:** Planer, Android + Web
-**Status:** Zaimplementowane na obu platformach
+**Status:** Zaimplementowane na obu platformach (kierunek „na inne dni” — v2 — na razie Web-only, patrz Uwagi)
 
 ## Opis
 Na każdej karcie dnia w Planerze (obok istniejących „🎲 Losuj ten dzień” /
-„🗑️ Wyczyść ten dzień”) jest nowy przycisk „📋 Kopiuj plan z innego dnia”.
+„🗑️ Wyczyść ten dzień”) jest przycisk „📋 Kopiuj plan z innego dnia”.
 Otwiera picker z listą pozostałych 6 dni tygodnia — dni bez żadnego
 zaplanowanego posiłku są wyszarzone/nieklikalne. Wybranie dnia źródłowego
 NADPISUJE cały plan dnia docelowego (wszystkie 5 kategorii posiłków,
 razem ze skalą porcji i flagą „resztki”) planem z wybranego dnia.
+
+Web dostał też (v2) przeciwny kierunek: „📤 Kopiuj ten dzień na inne dni” —
+stojąc na dniu, którego plan już Ci odpowiada, zaznaczasz checkboxami
+dowolną liczbę innych dni i kopiujesz go na wszystkie naraz, jednym
+potwierdzeniem, zamiast osobno otwierać picker dla każdego dnia
+docelowego. To dokładniej odpowiada oryginalnej motywacji tej funkcji
+(patrz niżej) niż sam v1.
 
 Dodane po badaniu, czego najczęściej brakuje w aplikacjach dietetycznych —
 powtarzalny tygodniowy plan (np. te same śniadania w pon-pt) to częsta
@@ -4030,6 +4037,13 @@ skarga na ręczne, powtarzalne klikanie tych samych dań.
   tam wcześniej było.
 - Operacja jest natychmiastowa (bez osobnego potwierdzenia — to samo
   zachowanie co „🎲 Losuj ten dzień” dla pojedynczego dnia).
+- Web (v2): przycisk „📤 Kopiuj ten dzień na inne dni” wyłączony/wyszarzony,
+  gdy dzień, na którym stoisz, jest pusty (nie ma czego kopiować).
+- Web (v2): modal pozwala zaznaczyć dowolną liczbę pozostałych 6 dni
+  (checkboxy); potwierdzenie kopiuje plan źródłowego dnia na WSZYSTKIE
+  zaznaczone dni naraz, z podsumowującym toastem wymieniającym nazwy dni.
+- Web (v2): próba potwierdzenia bez zaznaczonego żadnego dnia pokazuje
+  komunikat „Zaznacz co najmniej jeden dzień” i nie zamyka modala.
 - `./gradlew :logic:test :app:compileDebugKotlin` przechodzi.
 
 ## Uwagi
@@ -4039,7 +4053,18 @@ recipeId+scale+isLeftover w jedną wartość na slot. Web: `openCopyDayModal()`
 używa `structuredClone()` do skopiowania TRZECH równoległych map
 (`state.planner`/`plannerScale`/`plannerLeftover`) na raz, bo web (w
 odróżnieniu od Androida) trzyma te trzy pola osobno zamiast w jednym
-obiekcie.
+obiekcie. `openCopySpreadModal()` (v2) robi to samo w pętli po zaznaczonych
+dniach.
+
+**v2 (kierunek „na inne dni”) świadomie Web-only na razie** — port do
+Androida wymagałby nietrywialnej zmiany UI w Compose (stan multi-select
+zamiast serii prostych `onClick`), a ta sesja pracuje w środowisku bez
+dostępu do `api.foojay.io` (toolchain JDK dla Gradle, potwierdzone błędem
+403 przy `:app:compileDebugKotlin` — patrz FR-95/v2's ten sam problem),
+więc nie da się jej tu skompilować ani przetestować jednostkowo. Zamiast
+piętrzyć kolejny niezweryfikowany krok w Kotlinie bez szansy na sprawdzenie
+w tej samej turze (zasada z CLAUDE.md), odłożone do sesji z realnym
+dostępem do Gradle/emulatora — odnotowane w `android/PARITY.md`.
 
 ## Historia rewizji
 - **v1** (2026-08-26): Pierwsza wersja, część większej nocnej rundy „co
@@ -4048,6 +4073,17 @@ obiekcie.
   jednostkowymi (`:logic:test`, `:app:compileDebugKotlin`) oraz składniowo
   na webie (`node --check` na wyekstrahowanym JS) — **nie zweryfikowane
   wizualnie/interaktywnie w przeglądarce ani na emulatorze w tej turze**.
+- **v2** (2026-08-28, Web only): Dodany przeciwny kierunek kopiowania —
+  „📤 Kopiuj ten dzień na inne dni” — na wyraźną prośbę użytkownika o
+  dalszą rozbudowę funkcji Plannera. Nowy modal `copySpreadOverlay` z
+  checkboxami (zamiast pojedynczych przycisków-do-natychmiastowego-kopiowania
+  jak w v1, bo tu trzeba jawnie potwierdzić wybór wielu celów naraz).
+  Zweryfikowane na żywo (headless Chromium, w pełni offline): przycisk
+  poprawnie wyłączony dla pustego dnia źródłowego, kopiowanie na 2
+  zaznaczone dni potwierdzone przez odczyt `state.planner` po operacji
+  (trzeci, niezaznaczony dzień pozostał nietknięty), pusty wybór poprawnie
+  blokowany komunikatem zamiast cichego no-opa. CACHE_NAME→v105,
+  `versions/v105/`. Android: bez zmian w tej turze, patrz Uwagi.
 
 ---
 
@@ -4287,9 +4323,10 @@ duplikat.
 ## Opis
 Karta przepisu (zwinięta lub rozwinięta, wszędzie gdzie się pojawia —
 Przepisy, podgląd z Planera) ma teraz trzeci przycisk akcji, „✨ Gemini”,
-obok istniejących Google/YouTube. Otwiera Gemini z gotowym promptem
-proszącym o szczegółowy, krok-po-kroku przepis na dokładnie to danie (z
-jego nazwą).
+obok istniejących Google/YouTube. Otwiera od razu gotową odpowiedź AI
+(Google Search „AI Mode”, `udm=50`) z promptem proszącym o szczegółowy,
+krok-po-kroku przepis na dokładnie to danie (z jego nazwą) — patrz **v2**
+niżej, dlaczego to Google Search zamiast bezpośrednio gemini.google.com.
 
 Jednocześnie: kliknięcie w SAM TYTUŁ przepisu (które otwiera wyszukiwanie
 Google) jest teraz aktywne WYŁĄCZNIE gdy karta jest rozwinięta — na
@@ -4299,8 +4336,9 @@ nie otwiera już wyszukiwania w tle.
 ## Kryteria akceptacji
 - Przycisk „✨ Gemini” widoczny obok Google/YouTube na każdej karcie
   przepisu, niezależnie od stanu zwinięcia.
-- Kliknięcie „✨ Gemini” otwiera Gemini z promptem zawierającym nazwę
-  dania i prośbę o szczegółowy przepis krok po kroku.
+- Kliknięcie „✨ Gemini” od razu pokazuje odpowiedź AI (bez dodatkowego
+  ręcznego wysłania/potwierdzenia) z promptem zawierającym nazwę dania i
+  prośbę o szczegółowy przepis krok po kroku.
 - Kliknięcie tytułu na ZWINIĘTEJ karcie: nie otwiera wyszukiwania Google
   (tylko normalne rozwinięcie karty).
 - Kliknięcie tytułu na ROZWINIĘTEJ karcie: otwiera wyszukiwanie Google
@@ -4312,6 +4350,28 @@ nie otwiera już wyszukiwania w tle.
   poprosił o nie w tym samym zdaniu, ta sama część UI karty). Zweryfikowane
   kompilacją i testami jednostkowymi oraz składniowo na webie. **Nie
   zweryfikowane wizualnie/interaktywnie** w tej turze.
+- **v2** (2026-08-28): Użytkownik zgłosił, że przycisk „✨ Gemini” w
+  praktyce „otwiera tylko stronę do wpisania tekstu” — `gemini.google.com/
+  app?q=` faktycznie tylko WYPEŁNIA pole czatu Gemini, nigdy go nie
+  wysyła, więc każde kliknięcie i tak wymagało ręcznego wysłania
+  wiadomości, ciche unieważnienie sensu przycisku „jedno kliknięcie,
+  gotowy przepis”. Brak udokumentowanego parametru auto-wysyłki dla
+  czatowego UI Gemini (i nie da się wstrzyknąć skryptu do strony w innej
+  domenie z poziomu `window.open`/`Intent.ACTION_VIEW`) — zamiast tego
+  przełączone na Google Search „AI Mode” (`udm=50`): ten sam model
+  (Gemini) pod spodem, ale strona wyników wyszukiwania odpowiada od razu
+  po wczytaniu jak każde inne wyszukiwanie, bez niczego do kliknięcia.
+  Etykieta przycisku bez zmian („✨ Gemini”) — to wciąż odpowiedź Gemini,
+  tylko inny kształt URL-a. Web: `data-search-gemini` handler w
+  `index.html`. Android: `RecipeListScreen.kt`'s analogiczny `OutlinedButton`
+  — **niezweryfikowane kompilacją w tej sesji** (środowisko zdalne bez
+  dostępu do `api.foojay.io`/toolchainów Gradle, potwierdzone błędem 403
+  przy `:app:compileDebugKotlin`; zmiana jest jednoliniowa i mechaniczna,
+  ale czeka na potwierdzenie kompilacją/wizualnie w prawdziwym Android
+  Studio lub lokalnej sesji z pełnym dostępem do sieci). Web zweryfikowany
+  na żywo (headless Chromium, przechwycone `window.open`): przycisk
+  konstruuje `https://www.google.com/search?q=...&udm=50` z poprawnym,
+  zakodowanym promptem.
 
 ---
 

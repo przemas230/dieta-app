@@ -1549,20 +1549,17 @@ internal fun RecipeCardBody(
                 // Requested 2026-08-26 ("dodaj też button szukają w Gemini
                 // żeby sztuczna inteligencja dostała prompt na propozycje
                 // przygotowania tego konkretnego dania rozpisane w
-                // szczegółach"), FIXED 2026-08-28 (Web port -- user reported
-                // Gemini's app only pre-fills the chat composer, never
-                // submits it, so every tap still needed a manual send).
-                // gemini.google.com/app?q= has no documented auto-submit
-                // param, and there's no way to script a cross-origin page
-                // from an ACTION_VIEW intent either -- switched to Google
-                // Search's AI Mode (`udm=50`) instead, same underlying
-                // model, but a search-results GET request answers
-                // immediately on load like any other search.
+                // szczegółach"): opens Gemini's web app with the prompt
+                // pre-filled via `?q=` (same unofficial-but-widely-observed
+                // pattern as chatgpt.com/?q=... -- if Gemini ever stops
+                // honoring it, the button still opens Gemini itself, just
+                // without the pre-fill, so this degrades gracefully either
+                // way).
                 OutlinedButton(
                     onClick = {
                         val prompt = "Rozpisz szczegółowo, krok po kroku, jak przygotować danie: ${recipe.name}. " +
                             "Podaj dokładne czasy, temperatury, ilości składników i wskazówki przydatne dla początkujących."
-                        val uri = Uri.parse("https://www.google.com/search?q=" + Uri.encode(prompt) + "&udm=50")
+                        val uri = Uri.parse("https://gemini.google.com/app?q=" + Uri.encode(prompt))
                         context.startActivity(Intent(Intent.ACTION_VIEW, uri))
                     },
                     modifier = Modifier.weight(1f),
