@@ -1775,7 +1775,6 @@
       <div class="pill-row" id="catPills"></div>
       <div class="toolbar" style="flex-wrap:wrap;">
         <input class="search" id="searchBox" type="text" placeholder="Szukaj przepisu lub składnika…">
-        <button class="fav-toggle" id="searchClearBtn" style="display:none;" title="Wyczyść wyszukiwanie">✕</button>
         <button class="fav-toggle" id="favToggle" title="Tylko ulubione przepisy">⭐</button>
         <button class="fav-toggle" id="ingFavToggle" title="Tylko z ulubionymi składnikami">🌟</button>
         <button class="fav-toggle" id="pantryFilterToggle" title="Dania z tego, co mam w spiżarni">🏺</button>
@@ -4713,27 +4712,7 @@ function scaleIngredientText(text, scale){
   let value = parseFloat(m[1].replace(",", "."));
   if(m[3]) value = value / parseFloat(m[3]);
   const rest = m[4] || "";
-  const scaled = value*scale;
-  const amountText = formatScaledAmount(scaled);
-  if(!rest) return amountText;
-  // Decline the noun to match the new count (2026-08-28). Scaling only ever
-  // swapped the NUMBER before, so "2 jajka" at 3x read "6 jajka" and at 0.5x
-  // "1 jajka" -- both wrong in Polish, and visible on every scaled recipe
-  // card. The app already had the full declension table used by the pantry
-  // and the shopping list; it just wasn't reached from here.
-  // Matched on the WHOLE remaining text and only against that table, which
-  // is what keeps it safe: "jajka" and "awokado" are entries, while
-  // "g piersi z kurczaka" or "łyżeczka oliwy" are not, so a unit-led line
-  // is left exactly as it was.
-  // Integers only, deliberately. A fractional count takes the genitive
-  // singular in Polish ("0,5 jajka", "1,5 banana"), which is a form this
-  // table doesn't carry -- one/few/many are all it has. Declining 0.5 via
-  // the one/few/many rule produced "0,5 jajko" and "1,5 banany", i.e. it
-  // would have traded one wrong form for another. Leaving the recipe's own
-  // wording alone there is the behavior that was already correct.
-  const declined = Number.isInteger(scaled) ? PANTRY_PLURAL_FORMS[rest.trim().toLowerCase()] : null;
-  if(declined) return amountText + " " + declined[polishPluralCategory(scaled)];
-  return amountText + " " + rest;
+  return formatScaledAmount(value*scale) + (rest ? " " + rest : "");
 }
 function scaleRecipe(r, scale){
   if(!scale || scale===1) return r;
@@ -6430,21 +6409,8 @@ function renderRecipes(){
   items.forEach(r=> list.appendChild(recipeCard(r, null, {swipeable:true})) );
 }
 
-// Clear button added 2026-08-28 for parity with the shopping list's own
-// search (FR-99) -- on a phone, emptying a text field otherwise means
-// select-all-then-delete.
-function updateSearchClearBtn(){
-  const btn = document.getElementById("searchClearBtn");
-  if(btn) btn.style.display = searchTerm ? "" : "none";
-}
 document.getElementById("searchBox").addEventListener("input", e=>{
-  searchTerm = e.target.value; updateSearchClearBtn(); renderRecipes();
-});
-document.getElementById("searchClearBtn").addEventListener("click", ()=>{
-  searchTerm = "";
-  document.getElementById("searchBox").value = "";
-  updateSearchClearBtn();
-  renderRecipes();
+  searchTerm = e.target.value; renderRecipes();
 });
 document.getElementById("favToggle").addEventListener("click", e=>{
   onlyFav = !onlyFav;

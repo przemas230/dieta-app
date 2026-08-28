@@ -262,6 +262,14 @@ Filtr progu oceny pokazuje wyłącznie przepisy, których ocena gwiazdkowa (⭐ 
   zarówno do nazwy przepisu, jak i do listy składników. Zweryfikowane na
   żywo (headless Chromium) w obie strony: zapytanie bez ogonków znajduje
   przepis z ogonkami i odwrotnie. CACHE_NAME→v110, `versions/v110/`.
+- **v7** (2026-08-28, Web only): Pole wyszukiwania przepisów dostało
+  przycisk „✕” czyszczący frazę, widoczny tylko gdy coś jest wpisane —
+  dla spójności z wyszukiwaniem na liście zakupów (FR-99), które dostało
+  go przy okazji powstania. Na telefonie opróżnienie pola inaczej oznacza
+  zaznacz-wszystko-i-usuń. Zweryfikowane na żywo: przycisk ukryty na
+  starcie, pojawia się po wpisaniu frazy (1 pasujący przepis), a
+  kliknięcie czyści pole i przywraca pełną listę (106 kart w tej
+  kategorii). CACHE_NAME→v113, `versions/v113/`.
 
 ---
 
@@ -649,9 +657,33 @@ Dla każdego zaplanowanego dania można zmienić mnożnik porcji (predefiniowane
 
 ## Kryteria akceptacji
 - Zmiana skali natychmiast aktualizuje sumę kalorii dnia i wpis w nagłówku.
+- Przeskalowana lista składników używa poprawnej polskiej odmiany przy
+  liczbie całkowitej (2 jajka → 3× → „6 jajek”, a nie „6 jajka”).
+- Składniki podane w jednostkach (gramy, mililitry, łyżeczki, kromki)
+  zmieniają wyłącznie liczbę — ich treść pozostaje nietknięta.
+- Wynik ułamkowy zostawia oryginalne brzmienie składnika z przepisu.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-28, Web only): Przeskalowana lista składników odmienia
+  teraz nazwę zgodnie z nową liczbą. Wcześniej skalowanie podmieniało
+  wyłącznie LICZBĘ, więc „2 jajka” przy 3× czytało się „6 jajka”, a przy
+  0,5× „1 jajka” — obie formy niepoprawne po polsku i widoczne na każdej
+  przeskalowanej karcie przepisu. Aplikacja miała już pełną tabelę odmian
+  (używaną przez spiżarnię i listę zakupów), tylko skalowanie z niej nie
+  korzystało. Dopasowanie następuje po CAŁYM tekście po liczbie i wyłącznie
+  względem tej tabeli — dzięki temu „jajka” i „tortilla” są odmieniane, a
+  „g piersi z kurczaka” czy „łyżeczka oliwy” zostają nietknięte.
+  **Świadomie tylko dla liczb całkowitych**: liczebnik ułamkowy wymaga po
+  polsku dopełniacza liczby pojedynczej („0,5 jajka”, „1,5 banana”), formy
+  której ta tabela nie zawiera — pierwsza wersja poprawki, odmieniająca
+  także ułamki regułą jeden/kilka/wiele, produkowała „0,5 jajko” i
+  „1,5 banany”, czyli zamieniała jeden błąd na inny; przy ułamku zostaje
+  więc oryginalne brzmienie z przepisu, które było już poprawne.
+  Zweryfikowane na żywo (headless Chromium) na dziewięciu wzorcach
+  składników × pięciu skalach: poprawnie „1 jajko”/„6 jajek”/„12 jajek”,
+  „6 tortilli”, „6 bananów”/„9 bananów”, przy nietkniętych wierszach
+  jednostkowych. CACHE_NAME→v113, `versions/v113/`.
 
 ---
 

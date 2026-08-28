@@ -64,3 +64,11 @@ Filtr progu oceny pokazuje wyłącznie przepisy, których ocena gwiazdkowa (⭐ 
   zarówno do nazwy przepisu, jak i do listy składników. Zweryfikowane na
   żywo (headless Chromium) w obie strony: zapytanie bez ogonków znajduje
   przepis z ogonkami i odwrotnie. CACHE_NAME→v110, `versions/v110/`.
+- **v7** (2026-08-28, Web only): Pole wyszukiwania przepisów dostało
+  przycisk „✕” czyszczący frazę, widoczny tylko gdy coś jest wpisane —
+  dla spójności z wyszukiwaniem na liście zakupów (FR-99), które dostało
+  go przy okazji powstania. Na telefonie opróżnienie pola inaczej oznacza
+  zaznacz-wszystko-i-usuń. Zweryfikowane na żywo: przycisk ukryty na
+  starcie, pojawia się po wpisaniu frazy (1 pasujący przepis), a
+  kliknięcie czyści pole i przywraca pełną listę (106 kart w tej
+  kategorii). CACHE_NAME→v113, `versions/v113/`.

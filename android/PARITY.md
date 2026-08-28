@@ -31,7 +31,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-17 | Ocena dania po ugotowaniu (gwiazdki) | ⚠️ nieaktualne, scalone w FR-84 | ⚠️ nieaktualne, scalone w FR-84 — historia gotowania jest teraz czystym logiem dat, patrz notatka FR-84 niżej |
 | FR-18 | Planer tygodniowy z 5 slotami posiłków dziennie | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-19 | Wybór innego slotu posiłkowego z poziomu karty przepisu | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
-| FR-20 | Skalowanie wielkości porcji w planerze | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
+| FR-20 | Skalowanie wielkości porcji w planerze | ✅ v2 (2026-08-28): przeskalowana lista składników używa poprawnej polskiej odmiany dla liczb całkowitych („6 jajek”, nie „6 jajka”); wiersze jednostkowe nietknięte; ułamki celowo zostawione w oryginalnym brzmieniu (brak formy dopełniacza l.poj. w tabeli). ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
 | FR-21 | Losowe generowanie planu — cały tydzień lub pojedynczy dzień | ✅ v2 (2026-08-28): losowanie POJEDYNCZEGO dnia bez `confirm()`, za to z „Cofnij” w toaście; losowanie CAŁEGO tygodnia zachowuje `confirm()` i dodatkowo dostaje „Cofnij”. Zweryfikowane na żywo (headless Chromium) — cofnięcie przywraca cały `state.planner`/`plannerScale`/`plannerLeftover`, nie tylko widoczny dzień | ⏳ v1 (2026-08-26) bez zmian, zweryfikowane na emulatorze. **v2 (cofanie) NIE przeniesione** — środowisko tej sesji nie kompiluje Kotlina (403 z `api.foojay.io`), patrz uwagi niżej |
 | FR-22 | Czyszczenie planu — cały tydzień lub pojedynczy dzień | ✅ v2 (2026-08-28): „🗑️ Wyczyść ten dzień” bez `confirm()`, za to z „Cofnij” przywracającym dania+skale+resztki. Zweryfikowane na żywo (headless Chromium) | ⏳ v1 bez zmian, zweryfikowane na emulatorze (per dzień — patrz uwagi). **v2 (cofanie) NIE przeniesione** — jw. |
 | FR-23 | „Ugotuj na 2 dni” — planowanie resztek po zwiększeniu porcji | ✅ | ✅ zaimplementowane i ręcznie zweryfikowane na emulatorze |
@@ -1014,6 +1014,14 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
   **Android: nieprzeniesione, ale FR-101 wymaga tam ODDZIELNEJ WERYFIKACJI, nie portu** — Kotlin ma inne API dat, `LocalDate.now()` jest z definicji lokalne, więc ten błąd prawdopodobnie nie istnieje po tamtej stronie; to jednak przypuszczenie, nie sprawdzony fakt (403 z `api.foojay.io`).
 
   `node -e "new Function(...)"` na obu blokach `<script>` przechodzi. CACHE_NAME→v112, `versions/v112/`.
+
+- **FR-20/v2 (odmiana przy skalowaniu porcji) + FR-2/v7 (przycisk czyszczenia wyszukiwarki), Web only (2026-08-28)**: FR-20/v2 znalezione podczas celowego audytu rdzenia obliczeniowego (parsowanie ilości, skalowanie, agregacja na liście zakupów) — sama matematyka okazała się w pełni poprawna (ułamki `1/2`→0.5, polskie przecinki `1,5`→1.5, sumowanie i odejmowanie wkładu poszczególnych przepisów), ale `scaleIngredientText()` podmieniało wyłącznie LICZBĘ: „2 jajka” ×3 dawało „6 jajka”, ×0,5 „1 jajka”. Tabela odmian (`PANTRY_PLURAL_FORMS`) istniała w aplikacji od dawna, używana przez spiżarnię i listę zakupów — po prostu nie była stąd wołana. Dopasowanie po CAŁYM tekście po liczbie i wyłącznie względem tej tabeli jest tym, co czyni to bezpiecznym: „jajka”/„tortilla” są wpisami, „g piersi z kurczaka”/„łyżeczka oliwy” nie, więc wiersze jednostkowe zostają nietknięte. **Warta odnotowania decyzja: pierwsza wersja poprawki była gorsza od problemu dla ułamków** — odmieniona regułą jeden/kilka/wiele dawała „0,5 jajko” i „1,5 banany”, podczas gdy polszczyzna wymaga tam dopełniacza liczby pojedynczej („0,5 jajka”, „1,5 banana”), formy której ta tabela nie zawiera; zamiast zgadywać, odmiana została ograniczona do liczb całkowitych, a przy ułamku zostaje oryginalne brzmienie z przepisu (już poprawne). Zweryfikowane na 9 wzorcach × 5 skalach.
+
+  FR-2/v7 to drobiazg dla spójności: pole wyszukiwania przepisów dostało „✕” (widoczny tylko przy niepustej frazie), którego wyszukiwarka listy zakupów z FR-99 miała od początku — na telefonie opróżnienie pola inaczej wymaga zaznacz-wszystko-i-usuń.
+
+  **Android: nieprzeniesione** (403 z `api.foojay.io`). Przy okazji portu warto sprawdzić, czy Kotlinowe skalowanie porcji nie ma tego samego problemu z odmianą — na webie tabela istniała, ale nie była wołana z właściwego miejsca, co jest łatwe do powtórzenia.
+
+  `node -e "new Function(...)"` na obu blokach `<script>` przechodzi. CACHE_NAME→v113, `versions/v113/`.
 
 ## Jak to utrzymywać
 
