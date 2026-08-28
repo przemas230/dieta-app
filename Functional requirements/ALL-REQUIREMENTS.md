@@ -937,7 +937,7 @@ Jeśli TO SAMO danie jest zaplanowane więcej niż raz w tym samym tygodniu (np.
 # FR-28: Śledzenie stanu spiżarni w kafelkach pogrupowanych kategoriami
 
 **Obszar:** Spiżarnia  
-**Status:** Zaimplementowane
+**Status:** Zaimplementowane (cofanie wyczyszczenia — v2 — na razie Web-only, patrz Historia rewizji)
 
 ## Opis
 Zakładka Spiżarnia pokazuje kafelki produktów pogrupowane w kategorie (Nabiał, Warzywa, Owoce, Mięso/ryby/jajka, Strączki i orzechy, Pieczywo i zboża, Przyprawy, Inne). Górna połowa kafelka dodaje jednostkę, dolna odejmuje. Przyprawy śledzone są poziomem (Mało/Wystarczy/Dużo), nie liczbą sztuk. Kafelki w każdej kategorii układają się w siatkę rozciągającą się na pełną dostępną szerokość ekranu (równa liczba kolumn dopasowana do szerokości, kafelki równo rozciągnięte), a nie w luźno zawijany rząd o stałej szerokości kafelka z nierówną przerwą na końcu.
@@ -959,21 +959,20 @@ Zgłoszony 2026-08-11: użytkownik zgłosił, że aplikacja "zacina się" po dod
 - **v3** (2026-08-11): Naprawiono realny błąd wydajności powodujący zacinanie się aplikacji przy kilku szybkich dotknięciach kafelków z rzędu — patrz sekcja "Uwagi" powyżej. Brak zmiany zachowania funkcjonalnego, wyłącznie poprawka wydajności.
 - **v4** (2026-08-11): Dodano przycisk „🗑️ Wyczyść całą spiżarnię” na obu platformach (web i Android, w tej samej turze), na wyraźną prośbę użytkownika ("dodaj opcji czyszczenia całej spiżarni w obydwu wersjach kotlin i html").
 - **v5** (2026-08-23, Web + Android): Na wyraźną prośbę użytkownika ("dla artykułów liczonych w ml zmniejsz skok z 100 do 50 ml, a najlepiej dodaj opcje zmieniania skoku po przytrzymaniu kafelka") -- `tileStep("volume")` zmienione ze 100 na 50 (waga zostaje przy 100). Dodana per-produktowa nadpisywana wartość skoku, ustawiana z listy gotowych opcji w tym samym oknie długiego przytrzymania co zmiana kategorii. Web: nowa mapa `state.pantryStepOverride` (ten sam wzorzec co `pantryUnitOverride`/`pantryCategoryOverride`, dopisana do `SYNCED_STATE_KEYS`/`MAP_MERGE_KEYS`), `effectiveStep()` sprawdza override przed `tileStep()`. Android: świadomie prostsze -- pole `stepOverride` bezpośrednio na `PantryItem.Product` zamiast osobnej trwałej mapy (ginie po pełnym usunięciu śledzenia + ponownym dodaniu, tak jak już wcześniej brak portu zmiany jednostki przez długie przytrzymanie, patrz `android/PARITY.md`). `./gradlew :logic:test :app:compileDebugKotlin` przechodzi (test `PantryTilesTest` zaktualizowany na nową wartość domyślną). Zweryfikowane na żywo na obu platformach: nowo śledzony produkt w ml startuje na 50 ml, okno długiego przytrzymania pokazuje siatkę gotowych wartości z aktualną zaznaczoną, wybór innej trwale zmienia skok +/- tego kafelka.
-
-# FR-29: Odmiana gramatyczna nazw produktów w spiżarni
-
-**Obszar:** Spiżarnia  
-**Status:** Zaimplementowane
-
-## Opis
-Nazwy produktów liczonych sztukowo (np. jajka, bułki) odmieniają się poprawnie po polsku w zależności od aktualnej liczby (np. „jajko” / „jajka” / „jajek”), wg standardowych reguł liczebnikowych polskiej odmiany (1 → mianownik l.poj.; końcówka 2–4 z wyjątkiem 12–14 → forma „kilka”; pozostałe → dopełniacz l.mn.). Nazwy składników z przepisów są dodatkowo sprowadzane do formy kanonicznej (np. „300g dżemu” w przepisie → produkt „dżem” w spiżarni), a nie zapisywane w przypadkowym przypadku gramatycznym z tekstu przepisu.
-
-## Kryteria akceptacji
-- Tabela form (`one`/`few`/`many`) pokrywa produkty faktycznie liczone sztukowo, nie przyprawy śledzone poziomem.
-- Zmiana ilości kafelka natychmiast przelicza wyświetlaną formę gramatyczną.
-
-## Historia rewizji
-- **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-28, Web only): „🗑️ Wyczyść całą spiżarnię” zachowuje
+  potwierdzenie (akcja o zasięgu całej spiżarni), ale dodatkowo pokazuje
+  powiadomienie z przyciskiem „Cofnij”, przywracającym wszystkie usunięte
+  pozycje. Domknięcie audytu akcji destrukcyjnych rozpoczętego w FR-21/v2,
+  FR-22/v2 i FR-26/v2 — ta sama zasada: pełny zakres → potwierdzenie ORAZ
+  cofnięcie. Cofnięcie dopisuje też własny wpis do historii aktywności
+  (FR-42), żeby log odzwierciedlał, co się faktycznie stało, zamiast
+  zostawiać samo „Wyczyszczono całą spiżarnię”. Przywracane jest wyłącznie
+  `state.pantry` — mapy `pantryUnitOverride`/`pantryCategoryOverride`/
+  `pantryStepOverride` i `customTiles` nie są przez ten przycisk kasowane,
+  więc są na miejscu i stosują się do przywróconych pozycji. Zweryfikowane
+  na żywo (headless Chromium): 2 pozycje + ustawiony override jednostki →
+  wyczyszczenie (0 pozycji, override nietknięty) → „Cofnij” → obie pozycje
+  z powrotem, override nadal ten sam. CACHE_NAME→v109, `versions/v109/`.
 
 ---
 
@@ -1274,7 +1273,7 @@ Wykres historii dziennego spożycia kalorii wraz z podsumowaniem bilansu tygodni
 # FR-42: Serie (streaks) i historia aktywności
 
 **Obszar:** Śledzenie postępów  
-**Status:** Zaimplementowane
+**Status:** Zaimplementowane (cofanie wyczyszczenia historii — v2 — na razie Web-only, patrz Historia rewizji)
 
 ## Opis
 Aplikacja liczy serie kolejnych dni spełniających kryteria (np. pełne nawodnienie, spożycie w granicach celu) oraz prowadzi dziennik aktywności (dodania/usunięcia z listy zakupów i spiżarni). Domyślnie pokazywanych jest 20 najnowszych wpisów historii z przyciskiem „Pokaż całą historię (N)”; działa też filtr po zakresie dat, który ignoruje limit 20 i pokazuje wszystkie pasujące wpisy.
@@ -1285,6 +1284,13 @@ Aplikacja liczy serie kolejnych dni spełniających kryteria (np. pełne nawodni
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-28, Web only): „Wyczyść całą historię aktywności”
+  zachowuje potwierdzenie, ale dodatkowo pokazuje powiadomienie z
+  przyciskiem „Cofnij”, przywracającym wszystkie wpisy. Domknięcie audytu
+  akcji destrukcyjnych rozpoczętego w FR-21/v2, FR-22/v2 i FR-26/v2 — ta
+  sama zasada dla akcji o pełnym zakresie. Zweryfikowane na żywo (headless
+  Chromium): wyczyszczenie historii (0 wpisów) → „Cofnij” → wszystkie wpisy
+  z powrotem, w tej samej kolejności. CACHE_NAME→v109, `versions/v109/`.
 
 ---
 
@@ -1786,10 +1792,19 @@ Spisane 2026-08-07: pierwszy, samodzielnie już działający element szerszej pr
 # FR-66: Dodawanie własnych przepisów przez użytkownika
 
 **Obszar:** Przepisy i przeglądanie  
-**Status:** Zaimplementowane
+**Status:** Zaimplementowane (edycja własnego przepisu — v7 — na razie Web-only, patrz Uwagi)
 
 ## Opis
 Przycisk „➕ Dodaj swój przepis” w zakładce Przepisy otwiera formularz (nazwa, kategoria, czas przygotowania, składniki — jeden na linię, sposób przygotowania, kalorie, opcjonalnie białko/węglowodany/tłuszcz). Zapisany przepis trafia do `state.myRecipes` i od razu jest pełnoprawnym przepisem: pojawia się na liście przepisów swojej kategorii oznaczony plakietką „✍️ Twój przepis”, można go zaplanować (Planer), dodać do listy zakupów, sprawdzić jego składniki względem spiżarni, oznaczyć jako zrobiony (z historią i oceną) oraz ocenić gwiazdkowo (FR-67) — dokładnie tak samo jak którykolwiek z 229 wbudowanych przepisów.
+
+Własny przepis można też EDYTOWAĆ (v7): przycisk „✏️ Edytuj” obok „🗑️ Usuń”
+na karcie otwiera ten sam formularz, wypełniony obecnymi wartościami, i
+zapisuje zmiany **zachowując identyfikator przepisu**. To istotne, bo
+wszystko, co odwołuje się do przepisu, jest kluczowane po ID: jego ocena
+gwiazdkowa i komentarz, historia gotowania oraz sloty w Planerze. Wcześniej
+jedynym sposobem na poprawienie literówki, złej liczby kalorii czy
+brakującego składnika było usunięcie i dodanie od nowa — co nadawało nowy
+identyfikator i po cichu odłączało wszystkie te powiązania.
 
 Pola makroskładników są opcjonalne i wypełniają się automatycznie w miarę wpisywania składników: formularz na bieżąco parsuje każdą linię składnika (rozpoznając ilość i gramaturę tak samo jak reszta aplikacji przy dodawaniu do spiżarni/listy zakupów) i sumuje wartości z osobnej bazy odżywczej (~90 najpopularniejszych składników). Pod polem widać, ile składników zostało rozpoznane. Ręczne wpisanie wartości w pole kalorii/białka/węgli/tłuszczu ma pierwszeństwo — od tego momentu auto-obliczanie przestaje nadpisywać akurat to pole, więc użytkownik zawsze może poprawić wynik, a nie tylko go zaakceptować.
 
@@ -1800,8 +1815,29 @@ Pola makroskładników są opcjonalne i wypełniają się automatycznie w miarę
 - Własny przepis można usunąć bezpośrednio z karty (przycisk „🗑️ Usuń”, z potwierdzeniem) — usunięcie nie wpływa na wcześniej dodane wpisy historii gotowania czy pozycje na liście zakupów pochodzące z tego przepisu.
 - Wpisanie składnika z rozpoznawalną ilością/gramaturą (np. „150 g piersi z kurczaka”) automatycznie dolicza jego kalorie i makroskładniki do sumy przepisu; nierozpoznane składniki (rzadkie/nietypowe nazwy) są pomijane w sumie, a formularz jasno informuje ile z wpisanych linii zostało rozpoznanych.
 - Ręczna edycja pola kalorii/białka/węglowodanów/tłuszczu zatrzymuje automatyczne nadpisywanie TEGO konkretnego pola do końca sesji formularza (nowe otwarcie formularza resetuje ten stan).
+- Web (v7): karta własnego przepisu ma przycisk „✏️ Edytuj” obok „🗑️ Usuń”.
+- Web (v7): formularz otwarty do edycji jest wypełniony obecnymi wartościami przepisu (nazwa, kategoria, czas, składniki, sposób przygotowania, źródło inspiracji, kalorie i makro), ma tytuł „✏️ Edytuj swój przepis” i przycisk „Zapisz zmiany”.
+- Web (v7): zapisanie zmian NIE tworzy drugiego przepisu i NIE zmienia identyfikatora — ocena, komentarz, historia gotowania i zaplanowane sloty pozostają powiązane z przepisem.
+- Web (v7): po zapisaniu zmian Planer i lista zakupów natychmiast pokazują nową nazwę i kalorie, bez potrzeby odświeżania.
+- Web (v7): otwarcie formularza przyciskiem „➕ Dodaj swój przepis” po wcześniejszej edycji działa jak dodawanie nowego (puste pola, nowy identyfikator), a nie jak kolejna edycja.
 
 ## Uwagi
+Edycja (v7) świadomie oznacza pola makro jako „ustawione ręcznie” przy
+otwarciu formularza — zapisane wartości SĄ własnymi liczbami użytkownika,
+więc auto-kalkulator nie powinien ich nadpisywać tylko dlatego, że
+formularz został ponownie otwarty.
+
+Edytowany przepis jest ponownie publikowany w społeczności (`pushCommunityRecipe`)
+— dokument jest kluczowany po ID przepisu, więc edycja nadpisuje go w
+miejscu zamiast tworzyć duplikat. Wraca przy tym do `status:"pending"`,
+świadomie: moderator zatwierdził poprzednią treść, a nie tę po zmianie.
+
+**v7 (edycja) świadomie Web-only na razie** — ta sesja pracuje w środowisku
+bez dostępu do `api.foojay.io` (toolchain JDK dla Gradle, błąd 403 przy
+`:app:compileDebugKotlin`), więc port do Compose nie może tu zostać ani
+skompilowany, ani przetestowany; odłożone do sesji z realnym dostępem do
+Gradle/emulatora, odnotowane w `android/PARITY.md`.
+
 Spisane 2026-08-07: pierwszy, w pełni lokalny element szerszej prośby o możliwość dodawania przepisów przez użytkowników z myślą o przyszłej społeczności — reszta (przepisy widoczne dla INNYCH użytkowników, moderacja) wymaga chmury i jest opisana w `docs/FIREBASE_MIGRATION_PLAN.md` jako `source: "community"` z polem `status`. Ten sam przepis, dodany dziś lokalnie jako `source: "custom"`, jest strukturalnie gotowy stać się przepisem społecznościowym po podłączeniu Firebase, bez zmiany kształtu danych.
 
 Technicznie: wprowadzono `allRecipes()` (łączy 229 wbudowanych przepisów z `state.myRecipes`) i `findRecipeById(id)`, zastępując bezpośrednie odwołania do stałej tablicy `RECIPES` we wszystkich miejscach, gdzie przepis jest wyszukiwany po ID lub filtrowany po kategorii.
@@ -1846,6 +1882,22 @@ Zrewidowane 2026-08-08: dodano automatyczne obliczanie kalorii/makroskładników
   web) otwierające wyszukiwarkę/YouTube przez `Intent(ACTION_VIEW)`.
   `./gradlew :app:assembleDebug :logic:test` przeszły; wizualna weryfikacja
   w Android Studio/na urządzeniu jeszcze ⏳ (patrz `android/PARITY.md`).
+- **v7** (2026-08-28, Web only): Dodana EDYCJA własnego przepisu. Zmiana z
+  własnej rekomendacji, po przeglądzie funkcji pod kątem luk: aplikacja
+  pozwalała własny przepis dodać i usunąć, ale nie poprawić — a
+  delete-and-re-add nadaje nowy identyfikator, więc po cichu osierocał
+  ocenę gwiazdkową, komentarz, historię gotowania i sloty w Planerze
+  wskazujące na stary przepis. Ten sam modal obsługuje teraz oba tryby
+  (`editingRecipeId`), przycisk „✏️ Edytuj” dołożony obok „🗑️ Usuń” na
+  karcie własnego przepisu. Zweryfikowane na żywo (headless Chromium):
+  przepis z oceną 5★+komentarzem, wpisem historii gotowania i zaplanowanym
+  slotem został wyedytowany (zmiana nazwy, kalorii i listy składników) —
+  identyfikator, ocena, komentarz, historia i slot w Planerze pozostały
+  nietknięte, liczba przepisów nie wzrosła, a Planer natychmiast pokazał
+  nową nazwę i „444 kcal”; osobno sprawdzone, że kolejne otwarcie
+  formularza przyciskiem „➕ Dodaj” działa jak czyste dodawanie (puste
+  pola, nowy identyfikator, 2 przepisy w sumie). CACHE_NAME→v109,
+  `versions/v109/`.
 
 ---
 
