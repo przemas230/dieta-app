@@ -50,3 +50,17 @@ Filtr progu oceny pokazuje wyłącznie przepisy, których ocena gwiazdkowa (⭐ 
   PREZENTACJI (nie w danych), patrz `android/PARITY.md`. `./gradlew
   :app:assembleDebug :app:testDebugUnitTest :logic:test` przechodzi. **Nie
   zweryfikowane na żywo** — wymaga sprawdzenia w Android Studio.
+- **v6** (2026-08-28, Web only): Wyszukiwanie przestało być wrażliwe na
+  polskie znaki diakrytyczne. **Realny błąd, znaleziony przypadkiem** przy
+  dodawaniu wyszukiwania na liście zakupów (FR-99): filtr przepisów
+  porównywał surowe, tylko zmniejszone do małych liter napisy, więc
+  wpisanie „roszponka” dawało ZERO wyników mimo istniejącego przepisu
+  „Omlet z awokado, pomidorkami i roszponką” — potwierdzone pomiarowo na
+  całej bazie 229 przepisów przed poprawką. To szczególnie dotkliwe na
+  telefonie, gdzie każdy ogonek wymaga przytrzymania klawisza, czyli
+  dokładnie wtedy, gdy ludzie je pomijają. Naprawione przez zastosowanie
+  istniejącej funkcji `foldDiacritics()` (używanej już wcześniej przy
+  dopasowywaniu kanonicznych nazw składników) po obu stronach porównania —
+  zarówno do nazwy przepisu, jak i do listy składników. Zweryfikowane na
+  żywo (headless Chromium) w obie strony: zapytanie bez ogonków znajduje
+  przepis z ogonkami i odwrotnie. CACHE_NAME→v110, `versions/v110/`.

@@ -45,6 +45,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-91: Cofnij (Undo) usunięcie dania z „Dzisiejszy Planer”](#fr-91-cofnij-undo-usunięcie-dania-z-dzisiejszy-planer)
 - [FR-92: Udostępnianie / eksport planu tygodnia](#fr-92-udostępnianie--eksport-planu-tygodnia)
 - [FR-97: Znacznik stanu spiżarni na kartach „Dzisiejszy Planer”](#fr-97-znacznik-stanu-spiżarni-na-kartach-dzisiejszy-planer)
+- [FR-100: Podsumowanie odżywcze zaplanowanego tygodnia](#fr-100-podsumowanie-odżywcze-zaplanowanego-tygodnia)
 
 ### Lista zakupów
 - [FR-25: Budowanie listy zakupów ze składników przepisów](#fr-25-budowanie-listy-zakupów-ze-składników-przepisów)
@@ -245,6 +246,20 @@ Filtr progu oceny pokazuje wyłącznie przepisy, których ocena gwiazdkowa (⭐ 
   PREZENTACJI (nie w danych), patrz `android/PARITY.md`. `./gradlew
   :app:assembleDebug :app:testDebugUnitTest :logic:test` przechodzi. **Nie
   zweryfikowane na żywo** — wymaga sprawdzenia w Android Studio.
+- **v6** (2026-08-28, Web only): Wyszukiwanie przestało być wrażliwe na
+  polskie znaki diakrytyczne. **Realny błąd, znaleziony przypadkiem** przy
+  dodawaniu wyszukiwania na liście zakupów (FR-99): filtr przepisów
+  porównywał surowe, tylko zmniejszone do małych liter napisy, więc
+  wpisanie „roszponka” dawało ZERO wyników mimo istniejącego przepisu
+  „Omlet z awokado, pomidorkami i roszponką” — potwierdzone pomiarowo na
+  całej bazie 229 przepisów przed poprawką. To szczególnie dotkliwe na
+  telefonie, gdzie każdy ogonek wymaga przytrzymania klawisza, czyli
+  dokładnie wtedy, gdy ludzie je pomijają. Naprawione przez zastosowanie
+  istniejącej funkcji `foldDiacritics()` (używanej już wcześniej przy
+  dopasowywaniu kanonicznych nazw składników) po obu stronach porównania —
+  zarówno do nazwy przepisu, jak i do listy składników. Zweryfikowane na
+  żywo (headless Chromium) w obie strony: zapytanie bez ogonków znajduje
+  przepis z ogonkami i odwrotnie. CACHE_NAME→v110, `versions/v110/`.
 
 ---
 
@@ -4737,7 +4752,9 @@ listy (klasycznym „📃 Lista” i kafelkowym „🏺 Kafelki”), bo oba rend
 te same dane.
 
 Wyszukiwanie ignoruje polskie znaki diakrytyczne — „zolty” znajduje
-„żółty ser” — dokładnie tak samo jak istniejące wyszukiwanie przepisów.
+„żółty ser”. (Uwaga historyczna: przy dodawaniu tej funkcji okazało się, że
+wyszukiwanie PRZEPISÓW takiej odporności NIE miało — zostało to naprawione
+osobno, patrz FR-2/v6.)
 
 Licznik pozycji nad listą pokazuje przy aktywnym filtrze „N z M pozycji”,
 żeby nigdy nie przeczył temu, co widać na ekranie, ale jednocześnie było
@@ -4799,3 +4816,77 @@ skompilować ani przetestować. Odnotowane w `android/PARITY.md`.
   przywracające pełną listę i puste pole, oraz `buildListText()` przy
   aktywnym filtrze zwracający wszystkie 5 pozycji. CACHE_NAME→v108,
   `versions/v108/`.
+
+---
+
+# FR-100: Podsumowanie odżywcze zaplanowanego tygodnia
+
+**Obszar:** Planer tygodniowy, Web
+**Status:** Zaimplementowane na webie (Android — nieprzeniesione, patrz Uwagi)
+
+## Opis
+Pod przyciskami udostępniania, nad listą dni, Planer pokazuje kartę
+„📊 Zaplanowany tydzień” z podsumowaniem całego zaplanowanego tygodnia:
+
+- średnia liczba kalorii na dzień (duża liczba),
+- plakietka porównująca tę średnią z dziennym celem: „w celu (X kcal)”
+  przy odchyleniu do ±50 kcal, w przeciwnym razie „+N / −N kcal vs cel X”,
+- z ilu zaplanowanych dni i ilu dań liczona jest ta średnia,
+- średnie dzienne makroskładniki (białko / węglowodany / tłuszcz).
+
+Karta nie pojawia się wcale, dopóki w tygodniu nie ma ani jednego
+zaplanowanego dania.
+
+Powód dodania (2026-08-28): Planer pokazywał sumy kaloryczne dla
+pojedynczych dni, ale nic o tygodniu jako całości — więc odpowiedź na
+pytanie „czy tydzień, który właśnie ułożyłem, trzyma się mojego celu?”
+wymagała ręcznego sumowania siedmiu kart dni.
+
+## Kryteria akceptacji
+- Pusty tydzień (bez ani jednego zaplanowanego dania): karta nie jest
+  renderowana w ogóle (nie pusta ramka, nie zera).
+- Średnia dzienna liczona jest po dniach ZAPLANOWANYCH, nie po siedmiu.
+- Podsumowanie uwzględnia skalę porcji (2× danie liczy się podwójnie).
+- Plakietka pokazuje „w celu”, gdy średnia mieści się w ±50 kcal od celu
+  dziennego; w przeciwnym razie pokazuje kierunek i wielkość odchylenia.
+- Karta podaje, z ilu dni i ilu dań policzono średnią.
+- Jeśli część zaplanowanych dań nie ma podanych makroskładników, karta
+  mówi wprost, z ilu dań policzono makro; jeśli żadne ich nie ma —
+  informuje o tym zamiast pokazywać zera.
+- Karta aktualizuje się przy każdej zmianie planu (dodanie/usunięcie dania,
+  zmiana skali porcji, losowanie, czyszczenie, kopiowanie dnia).
+
+## Uwagi
+Uśrednianie po dniach zaplanowanych, a nie po siedmiu, jest świadomą
+decyzją: tydzień zaplanowany w połowie pokazywałby średnią dwukrotnie
+zaniżoną i wyglądałby jak głodówka, choć jest po prostu nieskończonym
+planem. Z tego samego powodu karta zawsze podaje, z ilu dni liczy.
+
+Makro sumowane są wyłącznie z dań, które je mają (własne przepisy
+użytkownika mogą ich nie mieć — FR-66 traktuje je jako opcjonalne), a
+liczba takich dań jest pokazywana obok — żeby częściowy wynik nigdy nie
+udawał pełnego.
+
+Karta jest celowo umieszczona POZA `#plannerTodayWrap` — ten kontener to
+starannie wymierzona, pełnoekranowa sekcja „dziś” (FR-87/v16), więc
+cokolwiek dodanego w środku zmieniłoby tamten układ. Style używają
+wyłącznie zmiennych motywu (`--text`/`--muted`/`--line`/`--teal-pale`
+itd.), więc karta dziedziczy wszystkie 13 motywów bez własnych reguł
+per-motyw.
+
+**Android: nieprzeniesione.** Ta sesja pracuje w środowisku bez dostępu do
+`api.foojay.io` (toolchain JDK dla Gradle, błąd 403 przy
+`:app:compileDebugKotlin`), więc kodu w Kotlinie nie da się tu
+skompilować ani przetestować. Odnotowane w `android/PARITY.md`.
+
+## Historia rewizji
+- **v1** (2026-08-28, Web only): Pierwsza wersja. Zmiana z własnej
+  rekomendacji. Zweryfikowane na żywo (headless Chromium): pusty tydzień nie
+  renderuje nic; 3 zaplanowane dni po 2 dania dają średnią liczoną po
+  dniach zaplanowanych (710 kcal), a nie po siedmiu (co dałoby mylące
+  304 kcal) — obie wartości policzone i porównane w teście; zwiększenie
+  skali porcji jednego dania podniosło sumę tygodnia (2130→2520 kcal);
+  plakietka odchylenia dostała właściwą klasę (`wps-under` przy średniej
+  poniżej celu). Sprawdzone też wizualnie zrzutem ekranu na pełnym,
+  5-dniowym planie w domyślnym motywie Klinika. CACHE_NAME→v110,
+  `versions/v110/`.
