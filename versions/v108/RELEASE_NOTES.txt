@@ -1,0 +1,58 @@
+Wersja v108 (2026-08-28)
+
+Dwie NOWE funkcje (Web only — patrz uwaga o Androidzie na końcu). Obie z
+własnej rekomendacji, po przeglądzie aplikacji pod kątem brakujących
+rzeczy.
+
+1. Kopia zapasowa danych do pliku (FR-98) — Ustawienia → Konto.
+
+   Aplikacja nie miała ŻADNEGO sposobu na wydostanie danych z siebie.
+   Wszystko żyje w pamięci przeglądarki i opcjonalnie w chmurze, a
+   historia tego projektu pokazuje, dlaczego to za mało: synchronizacja z
+   chmurą przechodziła już kilka rund realnych awarii, jest przycisk
+   kasujący wszystkie dane na koncie, a zalogowanie się na drugim
+   urządzeniu ZASTĘPUJE dane lokalne zamiast je scalać. W każdym z tych
+   scenariuszy plik trzymany u siebie jest ostatnią linią obrony.
+
+   „⬇️ Zapisz kopię zapasową do pliku” zapisuje wszystko (profil,
+   spiżarnia, lista zakupów, planer, ulubione, własne przepisy, oceny,
+   historia wagi i kalorii, ustawienia) do jednego pliku z datą w nazwie.
+   „⬆️ Wczytaj kopię zapasową z pliku” wczytuje go z powrotem — pokazując
+   najpierw, z kiedy jest kopia, i pytając o potwierdzenie, bo zastępuje
+   obecne dane.
+
+   Plik, który nie jest kopią Dieta App, uszkodzony plik albo kopia z
+   nowszej wersji aplikacji są odrzucane z czytelnym komunikatem i NIE
+   ruszają obecnych danych.
+
+2. Wyszukiwanie na liście zakupów (FR-99).
+
+   Realne listy w tej aplikacji bywają długie (odnotowana została lista
+   87-pozycyjna), a pozycje są pogrupowane po kategoriach — czyli w
+   kolejności przydatnej w sklepie, ale nie do szukania konkretnej rzeczy.
+   Odpowiedź na pytanie „czy dodałem już mleko?” wymagała przewinięcia
+   całej listy.
+
+   Nowe pole nad listą filtruje w miarę pisania, ignorując polskie znaki
+   („zolty” znajdzie „żółty ser”), i działa tak samo w widoku listy i
+   kafelkowym. Licznik pokazuje wtedy „N z M pozycji”, żeby było widać, że
+   reszta listy nadal istnieje, a przycisk „✕” czyści filtr.
+
+   Ważne: filtr zmienia tylko to, co WIDAĆ. Udostępnianie i kopiowanie
+   listy nadal wysyła całą listę, a nie przefiltrowany widok — tak samo
+   „Usuń odhaczone” i „Wyczyść całą listę” działają na pełnym zbiorze.
+
+Zweryfikowane na żywo (headless Chromium, w pełni offline), każda ścieżka
+osobno: dla kopii zapasowej — realne pobranie pliku, wyczyszczenie danych,
+wczytanie z powrotem i porównanie pól, plus trzy rodzaje złych plików; dla
+wyszukiwania — siedem przypadków, w tym niewrażliwość na polskie znaki,
+brak dopasowań, widok kafelkowy i to, że udostępnianie ignoruje filtr.
+
+Techniczne: CACHE_NAME service workera podbity do "dieta-app-v108".
+
+Android: obie funkcje NIE przeniesione — to zdalne środowisko nie ma
+dostępu do api.foojay.io (repozytorium toolchainów JDK dla Gradle, błąd
+403), więc kodu w Kotlinie nie da się tu ani skompilować, ani
+przetestować. Kopia zapasowa dodatkowo nie jest przepisaniem 1:1 —
+na Androidzie wymaga systemowego wyboru pliku (Storage Access Framework)
+zamiast pobierania przez przeglądarkę. Odnotowane w android/PARITY.md.

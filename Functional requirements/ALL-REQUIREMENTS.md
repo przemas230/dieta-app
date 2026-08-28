@@ -53,6 +53,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-58: Dodawanie składników z konkretnego dnia na liście zakupów](#fr-58-dodawanie-składników-z-konkretnego-dnia-na-liście-zakupów)
 - [FR-62: Mini kalendarzyk bieżącego tygodnia na liście zakupów](#fr-62-mini-kalendarzyk-bieżącego-tygodnia-na-liście-zakupów)
 - [FR-75: Widok kafelkowy listy zakupów z brakującymi ilościami](#fr-75-widok-kafelkowy-listy-zakupów-z-brakującymi-ilościami)
+- [FR-99: Wyszukiwanie na liście zakupów](#fr-99-wyszukiwanie-na-liście-zakupów)
 
 ### Spiżarnia
 - [FR-28: Śledzenie stanu spiżarni w kafelkach pogrupowanych kategoriami](#fr-28-śledzenie-stanu-spiżarni-w-kafelkach-pogrupowanych-kategoriami)
@@ -115,6 +116,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-65: Własna, opcjonalna nazwa użytkownika w aplikacji](#fr-65-własna-opcjonalna-nazwa-użytkownika-w-aplikacji)
 - [FR-68: Ustawienia gospodarstwa domowego i przepisów społeczności (stan przejściowy)](#fr-68-ustawienia-gospodarstwa-domowego-i-przepisów-społeczności-stan-przejściowy)
 - [FR-69: Logowanie w chmurze (anonimowe, Google, e-mail i hasło)](#fr-69-logowanie-w-chmurze-anonimowe-google-e-mail-i-hasło)
+- [FR-98: Kopia zapasowa danych do pliku (eksport i import)](#fr-98-kopia-zapasowa-danych-do-pliku-eksport-i-import)
 
 ### Ustawienia
 - [FR-71: Zakładki w Ustawieniach — Konto, Wygląd, Przypomnienia, Ulubione](#fr-71-zakładki-w-ustawieniach--konto-wygląd-przypomnienia-ulubione)
@@ -150,6 +152,9 @@ Przegląd wymagań pod kątem wzajemnych sprzeczności. Żadna z poniższych par
 9. **FR-61 (wybór stylu oceniania: balonowa czcionka / kolorowa karta) vs FR-48 (wybór motywu kolorystycznego).** Nie wykluczają się — to dwa niezależne ustawienia. FR-61 celowo działa tak samo w każdym z jedenastu motywów z FR-48, w tym Polaroid (FR-49) i Kafelki (FR-63).
 10. **FR-49 (kształt kart Polaroid) vs FR-63 (kształt kart motywu Kafelki).** Nie wykluczają się — oba wymagania modyfikują kształt/strukturę kart przepisów, ale są aktywne wyłącznie w ramach własnego, wzajemnie wykluczającego się wyboru motywu (FR-48 pozwala wybrać tylko jeden motyw naraz), więc nigdy nie są aktywne jednocześnie.
 11. **FR-62 (kalendarzyk tygodnia na liście zakupów) vs FR-58 (przyciski dodawania per-dzień).** Nie wykluczają się — to komplementarne, niezależne elementy tego samego widoku: FR-58 to akcja (dodawanie), FR-62 to wyłącznie odczyt/wizualizacja aktualnego stanu listy względem planu. Zmiana wywołana przez FR-58 natychmiast odświeża wskaźniki z FR-62.
+12. **FR-99 (wyszukiwanie na liście zakupów) vs FR-26 (udostępnianie i czyszczenie listy).** Potencjalna pułapka: filtr zawęża to, co widać, więc akcje działające „na liście” mogłyby zacząć działać na przefiltrowanym podzbiorze bez ostrzeżenia. Rozstrzygnięcie: filtr jest wyłącznie sposobem PATRZENIA na listę i nie wpływa na żadną akcję — `buildListText()` (udostępnianie/kopiowanie) eksportuje całą listę, a „Usuń odhaczone”/„Wyczyść całą listę” działają na pełnym zbiorze, niezależnie od aktywnej frazy. Zweryfikowane testem: przy aktywnym filtrze zawężającym widok do 1 pozycji udostępnianie nadal zwraca wszystkie 5.
+13. **FR-99 (wyszukiwanie na liście zakupów) vs FR-75 (widok kafelkowy listy).** Nie wykluczają się — oba widoki renderują ten sam `state.shopping`, więc filtr jest stosowany raz, wspólnie dla obu, i przełączenie widoku przy aktywnej frazie nie gubi filtrowania.
+14. **FR-98 (kopia zapasowa do pliku) vs FR-73 (synchronizacja z chmurą) i FR-89 (reset danych konta).** Nie wykluczają się, ale świadomie się pokrywają: zakres eksportu to dokładnie `SYNCED_STATE_KEYS`, czyli ten sam zbiór, który wędruje do chmury — kopia obejmująca cokolwiek innego rozjeżdżałaby się z tym, co przenosi zalogowanie na drugim urządzeniu. Import celowo przechodzi przez to samo `refreshUiAfterSync()`, co dane przychodzące z chmury, żeby nie powstała druga, równoległa ścieżka „przeładuj wszystko po podmianie stanu”. Względem FR-89 kopia jest zabezpieczeniem: reset konta jest nieodwracalny po stronie chmury, ale plik zapisany wcześniej pozwala odtworzyć dane.
 
 ---
 
@@ -4574,3 +4579,171 @@ dostępem do Gradle/emulatora, odnotowane w `android/PARITY.md`.
   stuknięcie nazwy dania nadal otwiera podgląd przepisu (a nie spiżarnię) —
   oba kierunki potwierdzone osobno, żeby wykluczyć przechwycenie zdarzenia
   przez nadrzędny handler karty. CACHE_NAME→v106, `versions/v106/`.
+
+---
+
+# FR-98: Kopia zapasowa danych do pliku (eksport i import)
+
+**Obszar:** Ustawienia → Konto, Web
+**Status:** Zaimplementowane na webie (Android — nieprzeniesione, patrz Uwagi)
+
+## Opis
+W Ustawieniach → Konto jest karta „💾 Kopia zapasowa danych” z dwoma
+przyciskami:
+
+- **„⬇️ Zapisz kopię zapasową do pliku”** — zapisuje wszystkie dane
+  użytkownika (profil, spiżarnia, lista zakupów, planer, ulubione, własne
+  przepisy, oceny, historia wagi i kalorii, ustawienia) do jednego pliku
+  JSON na urządzeniu, o nazwie `dieta-app-kopia-RRRR-MM-DD.json`.
+- **„⬆️ Wczytaj kopię zapasową z pliku”** — wczytuje wcześniej zapisany
+  plik i ZASTĘPUJE nim obecne dane w aplikacji, po pokazaniu daty, z
+  której pochodzi kopia, i poproszeniu o potwierdzenie.
+
+Działa niezależnie od logowania i od synchronizacji z chmurą — to jedyna
+ścieżka odzyskania danych, która nie zależy od tego, czy chmura działa.
+
+Powód dodania (2026-08-28): aplikacja nie miała ŻADNEGO sposobu na
+wydostanie danych z siebie. Wszystko żyje w `localStorage` i opcjonalnie w
+Firestore, a historia tego projektu pokazuje, dlaczego to za mało: FR-73
+przeszedł kilka rund realnych awarii synchronizacji, FR-89 dodał przycisk
+kasujący wszystkie dane na koncie, a zalogowanie się na drugim urządzeniu
+ZASTĘPUJE dane lokalne zamiast je scalać (opisane wprost w karcie „Konto w
+chmurze”). W każdym z tych scenariuszy plik, który użytkownik trzyma u
+siebie, jest ostatnią linią obrony.
+
+## Kryteria akceptacji
+- Eksport zapisuje plik JSON o nazwie zawierającej datę eksportu.
+- Wyeksportowany plik zawiera znacznik formatu (`format`, `version`),
+  datę eksportu (`exportedAt`) i wszystkie dane użytkownika.
+- Import z poprawnego pliku odtwarza dane dokładnie w stanie z momentu
+  eksportu (sprawdzone m.in. na profilu, spiżarni, planerze, ulubionych i
+  historii wagi).
+- Import prosi o potwierdzenie i pokazuje datę, z której pochodzi kopia,
+  ZANIM cokolwiek nadpisze.
+- Import pliku, który nie jest kopią zapasową Dieta App, pokazuje
+  komunikat i NIE zmienia obecnych danych.
+- Import pliku z uszkodzonym JSON-em pokazuje komunikat i NIE zmienia
+  obecnych danych.
+- Import pliku z nowszą wersją formatu niż obsługiwana pokazuje komunikat
+  i NIE zmienia obecnych danych.
+- Wybranie tego samego pliku dwa razy pod rząd działa za drugim razem tak
+  samo jak za pierwszym.
+
+## Uwagi
+Zakres eksportu to dokładnie `SYNCED_STATE_KEYS` — ta sama lista, którą
+aplikacja synchronizuje z chmurą. Świadoma decyzja: kopia obejmująca
+cokolwiek innego niż ten zbiór z definicji rozjeżdżałaby się z tym, co
+przenosi zalogowanie się na drugim urządzeniu. Celowo NIE jest to zrzut
+całego obiektu `state`, który trzyma też pola pochodne i sesyjne, mające
+sens tylko na tym urządzeniu.
+
+Import stosuje wyłącznie klucze, które aplikacja zna (`SYNCED_STATE_KEYS`):
+starsza kopia zostawia nowsze pola w obecnym stanie zamiast kasować je do
+`undefined`, a nieznany klucz z ręcznie zmodyfikowanego pliku jest
+ignorowany, zamiast wstrzykiwać się do `state`.
+
+Po imporcie interfejs odświeża się przez istniejące `refreshUiAfterSync()`
+(mechanizm z FR-73) — ta sama ścieżka, którą aplikacja i tak stosuje po
+otrzymaniu danych z chmury, więc nie powstaje drugi, równoległy sposób
+„przeładuj wszystko po podmianie stanu”.
+
+`URL.revokeObjectURL` jest wywoływane z opóźnieniem, a nie natychmiast —
+część przeglądarek mobilnych przekazuje blob do menedżera pobierania
+asynchronicznie i unieważnienie w tym samym cyklu potrafi anulować
+pobieranie, zanim się zacznie.
+
+**Android: nieprzeniesione.** Ta sesja pracuje w środowisku bez dostępu do
+`api.foojay.io` (toolchain JDK dla Gradle, błąd 403 przy
+`:app:compileDebugKotlin`), więc kodu w Kotlinie nie da się tu
+skompilować ani przetestować. Port będzie wymagał `ACTION_CREATE_DOCUMENT`
+/ `ACTION_OPEN_DOCUMENT` (Storage Access Framework) zamiast blobu i linku
+`download` — czyli nie jest to przepisanie 1:1, tylko osobny kawałek pracy.
+Odnotowane w `android/PARITY.md`.
+
+## Historia rewizji
+- **v1** (2026-08-28, Web only): Pierwsza wersja. Zmiana z własnej
+  rekomendacji, po przeglądzie funkcji pod kątem luk (użytkownik: „dodawaj
+  swoje rekomendowane zmiany”). Zweryfikowane na żywo (headless Chromium,
+  z przechwyceniem realnego pobierania pliku): eksport → wyczyszczenie
+  danych w aplikacji → import tego samego pliku → wszystkie sprawdzane pola
+  (nazwa użytkownika, spiżarnia, planer, ulubione, historia wagi) wróciły
+  identyczne; osobno sprawdzone trzy ścieżki odrzucenia (plik niebędący
+  kopią, uszkodzony JSON, nowsza wersja formatu) — każda pokazała właściwy
+  komunikat i zostawiła dane nietknięte. CACHE_NAME→v108, `versions/v108/`.
+
+---
+
+# FR-99: Wyszukiwanie na liście zakupów
+
+**Obszar:** Lista zakupów, Web
+**Status:** Zaimplementowane na webie (Android — nieprzeniesione, patrz Uwagi)
+
+## Opis
+Nad listą zakupów jest pole „Szukaj na liście zakupów…”, filtrujące
+pozycje po nazwie w miarę pisania. Filtr działa tak samo w obu widokach
+listy (klasycznym „📃 Lista” i kafelkowym „🏺 Kafelki”), bo oba renderują
+te same dane.
+
+Wyszukiwanie ignoruje polskie znaki diakrytyczne — „zolty” znajduje
+„żółty ser” — dokładnie tak samo jak istniejące wyszukiwanie przepisów.
+
+Licznik pozycji nad listą pokazuje przy aktywnym filtrze „N z M pozycji”,
+żeby nigdy nie przeczył temu, co widać na ekranie, ale jednocześnie było
+widać, że reszta listy nadal istnieje. Obok pola jest przycisk „✕”
+czyszczący filtr (widoczny tylko, gdy filtr jest aktywny).
+
+Powód dodania (2026-08-28): realne listy zakupów w tej aplikacji bywają
+długie — lista 87-pozycyjna została odnotowana przy okazji debugowania
+FR-87/v9 — a pozycje są pogrupowane po kategoriach, czyli w kolejności
+przydatnej w sklepie, ale nie do szukania konkretnej rzeczy. Odpowiedź na
+pytanie „czy dodałem już mleko?” wymagała przewinięcia całej listy.
+
+## Kryteria akceptacji
+- Wpisanie tekstu filtruje listę do pozycji, których nazwa zawiera ten
+  tekst.
+- Filtrowanie ignoruje polskie znaki diakrytyczne w obie strony.
+- Licznik pozycji pokazuje „N z M pozycji” przy aktywnym filtrze i samo
+  „M pozycji”, gdy filtr jest pusty.
+- Brak dopasowań pokazuje czytelny komunikat z wpisaną frazą, a nie pustą
+  listę.
+- Widok kafelkowy respektuje ten sam filtr co widok listy.
+- Przycisk „✕” czyści filtr i przywraca pełną listę; jest widoczny tylko
+  przy aktywnym filtrze.
+- Pusta lista zakupów (bez żadnej pozycji) nadal pokazuje swój dotychczasowy
+  komunikat zachęcający do dodania składników — a nie komunikat o braku
+  wyników wyszukiwania.
+- Udostępnianie i kopiowanie listy (FR-26) eksportuje CAŁĄ listę, nie
+  przefiltrowany widok.
+
+## Uwagi
+Fraza wyszukiwania celowo NIE jest zapisywana w `state` (a więc nie trafia
+do `SYNCED_STATE_KEYS` ani do chmury): to przejściowy sposób patrzenia na
+listę, a nie jej część — synchronizowanie go oznaczałoby, że jedno
+urządzenie może zostawić listę na drugim w tajemniczo przefiltrowanym
+stanie.
+
+Rozdzielenie `allKeys` (pełna lista) od `keys` (przefiltrowana) w
+`renderShop()` jest celowe: komunikat „lista jest pusta” musi zależeć od
+tej pierwszej, a komunikat „nic nie pasuje” od drugiej — inaczej pusta
+lista pokazywałaby użytkownikowi, że jego wyszukiwanie nic nie znalazło,
+zamiast podpowiedzieć, jak w ogóle dodać pierwsze składniki.
+
+`buildListText()` (udostępnianie/kopiowanie) świadomie pomija filtr —
+filtr służy do znalezienia czegoś na ekranie, a nie do wybrania, co wysłać
+osobie robiącej zakupy.
+
+**Android: nieprzeniesione.** Ta sesja pracuje w środowisku bez dostępu do
+`api.foojay.io` (toolchain JDK dla Gradle, błąd 403 przy
+`:app:compileDebugKotlin`), więc kodu w Kotlinie nie da się tu
+skompilować ani przetestować. Odnotowane w `android/PARITY.md`.
+
+## Historia rewizji
+- **v1** (2026-08-28, Web only): Pierwsza wersja. Zmiana z własnej
+  rekomendacji. Zweryfikowane na żywo (headless Chromium), siedem
+  przypadków osobno: brak filtra (5 pozycji, „✕” ukryty), filtr „mle”
+  (1 z 5, właściwa pozycja), filtr „zolty” znajdujący „żółty ser”
+  (niewrażliwość na diakrytyki), brak dopasowań (komunikat z frazą),
+  widok kafelkowy respektujący filtr (1 kafelek), wyczyszczenie filtra
+  przywracające pełną listę i puste pole, oraz `buildListText()` przy
+  aktywnym filtrze zwracający wszystkie 5 pozycji. CACHE_NAME→v108,
+  `versions/v108/`.

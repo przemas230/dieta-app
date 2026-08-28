@@ -1799,16 +1799,6 @@
     </div>
     <div class="hint-text" style="margin:0 0 6px;">Albo tylko z konkretnego dnia — stuknij dzień, aby dodać jego składniki:</div>
     <div class="shop-day-strip" id="shopDayStrip"></div>
-    <!-- 2026-08-28: real shopping lists here get long (an 87-item list was
-         reported while debugging FR-87/v9's nav-bar overlap), and the list is
-         grouped by category rather than sorted by anything you'd scan for in
-         a shop -- so "did I already add mleko?" meant scrolling the whole
-         thing. Filters both the list and the tile view, since they render
-         the same state.shopping. -->
-    <div class="toolbar" style="margin:0 0 8px;">
-      <input class="search" id="shopSearchBox" type="text" placeholder="Szukaj na liście zakupów…">
-      <button class="btn ghost" id="shopSearchClear" style="display:none;" title="Wyczyść wyszukiwanie">✕</button>
-    </div>
     <div id="shopList"></div>
     <div class="shop-actions">
       <button class="btn primary" id="shareBtn">📤 Udostępnij (SMS / Messenger)</button>
@@ -1939,23 +1929,6 @@
           </div>
           <div class="hint-text" style="margin:8px 0 0;">Logowanie jest opcjonalne — bez niego aplikacja działa dokładnie tak jak dotąd, wyłącznie lokalnie na tym urządzeniu. Jeden e-mail = jedno konto, niezależnie czy logujesz się nim przez Google czy hasłem. Zalogowanie się na już istniejące konto na NOWYM urządzeniu pobierze na to urządzenie dane osobiste zapisane wcześniej na koncie (nazwa, profil, spiżarnia, ulubione, własne przepisy, oceny) — lokalne dane z tego urządzenia sprzed zalogowania NIE łączą się automatycznie z danymi z konta, tylko są przez nie zastępowane. Wspólny planer/lista zakupów dla domowników to osobna, jeszcze niegotowa funkcja (patrz <code>docs/FIREBASE_MIGRATION_PLAN.md</code>).</div>
         </div>
-      </div>
-
-      <!-- 2026-08-28: the app had no way at all to get your data OUT of it.
-           Everything lives in localStorage plus (optionally) Firestore, and
-           this project's own history shows why that's not enough: FR-73 went
-           through several rounds of real sync failures, FR-89 added a
-           "reset all account data" button, and signing in on a second device
-           REPLACES local data rather than merging it (see the note in the
-           account card above). A plain JSON file the user controls is the
-           only recovery path that doesn't depend on the cloud working. -->
-      <div class="card">
-        <h3 style="margin:0 0 10px; font-size:15px;">💾 Kopia zapasowa danych</h3>
-        <div class="hint-text" style="margin:0 0 10px;">Zapisuje WSZYSTKIE Twoje dane (profil, spiżarnię, listę zakupów, planer, ulubione, własne przepisy, oceny, historię wagi i kalorii, ustawienia) do jednego pliku na tym urządzeniu. Plik możesz przechowywać gdzie chcesz i wczytać z powrotem w każdej chwili — również na innym urządzeniu albo po zresetowaniu danych. Działa niezależnie od logowania i od synchronizacji z chmurą.</div>
-        <button class="btn ghost" id="exportDataBtn" style="width:100%; margin-bottom:8px;">⬇️ Zapisz kopię zapasową do pliku</button>
-        <button class="btn ghost" id="importDataBtn" style="width:100%;">⬆️ Wczytaj kopię zapasową z pliku</button>
-        <input type="file" id="importDataInput" accept="application/json,.json" style="display:none;">
-        <div class="hint-text" style="margin:10px 0 0;">Wczytanie kopii ZASTĘPUJE obecne dane w aplikacji — przed nadpisaniem zapytamy o potwierdzenie i pokażemy, z kiedy jest wczytywana kopia.</div>
       </div>
 
       <div class="card">
@@ -5341,84 +5314,6 @@ document.getElementById("signOutBtn").addEventListener("click", ()=>{
 // disabled until it elapses) exists purely to slow down an irreversible,
 // account-wide action -- long enough to reconsider, short enough not to
 // be busywork.
-// ---------- LOCAL BACKUP: export / import all data as a JSON file ----------
-// 2026-08-28: added because the app had no way to get data OUT of it at all.
-// Reuses SYNCED_STATE_KEYS as the single definition of "everything that is
-// the user's data" -- the cloud already round-trips exactly this set, so a
-// backup that covered anything more or less than it would, by definition,
-// disagree with what signing in on a second device transfers. Deliberately
-// NOT a full `state` dump: that also holds transient/derived fields whose
-// meaning is tied to this device+session.
-const BACKUP_FORMAT = "dieta-app-backup";
-const BACKUP_VERSION = 1;
-function buildBackupPayload(){
-  const data = {};
-  SYNCED_STATE_KEYS.forEach(k=>{ if(state[k]!==undefined) data[k] = state[k]; });
-  return {format:BACKUP_FORMAT, version:BACKUP_VERSION, exportedAt:new Date().toISOString(), data};
-}
-document.getElementById("exportDataBtn").addEventListener("click", ()=>{
-  try{
-    const json = JSON.stringify(buildBackupPayload(), null, 2);
-    const blob = new Blob([json], {type:"application/json"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `dieta-app-kopia-${todayStr()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    // Revoked on a timer rather than immediately: some mobile browsers hand
-    // the blob off to the download manager asynchronously, and revoking in
-    // the same tick can cancel the download before it starts.
-    setTimeout(()=> URL.revokeObjectURL(url), 10000);
-    toast("Zapisano kopię zapasową");
-  }catch(e){
-    toast("Nie udało się zapisać kopii: " + e.message);
-  }
-});
-document.getElementById("importDataBtn").addEventListener("click", ()=>{
-  document.getElementById("importDataInput").click();
-});
-document.getElementById("importDataInput").addEventListener("change", (e)=>{
-  const file = e.target.files && e.target.files[0];
-  // Reset the input's value so picking the SAME file twice in a row still
-  // fires `change` the second time (browsers suppress it otherwise).
-  e.target.value = "";
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onerror = ()=> toast("Nie udało się odczytać pliku");
-  reader.onload = ()=>{
-    let payload;
-    try{ payload = JSON.parse(reader.result); }
-    catch(err){ toast("To nie jest poprawny plik kopii zapasowej (błąd odczytu)"); return; }
-    if(!payload || payload.format !== BACKUP_FORMAT || !payload.data || typeof payload.data !== "object"){
-      toast("To nie jest plik kopii zapasowej Dieta App");
-      return;
-    }
-    if(payload.version > BACKUP_VERSION){
-      toast("Ta kopia pochodzi z nowszej wersji aplikacji — zaktualizuj aplikację i spróbuj ponownie");
-      return;
-    }
-    const when = payload.exportedAt ? new Date(payload.exportedAt).toLocaleString("pl-PL") : "nieznanej daty";
-    if(!confirm(`Wczytać kopię zapasową z ${when}?\n\nZASTĄPI to wszystkie obecne dane w aplikacji (profil, spiżarnię, listę zakupów, planer, ulubione, własne przepisy, oceny i historię).`)) return;
-    // Only keys we know about are applied -- an older backup simply leaves
-    // newer fields at their current values instead of wiping them to
-    // undefined, and an unknown key from a hand-edited file is ignored
-    // rather than injected into `state`.
-    let applied = 0;
-    SYNCED_STATE_KEYS.forEach(k=>{
-      if(payload.data[k]!==undefined){ state[k] = payload.data[k]; applied++; }
-    });
-    saveState();
-    refreshUiAfterSync(true);
-    renderPlanner();
-    renderShop();
-    renderPantry();
-    toast(`Wczytano kopię zapasową (${applied} zestawów danych)`);
-  };
-  reader.readAsText(file);
-});
-
 let resetAccountDataCountdownTimer = null;
 function openResetAccountDataModal(){
   if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous){ toast("Zaloguj się na prawdziwe konto, żeby zresetować dane"); return; }
@@ -6668,21 +6563,6 @@ function classify(label){
 const GROUP_ORDER = ["Nabiał bez laktozy","Warzywa i owoce","Mięso, ryby i jajka","Strączki, orzechy i nasiona","Pieczywo i zboża","Przyprawy i dodatki","Inne"];
 
 let shopViewMode = "list";
-// Deliberately NOT persisted in `state`: a search term is a transient way of
-// looking at the list, not part of it -- syncing it to the cloud would mean
-// one device could leave another device's list mysteriously filtered.
-let shopSearchTerm = "";
-// Matches the same folded, diacritic-insensitive way the recipe search does,
-// so "jajka" finds "jajka" and "zolty ser" finds "żółty ser".
-function shopKeysMatchingSearch(keys){
-  if(!shopSearchTerm) return keys;
-  const needle = foldDiacritics(shopSearchTerm.toLowerCase());
-  return keys.filter(k=>{
-    const item = state.shopping[k];
-    if(!item) return false;
-    return foldDiacritics(String(item.name).toLowerCase()).includes(needle);
-  });
-}
 // FR-58/62 extension (2026-08-11): which planner day(s) actually need a
 // given shopping list item, so the user can shop for just "today + jutro"
 // and stop instead of buying everything on the list in one go. Purely
@@ -6742,27 +6622,16 @@ function renderShop(){
   const box = document.getElementById("shopList");
   box.innerHTML = "";
   const isClinic = state.theme==="clinic" || state.theme==="clinic_dark";
-  const allKeys = Object.keys(state.shopping);
-  const keys = shopKeysMatchingSearch(allKeys);
-  // Count reports the filtered view when filtering, so it never contradicts
-  // what's actually on screen -- with the unfiltered total kept alongside it
-  // so it's obvious the rest of the list still exists.
-  document.getElementById("shopCount").textContent = shopSearchTerm
-    ? `${keys.length} z ${allKeys.length} pozycji`
-    : `${allKeys.length} pozycji`;
-  document.getElementById("shopSearchClear").style.display = shopSearchTerm ? "" : "none";
-  if(allKeys.length===0){
+  const keys = Object.keys(state.shopping);
+  document.getElementById("shopCount").textContent = keys.length + " pozycji";
+  if(keys.length===0){
     box.innerHTML = isClinic
       ? `<div class="empty"><div class="clinic-shop-empty-emoji">🛒</div><div class="clinic-shop-empty-title">Brak pozycji na liście</div>Lista zakupów jest pusta — dodaj składniki zaznaczając przepisy w zakładce Przepisy 🍽 lub przyciskiem w Planerze.</div>`
       : `<div class="empty">Lista jest pusta — dodaj składniki zaznaczając przepisy w zakładce Przepisy 🍽 lub przyciskiem w Planerze.</div>`;
     return;
   }
-  if(keys.length===0){
-    box.innerHTML = `<div class="empty">Nic nie pasuje do „${escapeHtml(shopSearchTerm)}” na liście zakupów.</div>`;
-    return;
-  }
   const ingredientDays = computeIngredientDays();
-  if(shopViewMode==="tiles"){ renderShopTiles(box, ingredientDays, keys); return; }
+  if(shopViewMode==="tiles"){ renderShopTiles(box, ingredientDays); return; }
   const groups = {};
   keys.forEach(k=>{
     const item = state.shopping[k];
@@ -6800,11 +6669,9 @@ function renderShop(){
 // spiżarnia (negative = still need to buy that much; ✓ = pantry already
 // covers the full planned quantity), per the user's request to see
 // "wartości ujemne produktów które są potrzebne".
-function renderShopTiles(box, ingredientDays, filteredKeys){
+function renderShopTiles(box, ingredientDays){
   ingredientDays = ingredientDays || computeIngredientDays();
-  // filteredKeys comes from renderShop's own search filter; the fallback
-  // keeps this callable on its own (and still honors an active search).
-  const keys = filteredKeys || shopKeysMatchingSearch(Object.keys(state.shopping));
+  const keys = Object.keys(state.shopping);
   const groups = {};
   keys.forEach(k=>{
     const item = state.shopping[k];
@@ -6850,15 +6717,6 @@ document.querySelectorAll("#shopViewToggle .pill").forEach(btn=>{
     document.querySelectorAll("#shopViewToggle .pill").forEach(b=> b.classList.toggle("active", b===btn));
     renderShop();
   });
-});
-document.getElementById("shopSearchBox").addEventListener("input", (e)=>{
-  shopSearchTerm = e.target.value.trim();
-  renderShop();
-});
-document.getElementById("shopSearchClear").addEventListener("click", ()=>{
-  shopSearchTerm = "";
-  document.getElementById("shopSearchBox").value = "";
-  renderShop();
 });
 
 function buildListText(){
