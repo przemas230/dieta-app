@@ -1,0 +1,38 @@
+Wersja v104 (2026-08-28)
+
+Naprawiono realnego buga w FR-94 (śledzenie okna postu przerywanego) na
+wersji webowej — znaleziony podczas sesji sprawdzającej na żywo (headless
+Chromium, w pełni offline) 8 funkcji dodanych w ostatniej dużej nocnej
+rundzie (FR-90–97).
+
+Problem: status „🍽️ Okno jedzenia” / „⏳ Okno postu” renderował się
+poprawnie do elementu #fastingStatus, ale ten element leży wewnątrz
+.header-collapsible — kontenera, który CSS motywu Klinika/Klinika (noc)
+całkowicie ukrywa (display:none). Klinika jest domyślnym motywem aplikacji
+od FR-87/v8, więc w praktyce włączenie tej opcji w Ustawieniach nie
+pokazywało NIC na ekranie dla zdecydowanej większości użytkowników — mimo
+że logika i zapis ustawień działały poprawnie. To dokładnie ten sam bug,
+który wcześniej znaleziono i naprawiono na Androidzie (FR-94/v2) — na
+webie nigdy nie dostał odpowiadającej poprawki.
+
+Naprawa: logika liczenia statusu wydzielona do wspólnej funkcji
+computeFastingStatus() (żeby nie duplikować jej między dwoma miejscami
+renderowania), status doszedł teraz też do renderPlannerDashboard() —
+własnego renderu Klinika — i pokazuje się pod „Cześć, {imię}!”, tak samo
+jak w naprawionej wersji Androida. Dodany nowy, osobny styl
+.pd-fasting-status (zamiast reużycia .fasting-status, którego biało-na-
+-przezroczystym kolory były dobrane pod ciemny nagłówek pozostałych 11
+motywów i byłyby nieczytelne na jasnej karcie Klinika) — używa tych samych
+zmiennych CSS co reszta dashboardu (var(--muted)/var(--line) w stanie
+„okno jedzenia”, var(--teal-pale)/var(--teal-dark) w stanie „okno postu”),
+więc automatycznie dopasowuje się też do wariantów Ocean/Terakota.
+
+Zweryfikowane na żywo (nie tylko składniowo): headless Chromium, oba stany
+(okno jedzenia / okno postu) sprawdzone wizualnie zrzutem ekranu na
+domyślnym motywie Klinika, plus regresja — motyw nie-Klinika (np. Zielony)
+nadal pokazuje status w starym miejscu (#fastingStatus) bez zmian.
+
+Techniczne: CACHE_NAME service workera podbity do "dieta-app-v104".
+
+Android: bez zmian — ten bug dotyczył wyłącznie web'owej implementacji
+(Android dostał tę samą poprawkę wcześniej, w FR-94/v2).

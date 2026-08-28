@@ -4211,6 +4211,13 @@ wymienianych, brakujących funkcji.
 - `./gradlew :logic:test :app:compileDebugKotlin` przechodzi.
 
 ## Uwagi
+Web: status renderuje się w dwóch miejscach zależnie od motywu — dla 11
+„zwykłych” motywów do `#fastingStatus` (wewnątrz nagłówka, `renderFastingStatus()`),
+dla Klinika/Klinika (noc) do własnego dashboardu (`renderPlannerDashboard()`,
+pod „Cześć, {imię}!”) — patrz **v3** niżej, dlaczego to rozdzielenie jest
+konieczne. Obie ścieżki liczą status tą samą funkcją `computeFastingStatus()`,
+żeby nie utrzymywać dwóch kopii tej samej logiki zawijania przez północ.
+
 Świadoma decyzja o zakresie: na Androidzie to ustawienie jest
 LOKALNE-TYLKO (`FastingViewModel` + `LocalPersistenceCoordinator`, NIE
 `CloudSyncCoordinator`) — ten sam wzorzec co `RemainingKcalFillViewModel`
@@ -4244,6 +4251,31 @@ duplikat.
   jedzenie od 12:00” faktycznie widoczny na ekranie Planer po włączeniu
   ustawienia. `./gradlew :logic:test :app:assembleDebug` przechodzą.
   `versionCode` 84→85, `versionName` 0.1.83→0.1.84.
+- **v3** (2026-08-28): Naprawiony ten sam, dokładnie analogiczny błąd na
+  Webie — nigdy nie odkryty wcześniej, bo v1 zweryfikowano tylko kompilacją
+  i składniowo, nie interaktywnie. Znaleziony podczas sesji uruchamiającej
+  `index.html` na żywo (headless Chromium, w pełni offline) w celu
+  sprawdzenia 8 funkcji z nocnej rundy FR-90–97: status renderował się
+  poprawnie do `#fastingStatus`, ale ten element leży wewnątrz
+  `.header-collapsible`, którą CSS Klinika/Klinika (noc) chowa całkowicie
+  (`display:none`) — a Klinika jest domyślnym motywem webowej aplikacji od
+  FR-87/v8, więc status nigdy nie był widoczny w praktyce na domyślnych
+  ustawieniach, tak samo jak wcześniej na Androidzie przed v2. Naprawione
+  tym samym wzorcem: logika wydzielona do współdzielonej
+  `computeFastingStatus()`, wywołanej też w `renderPlannerDashboard()`
+  (Klinika), status renderowany pod „Cześć, {imię}!” — plus nowy,
+  osobny styl `.pd-fasting-status` (żeby kolory pasowały do jasnej karty
+  Klinika i jej wariantów Ocean/Terakota, zamiast reużywać biało-na-
+  -przezroczystym `.fasting-status` dobrane pod ciemny nagłówek pozostałych
+  11 motywów). Oba listenery zmiany ustawień (`setFastingEnabled`,
+  `setFastingStart`/`setFastingEnd`) dostały dodatkowe wywołanie
+  `renderPlannerDashboard()` obok istniejącego `renderFastingStatus()`, tak
+  by zmiana natychmiast aktualizowała status też w Klinice. Zweryfikowane
+  na żywo (nie tylko składniowo): oba stany (okno jedzenia/okno postu)
+  sprawdzone zrzutem ekranu na domyślnym motywie Klinika, regresja
+  sprawdzona na motywie nie-Klinika (status nadal w starym miejscu, bez
+  zmian). `node -e "new Function(...)"` na obu blokach `<script>` przechodzi.
+  CACHE_NAME→v104, `versions/v104/`. Android: bez zmian (już naprawione w v2).
 
 ---
 

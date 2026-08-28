@@ -902,19 +902,6 @@
   .pd-header{display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:12px;}
   .pd-date{font-size:12px; color:var(--muted); text-transform:capitalize;}
   .pd-greeting{font-family:var(--font-heading); font-size:19px; font-weight:600; margin-top:2px;}
-  /* FR-94/v3 (2026-08-28): Klinika's own dashboard never got the fasting
-     status shown to every other theme via #fastingStatus -- that element
-     lives inside .header-collapsible, which Klinika hides entirely (see the
-     comment above that selector), so the feature was silently unreachable
-     in the app's own default theme. Styled like .pd-date/.pd-greeting
-     (theme/palette-aware vars) instead of reusing .fasting-status, whose
-     white-on-translucent colors were tuned for the dark teal header of the
-     other 11 themes and would be unreadable on Klinika's light card. */
-  .pd-fasting-status{
-    margin-top:4px; font-size:11.5px; color:var(--muted);
-    background:var(--line); border-radius:8px; padding:4px 8px; display:inline-block;
-  }
-  .pd-fasting-status.fasting{ background:var(--teal-pale); color:var(--teal-dark); font-weight:600; }
   .pd-signout{width:38px; height:38px; border-radius:50%; border:none; background:var(--card); color:var(--muted); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.08); cursor:pointer; flex:0 0 auto; font-size:16px; padding:0;}
   /* Requested 2026-08-25: the "Cel" square (target kcal) was dropped from
      renderPlannerDashboard()'s markup -- the remaining-kcal card (ring +
@@ -4772,33 +4759,21 @@ function renderEatenSummary(dailyTarget){
 // Requested 2026-08-26 (5 new features -- intermittent fasting/time-restricted
 // eating status, shown right under the kcal summary on "Dziś"). windowStart
 // >= windowEnd is treated as a window that wraps past midnight (e.g. 20-4).
-// Extracted (FR-94/v3, 2026-08-28) so both the non-Klinika header
-// (#fastingStatus, below) and Klinika's own renderPlannerDashboard() share
-// one computation instead of Klinika needing (and risking drifting from)
-// its own copy.
-function computeFastingStatus(){
-  if(!state.fasting || !state.fasting.enabled) return null;
+function renderFastingStatus(){
+  const el = document.getElementById("fastingStatus");
+  if(!el) return;
+  if(!state.fasting || !state.fasting.enabled){ el.style.display = "none"; return; }
   const {windowStart, windowEnd} = state.fasting;
   const now = new Date();
   const hour = now.getHours() + now.getMinutes()/60;
   const wraps = windowStart >= windowEnd;
   const inWindow = wraps ? (hour >= windowStart || hour < windowEnd) : (hour >= windowStart && hour < windowEnd);
   const fmt = h => `${String(h).padStart(2,"0")}:00`;
-  return {
-    inWindow,
-    text: inWindow
-      ? `🍽️ Okno jedzenia — post zacznie się o ${fmt(windowEnd)}`
-      : `⏳ Okno postu — jedzenie od ${fmt(windowStart)}`
-  };
-}
-function renderFastingStatus(){
-  const el = document.getElementById("fastingStatus");
-  if(!el) return;
-  const status = computeFastingStatus();
-  if(!status){ el.style.display = "none"; return; }
   el.style.display = "inline-block";
-  el.classList.toggle("fasting", !status.inWindow);
-  el.textContent = status.text;
+  el.classList.toggle("fasting", !inWindow);
+  el.textContent = inWindow
+    ? `🍽️ Okno jedzenia — post zacznie się o ${fmt(windowEnd)}`
+    : `⏳ Okno postu — jedzenie od ${fmt(windowStart)}`;
 }
 
 // Swipe-right-to-mark-eaten on the header's meal rows. Pointer Events cover
@@ -5043,7 +5018,6 @@ document.getElementById("setFastingEnabled").addEventListener("change", (e)=>{
   state.fasting.enabled = e.target.checked;
   saveState();
   renderFastingStatus();
-  renderPlannerDashboard();
 });
 ["setFastingStart","setFastingEnd"].forEach(id=>{
   document.getElementById(id).addEventListener("change", ()=>{
@@ -5055,7 +5029,6 @@ document.getElementById("setFastingEnabled").addEventListener("change", (e)=>{
     document.getElementById("setFastingEnd").value = end;
     saveState();
     renderFastingStatus();
-    renderPlannerDashboard();
   });
 });
 
@@ -7614,20 +7587,11 @@ function renderPlannerDashboard(){
     </div>`;
   }).join("");
 
-  // FR-94/v3 (2026-08-28): #fastingStatus (used by every other theme) lives
-  // inside .header-collapsible, which Klinika hides completely -- without
-  // its own copy here, enabling the setting did nothing visible in this
-  // (default) theme. Same fix already applied to Android in FR-94/v2.
-  const fastingStatus = computeFastingStatus();
-  const fastingHtml = fastingStatus
-    ? `<div class="pd-fasting-status${fastingStatus.inWindow?'':' fasting'}">${fastingStatus.text}</div>`
-    : "";
   box.innerHTML = `
     <div class="pd-header">
       <div>
         <div class="pd-date">${clinicDateLabel()}</div>
         <div class="pd-greeting">${clinicGreetingText()}</div>
-        ${fastingHtml}
       </div>
       <button class="pd-signout" id="pdSignOutBtn" title="Wyloguj się z tego urządzenia">🚪</button>
     </div>
