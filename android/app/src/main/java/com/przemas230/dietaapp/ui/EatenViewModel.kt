@@ -68,10 +68,10 @@ class EatenViewModel : ViewModel() {
      * swiping the "wrong" way on a card already in that state did the
      * opposite of what it looked like it should).
      */
-    fun setEaten(cat: String, eaten: Boolean, plannedKcal: Int?, plannedName: String?) {
+    fun setEaten(cat: String, eaten: Boolean, plannedKcal: Int?, plannedName: String?, portion: Double = 1.0) {
         val key = todayUtc().toString()
         val day = _days.value[key] ?: EatenDay()
-        val newEntries = EatenOperations.setEaten(day.entries, cat, eaten, plannedKcal, plannedName)
+        val newEntries = EatenOperations.setEaten(day.entries, cat, eaten, plannedKcal, plannedName, portion)
         applyDays(_days.value + (key to day.copy(entries = newEntries)))
     }
 

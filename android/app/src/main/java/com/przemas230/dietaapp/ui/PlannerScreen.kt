@@ -60,6 +60,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
@@ -84,12 +87,14 @@ import com.przemas230.dietaapp.data.Profile
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.data.Snack
 import com.przemas230.dietaapp.logic.AppThemes
+import com.przemas230.dietaapp.logic.CookHistoryOperations
 import com.przemas230.dietaapp.logic.EatenOperations
 import com.przemas230.dietaapp.logic.FastingOperations
 import com.przemas230.dietaapp.logic.IngredientCanon
 import com.przemas230.dietaapp.logic.MacroGrams
 import com.przemas230.dietaapp.logic.PlannerCategory
 import com.przemas230.dietaapp.logic.PlannerOperations
+import com.przemas230.dietaapp.logic.PlannerSwipe
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.RecipeMatching
 import com.przemas230.dietaapp.logic.RecipePantryMatching
@@ -151,7 +156,7 @@ fun PlannerScreen(
     onSignOut: () -> Unit = {},
     onWaterTap: (Int) -> Unit = {},
     onWaterSetCount: (Int) -> Unit = {},
-    onSetEaten: (cat: String, eaten: Boolean, plannedKcal: Int?, plannedName: String?) -> Unit = { _, _, _, _ -> },
+    onSetEaten: (cat: String, eaten: Boolean, portion: Double, plannedKcal: Int?, plannedName: String?) -> Unit = { _, _, _, _, _ -> },
     // Requested 2026-08-26: opt-in fill-with-color on the "POZOSTAŁO" tile,
     // see RemainingKcalFillViewModel/SettingsScreen's matching card.
     remainingKcalFillEnabled: Boolean = false,
@@ -171,10 +176,56 @@ fun PlannerScreen(
 ) {
     val allRecipes by plannerViewModel.allRecipes.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
+    // FR-99 (2026-08-29): carrying out one of the four swipe actions needs
+    // the cook history AND the pantry, both of which live here (this screen
+    // already owns recipeViewModel/pantryViewModel for RecipePreviewDialog)
+    // rather than in PlannerDashboard, which deliberately takes no
+    // ViewModels. The dashboard just reports WHICH action was committed.
+    val handlePlannerSwipe: (String, PlannerSwipe.Action, Recipe, Int) -> Unit = { cat, action, recipe, scaledKcal ->
+        when (action) {
+            PlannerSwipe.Action.COOKED -> {
+                // Idempotent: a second short right-swipe on the same dish on
+                // the same day must NOT subtract the pantry twice.
+                if (recipeViewModel.isCookedToday(recipe.id)) {
+                    onShowUndoSnackbar("To danie jest już oznaczone jako zrobione dzisiaj", "OK") {}
+                } else {
+                    recipeViewModel.markCookedToday(recipe.id)
+                    pantryViewModel.subtractForRecipe(recipe)
+                    activityLogViewModel.log("cook_subtract", "Ugotowano „${recipe.name}” — odjęto składniki ze spiżarni")
+                    onShowUndoSnackbar("🍳 Zrobione — odjęto składniki ze spiżarni", "Cofnij") {
+                        if (recipeViewModel.undoCookedToday(recipe.id)) {
+                            pantryViewModel.restoreForRecipe(recipe)
+                            activityLogViewModel.log("pantry_add", "Cofnięto wpis „${recipe.name}” — przywrócono w spiżarni")
+                        }
+                    }
+                }
+            }
+            PlannerSwipe.Action.EATEN -> onSetEaten(cat, true, 1.0, scaledKcal, recipe.name)
+            PlannerSwipe.Action.HALF -> onSetEaten(cat, true, 0.5, scaledKcal, recipe.name)
+            PlannerSwipe.Action.RESET -> {
+                onSetEaten(cat, false, 0.0, scaledKcal, recipe.name)
+                // "pasuje też móc cofnąć zrobienie bo mogło się przez
+                // przypadek kliknąć" -- the long left swipe resets the card
+                // completely, cook log included, restoring the ingredients
+                // the cook entry took out of the pantry.
+                if (recipeViewModel.undoCookedToday(recipe.id)) {
+                    pantryViewModel.restoreForRecipe(recipe)
+                    activityLogViewModel.log("pantry_add", "Cofnięto wpis „${recipe.name}” — przywrócono w spiżarni")
+                }
+            }
+        }
+    }
     val profile by profileViewModel.profile.collectAsState()
     // Requested 2026-08-26 (RecipePreviewDialog's full RecipeCardBody reuse).
     val pantryItems by pantryViewModel.items.collectAsState()
     val cookedMap by recipeViewModel.cooked.collectAsState()
+    // FR-99: which dishes already carry a "zrobione" entry for today --
+    // derived from the same StateFlow the cook-history modal reads, so the
+    // card's chip updates the moment the swipe writes one.
+    val cookedTodayIds = remember(cookedMap) {
+        val now = System.currentTimeMillis()
+        cookedMap.keys.filter { CookHistoryOperations.cookedTodayIndex(cookedMap, it, now) >= 0 }.toSet()
+    }
     val reviews by recipeViewModel.reviews.collectAsState()
     val favoriteRecipeIds by recipeViewModel.favoriteRecipes.collectAsState()
     val favIngredients by favoriteIngredientsViewModel.favorites.collectAsState()
@@ -263,7 +314,10 @@ fun PlannerScreen(
                     onDayJump = { di -> scrollScope.launch { listState.animateScrollToItem(1 + di) } },
                     onWaterTap = onWaterTap,
                     onWaterSetCount = onWaterSetCount,
-                    onSetEaten = onSetEaten,
+                    onSwipeAction = { cat, action, recipe, scaledKcal ->
+                        handlePlannerSwipe(cat, action, recipe, scaledKcal)
+                    },
+                    cookedTodayIds = cookedTodayIds,
                     remainingKcalFillEnabled = remainingKcalFillEnabled,
                     fastingEnabled = fastingEnabled,
                     fastingWindowStart = fastingWindowStart,
@@ -307,15 +361,20 @@ fun PlannerScreen(
             val copyDayClick: () -> Unit = { copyDayTarget = day }
 
             if (isClinic) {
-                // Requested 2026-08-25, REVISED 2026-08-26: originally ALL
-                // 7 day cards got fillParentMaxHeight() (one day per
-                // scroll) -- user then asked for that to apply ONLY to
-                // today's card, with the other 6 back to their normal,
-                // content-sized height like before ("każdy dzień nie
-                // zajmował całego ekranu tylko dzisiejszy dzień"). Day-strip
-                // chips' onDayJump (PlannerDashboard below) still scrolls to
-                // any day -- it just lands on a compact card for the other
-                // 6 now instead of a full-screen one.
+                // Requested 2026-08-25, REVISED 2026-08-26, REVISED AGAIN
+                // 2026-08-29: originally ALL 7 day cards got
+                // fillParentMaxHeight() (one day per scroll); then only
+                // today's did; now none of them do. The "Dzisiejszy Planer"
+                // block at the top of this same screen (PlannerDashboard,
+                // itself fillParentMaxHeight) is ALREADY a full-screen view
+                // of today, so stretching today's card down here as well
+                // just meant scrolling past the same day twice ("niżej w
+                // dniach tygodnia nie ma potrzeby żeby dzisiejszy dzień też
+                // był rozciągnięty na całą stronę, zrób go takiego jak
+                // pozostałe dni"). isToday is still passed through, so the
+                // card keeps its "this is today" accent -- only the height
+                // override is gone. Day-strip chips' onDayJump still
+                // scrolls to any day, it just lands on a compact card.
                 DayCardClinic(
                     day = day,
                     dayName = dayName,
@@ -334,7 +393,6 @@ fun PlannerScreen(
                     onClearDay = clearDay,
                     onAddDayToShopping = addDayToShopping,
                     onCopyDayClick = copyDayClick,
-                    modifier = if (day == todayIndex) Modifier.fillParentMaxHeight() else Modifier,
                 )
             } else {
                 DayCard(
@@ -735,14 +793,14 @@ private fun PlannerDashboard(
     onDayJump: (dayIndex: Int) -> Unit = {},
     onWaterTap: (Int) -> Unit = {},
     onWaterSetCount: (Int) -> Unit = {},
-    // Requested 2026-08-25 (Web FR-87/v14, ported here): directional swipe
-    // (right = eaten, left = not eaten) on the meal cards below --
-    // separate from onToggleEaten (which just flips whatever the current
-    // state is, still used by header/other call sites) because a plain
-    // toggle read as "broken" here: swiping the "wrong" way on a card
-    // already in that state did the opposite of what it looked like it
-    // should.
-    onSetEaten: (cat: String, eaten: Boolean, plannedKcal: Int?, plannedName: String?) -> Unit = { _, _, _, _ -> },
+    // FR-99 (2026-08-29, Web parity): the meal-card swipe is no longer
+    // "right = eaten / left = not eaten" -- the DISTANCE now picks one of
+    // four actions (see PlannerSwipe). The card reports which one the user
+    // committed to; PlannerScreen owns the ViewModels needed to carry it
+    // out (cook history + pantry live there, not here).
+    onSwipeAction: (cat: String, action: PlannerSwipe.Action, recipe: Recipe, scaledKcal: Int) -> Unit = { _, _, _, _ -> },
+    /** FR-99: recipe ids already logged as cooked TODAY -- drives the "🍳 Zrobione" chip on the cards. */
+    cookedTodayIds: Set<String> = emptySet(),
     remainingKcalFillEnabled: Boolean = false,
     // Bug fixed 2026-08-26: see PlannerScreen's matching param doc comment --
     // this is the only place fasting status can actually reach the screen
@@ -864,20 +922,38 @@ private fun PlannerDashboard(
                     // tile's width left-to-right -- drawn between the flat
                     // primary background and the text, same idea as web's
                     // .pd-remaining-fill.
+                    // Bug reported 2026-08-29 with a screenshot ("jak się
+                    // włączy opcje żeby kafelek pozostało się kolorował to
+                    // rozciąga go niepotrzebnie na całą stronę"): the fill
+                    // used to be a real child Box with .fillMaxHeight().
+                    // This tile sits inside PlannerDashboard's
+                    // fillParentMaxHeight Column, so the height constraint
+                    // reaching it is the WHOLE remaining screen -- a child
+                    // asking for maxHeight therefore grew the tile (and the
+                    // Card around it) to fill the screen, pushing the meal
+                    // list off it entirely. Drawing the fill with
+                    // drawBehind() instead keeps it purely visual: it paints
+                    // over the flat primary background (earlier in the
+                    // modifier chain) and under the text, while taking no
+                    // part in measurement at all, so the tile is sized by
+                    // its text exactly like it is with the option off.
+                    val fillFraction = kcalPct.coerceIn(0f, 1f)
+                    val fillColor = Color.White.copy(alpha = 0.28f)
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .clip(MaterialTheme.shapes.medium)
-                            .background(MaterialTheme.colorScheme.primary),
+                            .background(MaterialTheme.colorScheme.primary)
+                            .then(
+                                if (remainingKcalFillEnabled) {
+                                    Modifier.drawBehind {
+                                        drawRect(color = fillColor, size = Size(size.width * fillFraction, size.height))
+                                    }
+                                } else {
+                                    Modifier
+                                },
+                            ),
                     ) {
-                        if (remainingKcalFillEnabled) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .fillMaxWidth(fraction = kcalPct.coerceIn(0f, 1f))
-                                    .background(Color.White.copy(alpha = 0.28f)),
-                            )
-                        }
                         Column(modifier = Modifier.padding(horizontal = 15.dp, vertical = 12.dp)) {
                         Text(
                             "POZOSTAŁO",
@@ -947,6 +1023,16 @@ private fun PlannerDashboard(
         }
         Spacer(modifier = Modifier.height(10.dp))
         Text("Dzisiejszy Planer", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        // FR-99: a one-line cheat sheet for the four swipe outcomes -- the
+        // gesture is only discoverable if something says it exists.
+        Text(
+            "← ½ połowa · ←← cofnij  |  → 🍳 zrobione · →→ 🍴 zjedzone",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 9.5.sp,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+        )
         Spacer(modifier = Modifier.height(6.dp))
         // weight(1f) here (bounded by the outer Column's own
         // fillParentMaxHeight, see caller) is what actually makes the 5
@@ -979,22 +1065,38 @@ private fun PlannerDashboard(
             } else {
                 val kcal = PlannerOperations.scaledKcal(recipe, meal.scale)
                 val eaten = EatenOperations.isEaten(eatenEntries, category.id)
-                // Requested 2026-08-25 (Web FR-87/v12+v14, ported here):
-                // same drag-gesture shape as RecipeListScreen's existing
-                // swipe-to-rate (Animatable offset, detectHorizontalDragGestures,
-                // live color feedback) -- but directional here (right =
-                // eaten, left = not eaten, via onSetEaten) rather than a
-                // like/dislike rating, and a plain tap opens a recipe
-                // preview instead of toggling.
+                // FR-99 (2026-08-29): the portion actually eaten, so a half
+                // portion reads as half (chip + half the kcal) instead of
+                // being indistinguishable from a whole one.
+                val portion = EatenOperations.portionOf(eatenEntries, category.id)
+                val isHalf = eaten && portion > 0.0 && portion < 1.0
+                val cookedToday = recipe.id in cookedTodayIds
+                // Same drag-gesture shape as RecipeListScreen's existing
+                // swipe-to-rate (Animatable offset,
+                // detectHorizontalDragGestures, live colour feedback), but
+                // the DISTANCE now picks one of four actions instead of
+                // just its direction picking one of two -- see
+                // PlannerSwipe, which owns that mapping so the live label,
+                // the live tint and the release handler cannot disagree.
+                // A plain tap still opens the recipe preview.
                 val offsetX = remember(category.id) { Animatable(0f) }
                 val swipeScope = rememberCoroutineScope()
-                val swipeMaxPx = with(LocalDensity.current) { 60.dp.toPx() }
-                val swipeCommitPx = with(LocalDensity.current) { 32.dp.toPx() }
-                val dragIntensity = (kotlin.math.abs(offsetX.value) / swipeCommitPx).coerceIn(0f, 1f)
-                val dragTint = when {
-                    offsetX.value > 4f -> Color(0xFF3CAA6E).copy(alpha = 0.35f * dragIntensity)
-                    offsetX.value < -4f -> Color(0xFFBE463C).copy(alpha = 0.35f * dragIntensity)
-                    else -> Color.Transparent
+                val density = LocalDensity.current
+                val swipeMaxPx = with(density) { PlannerSwipe.MAX_DP.dp.toPx() }
+                val swipeShortPx = with(density) { PlannerSwipe.SHORT_DP.dp.toPx() }
+                val swipeLongPx = with(density) { PlannerSwipe.LONG_DP.dp.toPx() }
+                val liveAction = PlannerSwipe.actionFor(offsetX.value, swipeShortPx, swipeLongPx)
+                val dragTint = if (liveAction == null) {
+                    Color.Transparent
+                } else {
+                    val intensity = PlannerSwipe.intensityFor(offsetX.value, liveAction, swipeShortPx, swipeLongPx, swipeMaxPx)
+                    val base = when (liveAction) {
+                        PlannerSwipe.Action.EATEN -> Color(0xFF2E8C5A)
+                        PlannerSwipe.Action.COOKED -> Color(0xFF60B478)
+                        PlannerSwipe.Action.HALF -> Color(0xFFD2963C)
+                        PlannerSwipe.Action.RESET -> Color(0xFFBE463C)
+                    }
+                    base.copy(alpha = 0.14f + 0.26f * intensity)
                 }
                 // Bug reported 2026-08-25 ("przy przesuwaniu nie ma kolorów"):
                 // Card/Surface always paints its OWN containerColor on top of
@@ -1014,11 +1116,9 @@ private fun PlannerDashboard(
                             .pointerInput(category.id) {
                                 detectHorizontalDragGestures(
                                     onDragEnd = {
-                                        val committed = offsetX.value
+                                        val committed = PlannerSwipe.actionFor(offsetX.value, swipeShortPx, swipeLongPx)
                                         swipeScope.launch {
-                                            if (kotlin.math.abs(committed) > swipeCommitPx) {
-                                                onSetEaten(category.id, committed > 0, kcal, recipe.name)
-                                            }
+                                            if (committed != null) onSwipeAction(category.id, committed, recipe, kcal)
                                             offsetX.animateTo(0f)
                                         }
                                     },
@@ -1068,9 +1168,32 @@ private fun PlannerDashboard(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                // FR-99: three independent bits of state now
+                                // (cooked / eaten / how much), so the card
+                                // has to show all three -- struck-through
+                                // name = eaten whole (above), these chips =
+                                // the other two.
+                                if (cookedToday || isHalf) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                        if (cookedToday) {
+                                            MealStateChip(
+                                                "🍳 Zrobione",
+                                                MaterialTheme.colorScheme.primaryContainer,
+                                                MaterialTheme.colorScheme.onPrimaryContainer,
+                                            )
+                                        }
+                                        if (isHalf) {
+                                            MealStateChip(
+                                                "½ Zjedzone w połowie",
+                                                MaterialTheme.colorScheme.tertiaryContainer,
+                                                MaterialTheme.colorScheme.onTertiaryContainer,
+                                            )
+                                        }
+                                    }
+                                }
                             }
                             Text(
-                                "$kcal kcal",
+                                if (isHalf) "${Math.round(kcal * portion).toInt()} / $kcal kcal" else "$kcal kcal",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -1079,9 +1202,26 @@ private fun PlannerDashboard(
                             }
                         }
                     }
-                    // Discrete, static swipe-hint -- hidden while actively
-                    // dragging so it doesn't clash with the live tint above.
-                    if (offsetX.value == 0f) {
+                    // FR-99: a static arrow can no longer say what will
+                    // happen, because that depends on how far the drag has
+                    // gone -- while dragging, the card names the action it
+                    // would commit to right now; at rest it falls back to
+                    // the old discrete hint.
+                    if (liveAction != null) {
+                        val toTheRight = liveAction == PlannerSwipe.Action.COOKED || liveAction == PlannerSwipe.Action.EATEN
+                        Text(
+                            liveAction.label,
+                            modifier = Modifier
+                                .align(if (toTheRight) Alignment.CenterEnd else Alignment.CenterStart)
+                                .padding(horizontal = 12.dp)
+                                .clip(MaterialTheme.shapes.small)
+                                .background(MaterialTheme.colorScheme.surface)
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    } else if (offsetX.value == 0f) {
                         Text(
                             "↔",
                             modifier = Modifier.align(Alignment.CenterEnd).padding(end = 44.dp).alpha(0.3f),
@@ -1210,6 +1350,25 @@ private fun BentoMetricTile(value: String, label: String, modifier: Modifier = M
             )
         }
     }
+}
+
+/**
+ * FR-99: a small rounded status chip under a meal card's dish name --
+ * "what this card currently IS" (cooked today / eaten only half), as
+ * opposed to the drag label, which says what a swipe WOULD do.
+ */
+@Composable
+private fun MealStateChip(text: String, background: Color, contentColor: Color) {
+    Text(
+        text,
+        modifier = Modifier
+            .clip(MaterialTheme.shapes.small)
+            .background(background)
+            .padding(horizontal = 6.dp, vertical = 1.dp),
+        fontSize = 9.5.sp,
+        fontWeight = FontWeight.Bold,
+        color = contentColor,
+    )
 }
 
 /**

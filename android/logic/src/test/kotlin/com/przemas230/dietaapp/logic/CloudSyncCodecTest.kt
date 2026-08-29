@@ -263,6 +263,7 @@ class CloudSyncCodecTest {
             displayName = "Przemek",
             profile = Profile(),
             pantry = emptyMap(),
+            pantryHidden = setOf("chleb"),
             themeId = "metro",
             uiScale = 1.1,
             swipeRatingStyle = "GLOW",
@@ -276,14 +277,46 @@ class CloudSyncCodecTest {
         )
         assertEquals(
             setOf(
-                "displayName", "profile", "pantry", "theme", "uiScale", "swipeRatingStyle",
+                "displayName", "profile", "pantry", "pantryHidden", "theme", "uiScale", "swipeRatingStyle",
                 "favIngredients", "recipeRating", "cooked", "shopping", "planner", "plannerScale",
                 "plannerLeftover", "eaten", "water",
             ),
             data.keys,
         )
         assertEquals("Przemek", data["displayName"])
+        // FR-98: the hidden set travels as index.html's {name: true} map shape.
+        assertEquals(mapOf("chleb" to true), data["pantryHidden"])
         assertEquals("metro", data["theme"])
         assertEquals(1.1, data["uiScale"])
+    }
+
+    @Test
+    fun `pantryHidden round-trips as a name to true map and ignores false entries`() {
+        val encoded = CloudSyncCodec.encodePantryHidden(setOf("chleb", "mleko"))
+        assertEquals(mapOf("chleb" to true, "mleko" to true), encoded)
+        assertEquals(setOf("chleb", "mleko"), CloudSyncCodec.decodePantryHidden(encoded))
+        // index.html can leave a value behind as `false` instead of deleting
+        // the key -- that means "not hidden", not "hidden".
+        assertEquals(setOf("chleb"), CloudSyncCodec.decodePantryHidden(mapOf("chleb" to true, "mleko" to false)))
+        assertNull(CloudSyncCodec.decodePantryHidden(null))
+    }
+
+    @Test
+    fun `FR-99 eaten portions round-trip, and an entry without one decodes as a whole portion`() {
+        val days = mapOf(
+            "2026-08-29" to com.przemas230.dietaapp.data.EatenDay(
+                entries = mapOf("obiad" to com.przemas230.dietaapp.data.EatenEntry(true, 600, "Zupa", 0.5)),
+            ),
+        )
+        val encoded = CloudSyncCodec.encodeEaten(days)
+        @Suppress("UNCHECKED_CAST")
+        val day = encoded.getValue("2026-08-29") as Map<String, Any?>
+        @Suppress("UNCHECKED_CAST")
+        val entry = day.getValue("obiad") as Map<String, Any?>
+        assertEquals(0.5, entry["portion"])
+        assertEquals(0.5, CloudSyncCodec.decodeEaten(encoded)!!.getValue("2026-08-29").entries.getValue("obiad").portion)
+
+        val legacy = mapOf("2026-08-28" to mapOf("obiad" to mapOf("done" to true, "kcal" to 500, "name" to "Ryż")))
+        assertEquals(1.0, CloudSyncCodec.decodeEaten(legacy)!!.getValue("2026-08-28").entries.getValue("obiad").portion)
     }
 }

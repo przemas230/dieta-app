@@ -135,4 +135,31 @@ class PantryOperationsTest {
         val withSpice: Map<String, PantryItem> = mapOf("sól" to PantryItem.Spice("sól", PantryCategory.PRZYPRAWY, SpiceLevel.MALO))
         assertTrue(PantryOperations.toggleHaveIngredient(withSpice, "sól", PantryCategory.PRZYPRAWY, "count").isEmpty())
     }
+
+    // ---- FR-98: deleting a product from the pantry for good ----
+
+    @Test
+    fun `visibleTileNames merges recipe-derived and tracked names, minus hidden ones`() {
+        val visible = PantryOperations.visibleTileNames(
+            recipeTileNames = listOf("mleko", "jajka", "chleb"),
+            trackedNames = listOf("jajka", "kawa"),
+            hidden = setOf("chleb"),
+        )
+        assertEquals(listOf("jajka", "kawa", "mleko"), visible)
+    }
+
+    @Test
+    fun `hiding a product survives it still being an ingredient of some recipe`() {
+        val hidden = PantryOperations.hideForever(emptySet(), "chleb")
+        val visible = PantryOperations.visibleTileNames(listOf("chleb", "mleko"), emptyList(), hidden)
+        assertEquals(listOf("mleko"), visible)
+    }
+
+    @Test
+    fun `restoreAllHidden brings every deleted product back`() {
+        val hidden = PantryOperations.hideForever(PantryOperations.hideForever(emptySet(), "chleb"), "mleko")
+        assertEquals(2, hidden.size)
+        val visible = PantryOperations.visibleTileNames(listOf("chleb", "mleko"), emptyList(), PantryOperations.restoreAllHidden())
+        assertEquals(listOf("chleb", "mleko"), visible)
+    }
 }

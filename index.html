@@ -987,6 +987,43 @@
     content:"↔"; position:absolute; right:10px; top:50%; transform:translateY(-50%);
     font-size:13px; color:var(--muted); opacity:.4; pointer-events:none;
   }
+  /* FR-99 (2026-08-29): the swipe is no longer a single binary gesture, so
+     a static "↔" can't say what will happen -- this floating pill, filled
+     in live by attachPdMealCardSwipe(), names the action the CURRENT drag
+     distance would commit ("Zrobione" / "Zjedzone" / "Zjedzone w połowie"
+     / "Cofnij wszystko"). Hidden (opacity 0) at rest and while the drag is
+     still inside the dead zone, so nothing changes visually until the
+     gesture actually means something. */
+  .pd-swipe-action{
+    position:absolute; top:50%; transform:translateY(-50%); z-index:2;
+    font-size:11.5px; font-weight:800; letter-spacing:.01em; white-space:nowrap;
+    padding:4px 9px; border-radius:999px; pointer-events:none;
+    opacity:0; transition:opacity .12s ease;
+    background:var(--card); box-shadow:0 1px 6px rgba(0,0,0,.16);
+  }
+  .pd-swipe-action.show{opacity:1;}
+  .pd-swipe-action.at-left{left:10px;}
+  .pd-swipe-action.at-right{right:10px;}
+  .pd-swipe-action.good{color:#1c7a4a;}
+  .pd-swipe-action.strong{color:#0f6e3c;}
+  .pd-swipe-action.warn{color:#a5522a;}
+  .pd-swipe-action.bad{color:#a33227;}
+  /* FR-99 status chips under the dish name: what the card currently IS,
+     as opposed to what a swipe WOULD do. */
+  .pd-meal-flags{display:flex; gap:5px; flex-wrap:wrap; margin-top:2px;}
+  .pd-meal-flag{
+    font-size:9.5px; font-weight:700; padding:1px 6px; border-radius:999px;
+    background:var(--teal-pale); color:var(--teal-dark); white-space:nowrap;
+  }
+  .pd-meal-flag.half{background:var(--honey-pale); color:var(--honey-dark);}
+  /* Half a portion is NOT finished, so it deliberately does not get the
+     struck-through treatment a fully eaten meal gets -- just dimmed. */
+  .pd-meal-card.eaten.half .pd-meal-name{ text-decoration:none; opacity:.8; }
+  /* FR-99: a one-line cheat sheet for the four swipe outcomes -- the
+     gesture is only discoverable if something says it exists. */
+  .pd-swipe-legend{
+    font-size:9.5px; color:var(--muted); text-align:center; margin:-4px 0 6px; opacity:.85;
+  }
   .pd-meal-avatar{font-size:18px; flex:0 0 auto;}
   .pd-meal-text{flex:1; min-width:0; display:flex; flex-direction:column;}
   .pd-meal-cat{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.03em;}
@@ -1080,23 +1117,25 @@
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) .bento-label{
     font-size:9.5px; color:var(--muted); margin-top:2px;
   }
-  /* Requested 2026-08-25, REVISED 2026-08-26: originally ALL 7 day cards
-     got full-screen height (one day per swipe/scroll) -- user then asked
-     for that to apply ONLY to today's card ("każdy dzień nie zajmował
-     całego ekranu tylko dzisiejszy dzień"), with the other 6 back to their
-     normal, content-sized height like before this whole experiment
-     (several partial cards visible per scroll again). Scoped to `.today`
-     (set on the matching card in renderPlanner(), see there) instead of
-     every `.clinic-day-card`. min-height formula unchanged from the
-     original 100dvh-110px calc (still correct for whichever card actually
-     has it now). Day-strip click-to-scroll (renderPlannerDashboard())
-     still works for every day -- it just lands on a compact card for the
-     other 6 now instead of a full-screen one. */
+  /* Requested 2026-08-25, REVISED 2026-08-26, REVISED AGAIN 2026-08-29:
+     originally ALL 7 day cards got full-screen height (one day per
+     swipe/scroll); then only today's did. Now none of them do -- the
+     "Dzisiejszy Planer" block at the top of the view (renderPlannerDashboard,
+     #plannerTodayWrap) is ALREADY a full-screen view of today, so stretching
+     today's card down here as well just meant scrolling past the same day
+     twice ("niżej w dniach tygodnia nie ma potrzeby żeby dzisiejszy dzień
+     też był rozciągnięty na całą stronę, zrób go takiego jak pozostałe
+     dni"). `.today` keeps its accent border from .clinic-day-card.today's
+     other rules -- only the height override is gone, so it still reads as
+     "this is today", just at the same size as the other six.
+     Day-strip click-to-scroll (renderPlannerDashboard()) is unaffected. */
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) .clinic-day-card{
     border-radius:22px;
   }
+  /* All that's left of the old full-height treatment: today is still
+     visibly today, just the same SIZE as the other six days now. */
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) .clinic-day-card.today{
-    min-height:calc(100dvh - 110px); box-sizing:border-box;
+    border:1.5px solid var(--teal);
   }
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-head{
     display:flex; align-items:center; gap:8px; margin-bottom:10px;
@@ -1814,7 +1853,7 @@
 
   <!-- VIEW: SPIŻARNIA -->
   <section id="view-pantry" class="view">
-    <div class="hint-text" style="margin:0 0 10px;">Górna połowa kafelka = dodaj, dolna połowa = odejmij. Przytrzymaj kafelek, by zmienić jednostkę albo usunąć śledzenie. Przyprawy: Mało → Wystarczy → Dużo. Na końcu każdej kategorii jest kafelek „➕ Dodaj własny".</div>
+    <div class="hint-text" style="margin:0 0 10px;">Górna połowa kafelka = dodaj, dolna połowa = odejmij. Przytrzymaj kafelek, by zmienić jednostkę, usunąć śledzenie albo usunąć produkt ze spiżarni na stałe. Przyprawy: Mało → Wystarczy → Dużo. Na końcu każdej kategorii jest kafelek „➕ Dodaj własny".</div>
     <!-- FR-31: wyłączone na życzenie użytkownika (2026-08-10) -- funkcja nie jest
          obecnie rozwijana ani utrzymywana na żadnej platformie. Przycisk ukryty,
          nie usunięty -- JS handler i modal skanera zostają nietknięte na wypadek
@@ -2681,8 +2720,15 @@ function buildPantryTileList(){
     const raw = coreName(i);
     if(raw) set.add(pantryCanon(raw));
   }));
-  return [...set];
+  // FR-98: names the user deleted for good never come back, even though
+  // the recipe that mentions them is still in the database. Filtered HERE
+  // (rather than in renderPantry) so every consumer of the tile list --
+  // the Spiżarnia grid, the shopping-list tile view -- agrees on what
+  // exists, instead of one of them re-introducing a deleted product.
+  return [...set].filter(n=> !state.pantryHidden[n]);
 }
+/** FR-98: true if this canonical name was permanently deleted by the user. */
+function isPantryHidden(canonName){ return !!state.pantryHidden[canonName]; }
 
 
 // ---------- RECIPE THUMBNAILS ----------
@@ -3440,6 +3486,12 @@ function loadState(){
       });
       if(!s.customTiles) s.customTiles = {};
       if(!s.pantryUnitOverride) s.pantryUnitOverride = {};
+      // FR-98 (2026-08-29): canonical names the user deleted from the
+      // pantry FOR GOOD. Recipe-derived tiles are recomputed from the
+      // recipe database on every render (buildPantryTileList), so there is
+      // nothing to "delete" from storage for them -- the only way to make
+      // one disappear is to remember that it should be skipped.
+      if(!s.pantryHidden) s.pantryHidden = {};
       if(!s.pantryCategoryOverride) s.pantryCategoryOverride = {};
       if(!s.pantryStepOverride) s.pantryStepOverride = {};
       if(s.waterNotifEnabled===undefined) s.waterNotifEnabled = false;
@@ -3484,7 +3536,7 @@ function loadState(){
       return s;
     }
   }catch(e){}
-  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, plannerLeftover:{}, water:{date:"",count:0}, waterHistory:{}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, pantryCategoryOverride:{}, pantryStepOverride:{}, waterNotifEnabled:false, theme:"clinic", waterReminder:{...DEFAULT_WATER_REMINDER}, uiScale:detectDefaultUiScale(), recipeRating:{}, swipeRatingStyle:"balloon", displayName:"", myRecipes:[], recipeReviews:{}, communityRecipesEnabled:false, remainingKcalFillEnabled:false, fasting:{...DEFAULT_FASTING}, clinicPalette:"default", household:{id:null, name:"", inviteCode:null, members:[]}, _lastSyncedSnapshot:null};
+  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, plannerLeftover:{}, water:{date:"",count:0}, waterHistory:{}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, pantryCategoryOverride:{}, pantryStepOverride:{}, pantryHidden:{}, waterNotifEnabled:false, theme:"clinic", waterReminder:{...DEFAULT_WATER_REMINDER}, uiScale:detectDefaultUiScale(), recipeRating:{}, swipeRatingStyle:"balloon", displayName:"", myRecipes:[], recipeReviews:{}, communityRecipesEnabled:false, remainingKcalFillEnabled:false, fasting:{...DEFAULT_FASTING}, clinicPalette:"default", household:{id:null, name:"", inviteCode:null, members:[]}, _lastSyncedSnapshot:null};
 }
 let state = loadState();
 document.documentElement.setAttribute("data-theme", state.theme || "clinic");
@@ -3504,7 +3556,7 @@ function saveState(){
 // explicitly asked for EVERY field to round-trip through the cloud today —
 // so instead of excluding collision-prone keys (shopping/planner/history),
 // they're included here and protected by a real 3-way merge below instead.
-const SYNCED_STATE_KEYS = ["displayName","profile","theme","uiScale","communityRecipesEnabled","remainingKcalFillEnabled","fasting","clinicPalette","pantry","pantryUnitOverride","pantryCategoryOverride","pantryStepOverride","favorites","favIngredients","myRecipes","recipeReviews","recipeRating","customTiles","swipeRatingStyle","shopping","recipeAdded","planner","plannerScale","plannerLeftover","cooked","eaten","waterHistory","water","weights","history","waterNotifEnabled","waterReminder","household"];
+const SYNCED_STATE_KEYS = ["displayName","profile","theme","uiScale","communityRecipesEnabled","remainingKcalFillEnabled","fasting","clinicPalette","pantry","pantryUnitOverride","pantryCategoryOverride","pantryStepOverride","pantryHidden","favorites","favIngredients","myRecipes","recipeReviews","recipeRating","customTiles","swipeRatingStyle","shopping","recipeAdded","planner","plannerScale","plannerLeftover","cooked","eaten","waterHistory","water","weights","history","waterNotifEnabled","waterReminder","household"];
 // Keys whose change can actually affect what renderRecipes() draws (matching
 // %, badges, filters) -- used to skip that expensive 229-card full rebuild
 // on syncs that only touched something unrelated (e.g. a weight entry or
@@ -3513,7 +3565,7 @@ const RECIPE_RELEVANT_SYNC_KEYS = new Set(["pantry","favorites","favIngredients"
 // Keys shaped as {id: value} maps, where a real 3-way merge can be done
 // PER ENTRY (so two devices adding different shopping items both survive,
 // instead of one whole-field overwrite winning outright).
-const MAP_MERGE_KEYS = ["shopping","recipeAdded","planner","plannerScale","plannerLeftover","cooked","eaten","waterHistory","favorites","favIngredients","pantry","pantryUnitOverride","pantryCategoryOverride","pantryStepOverride","customTiles","recipeReviews","recipeRating"];
+const MAP_MERGE_KEYS = ["shopping","recipeAdded","planner","plannerScale","plannerLeftover","cooked","eaten","waterHistory","favorites","favIngredients","pantry","pantryUnitOverride","pantryCategoryOverride","pantryStepOverride","pantryHidden","customTiles","recipeReviews","recipeRating"];
 // Arrays of objects with a stable .id, diffed the same way as MAP_MERGE_KEYS
 // after converting array<->map by id.
 const ARRAY_BY_ID_MERGE_KEYS = ["myRecipes"];
@@ -3703,12 +3755,37 @@ function pushStateToCloud(){
   if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous) return;
   const subset = syncableStateSubset();
   setSyncIndicatorState("pending");
+  // REAL BUG FIXED 2026-08-29 (user: "w Web nie udawało mi się wyłączyć
+  // śledzenia produktu, po chwili po skasowaniu dalej wracało do starej
+  // wartości"): this used to write with a blanket `{merge:true}`, which
+  // makes Firestore DEEP-merge every map-shaped field (pantry, shopping,
+  // planner, eaten, favorites, ...) key by key. Deleting a key locally
+  // (delete state.pantry[x], see resetTile) therefore never reached the
+  // server AT ALL: the pushed map simply lacked that key, and a deep merge
+  // treats "absent" as "don't touch", not as "delete". The next snapshot
+  // then came back still carrying the old entry, and since the local merge
+  // baseline (_lastSyncedSnapshot) had already been updated to the
+  // post-delete state, computeMergedSyncState() correctly read it as
+  // "remote added something new" and restored it — the exact "it comes
+  // back a moment later" the user saw. Every deletion in the app was
+  // affected (pantry tracking, shopping items, planner slots), not just
+  // pantry; it only got noticed on the pantry because that's where a
+  // resurrected value is most visible.
+  //
+  // mergeFields() is the fix: each listed top-level path is written as a
+  // WHOLE-VALUE replace (exactly like update({pantry:{...}})), so a map
+  // that lost a key really loses it server-side too, while any field NOT
+  // listed here stays untouched — strictly safer than {merge:true} was,
+  // since that also silently rewrote nothing it wasn't given. Android has
+  // always used mergeFields (see CloudSyncCoordinator.kt), which is why
+  // this bug was web-only.
+  const payload = Object.assign({}, subset, {
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    lastEditedByDevice: getOrCreateDeviceLabel(),
+  });
   const writePromise = fbDb.collection("users").doc(currentFbUser.uid).set(
-    Object.assign({}, subset, {
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      lastEditedByDevice: getOrCreateDeviceLabel(),
-    }),
-    {merge:true}
+    payload,
+    {mergeFields: Object.keys(payload)}
   );
   // The header spinner should never spin forever, even if this specific
   // write's promise never settles (e.g. genuinely offline with Firestore's
@@ -3958,6 +4035,7 @@ const MERGE_KEY_LABELS = {
   cooked:"Historia gotowania", eaten:"Dziennik posiłków", waterHistory:"Historia nawodnienia",
   favorites:"Ulubione przepisy", favIngredients:"Ulubione składniki", pantry:"Spiżarnia",
   pantryUnitOverride:"Spiżarnia (jednostka)", pantryCategoryOverride:"Spiżarnia (kategoria)", pantryStepOverride:"Spiżarnia (skok +/-)",
+  pantryHidden:"Spiżarnia (produkty usunięte na stałe)",
   customTiles:"Własne kafelki spiżarni", recipeReviews:"Oceny i komentarze", recipeRating:"Oceny (podoba/nie podoba się)",
   myRecipes:"Własne przepisy", displayName:"Nazwa w aplikacji", theme:"Motyw", uiScale:"Skala interfejsu",
   communityRecipesEnabled:"Przepisy społeczności (przełącznik)", remainingKcalFillEnabled:"Wypełnianie kolorem kafelka Pozostało",
@@ -4812,19 +4890,53 @@ function attachSwipeToEat(){
     row.addEventListener("pointercancel", finish);
   });
 }
-// Requested 2026-08-25: bidirectional version of attachSwipeToEat() for the
-// Planer dashboard's "Dzisiejszy Planer" cards -- swiping EITHER way
-// toggles eaten (unlike the header's rows, there's no existing "left vs
-// right means what" convention here to preserve), while a plain tap is
-// left free for openRecipePreviewModal() (wired separately in
-// renderPlannerDashboard()). axis-locks against vertical scrolling the
-// same way attachSwipeRating() does, so scrolling the page doesn't
-// accidentally register as a horizontal swipe.
+// FR-99 (2026-08-29, user: "coś nie do końca łapie mi przesuwanie w prawo
+// i w lewo dań w dzisiejszym planerze, mam pomysł żeby to przebudować w
+// sposób taki że jedno albo krótkie przesunięcie daje że zrobione a długie
+// przesunięcie że zjedzone; w lewo natomiast można cofnąć zjedzenie np. że
+// połowa dania tylko zjedzona albo wcale nie zjedzone, oczywiście pasuje
+// też móc cofnąć zrobienie bo mogło się przez przypadek kliknąć").
+//
+// The previous version (2026-08-25) had exactly two outcomes -- any right
+// swipe = eaten, any left swipe = not eaten -- which meant the gesture
+// carried one bit of information while the Planer actually tracks three
+// separate things (cooked / eaten / how much). That's why it "didn't quite
+// click": there was no way to say "I made it but haven't eaten it yet",
+// and no way to correct an accidental tap on either.
+//
+// Now the DISTANCE of the swipe picks the action, and the card says which
+// one out loud (the .pd-swipe-action pill) before the finger is lifted:
+//
+//   →  short (>= PD_SHORT)  🍳 Zrobione            (cook log + pantry subtract)
+//   →  long  (>= PD_LONG)   🍽️ Zjedzone            (whole portion)
+//   ←  short (<= -PD_SHORT) ½ Zjedzone w połowie   (half portion, half kcal)
+//   ←  long  (<= -PD_LONG)  ↩️ Cofnij wszystko     (not eaten + undo today's cook)
+//
+// Everything is idempotent and order-independent -- swiping short-right
+// twice does NOT subtract the pantry twice, and the long-left reset works
+// whether the card was cooked, eaten, half-eaten or all three. axis-locks
+// against vertical scrolling the same way attachSwipeRating() does.
+const PD_SHORT = 36, PD_LONG = 105, PD_SWIPE_MAX = 130;
+// Which of the four actions a given horizontal distance commits to, or
+// null inside the dead zone. Pure function of dx, so the live label, the
+// live tint and the release handler can never disagree about what the
+// current drag means.
+function pdSwipeAction(dx){
+  if(dx >= PD_LONG) return {id:"eaten", label:"🍴 Zjedzone", cls:"strong", tint:[46,140,90], side:"at-right"};
+  if(dx >= PD_SHORT) return {id:"cooked", label:"🍳 Zrobione", cls:"good", tint:[96,180,120], side:"at-right"};
+  if(dx <= -PD_LONG) return {id:"reset", label:"↩️ Cofnij wszystko", cls:"bad", tint:[190,70,60], side:"at-left"};
+  if(dx <= -PD_SHORT) return {id:"half", label:"½ Zjedzone w połowie", cls:"warn", tint:[210,150,60], side:"at-left"};
+  return null;
+}
 function attachPdMealCardSwipe(box, today){
-  const AXIS_LOCK = 10, SWIPE_MAX = 60, SWIPE_COMMIT = 32;
+  const AXIS_LOCK = 10;
   box.querySelectorAll(".pd-meal-card:not(.pd-meal-card-empty)").forEach(card=>{
     let startX=null, startY=null, dx=0, axis=null;
-    const clearDragStyle = ()=>{ card.style.backgroundColor = ""; };
+    const labelEl = card.querySelector(".pd-swipe-action");
+    const clearDragStyle = ()=>{
+      card.style.backgroundColor = "";
+      if(labelEl){ labelEl.className = "pd-swipe-action"; labelEl.textContent = ""; }
+    };
     card.addEventListener("pointerdown", (e)=>{
       if(e.target.closest("button")) return;
       startX = e.clientX; startY = e.clientY; dx = 0; axis = null;
@@ -4838,21 +4950,22 @@ function attachPdMealCardSwipe(box, today){
       }
       if(axis === "x"){
         if(e.cancelable) e.preventDefault();
-        dx = Math.max(-SWIPE_MAX, Math.min(SWIPE_MAX, ddx));
+        dx = Math.max(-PD_SWIPE_MAX, Math.min(PD_SWIPE_MAX, ddx));
         card.style.transform = `translateX(${dx}px)`;
-        // Requested 2026-08-25: "niech się podświetla przy przesuwaniu ...
-        // żeby było widać ślizg" -- live color feedback while dragging, so
-        // the gesture itself is visible, not just its end result. Green
-        // toward "will mark eaten" (right), the same red
-        // attachSwipeRating() already uses for its "dislike" direction
-        // toward "will mark not eaten" (left) -- reusing this app's
-        // existing swipe-feedback color language rather than inventing a
-        // third one.
-        const intensity = Math.min(1, Math.abs(dx) / SWIPE_COMMIT);
-        if(dx > 4){
-          card.style.backgroundColor = `rgba(60,170,110,${(0.14*intensity).toFixed(2)})`;
-        }else if(dx < -4){
-          card.style.backgroundColor = `rgba(190,70,60,${(0.14*intensity).toFixed(2)})`;
+        const action = pdSwipeAction(dx);
+        if(action){
+          // Alpha ramps from the moment the action becomes reachable up to
+          // its next threshold, so the card visibly "locks in" deeper as
+          // the finger keeps going instead of jumping between two states.
+          const span = action.id==="eaten" || action.id==="reset" ? (PD_SWIPE_MAX - PD_LONG) : (PD_LONG - PD_SHORT);
+          const base = action.id==="eaten" || action.id==="reset" ? PD_LONG : PD_SHORT;
+          const intensity = Math.max(0, Math.min(1, (Math.abs(dx) - base) / span));
+          const [r,g,b] = action.tint;
+          card.style.backgroundColor = `rgba(${r},${g},${b},${(0.12 + 0.20*intensity).toFixed(2)})`;
+          if(labelEl){
+            labelEl.className = `pd-swipe-action show ${action.cls} ${action.side}`;
+            labelEl.textContent = action.label;
+          }
         }else{
           clearDragStyle();
         }
@@ -4862,27 +4975,60 @@ function attachPdMealCardSwipe(box, today){
       if(startX===null) return;
       card.style.transition = "transform .15s ease, background-color .2s ease";
       card.style.transform = "translateX(0)";
+      const action = axis==="x" ? pdSwipeAction(dx) : null;
       clearDragStyle();
-      if(axis==="x" && Math.abs(dx) > SWIPE_COMMIT){
+      if(action){
         card.dataset.pdSwiped = "1";
-        const cat = card.dataset.pdToggleCat;
-        // Requested 2026-08-25: directional, not a toggle -- "w prawo jak
-        // zjedzone i w lewo jak nie zjedzone" -- right always marks eaten,
-        // left always marks not-eaten, regardless of the card's current
-        // state (idempotent, unlike the header's own attachSwipeToEat()
-        // which only swipes one way and flips whatever the current state
-        // is -- that reversal is exactly what read as "broken" here,
-        // since swiping the "wrong" way when already in that state did
-        // the opposite of what it looked like it should).
-        setEaten(today, cat, dx > 0);
-        saveState();
-        setTimeout(()=>{ renderPlannerDashboard(); renderHeader(); renderTodayTracker(); }, 140);
+        applyPdSwipeAction(action.id, card.dataset.pdToggleCat, card.dataset.pdRecipeId, today);
       }
       startX=null; startY=null; dx=0; axis=null;
     };
     card.addEventListener("pointerup", finish);
     card.addEventListener("pointercancel", finish);
   });
+}
+// The four outcomes of pdSwipeAction(), split out from the gesture code so
+// the same transitions can be triggered from anywhere else later (a long-
+// press menu, a keyboard shortcut, the Android port's own equivalent)
+// without re-deriving what "zrobione" or "cofnij" actually mean.
+function applyPdSwipeAction(actionId, cat, recipeId, today){
+  const recipe = recipeId ? findRecipeById(recipeId) : null;
+  const scaled = recipe ? plannedRecipeFor(today, cat) || recipe : null;
+  if(actionId === "cooked"){
+    if(!scaled){ toast("Brak przepisu w tym slocie"); return; }
+    if(isCookedToday(scaled.id)){
+      toast("To danie jest już oznaczone jako zrobione dzisiaj");
+      return;
+    }
+    // Same call the recipe card's "✅ Zrobione dzisiaj" button makes --
+    // one cook-history entry plus the pantry subtraction, no duplicate
+    // logic here.
+    markRecipeCookedToday(scaled, null);
+    toast("🍳 Zrobione — odjęto składniki ze spiżarni", "Cofnij", ()=>{
+      undoCookedToday(scaled);
+      saveState(); renderPantry(); refreshPdAfterSwipe();
+    });
+  }else if(actionId === "eaten"){
+    setEaten(today, cat, true, 1);
+    saveState();
+    toast("🍴 Zjedzone");
+  }else if(actionId === "half"){
+    setEaten(today, cat, true, 0.5);
+    saveState();
+    toast("½ Zjedzone w połowie — liczy się połowa kcal");
+  }else if(actionId === "reset"){
+    const wasEaten = isEaten(today, cat);
+    setEaten(today, cat, false);
+    const undidCook = scaled ? undoCookedToday(scaled) : false;
+    saveState();
+    if(undidCook) renderPantry();
+    toast(undidCook ? "↩️ Cofnięto zjedzenie i zrobienie — składniki wróciły do spiżarni"
+                    : (wasEaten ? "↩️ Cofnięto zjedzenie" : "↩️ Nic do cofnięcia"));
+  }
+  refreshPdAfterSwipe();
+}
+function refreshPdAfterSwipe(){
+  setTimeout(()=>{ renderPlannerDashboard(); renderHeader(); renderTodayTracker(); }, 140);
 }
 
 const GLUTEN_KEYWORDS = ["chleb","bułk","pęczak","peczak","bulgur","jęczmien","jeczmien","orkiszow","tortilla","wafle żytnie","wafle gryczane","kuskus","kasza manna","makaron"];
@@ -5948,6 +6094,37 @@ function formatDatePl(iso){
   const d = new Date(iso);
   return d.toLocaleDateString('pl-PL', {day:'2-digit', month:'2-digit', year:'numeric'});
 }
+// FR-99 (2026-08-29): "jedno albo krótkie przesunięcie daje że zrobione".
+// The Planer's swipe needs to know whether THIS dish was already logged as
+// cooked today, so the gesture stays idempotent (a second short swipe must
+// not subtract the pantry twice) and so the opposite gesture knows what to
+// undo. state.cooked[id] entries store a full ISO timestamp; todayStr() is
+// the same UTC yyyy-mm-dd slice, so comparing the first 10 chars is exact,
+// not a locale guess.
+function cookedTodayIndex(recipeId){
+  const entries = state.cooked[recipeId] || [];
+  const today = todayStr();
+  for(let i=entries.length-1; i>=0; i--){
+    if(String(entries[i].date || "").slice(0,10) === today) return i;
+  }
+  return -1;
+}
+function isCookedToday(recipeId){ return cookedTodayIndex(recipeId) >= 0; }
+// Exact inverse of markRecipeCookedToday for today's entry -- same
+// restore path the cook-history modal's own "✕" row uses (precise
+// `subtracted` amounts when the entry has them, full-recipe fallback for
+// entries written before 2026-08-22). Returns false if there was nothing
+// to undo.
+function undoCookedToday(r){
+  const idx = cookedTodayIndex(r.id);
+  if(idx < 0) return false;
+  const entry = state.cooked[r.id][idx];
+  if(entry.subtracted) restoreSubtractedToPantry(entry.subtracted, r.name);
+  else restoreRecipeToPantry(r);
+  state.cooked[r.id].splice(idx, 1);
+  if(state.cooked[r.id].length === 0) delete state.cooked[r.id];
+  return true;
+}
 function markRecipeCookedToday(r, onChange){
   const subtracted = subtractRecipeFromPantry(r);
   state.cooked[r.id] = state.cooked[r.id] || [];
@@ -6983,6 +7160,7 @@ document.getElementById("customTileSaveBtn").addEventListener("click", ()=>{
   const type = document.getElementById("customTileType").value;
   const key = pantryCanon(coreName(name)) || name.toLowerCase().trim();
   state.customTiles[key] = {label:name, cat:customTileCat, emoji: CAT_DEFAULT_EMOJI[customTileCat] || "🍽️"};
+  delete state.pantryHidden[key]; // FR-98: re-adding by hand un-deletes it
   if(type==="spice"){
     state.pantry[key] = {label:name, cat:customTileCat, type:"spice", level: document.getElementById("customTileLevel").value};
   }else{
@@ -7157,25 +7335,42 @@ function openTileAction(canonName, catLabel){
   if(document.getElementById("view-shop").classList.contains("active")) renderShop();
   });
   body.appendChild(delBtn);
-  if(state.customTiles[canonName]){
-    const delTileBtn = document.createElement("button");
-    delTileBtn.className = "btn ghost";
-    delTileBtn.style.cssText = "width:100%; color:var(--danger); border-color:var(--danger);";
-    delTileBtn.textContent = "❌ Usuń ten kafelek na stałe (zła kategoria / literówka)";
-    delTileBtn.addEventListener("click", ()=>{
-      if(!confirm("Usunąć ten własny produkt całkowicie? Będziesz mógł dodać go ponownie, poprawnie, przez kafelek „Dodaj własny”.")) return;
-      addLog("pantry_delete", `Usunięto na stałe własny kafelek: ${canonName}`);
-      delete state.pantry[canonName];
-      delete state.customTiles[canonName];
-      delete state.pantryUnitOverride[canonName];
-      saveState();
-      document.getElementById("tileActionOverlay").classList.remove("show");
-      renderPantry();
+  // FR-98 (2026-08-29, user: "nie da się usunąć produktu ze spiżarni
+  // całkowicie, dodaj taką opcję"): this used to exist ONLY for tiles the
+  // user had created themselves (state.customTiles) -- for the ~200
+  // recipe-derived tiles the menu's most destructive option was
+  // "usuń śledzenie", which merely zeroes the stock and leaves the tile
+  // sitting in the grid exactly as before, so from the user's point of
+  // view nothing was deleted. Now every tile can be removed for good; the
+  // recipe-derived ones are remembered in state.pantryHidden so they don't
+  // simply reappear on the next render (see buildPantryTileList), and
+  // "↩️ Przywróć usunięte produkty" at the top of Spiżarnia (renderPantry)
+  // undoes it, so this is never a one-way door.
+  const delTileBtn = document.createElement("button");
+  delTileBtn.className = "btn ghost";
+  delTileBtn.style.cssText = "width:100%; color:var(--danger); border-color:var(--danger);";
+  delTileBtn.textContent = "❌ Usuń ten produkt ze spiżarni na stałe";
+  delTileBtn.addEventListener("click", ()=>{
+    if(!confirm(`Usunąć „${canonName}” ze spiżarni całkowicie? Kafelek zniknie z listy — możesz go przywrócić przyciskiem „↩️ Przywróć usunięte produkty” na górze Spiżarni.`)) return;
+    addLog("pantry_delete", `Usunięto produkt ze spiżarni na stałe: ${canonName}`);
+    delete state.pantry[canonName];
+    delete state.customTiles[canonName];
+    delete state.pantryUnitOverride[canonName];
+    delete state.pantryCategoryOverride[canonName];
+    delete state.pantryStepOverride[canonName];
+    state.pantryHidden[canonName] = true;
+    saveState();
+    document.getElementById("tileActionOverlay").classList.remove("show");
+    renderPantry();
   if(document.getElementById("view-shop").classList.contains("active")) renderShop();
-      toast("Usunięto kafelek");
+    toast("Usunięto produkt", "Cofnij", ()=>{
+      delete state.pantryHidden[canonName];
+      saveState();
+      renderPantry();
+      if(document.getElementById("view-shop").classList.contains("active")) renderShop();
     });
-    body.appendChild(delTileBtn);
-  }
+  });
+  body.appendChild(delTileBtn);
   document.getElementById("tileActionOverlay").classList.add("show");
 }
 function showUnitPicker(canonName){
@@ -7282,7 +7477,27 @@ function renderPantry(){
   box.innerHTML = "";
   const isClinic = state.theme==="clinic" || state.theme==="clinic_dark";
   const tileNames = new Set(buildPantryTileList());
-  Object.keys(state.customTiles).forEach(k=> tileNames.add(k));
+  Object.keys(state.customTiles).forEach(k=>{ if(!isPantryHidden(k)) tileNames.add(k); });
+  // FR-98: one row at the very top of Spiżarnia, shown only when there is
+  // actually something to bring back, so "usuń na stałe" never becomes an
+  // irreversible mistake the user can't see or undo.
+  const hiddenNames = Object.keys(state.pantryHidden).filter(k=> state.pantryHidden[k]);
+  if(hiddenNames.length){
+    const restore = document.createElement("button");
+    restore.className = "btn ghost";
+    restore.style.cssText = "width:100%; margin-bottom:12px;";
+    restore.textContent = `↩️ Przywróć usunięte produkty (${hiddenNames.length})`;
+    restore.addEventListener("click", ()=>{
+      if(!confirm(`Przywrócić ${hiddenNames.length} usuniętych produktów do spiżarni? Wrócą jako nieśledzone kafelki, bez stanu.`)) return;
+      state.pantryHidden = {};
+      addLog("pantry_add", `Przywrócono usunięte produkty spiżarni (${hiddenNames.length})`);
+      saveState();
+      renderPantry();
+      if(document.getElementById("view-shop").classList.contains("active")) renderShop();
+      toast("Przywrócono produkty");
+    });
+    box.appendChild(restore);
+  }
   const byCat = {};
   tileNames.forEach(name=>{
     const info = CANON_INFO[name] || state.customTiles[name] || {cat:"Inne", emoji:"🍽️"};
@@ -7432,6 +7647,11 @@ function openPantryModal(r){
         }else{
           state.pantry[canon] = {label:canon, cat:info.cat, type:"product", qty: effectiveStep(canon, unitCat), unitCat};
         }
+        // FR-98: explicitly saying "mam to" about an ingredient the user
+        // once deleted for good is a clear signal they want it back --
+        // otherwise the entry would be written to state.pantry while the
+        // tile stayed hidden in Spiżarnia, which reads as a bug.
+        delete state.pantryHidden[canon];
         addLog("pantry_add", `Dodano do spiżarni: ${canon}`);
       }
       saveState();
@@ -7568,6 +7788,16 @@ function renderPlannerDashboard(){
       return `<button class="pd-meal-card pd-meal-card-empty" data-pd-add-cat="${c.id}">+ ${c.label}</button>`;
     }
     const done = isEaten(today, c.id);
+    // FR-99: three independent bits of state now, so the card has to show
+    // all three -- struck-through name = eaten whole, "½" chip = eaten
+    // half (NOT struck through, it isn't finished), "🍳" chip = logged as
+    // cooked today.
+    const portion = eatenPortion(today, c.id);
+    const isHalf = done && portion > 0 && portion < 1;
+    const cookedToday = isCookedToday(r.id);
+    const flags = [];
+    if(cookedToday) flags.push('<span class="pd-meal-flag">🍳 Zrobione</span>');
+    if(isHalf) flags.push('<span class="pd-meal-flag half">½ Zjedzone w połowie</span>');
     // Requested 2026-08-26: pantry coverage badge, same pantryMatch() used
     // by the recipe card's own "🏺 Stan spiżarni" widget -- there's
     // visibly enough room on this card now that the meal-list flexes to
@@ -7575,14 +7805,16 @@ function renderPlannerDashboard(){
     // instead of requiring a tap into the recipe preview to see it.
     const pantryTotal = r.ingredients.length;
     const pantryHave = r.ingredients.filter(i=>pantryMatch(i)).length;
-    return `<div class="pd-meal-card${done?' eaten':''}" data-pd-toggle-cat="${c.id}" data-pd-recipe-id="${r.id}">
+    return `<div class="pd-meal-card${done?' eaten':''}${isHalf?' half':''}" data-pd-toggle-cat="${c.id}" data-pd-recipe-id="${r.id}">
+      <span class="pd-swipe-action"></span>
       <span class="pd-meal-avatar">${c.icon}</span>
       <span class="pd-meal-text">
         <span class="pd-meal-cat">${c.label}</span>
         <span class="pd-meal-name">${r.name}</span>
         <span class="pd-meal-pantry">🏺 ${pantryHave}/${pantryTotal} w spiżarni</span>
+        ${flags.length ? `<span class="pd-meal-flags">${flags.join("")}</span>` : ""}
       </span>
-      <span class="pd-meal-kcal">${r.kcal} kcal</span>
+      <span class="pd-meal-kcal">${isHalf ? `${Math.round(r.kcal*portion)} / ${r.kcal}` : r.kcal} kcal</span>
       <button class="pd-meal-remove" data-pd-remove-cat="${c.id}" title="Usuń z planu">✕</button>
     </div>`;
   }).join("");
@@ -7618,6 +7850,7 @@ function renderPlannerDashboard(){
     </div>
     <div class="pd-strip">${stripHtml}</div>
     <h3 class="pd-section-title">Dzisiejszy Planer</h3>
+    <div class="pd-swipe-legend">← ½ połowa &nbsp;·&nbsp; ←← cofnij &nbsp;|&nbsp; → 🍳 zrobione &nbsp;·&nbsp; →→ 🍴 zjedzone</div>
     <div class="pd-today-list">${mealsHtml}</div>
   `;
 
@@ -8538,6 +8771,18 @@ function isEaten(date, cat){
   const e = eatenEntry(date, cat);
   return !!(e && e.done);
 }
+// FR-99 (2026-08-29): a meal can now be eaten only PARTIALLY ("w lewo
+// można cofnąć zjedzenie np. że połowa dania tylko zjedzona"). Stored as
+// an extra `portion` field on the same {done,kcal,name} entry rather than
+// a new state key, so every existing reader keeps working unchanged and
+// entries written before this (and by any not-yet-updated device) simply
+// read back as a whole portion.
+function eatenPortion(date, cat){
+  const e = eatenEntry(date, cat);
+  if(!e || !e.done) return 0;
+  const p = typeof e.portion === "number" ? e.portion : 1;
+  return Math.max(0, Math.min(1, p));
+}
 function plannedRecipeFor(date, cat){
   const polIndex = polIndexForDate(date);
   const rid = (state.planner[polIndex]||{})[cat];
@@ -8545,14 +8790,15 @@ function plannedRecipeFor(date, cat){
   if(!base) return null;
   return scaleRecipe(base, getPlannerScale(polIndex, cat));
 }
-function setEaten(date, cat, done){
+function setEaten(date, cat, done, portion){
   state.eaten[date] = state.eaten[date] || {};
   if(done){
     const r = plannedRecipeFor(date, cat);
-    state.eaten[date][cat] = {done:true, kcal: r ? r.kcal : 0, name: r ? r.name : null};
+    const p = typeof portion === "number" ? Math.max(0, Math.min(1, portion)) : 1;
+    state.eaten[date][cat] = {done:true, kcal: r ? r.kcal : 0, name: r ? r.name : null, portion: p};
   }else{
     const prev = eatenEntry(date, cat);
-    state.eaten[date][cat] = {done:false, kcal: prev ? prev.kcal : null, name: prev ? prev.name : null};
+    state.eaten[date][cat] = {done:false, kcal: prev ? prev.kcal : null, name: prev ? prev.name : null, portion: 0};
   }
 }
 function addSnack(date, name, kcal){
@@ -8653,12 +8899,16 @@ function dailyEatenKcal(date){
   CATS.forEach(c=>{
     const e = eatenEntry(date, c.id);
     if(!e || !e.done) return;
-    if(typeof e.kcal === "number" && e.kcal>0){ total += e.kcal; return; }
+    // FR-99: half a portion counts half the kcal. `portion` defaults to 1
+    // for every entry written before this existed, so nothing about old
+    // days' totals changes.
+    const portion = eatenPortion(date, c.id);
+    if(typeof e.kcal === "number" && e.kcal>0){ total += Math.round(e.kcal * portion); return; }
     // Legacy entry (true, no captured kcal) — best-effort fallback against
     // the CURRENT weekly planner; only accurate if that weekday's plan
     // hasn't changed since.
     const r = plannedRecipeFor(date, c.id);
-    if(r) total += r.kcal;
+    if(r) total += Math.round(r.kcal * portion);
   });
   const day = state.eaten[date];
   (day && day.snacks || []).forEach(s=> total += (s.kcal||0));
@@ -8746,11 +8996,17 @@ function renderTodayTracker(){
   CATS.forEach(c=>{
     const r = plannedRecipeFor(viewDate, c.id);
     const checked = isEaten(viewDate, c.id);
+    // FR-99: a half portion (set by swiping left on the Planer card) is
+    // still "checked" here -- this checkbox only knows eaten/not eaten --
+    // but the label says so, so the half state isn't invisible outside the
+    // Planer. Ticking the box afterwards promotes it back to a whole one.
+    const portion = eatenPortion(viewDate, c.id);
+    const halfSuffix = checked && portion > 0 && portion < 1 ? " · ½ porcji" : "";
     const row = document.createElement("label");
     row.className = "toggle-row";
     row.style.marginBottom = "10px";
     row.innerHTML = `<input type="checkbox" ${checked?'checked':''} ${r?'':'disabled'}>
-      <span>${c.icon} ${c.label}: ${r ? r.name + " (" + r.kcal + " kcal)" : "— nie zaplanowano w Planerze —"}</span>`;
+      <span>${c.icon} ${c.label}: ${r ? r.name + " (" + r.kcal + " kcal)" + halfSuffix : "— nie zaplanowano w Planerze —"}</span>`;
     if(r){
       row.querySelector("input").addEventListener("change", e=>{
         setEaten(viewDate, c.id, e.target.checked);

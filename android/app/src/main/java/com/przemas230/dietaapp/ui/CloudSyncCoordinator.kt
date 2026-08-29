@@ -43,6 +43,7 @@ private fun encodeBaselineField(key: String, value: Any?): Any? = when (key) {
     "displayName" -> value as? String
     "profile" -> (value as? Profile)?.let(CloudSyncCodec::encodeProfile)
     "pantry" -> (value as? Map<String, PantryItem>)?.let(CloudSyncCodec::encodePantry)
+    "pantryHidden" -> (value as? Set<String>)?.let(CloudSyncCodec::encodePantryHidden)
     "themeId" -> value as? String
     "uiScale" -> value as? Double
     "swipeStyle" -> (value as? SwipeRatingStyle)?.name
@@ -71,6 +72,7 @@ private fun decodeBaselineField(key: String, raw: Any?): Any? = when (key) {
     "displayName" -> raw as? String
     "profile" -> CloudSyncCodec.decodeProfile(raw as? Map<*, *>)
     "pantry" -> CloudSyncCodec.decodePantry(raw as? Map<*, *>)
+    "pantryHidden" -> CloudSyncCodec.decodePantryHidden(raw as? Map<*, *>)
     "themeId" -> raw as? String
     "uiScale" -> (raw as? Number)?.toDouble()
     "swipeStyle" -> (raw as? String)?.let { name -> SwipeRatingStyle.entries.find { it.name == name } }
@@ -260,6 +262,10 @@ fun CloudSyncCoordinator(
     val profile by profileViewModel.profile.collectAsState()
     val displayName by profileViewModel.displayName.collectAsState()
     val pantryItems by pantryViewModel.items.collectAsState()
+    // FR-98: products deleted from the Spiżarnia for good -- synced like
+    // any other field so a product removed on the phone stays removed in
+    // the browser (and vice versa) instead of silently coming back.
+    val pantryHidden by pantryViewModel.hidden.collectAsState()
     val themeId by themeViewModel.themeId.collectAsState()
     val uiScale by uiScaleViewModel.uiScale.collectAsState()
     val swipeStyle by swipeRatingStyleViewModel.style.collectAsState()
@@ -287,6 +293,7 @@ fun CloudSyncCoordinator(
     val currentProfile = rememberUpdatedState(profile)
     val currentDisplayName = rememberUpdatedState(displayName)
     val currentPantryItems = rememberUpdatedState(pantryItems)
+    val currentPantryHidden = rememberUpdatedState(pantryHidden)
     val currentThemeId = rememberUpdatedState(themeId)
     val currentUiScale = rememberUpdatedState(uiScale)
     val currentSwipeStyle = rememberUpdatedState(swipeStyle)
@@ -356,7 +363,7 @@ fun CloudSyncCoordinator(
     }
 
     LaunchedEffect(
-        uid, hasReceivedFirstSnapshot, profile, displayName, pantryItems, themeId, uiScale, swipeStyle,
+        uid, hasReceivedFirstSnapshot, profile, displayName, pantryItems, pantryHidden, themeId, uiScale, swipeStyle,
         favIngredients, favoriteRecipes, cooked, ratings, shoppingItems, weekPlan, eatenDays, waterCount,
         waterHistory, weightEntries, activityLogEntries, communityRecipesEnabled,
     ) {
@@ -373,6 +380,7 @@ fun CloudSyncCoordinator(
             "displayName" to displayName,
             "profile" to profile,
             "pantry" to pantryItems,
+            "pantryHidden" to pantryHidden,
             "themeId" to themeId,
             "uiScale" to uiScale,
             "swipeStyle" to swipeStyle,
@@ -394,6 +402,7 @@ fun CloudSyncCoordinator(
             "displayName" to listOf("displayName"),
             "profile" to listOf("profile"),
             "pantry" to listOf("pantry"),
+            "pantryHidden" to listOf("pantryHidden"),
             "themeId" to listOf("theme"),
             "uiScale" to listOf("uiScale"),
             "swipeStyle" to listOf("swipeRatingStyle"),
@@ -414,6 +423,7 @@ fun CloudSyncCoordinator(
             displayName = displayName,
             profile = profile,
             pantry = pantryItems,
+            pantryHidden = pantryHidden,
             themeId = themeId,
             uiScale = uiScale,
             swipeRatingStyle = swipeStyle.name,
@@ -506,6 +516,12 @@ fun CloudSyncCoordinator(
                     known["pantry"] = it
                     if (it != lastKnownFields["pantry"] && it != currentPantryItems.value) {
                         pantryViewModel.replaceAll(it)
+                    }
+                }
+                CloudSyncCodec.decodePantryHidden(data["pantryHidden"] as? Map<*, *>)?.let {
+                    known["pantryHidden"] = it
+                    if (it != lastKnownFields["pantryHidden"] && it != currentPantryHidden.value) {
+                        pantryViewModel.replaceHidden(it)
                     }
                 }
                 (data["theme"] as? String)?.let {

@@ -31,6 +31,28 @@ object CookHistoryOperations {
         return entries + (recipeId to newList)
     }
 
+    /**
+     * FR-99: index of the LAST "zrobione" entry logged for [recipeId] on
+     * the UTC day containing [nowEpochMillis], or -1. The Planer's short
+     * right-swipe uses it to stay idempotent (never subtract the pantry
+     * twice for the same dish on the same day) and its long left-swipe
+     * uses it to know what to undo. UTC on purpose: every date key in this
+     * app (EatenViewModel.todayUtc, index.html's todayStr) is a UTC
+     * yyyy-mm-dd slice, so anything else would disagree with the eaten
+     * record it sits next to.
+     */
+    fun cookedTodayIndex(
+        entries: Map<String, List<CookEntry>>,
+        recipeId: String,
+        nowEpochMillis: Long,
+    ): Int {
+        val list = entries[recipeId] ?: return -1
+        val today = utcDay(nowEpochMillis)
+        return list.indexOfLast { utcDay(it.dateEpochMillis) == today }
+    }
+
+    private fun utcDay(epochMillis: Long): Long = Math.floorDiv(epochMillis, 86_400_000L)
+
     fun removeEntry(
         entries: Map<String, List<CookEntry>>,
         recipeId: String,

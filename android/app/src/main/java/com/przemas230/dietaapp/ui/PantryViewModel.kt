@@ -24,10 +24,45 @@ class PantryViewModel(application: Application) : AndroidViewModel(application) 
     private val _items = MutableStateFlow(PantryStore.load(application))
     val items: StateFlow<Map<String, PantryItem>> = _items.asStateFlow()
 
+    /** FR-98: canonical names deleted from the Spiżarnia for good -- see [deleteForever]. */
+    private val _hidden = MutableStateFlow(PantryStore.loadHidden(application))
+    val hidden: StateFlow<Set<String>> = _hidden.asStateFlow()
+
     private fun update(next: Map<String, PantryItem>) {
         _items.value = next
         PantryStore.save(getApplication(), next)
     }
+
+    private fun updateHidden(next: Set<String>) {
+        _hidden.value = next
+        PantryStore.saveHidden(getApplication(), next)
+    }
+
+    /**
+     * FR-98: "❌ Usuń produkt ze spiżarni na stałe". [removeItem] only
+     * clears the tracked stock -- the tile itself comes back on the next
+     * compose because it is derived from the recipe database, which is
+     * exactly what the user hit ("nie da się usunąć produktu ze spiżarni
+     * całkowicie"). This drops the stock AND remembers the name, so the
+     * tile really disappears until [restoreHidden].
+     */
+    fun deleteForever(name: String) {
+        update(PantryOperations.removeItem(_items.value, name))
+        updateHidden(PantryOperations.hideForever(_hidden.value, name))
+    }
+
+    /** FR-98: the "↩️ Przywróć usunięte produkty" button -- never a one-way door. */
+    fun restoreHidden() {
+        updateHidden(PantryOperations.restoreAllHidden())
+    }
+
+    /** FR-98: adding a deleted product back by hand (custom tile / "Mam to") un-deletes it. */
+    fun unhide(name: String) {
+        if (name in _hidden.value) updateHidden(_hidden.value - name)
+    }
+
+    /** FR-73: applies an incoming cloud snapshot of the hidden set. */
+    fun replaceHidden(hidden: Set<String>) = updateHidden(hidden)
 
     /**
      * FR-28: tap the upper half of a tile (dir=+1) to add, the lower half
@@ -54,6 +89,11 @@ class PantryViewModel(application: Application) : AndroidViewModel(application) 
 
     /** FR-16: "Mam to" toggle in the per-recipe pantry-check window. */
     fun toggleHaveIngredient(name: String, category: PantryCategory, unitCat: String) {
+        // FR-98: saying "mam to" about an ingredient that was once deleted
+        // for good is a clear signal it should exist again -- otherwise the
+        // stock entry would be written while the tile stayed hidden in
+        // Spiżarnia, which reads as a bug.
+        if (!_items.value.containsKey(name)) unhide(name)
         update(PantryOperations.toggleHaveIngredient(_items.value, name, category, unitCat))
     }
 

@@ -61,4 +61,38 @@ class EatenOperationsTest {
     fun `snacksKcal is zero for no snacks`() {
         assertEquals(0, EatenOperations.snacksKcal(emptyList()))
     }
+
+    // ---- FR-99: half portions ----
+
+    @Test
+    fun `an entry written without a portion still counts as a whole one`() {
+        val entries = mapOf("obiad" to com.przemas230.dietaapp.data.EatenEntry(done = true, kcal = 600))
+        assertEquals(600, EatenOperations.dailyEatenKcal(entries))
+        assertEquals(1.0, EatenOperations.portionOf(entries, "obiad"))
+    }
+
+    @Test
+    fun `half a portion counts half the kcal`() {
+        val entries = EatenOperations.setEaten(emptyMap(), "obiad", true, 601, "Zupa", portion = 0.5)
+        assertEquals(0.5, EatenOperations.portionOf(entries, "obiad"))
+        assertEquals(301, EatenOperations.dailyEatenKcal(entries))
+    }
+
+    @Test
+    fun `un-eating clears the portion but keeps the captured kcal and name`() {
+        val eaten = EatenOperations.setEaten(emptyMap(), "obiad", true, 600, "Zupa", portion = 0.5)
+        val cleared = EatenOperations.setEaten(eaten, "obiad", false, null, null)
+        assertEquals(0.0, EatenOperations.portionOf(cleared, "obiad"))
+        assertEquals(0, EatenOperations.dailyEatenKcal(cleared))
+        assertEquals(600, cleared.getValue("obiad").kcal)
+        assertEquals("Zupa", cleared.getValue("obiad").name)
+    }
+
+    @Test
+    fun `a portion outside 0 to 1 is clamped rather than trusted`() {
+        val over = EatenOperations.setEaten(emptyMap(), "obiad", true, 600, "Zupa", portion = 3.0)
+        assertEquals(600, EatenOperations.dailyEatenKcal(over))
+        val under = EatenOperations.setEaten(emptyMap(), "obiad", true, 600, "Zupa", portion = -1.0)
+        assertEquals(0, EatenOperations.dailyEatenKcal(under))
+    }
 }

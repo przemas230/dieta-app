@@ -109,6 +109,8 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-95 | Wyszukiwanie AI (Gemini) na kartach przepisów + klik tytułu tylko na rozwiniętej karcie | ✅ v1 (2026-08-26): trzeci przycisk „✨ Gemini” obok Google/YouTube; klik tytułu aktywny wyłącznie gdy karta rozwinięta | ✅ v1 (2026-08-26), zweryfikowane na emulatorze: przycisk „✨ Gemini” obecny; klik tytułu na ZWINIĘTEJ karcie nie zmienił `mCurrentFocus` (zostało w appce), na ROZWINIĘTEJ otworzył `com.android.chrome` — oba warunki potwierdzone |
 | FR-96 | Wypełnianie kolorem kafelka „Pozostało” w Planerze | ✅ v1 (2026-08-26): opt-in w Ustawieniach → Wygląd, pasek proporcjonalny do zjedzonych kcal na kafelku POZOSTAŁO (motyw Klinika), `state.remainingKcalFill` w `SYNCED_STATE_KEYS` | ✅ v1 (2026-08-26), zweryfikowane na emulatorze: po włączeniu i zjedzeniu 330/1480 kcal kafelek pokazał jasnozielony pasek od lewej ≈22% szerokości, zgodnie z proporcją. Lokalne-tylko (`RemainingKcalFillViewModel`, nie `CloudSyncCoordinator`), świadoma asymetria z web |
 | FR-97 | Znacznik stanu spiżarni na kartach „Dzisiejszy Planer” | ✅ v1 (2026-08-26): „🏺 N/M w spiżarni” na każdej karcie dania, żywa aktualizacja, puste sloty bez znacznika | ✅ v1 (2026-08-26), zweryfikowane na emulatorze: dodany przepis pokazał „🏺 0/3 w spiżarni” od razu po dodaniu, wykorzystuje istniejące `pantryMatch` |
+| FR-98 | Trwałe usuwanie produktu ze spiżarni | ✅ v1 (2026-08-29): „❌ Usuń produkt ze spiżarni na stałe” w menu po przytrzymaniu KAŻDEGO kafelka (wcześniej tylko dla `state.customTiles`), nowy klucz `pantryHidden` w `SYNCED_STATE_KEYS`+`MAP_MERGE_KEYS`, filtr w `buildPantryTileList()`, przycisk „↩️ Przywróć usunięte produkty (N)” na górze Spiżarni, ponowne dodanie ręczne odblokowuje. ⏳ nie klikane na żywo w przeglądarce w tej rundzie | ✅ v1 (2026-08-29), zweryfikowane na emulatorze: menu otwiera się teraz też dla kafelków NIEŚLEDZONYCH (`onLongPress` bez `entry != null`), usunięcie „feta / ser bez laktozy” zdjęło kafelek i zmieniło licznik Nabiał 9→8, przeżyło `am force-stop`+restart, „↩️ Przywróć usunięte produkty (1)” przywróciło kafelek i samo zniknęło. `PantryStore.loadHidden/saveHidden`, `PantryOperations.visibleTileNames/hideForever`, sync przez `CloudSyncCodec.encode/decodePantryHidden` |
+| FR-99 | Stopniowany gest przesuwania na kartach „Dzisiejszy Planer” | ✅ v1 (2026-08-29): `pdSwipeAction(dx)` mapuje odległość na 4 akcje (36/105/130 px), żywa pigułka z nazwą akcji + narastające tło, ściągawka pod nagłówkiem, plakietki stanu, `portion` na wpisie `state.eaten[date][cat]`, `cookedTodayIndex/undoCookedToday`. ⏳ nie klikane na żywo w przeglądarce (logika sprawdzona liczbowo w Node — te same 11 wartości dx co test Kotlina) | ✅ v1 (2026-08-29), zweryfikowane na emulatorze wszystkie 4 akcje z odczytem liczb: 0/1480 → „🍳 Zrobione” (plakietka) → długie w prawo 345/1480 → krótkie w lewo 173/1480 + „½ Zjedzone w połowie” + „173 / 345 kcal” → długie w lewo z powrotem 0/1480 i obie plakietki znikają. `PlannerSwipe` (logic, testy jednostkowe), `EatenEntry.portion`, `RecipeViewModel.isCookedToday/undoCookedToday` |
 
 ## Uwagi do częściowych wpisów
 
@@ -942,6 +944,108 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
   **Znaleziony i naprawiony realny bug w FR-94** (jedyny z ośmiu, który faktycznie nie działał): status postu przerywanego był podpięty WYŁĄCZNIE do `MainActivity.kt`'s `HeaderKcalPanel`, który renderuje się tylko `if (!isClinicHeader)` — czyli NIGDY dla motywu Klinika, który jest domyślnym motywem aplikacji od FR-87/v10. Innymi słowy: FR-94 kompilował się, testy przechodziły, ale status nigdy nie pojawiał się na ekranie na żadnym urządzeniu z ustawieniami domyślnymi — martwy kod od strony UI mimo że logika (`FastingOperations.isInEatingWindow`) była poprawna i przetestowana jednostkowo. Ten sam projektowy problem, który FR-87/v7's komentarz w kodzie już opisywał i który FR-96 (dodane tej samej nocy) poprawnie ominął, wpinając się bezpośrednio do Klinika-owego `PlannerDashboard` zamiast do `HeaderKcalPanel` — FR-94 najwyraźniej nie poszedł za tym samym wzorcem. Naprawione identycznie jak FR-96: `fastingEnabled`/`fastingWindowStart`/`fastingWindowEnd` doprowadzone przez `MainActivity`→`PlannerScreen`→`PlannerDashboard`, status renderowany pod „Cześć, {imię}!”. Zweryfikowane wizualnie PRZED i PO poprawce (przed: włączenie przełącznika w Ustawieniach nie zmieniało nic na ekranie Planer; po: „⏳ Okno postu — jedzenie od 12:00” widoczne).
 
   `./gradlew :logic:test :app:assembleDebug` przechodzą, `versionCode` 84→85, `versionName` 0.1.83→0.1.84, zweryfikowane `aapt dump badging` PRZED kopią do `dist/`, `android/dist/version.json`+`app-debug.apk` zsynchronizowane. Web-owa strona tych 8 funkcji NIE była częścią tej sesji (Android-only weryfikacja) — jeśli web ma analogiczny ukryty-dla-jakiegoś-motywu bug, nie sprawdzone tutaj.
+
+- **FR-98 + FR-99 + dwie naprawy realnych błędów (2026-08-29)**: runda w
+  całości ze zgłoszeń użytkownika, obie platformy w tej samej turze, z
+  weryfikacją na emulatorze (`Medium_Phone_API_35`, `-gpu
+  swiftshader_indirect`, `adb install -r` na istniejącym profilu +
+  `uiautomator dump`/`input swipe`/`screencap`).
+
+  **Naprawa nr 1 (Web only, cicha utrata KAŻDEGO usunięcia)**: `index.html`
+  zapisywał do Firestore przez `set(..., {merge:true})`. Firestore przy
+  `merge:true` scala pola mapowe KLUCZ PO KLUCZU, więc mapa wysłana bez
+  jakiegoś klucza nie kasuje go na serwerze — „brak klucza” znaczy tam
+  „nie ruszaj”. Efekt: skasowanie czegokolwiek (śledzenie w spiżarni,
+  pozycja listy zakupów, slot planera) nigdy nie docierało do chmury,
+  serwer odsyłał starą wartość, a `computeMergedSyncState` — poprawnie,
+  bo `_lastSyncedSnapshot` był już po skasowaniu — czytał to jako
+  „zdalne dodanie” i przywracał. Dokładnie objaw zgłoszony przez
+  użytkownika („po chwili po skasowaniu dalej wracało do starej
+  wartości”). Naprawione zamianą na
+  `set(payload, {mergeFields: Object.keys(payload)})` — każde wymienione
+  pole idzie jako CAŁA wartość, jak `update({pantry:{...}})`.
+  **Android był od początku odporny**: `CloudSyncCoordinator` od dawna
+  używa `SetOptions.mergeFields`, i to nie przypadkiem — ten sam mechanizm
+  opisany jest w jego doc-komentarzu („Second bug fixed 2026-08-10”) jako
+  powód, dla którego `eaten`/`waterHistory` trzeba było wypychać ścieżką
+  zagnieżdżoną. Web nigdy nie dostał odpowiednika tej lekcji. To NIE jest
+  rozjazd do naprawienia po stronie Androida — to rozjazd, który właśnie
+  został zlikwidowany po stronie webu.
+
+  **FR-98 (nowa funkcja, obie platformy)**: „❌ Usuń produkt ze spiżarni na
+  stałe” w menu po przytrzymaniu kafelka + „↩️ Przywróć usunięte produkty
+  (N)” na górze Spiżarni. Nowy klucz stanu `pantryHidden` — na webie
+  dopisany do `SYNCED_STATE_KEYS` i `MAP_MERGE_KEYS` (czyli scala się per
+  pozycja, nie „całą listą”), na Androidzie `PantryStore.loadHidden/
+  saveHidden` + `PantryViewModel.hidden` + `CloudSyncCodec.encode/
+  decodePantryHidden` + wpis w `fieldGroups`/`encodeBaselineField`/
+  `decodeBaselineField` `CloudSyncCoordinator`. Filtrowanie w JEDNYM
+  miejscu (`buildPantryTileList()` na webie, `PantryOperations.
+  visibleTileNames()` na Androidzie), żeby siatka Spiżarni i widok
+  kafelkowy listy zakupów nie mogły się nie zgodzić co do tego, co
+  istnieje. Web miał wcześniej wąski wariant tej funkcji — „❌ Usuń ten
+  kafelek na stałe” działające WYŁĄCZNIE dla `state.customTiles` —
+  zastąpiony wersją dla każdego kafelka. Android dodatkowo: menu po
+  przytrzymaniu otwiera się teraz dla każdego kafelka
+  (`onLongPress` bez warunku `entry != null`), bo wcześniej dla kafelków
+  nieśledzonych — czyli tych, które najbardziej chce się usunąć — nie
+  dawało się go w ogóle otworzyć.
+
+  **FR-99 (przebudowa gestu, obie platformy)**: odległość przesunięcia
+  wybiera jedną z czterech akcji (krótko w prawo = zrobione, długo w prawo
+  = zjedzone, krótko w lewo = pół porcji, długo w lewo = cofnij wszystko)
+  zamiast dotychczasowych dwóch wyników zależnych tylko od kierunku.
+  Mapowanie odległość→akcja jest czystą, testowaną jednostkowo funkcją po
+  obu stronach (`PlannerSwipe` w `android/logic/`, `pdSwipeAction()` na
+  webie) z DOKŁADNIE tymi samymi progami (36 / 105 / 130) — sprawdzone
+  liczbowo, że obie implementacje dają ten sam wynik dla tych samych
+  jedenastu wartości dx. Model danych: `EatenEntry` dostał pole `portion`
+  (0..1, domyślnie 1.0), przenoszone przez `CloudSyncCodec.encodeEaten`;
+  wpisy bez tego pola dekodują się jako cała porcja, więc historia kalorii
+  sprzed zmiany nie rusza się ani o kcal (jest na to test). Nowe pomocnicze
+  `CookHistoryOperations.cookedTodayIndex()` / `RecipeViewModel.
+  isCookedToday/undoCookedToday` (Android) i `cookedTodayIndex()/
+  isCookedToday()/undoCookedToday()` (web) — obie strony liczą „dzisiaj”
+  po dniu UTC, tak jak wszystkie klucze dat w tej aplikacji.
+
+  **Naprawa nr 2 (Android only, układ)**: kafelek „POZOSTAŁO” rozciągał się
+  na cały ekran po włączeniu FR-88 („wypełniaj kolorem”). Pasek wypełnienia
+  był prawdziwym dzieckiem `Box` z `Modifier.fillMaxHeight()`, a ten kafelek
+  siedzi wewnątrz `PlannerDashboard`, któremu caller daje
+  `fillParentMaxHeight()` — ograniczenie wysokości docierające do dziecka to
+  więc cały pozostały ekran. Naprawione przez `Modifier.drawBehind {
+  drawRect(...) }`: wypełnienie maluje się po płaskim tle i pod tekstem, ale
+  nie bierze udziału w mierzeniu. Web tego błędu nie miał, bo
+  `.pd-remaining-fill` jest `position:absolute`, czyli też poza układem —
+  klasyczny przypadek, w którym „ten sam efekt wizualny” po dwóch stronach
+  wymaga dwóch różnych mechanizmów, a nie dosłownego portu.
+
+  **FR-87/v18 (obie platformy)**: karta dzisiejszego dnia na liście dni
+  tygodnia przestała być pełnoekranowa (usunięte `.clinic-day-card.today`
+  `min-height` na webie, `Modifier.fillParentMaxHeight()` dla
+  `day == todayIndex` na Androidzie).
+
+  **Zakres weryfikacji — co jest ✅, a co ⏳**: ✅ zweryfikowane wizualnie na
+  emulatorze: wszystkie cztery akcje gestu z odczytem realnych liczb
+  (0/1480 → 345/1480 po „zjedzone” → 173/1480 po „pół porcji” → 0/1480 po
+  „cofnij wszystko”, plakietki „🍳 Zrobione”/„½ Zjedzone w połowie”, kafelek
+  kcal „173 / 345 kcal”), usunięcie produktu ze Spiżarni wraz z przeżyciem
+  `am force-stop` + ponownego startu i działającym przywracaniem, kafelek
+  „POZOSTAŁO” z włączonym wypełnianiem (jaśniejszy pas ~23% szerokości,
+  wysokość bez zmian), karta „Sobota (Dziś)” tej samej wysokości co
+  „Niedziela”. ⏳ NIE zweryfikowane na żywo: strona webowa tej rundy
+  (rozszerzenie przeglądarkowe nie było podłączone — sprawdzona tylko
+  logika gestu/porcji uruchomiona w Node i kontrola składni skryptu) oraz
+  synchronizacja `pantryHidden` i naprawa nr 1 między dwoma urządzeniami
+  na jednym koncie (wymaga zalogowanego konta po obu stronach; logika ma
+  testy jednostkowe, ale round-trip przez prawdziwy Firestore nie był
+  robiony). To pierwsza rzecz do sprawdzenia przy okazji: usuń produkt na
+  telefonie, sprawdź, czy zniknął w przeglądarce.
+
+  `./gradlew :logic:test :app:assembleDebug` przechodzą, `versionCode`
+  85→86, `versionName` 0.1.84→0.1.85, zweryfikowane `aapt dump badging`
+  PRZED kopią do `dist/`, `android/dist/version.json` + `app-debug.apk`
+  zsynchronizowane. CACHE_NAME→v104 na Web, `versions/v104/`.
 
 ## Jak to utrzymywać
 

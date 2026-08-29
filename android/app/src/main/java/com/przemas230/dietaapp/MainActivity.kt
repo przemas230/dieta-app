@@ -883,7 +883,10 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     onSignOut = { showDashboardSignOutConfirm = true },
                     onWaterTap = { i -> waterViewModel.tapDroplet(i) },
                     onWaterSetCount = { n -> waterViewModel.setCount(n) },
-                    onSetEaten = { cat, eaten, kcal, name -> eatenViewModel.setEaten(cat, eaten, kcal, name) },
+                    // FR-99: the Planer swipe can now record a HALF portion
+                    // (short left swipe), so the callback carries how much
+                    // was eaten, not just whether it was.
+                    onSetEaten = { cat, eaten, portion, kcal, name -> eatenViewModel.setEaten(cat, eaten, kcal, name, portion) },
                     remainingKcalFillEnabled = remainingKcalFillEnabled,
                     fastingEnabled = fastingEnabled,
                     fastingWindowStart = fastingWindowStart,

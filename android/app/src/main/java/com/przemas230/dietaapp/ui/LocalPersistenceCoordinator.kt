@@ -52,6 +52,10 @@ fun LocalPersistenceCoordinator(
     val profile by profileViewModel.profile.collectAsState()
     val displayName by profileViewModel.displayName.collectAsState()
     val pantryItems by pantryViewModel.items.collectAsState()
+    // FR-98: products deleted from the Spiżarnia for good (PantryStore keeps
+    // its own copy too -- this one keeps the single local-state snapshot
+    // complete, same as every other field here).
+    val pantryHidden by pantryViewModel.hidden.collectAsState()
     val themeId by themeViewModel.themeId.collectAsState()
     val uiScale by uiScaleViewModel.uiScale.collectAsState()
     val swipeStyle by swipeRatingStyleViewModel.style.collectAsState()
@@ -85,6 +89,7 @@ fun LocalPersistenceCoordinator(
             (data["displayName"] as? String)?.let { profileViewModel.setDisplayName(it) }
             CloudSyncCodec.decodeProfile(data["profile"] as? Map<*, *>)?.let { profileViewModel.save(it) }
             CloudSyncCodec.decodePantry(data["pantry"] as? Map<*, *>)?.let { pantryViewModel.replaceAll(it) }
+            CloudSyncCodec.decodePantryHidden(data["pantryHidden"] as? Map<*, *>)?.let { pantryViewModel.replaceHidden(it) }
             (data["theme"] as? String)?.let { themeViewModel.setTheme(it) }
             (data["uiScale"] as? Number)?.toDouble()?.let { uiScaleViewModel.setScale(it) }
             (data["swipeRatingStyle"] as? String)?.let { raw ->
@@ -120,7 +125,7 @@ fun LocalPersistenceCoordinator(
     }
 
     LaunchedEffect(
-        initialLoadDone, profile, displayName, pantryItems, themeId, uiScale, swipeStyle,
+        initialLoadDone, profile, displayName, pantryItems, pantryHidden, themeId, uiScale, swipeStyle,
         favIngredients, cooked, ratings, reviews, myRecipes, favoriteRecipes, shoppingItems, weekPlan,
         eatenDays, waterCount, weightEntries, waterHistory, activityLogEntries,
         communityRecipesEnabled, remainingKcalFillEnabled,
@@ -132,6 +137,7 @@ fun LocalPersistenceCoordinator(
             displayName = displayName,
             profile = profile,
             pantry = pantryItems,
+            pantryHidden = pantryHidden,
             themeId = themeId,
             uiScale = uiScale,
             swipeRatingStyle = swipeStyle.name,

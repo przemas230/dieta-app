@@ -58,6 +58,30 @@ object PantryOperations {
 
     fun removeItem(items: Map<String, PantryItem>, name: String): Map<String, PantryItem> = items - name
 
+    /**
+     * FR-98 (2026-08-29, user: "nie da się usunąć produktu ze spiżarni
+     * całkowicie, dodaj taką opcję"): which tiles the Spiżarnia grid should
+     * actually show. [removeItem] above only drops the tracked STOCK -- the
+     * tile itself is derived fresh from the recipe database on every
+     * compose (PantryTiles.buildTileNames), so for the ~200 recipe-derived
+     * products there was previously no way to make one disappear at all.
+     * [hidden] is the persisted set of canonical names the user deleted for
+     * good; it is filtered out here, in one place, so the grid and every
+     * other consumer of the tile list agree instead of one of them quietly
+     * re-introducing a deleted product.
+     */
+    fun visibleTileNames(
+        recipeTileNames: Collection<String>,
+        trackedNames: Collection<String>,
+        hidden: Set<String>,
+    ): List<String> = (recipeTileNames + trackedNames).distinct().filterNot { it in hidden }.sorted()
+
+    /** FR-98: delete for good -- drops any tracked stock AND remembers not to render the tile again. */
+    fun hideForever(hidden: Set<String>, name: String): Set<String> = hidden + name
+
+    /** FR-98: "↩️ Przywróć usunięte produkty" -- one button, brings every hidden tile back as an untracked tile. */
+    fun restoreAllHidden(): Set<String> = emptySet()
+
     /** Long-press a product tile -> "🔢 Zmień skok +/-" (weight/volume only, see PantryScreen's TileActionDialog). */
     fun changeStep(items: Map<String, PantryItem>, name: String, newStep: Double): Map<String, PantryItem> {
         val product = items[name] as? PantryItem.Product ?: return items

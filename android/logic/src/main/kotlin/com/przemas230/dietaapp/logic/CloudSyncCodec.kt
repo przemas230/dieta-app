@@ -228,6 +228,21 @@ object CloudSyncCodec {
         return result
     }
 
+    /**
+     * FR-98: index.html's state.pantryHidden[canonName] = true -- canonical
+     * ingredient names the user deleted from the Spiżarnia for good. Shaped
+     * as a map (not an array) on purpose: it's one of index.html's
+     * MAP_MERGE_KEYS, so the web app's 3-way merge can resolve two devices
+     * hiding different products per ENTRY instead of one whole-list
+     * overwrite winning.
+     */
+    fun encodePantryHidden(hidden: Set<String>): Map<String, Any?> = hidden.associateWith { true }
+
+    fun decodePantryHidden(map: Map<*, *>?): Set<String>? {
+        if (map == null) return null
+        return map.entries.filter { it.value == true }.mapNotNull { it.key as? String }.toSet()
+    }
+
     /** index.html's state.favIngredients[canon] = true (toggled off values may linger as false rather than being deleted). Android's Set only ever holds favorited names, so every encoded value is true. */
     fun encodeFavIngredients(favorites: Set<String>): Map<String, Any?> = favorites.associateWith { true }
 
@@ -363,7 +378,10 @@ object CloudSyncCodec {
         days.mapValues { (_, day) ->
             val dayMap = LinkedHashMap<String, Any?>()
             day.entries.forEach { (cat, entry) ->
-                dayMap[cat] = mapOf("done" to entry.done, "kcal" to entry.kcal, "name" to entry.name)
+                // FR-99: `portion` rides along on the same entry -- a
+                // device that predates it simply won't send the key, and
+                // decodeEaten below defaults it back to a whole portion.
+                dayMap[cat] = mapOf("done" to entry.done, "kcal" to entry.kcal, "name" to entry.name, "portion" to entry.portion)
             }
             dayMap["snacks"] = day.snacks.map { mapOf("id" to it.id, "name" to it.name, "kcal" to it.kcal) }
             dayMap
@@ -390,7 +408,8 @@ object CloudSyncCodec {
                 } else {
                     val entryMap = v as? Map<*, *> ?: return@forEach
                     val done = entryMap["done"] as? Boolean ?: false
-                    entries[key] = EatenEntry(done, numberFrom(entryMap["kcal"])?.toInt(), entryMap["name"] as? String)
+                    val portion = numberFrom(entryMap["portion"]) ?: 1.0
+                    entries[key] = EatenEntry(done, numberFrom(entryMap["kcal"])?.toInt(), entryMap["name"] as? String, portion.coerceIn(0.0, 1.0))
                 }
             }
             result[date] = EatenDay(entries, snacks)
@@ -573,6 +592,7 @@ object CloudSyncCodec {
         displayName: String,
         profile: Profile,
         pantry: Map<String, PantryItem>,
+        pantryHidden: Set<String>,
         themeId: String,
         uiScale: Double?,
         swipeRatingStyle: String,
@@ -587,6 +607,7 @@ object CloudSyncCodec {
         "displayName" to displayName,
         "profile" to encodeProfile(profile),
         "pantry" to encodePantry(pantry),
+        "pantryHidden" to encodePantryHidden(pantryHidden),
         "theme" to themeId,
         "uiScale" to uiScale,
         "swipeRatingStyle" to swipeRatingStyle,

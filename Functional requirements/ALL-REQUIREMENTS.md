@@ -45,6 +45,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-91: Cofnij (Undo) usunięcie dania z „Dzisiejszy Planer”](#fr-91-cofnij-undo-usunięcie-dania-z-dzisiejszy-planer)
 - [FR-92: Udostępnianie / eksport planu tygodnia](#fr-92-udostępnianie--eksport-planu-tygodnia)
 - [FR-97: Znacznik stanu spiżarni na kartach „Dzisiejszy Planer”](#fr-97-znacznik-stanu-spiżarni-na-kartach-dzisiejszy-planer)
+- [FR-99: Stopniowany gest przesuwania na kartach „Dzisiejszy Planer”](#fr-99-stopniowany-gest-przesuwania-na-kartach-dzisiejszy-planer)
 
 ### Lista zakupów
 - [FR-25: Budowanie listy zakupów ze składników przepisów](#fr-25-budowanie-listy-zakupów-ze-składników-przepisów)
@@ -60,6 +61,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-30: Zmiana kategorii i usuwanie śledzenia kafelka spiżarni](#fr-30-zmiana-kategorii-i-usuwanie-śledzenia-kafelka-spiżarni)
 - [FR-31: Skanowanie kodu kreskowego produktu](#fr-31-skanowanie-kodu-kreskowego-produktu)
 - [FR-32: Podpowiedź „🏺 masz w spiżarni” i „Pomysł na danie z ulubionych składników”](#fr-32-podpowiedź-🏺-masz-w-spiżarni-i-pomysł-na-danie-z-ulubionych-składników)
+- [FR-98: Trwałe usuwanie produktu ze spiżarni](#fr-98-trwałe-usuwanie-produktu-ze-spiżarni)
 
 ### Szybkie dodawanie i przekąski
 - [FR-33: Globalny przycisk szybkiego dodania przekąski/dania z każdego miejsca](#fr-33-globalny-przycisk-szybkiego-dodania-przekąskidania-z-każdego-miejsca)
@@ -141,15 +143,17 @@ Przegląd wymagań pod kątem wzajemnych sprzeczności. Żadna z poniższych par
 
 1. **FR-44 (auto-chowanie nagłówka na przewijanie) vs FR-45 (ręczne zwijanie ma pierwszeństwo).** Rozstrzygnięcie: ręczne działanie użytkownika zawsze wygrywa i zamraża automatykę aż do wejścia na zakładkę Przepisy od nowa albo ręcznego rozwinięcia. Zweryfikowano dodatkowo, że otwarcie i zamknięcie okienka modalnego (FR-12 i inne) nie powinno móc obejść tego zamrożenia — pierwotnie mogło (dwukrotnie, dwoma różnymi mechanizmami), naprawiono ostatecznie poprawką pomijającą zbędne przełączenie widoku przy zamykaniu modala przyciskiem „X” (patrz historia rewizji FR-45).
 2. **FR-9 (kara za wysoki IG w wyniku dopasowania) vs FR-11 (wyświetlanie plakietki „podwyższony IG” na karcie).** Nie wykluczają się — to dwie strony tego samego przełącznika: plakietka istnieje właśnie dla osób, które świadomie wyłączyły rygor niskiego IG i chcą mimo to widzieć tę informację.
-3. **FR-3 (stuknięcie rozwija kartę) vs FR-55 (przesunięcie karty ocenia danie).** Ten sam obszar dotykowy obsługuje dwa różne gesty. Rozstrzygnięcie: blokada osi ruchu (pierwsze przekroczenie progu 10px decyduje, czy to gest poziomy-ocena czy pionowy-przewijanie), a stuknięcie bez żadnego znaczącego ruchu liczy się jako rozwinięcie karty — pod warunkiem że w międzyczasie nie przewinęła się też sama strona (patrz rewizja FR-3).
-4. **FR-8 (filtr bez glutenu/laktozy) vs kompletność FR-1..FR-3.** Filtr jest jawnie opisany w aplikacji jako orientacyjny (bazuje na oznaczeniach składników w tekście przepisu, nie na certyfikowanej analizie). To ograniczenie, nie sprzeczność — nie ma wymagania gwarantującego 100% trafność, więc nic tu się nie wyklucza.
-5. **FR-23 („Ugotuj na 2 dni”, przesunięcie +2 dni, wymaga ręcznej skali ≥2×) vs FR-24 (proaktywna podpowiedź, przesunięcie +1 dzień, automatyczna wg słów kluczowych).** To jedyny punkt oznaczony jako **świadomie zaakceptowana niespójność UX**, nie błąd: oba mechanizmy działają niezależnie i żaden nie nadpisuje danych bez jawnej akcji użytkownika, ale różne przesunięcie czasowe (2 dni vs 1 dzień) między dwoma podobnymi w założeniu funkcjami może być mylące. Do rozważenia w przyszłej rewizji: ujednolicić przesunięcie albo jasno zróżnicować nazewnictwo obu mechanizmów.
-6. **FR-42 (limit 20 wpisów historii aktywności) vs pozostałe funkcje korzystające z pełnej historii (FR-40 wykres wagi, FR-41 historia kalorii).** Nie wykluczają się — limit 20 jest wyłącznie ograniczeniem WYŚWIETLANIA jednej konkretnej listy (dziennik aktywności), nie ogranicza danych źródłowych używanych przez inne wykresy/funkcje.
-7. **FR-34 (baza 336 przekąsek) vs FR-35 (emotikonki przy rozpoznanych produktach).** Częściowe pokrycie, nie sprzeczność: nie każda z 336 pozycji bazy kalorycznej ma dziś przypisaną emotikonkę w osobnej tabeli `CANON_INFO` — brak emotikonki nie blokuje rozpoznania kalorii (FR-34 działa w pełni niezależnie od FR-35), po prostu nazwa pojawia się bez sufiksu. Możliwe rozszerzenie w przyszłości.
-8. **FR-60 (widoczność „Złotych zasad” tylko przy rygorze niskiego IG) vs FR-9 (przełącznik rygoru niskiego IG).** Nie wykluczają się — FR-60 to bezpośrednia konsekwencja FR-9: karta jest po prostu ukrywana, gdy FR-9 jest wyłączone. Jedno wymaganie steruje drugim, bez sprzeczności.
-9. **FR-61 (wybór stylu oceniania: balonowa czcionka / kolorowa karta) vs FR-48 (wybór motywu kolorystycznego).** Nie wykluczają się — to dwa niezależne ustawienia. FR-61 celowo działa tak samo w każdym z jedenastu motywów z FR-48, w tym Polaroid (FR-49) i Kafelki (FR-63).
-10. **FR-49 (kształt kart Polaroid) vs FR-63 (kształt kart motywu Kafelki).** Nie wykluczają się — oba wymagania modyfikują kształt/strukturę kart przepisów, ale są aktywne wyłącznie w ramach własnego, wzajemnie wykluczającego się wyboru motywu (FR-48 pozwala wybrać tylko jeden motyw naraz), więc nigdy nie są aktywne jednocześnie.
-11. **FR-62 (kalendarzyk tygodnia na liście zakupów) vs FR-58 (przyciski dodawania per-dzień).** Nie wykluczają się — to komplementarne, niezależne elementy tego samego widoku: FR-58 to akcja (dodawanie), FR-62 to wyłącznie odczyt/wizualizacja aktualnego stanu listy względem planu. Zmiana wywołana przez FR-58 natychmiast odświeża wskaźniki z FR-62.
+3. **FR-99 (stopniowany gest na kartach Planera) vs FR-15 (oznaczanie dania jako ugotowane) i FR-36 (oznaczanie jako zjedzone).** Nie wykluczają się — FR-99 to wyłącznie SKRÓT do tych samych dwóch zapisów, nie osobny stan. Krótkie przesunięcie w prawo woła dokładnie ten sam kod co przycisk „✅ Zrobione dzisiaj” z karty przepisu (wpis w historii gotowania + odjęcie ze spiżarni), a długie — ten sam `setEaten` co checkbox w Postępie i gest w nagłówku. Rozstrzygnięcia: (a) powtórzone „zrobione” tego samego dnia jest ignorowane, żeby skrót nie mógł odjąć składników dwa razy; (b) „zjedzone” NIE oznacza automatycznie „zrobione” — można zjeść coś, czego się nie gotowało, więc te dwa stany zostają niezależne; (c) połowa porcji (FR-99) jest z punktu widzenia FR-36 nadal „zjedzone” (`done:true`), tylko z polem `portion`, więc wszystkie starsze odczyty stanu (checkbox w Postępie, seria dni, podsumowania) działają bez zmian, a tylko sumowanie kcal zna ułamek.
+4. **FR-98 (trwałe usuwanie produktu ze spiżarni) vs FR-28 (kafelki wyliczane ze wszystkich przepisów).** Napięcie realne: FR-28 celowo NIE przechowuje listy kafelków, tylko wylicza ją z bazy przepisów, więc „usunięcie” kafelka nie ma czego skasować. Rozstrzygnięcie: FR-98 nie zmienia FR-28, tylko dokłada listę wykluczeń (`pantryHidden`) filtrowaną w jednym miejscu przy budowaniu listy kafelków. Skutek uboczny do zapamiętania: jeśli w przyszłości dojdzie przepis ze składnikiem, który użytkownik kiedyś ukrył, kafelek NIE pojawi się — to celowe (wybór użytkownika wygrywa z bazą przepisów), a „↩️ Przywróć usunięte produkty” jest wyjściem awaryjnym.
+5. **FR-3 (stuknięcie rozwija kartę) vs FR-55 (przesunięcie karty ocenia danie).** Ten sam obszar dotykowy obsługuje dwa różne gesty. Rozstrzygnięcie: blokada osi ruchu (pierwsze przekroczenie progu 10px decyduje, czy to gest poziomy-ocena czy pionowy-przewijanie), a stuknięcie bez żadnego znaczącego ruchu liczy się jako rozwinięcie karty — pod warunkiem że w międzyczasie nie przewinęła się też sama strona (patrz rewizja FR-3).
+6. **FR-8 (filtr bez glutenu/laktozy) vs kompletność FR-1..FR-3.** Filtr jest jawnie opisany w aplikacji jako orientacyjny (bazuje na oznaczeniach składników w tekście przepisu, nie na certyfikowanej analizie). To ograniczenie, nie sprzeczność — nie ma wymagania gwarantującego 100% trafność, więc nic tu się nie wyklucza.
+7. **FR-23 („Ugotuj na 2 dni”, przesunięcie +2 dni, wymaga ręcznej skali ≥2×) vs FR-24 (proaktywna podpowiedź, przesunięcie +1 dzień, automatyczna wg słów kluczowych).** To jedyny punkt oznaczony jako **świadomie zaakceptowana niespójność UX**, nie błąd: oba mechanizmy działają niezależnie i żaden nie nadpisuje danych bez jawnej akcji użytkownika, ale różne przesunięcie czasowe (2 dni vs 1 dzień) między dwoma podobnymi w założeniu funkcjami może być mylące. Do rozważenia w przyszłej rewizji: ujednolicić przesunięcie albo jasno zróżnicować nazewnictwo obu mechanizmów.
+8. **FR-42 (limit 20 wpisów historii aktywności) vs pozostałe funkcje korzystające z pełnej historii (FR-40 wykres wagi, FR-41 historia kalorii).** Nie wykluczają się — limit 20 jest wyłącznie ograniczeniem WYŚWIETLANIA jednej konkretnej listy (dziennik aktywności), nie ogranicza danych źródłowych używanych przez inne wykresy/funkcje.
+9. **FR-34 (baza 336 przekąsek) vs FR-35 (emotikonki przy rozpoznanych produktach).** Częściowe pokrycie, nie sprzeczność: nie każda z 336 pozycji bazy kalorycznej ma dziś przypisaną emotikonkę w osobnej tabeli `CANON_INFO` — brak emotikonki nie blokuje rozpoznania kalorii (FR-34 działa w pełni niezależnie od FR-35), po prostu nazwa pojawia się bez sufiksu. Możliwe rozszerzenie w przyszłości.
+10. **FR-60 (widoczność „Złotych zasad” tylko przy rygorze niskiego IG) vs FR-9 (przełącznik rygoru niskiego IG).** Nie wykluczają się — FR-60 to bezpośrednia konsekwencja FR-9: karta jest po prostu ukrywana, gdy FR-9 jest wyłączone. Jedno wymaganie steruje drugim, bez sprzeczności.
+11. **FR-61 (wybór stylu oceniania: balonowa czcionka / kolorowa karta) vs FR-48 (wybór motywu kolorystycznego).** Nie wykluczają się — to dwa niezależne ustawienia. FR-61 celowo działa tak samo w każdym z jedenastu motywów z FR-48, w tym Polaroid (FR-49) i Kafelki (FR-63).
+12. **FR-49 (kształt kart Polaroid) vs FR-63 (kształt kart motywu Kafelki).** Nie wykluczają się — oba wymagania modyfikują kształt/strukturę kart przepisów, ale są aktywne wyłącznie w ramach własnego, wzajemnie wykluczającego się wyboru motywu (FR-48 pozwala wybrać tylko jeden motyw naraz), więc nigdy nie są aktywne jednocześnie.
+13. **FR-62 (kalendarzyk tygodnia na liście zakupów) vs FR-58 (przyciski dodawania per-dzień).** Nie wykluczają się — to komplementarne, niezależne elementy tego samego widoku: FR-58 to akcja (dodawanie), FR-62 to wyłącznie odczyt/wizualizacja aktualnego stanu listy względem planu. Zmiana wywołana przez FR-58 natychmiast odświeża wskaźniki z FR-62.
 
 ---
 
@@ -937,6 +941,18 @@ Przytrzymanie kafelka otwiera wyśrodkowane okienko z opcjami: zmiana jednostki,
   sesji, przed poprawką menu się nie pojawiało, po poprawce pojawia się
   poprawnie). `./gradlew :app:assembleDebug :app:testDebugUnitTest
   :logic:test` przechodzi.
+
+
+- **v4** (2026-08-29): Menu po przytrzymaniu kafelka dostało pozycję
+  „❌ Usuń produkt ze spiżarni na stałe” — patrz FR-98, gdzie opisana jest
+  cała ta funkcja. Dwie zmiany dotykające bezpośrednio TEGO wymagania:
+  (a) na Androidzie menu otwiera się teraz dla KAŻDEGO kafelka, nie tylko
+  śledzonego (`onLongPress = { actionTarget = ... }` bez warunku
+  `entry != null`) — wcześniej akurat dla kafelków, które najbardziej chce
+  się usunąć (nieśledzone, wyliczone z bazy przepisów), menu w ogóle nie
+  dawało się otworzyć; (b) istniejąca pozycja „🗑️ Usuń śledzenie
+  (wyzeruj stan)” zostaje bez zmian i nadal robi dokładnie to co robiła —
+  nowa pozycja jej nie zastępuje, tylko dokłada mocniejszy wariant.
 
 ---
 
@@ -2272,6 +2288,31 @@ takim odświeżeniu. Usunięty całkowicie (patrz Historia rewizji v7).
   jednym procesie, bez koncepcji "multi-tab" ani jej narzutu koordynacji
   przez IndexedDB — to specyficzny koszt web'owej implementacji w
   przeglądarce, świadomie udokumentowana rozbieżność w `android/PARITY.md`.
+
+
+- **v8** (2026-08-29, Web only — REALNY BUG UTRATY ZMIAN): usuwanie
+  czegokolwiek w wersji webowej nigdy nie docierało do chmury, więc po
+  chwili wracało. Zgłoszenie: „w Web nie udawało mi się wyłączyć śledzenia
+  produktu, po chwili po skasowaniu dalej wracało do starej wartości”.
+  Przyczyna: `pushStateToCloud()` zapisywał dokument przez
+  `set(..., {merge:true})`, a Firestore przy `merge:true` scala pola
+  mapowe (`pantry`, `shopping`, `planner`, `eaten`, `favorites`, …)
+  KLUCZ PO KLUCZU. Skasowanie klucza lokalnie (`delete state.pantry[x]`)
+  wysyłało więc mapę BEZ tego klucza, a scalanie traktuje „brak klucza”
+  jako „nie ruszaj”, nie jako „skasuj”. Serwer zachowywał starą pozycję,
+  kolejny snapshot ją przysyłał, a ponieważ lokalna baza scalania
+  (`_lastSyncedSnapshot`) była już po skasowaniu, `computeMergedSyncState`
+  poprawnie odczytywał to jako „zdalne dodanie” i przywracał wpis.
+  Dotyczyło KAŻDEGO usuwania w aplikacji (śledzenie w spiżarni, pozycje
+  listy zakupów, sloty planera), nie tylko spiżarni — po prostu w
+  spiżarni zmartwychwstały wpis widać najbardziej. Naprawione zamianą na
+  `set(payload, {mergeFields: Object.keys(payload)})`: każde wymienione
+  pole zapisuje się jako CAŁA wartość (tak jak `update({pantry:{...}})`),
+  więc mapa, która straciła klucz, traci go też na serwerze; pola
+  spoza listy pozostają nietknięte — czyli ściśle bezpieczniej niż
+  `{merge:true}`. Android był od początku odporny (`CloudSyncCoordinator`
+  zawsze używał `SetOptions.mergeFields`), stąd bug wyłącznie webowy.
+  Przy okazji do synchronizowanych pól dołączył `pantryHidden` (FR-98).
 
 ---
 
@@ -3905,6 +3946,42 @@ przepisów.
   `FloatingBottomNav`; `startDestination` w `MainActivity.kt` zmieniony
   na `Screen.Planner.route`.
 
+
+- **v18** (2026-08-29): Karta dzisiejszego dnia na LIŚCIE dni tygodnia
+  przestała być pełnoekranowa — jest teraz dokładnie takiej wielkości jak
+  pozostałe sześć. Zgłoszenie: „na stronie głównej planer na samej górze
+  dzisiejszy dzień ładnie pokazuje się na całym ekranie a niżej w dniach
+  tygodnia nie ma potrzeby żeby dzisiejszy dzień też był rozciągnięty na
+  całą stronę, zrób go takiego jak pozostałe dni”. Sekcja „Dzisiejszy
+  Planer” na górze widoku (`#plannerTodayWrap` / `PlannerDashboard`) i tak
+  jest już pełnoekranowym widokiem dzisiaj, więc druga pełnoekranowa karta
+  niżej oznaczała przewijanie przez ten sam dzień dwa razy. Usunięte:
+  reguła `.clinic-day-card.today{min-height:calc(100dvh - 110px)}` (web) i
+  `Modifier.fillParentMaxHeight()` dla `day == todayIndex` (Android).
+  Dzisiejszy dzień nadal jest wyróżniony (obwódka w kolorze akcentu na
+  webie, plakietka „Dziś” + mocniejszy cień na Androidzie), skrót
+  „kliknij dzień na pasku” działa bez zmian. Zweryfikowane wizualnie na
+  emulatorze (karta „Sobota” z plakietką „Dziś” tej samej wysokości co
+  „Niedziela”, obie widoczne na jednym ekranie).
+
+- **v19** (2026-08-29, Android only — REALNY BUG UKŁADU): włączenie opcji
+  „Wypełniaj kolorem w miarę zjadania posiłków” (FR-88) rozciągało kafelek
+  „POZOSTAŁO” na całą wysokość ekranu, spychając z niego całą listę
+  posiłków. Zgłoszenie ze zrzutem ekranu: „w Android jak się włączy opcje
+  żeby kafelek pozostało się kolorował to rozciąga go niepotrzebnie na
+  całą stronę”. Przyczyna: pasek wypełnienia był prawdziwym dzieckiem
+  `Box` z `Modifier.fillMaxHeight()`, a ten kafelek siedzi wewnątrz
+  `PlannerDashboard`, któremu kolumna nadrzędna daje
+  `fillParentMaxHeight()` — ograniczenie wysokości docierające do dziecka
+  to więc CAŁY pozostały ekran, o który dziecko grzecznie poprosiło.
+  Naprawione: wypełnienie rysowane przez `Modifier.drawBehind { drawRect(...) }`
+  (maluje po płaskim tle, pod tekstem) zamiast układem — nie bierze
+  udziału w mierzeniu, więc kafelek ma dokładnie ten sam rozmiar co przy
+  opcji wyłączonej. Wersja webowa nie miała tego błędu: tam
+  `.pd-remaining-fill` jest `position:absolute`, czyli też poza układem.
+  Zweryfikowane na emulatorze (opcja włączona, 345/1480 kcal → jaśniejszy
+  pas na ~23% szerokości kafelka, wysokość bez zmian).
+
 ---
 
 # FR-89: Reset wszystkich danych na koncie
@@ -4349,3 +4426,141 @@ jest już w spiżarni, a ile trzeba dokupić (np. „🏺 4/6 w spiżarni”).
   zero nowej logiki kategoryzacji. Zweryfikowane kompilacją i testami
   jednostkowymi oraz składniowo na webie. **Nie zweryfikowane
   wizualnie/interaktywnie** w tej turze.
+
+---
+
+# FR-98: Trwałe usuwanie produktu ze spiżarni
+
+**Obszar:** Spiżarnia, Android + Web
+**Status:** Zaimplementowane na obu platformach
+
+## Opis
+Menu po przytrzymaniu kafelka w Spiżarni dostało nową, ostatnią pozycję:
+**„❌ Usuń produkt ze spiżarni na stałe”**. Do tej pory najbardziej
+„usuwającą” opcją było „🗑️ Usuń śledzenie (wyzeruj stan)”, które kasuje
+tylko zapisany stan, ale zostawia kafelek w siatce — bo lista kafelków nie
+jest przechowywana, tylko wyliczana od nowa ze wszystkich składników
+wszystkich przepisów przy każdym renderowaniu. Z punktu widzenia
+użytkownika wyglądało to więc tak, że produktu **nie da się usunąć wcale**
+(zgłoszenie z 2026-08-29: „nie da się usunąć produktu ze spiżarni
+całkowicie, dodaj taką opcję”).
+
+Nowa opcja kasuje stan ORAZ zapamiętuje nazwę kanoniczną produktu na
+liście ukrytych (`state.pantryHidden` na webie, `PantryStore.loadHidden`
+na Androidzie), która jest odfiltrowywana przy budowaniu listy kafelków —
+dzięki temu kafelek naprawdę znika i nie wraca przy następnym wejściu na
+ekran.
+
+Żeby nie był to ruch bez odwrotu, na górze Spiżarni pojawia się przycisk
+**„↩️ Przywróć usunięte produkty (N)”** — widoczny tylko wtedy, gdy
+faktycznie jest co przywracać. Ponowne dodanie produktu ręcznie
+(„➕ Dodaj własny” albo „Mam to” w oknie sprawdzania spiżarni pod
+przepisem) też automatycznie zdejmuje go z listy ukrytych.
+
+Lista ukrytych produktów synchronizuje się między urządzeniami tak samo
+jak reszta danych (nowy klucz `pantryHidden`, po stronie webu dopisany do
+`SYNCED_STATE_KEYS` i `MAP_MERGE_KEYS`, więc dwa urządzenia ukrywające
+różne produkty scalają się per pozycja, a nie „całą listą”).
+
+## Kryteria akceptacji
+- Przytrzymanie DOWOLNEGO kafelka (śledzonego i nieśledzonego) otwiera
+  menu akcji — wcześniej na Androidzie otwierało się tylko dla śledzonych,
+  czyli akurat nie dla tych kafelków, które najbardziej chce się usunąć.
+- Menu zawiera „❌ Usuń produkt ze spiżarni na stałe”; wybór pokazuje
+  pytanie potwierdzające, a po potwierdzeniu kafelek znika z siatki.
+- Usunięty produkt nie wraca po ponownym wejściu na ekran Spiżarni ani po
+  restarcie aplikacji, mimo że nadal jest składnikiem jakichś przepisów.
+- Gdy jest co najmniej jeden ukryty produkt, na górze Spiżarni widać
+  „↩️ Przywróć usunięte produkty (N)”; przycisk przywraca wszystkie jako
+  nieśledzone kafelki (bez stanu).
+- Ręczne dodanie produktu o tej samej nazwie („Dodaj własny”, „Mam to”)
+  zdejmuje go z listy ukrytych.
+- Ukrycie zrobione na jednym urządzeniu dociera do drugiego przez zwykłą
+  synchronizację konta (patrz FR-73 i jego rewizja v8).
+- `./gradlew :logic:test :app:assembleDebug` przechodzi.
+
+## Historia rewizji
+- **v1** (2026-08-29): Pierwsza wersja, obie platformy w tej samej turze.
+  Na webie istniała wcześniej wąska wersja tej funkcji — „❌ Usuń ten
+  kafelek na stałe” działające WYŁĄCZNIE dla kafelków dodanych ręcznie
+  przez użytkownika (`state.customTiles`); została zastąpiona wersją
+  działającą dla każdego kafelka. Zweryfikowane testami jednostkowymi
+  (`PantryOperationsTest`, `CloudSyncCodecTest`) i kompilacją; weryfikacja
+  wizualna na emulatorze — patrz `android/PARITY.md`.
+
+---
+
+# FR-99: Stopniowany gest przesuwania na kartach „Dzisiejszy Planer”
+
+**Obszar:** Planer (motyw Klinika), Android + Web
+**Status:** Zaimplementowane na obu platformach
+
+## Opis
+Gest przesuwania karty dania w sekcji „Dzisiejszy Planer” został
+przebudowany: o wyniku decyduje teraz **odległość** przesunięcia, a nie
+tylko jego kierunek.
+
+| Gest | Wynik |
+|---|---|
+| → krótkie przesunięcie w prawo | 🍳 **Zrobione** — wpis w historii gotowania + odjęcie składników ze spiżarni |
+| →→ długie przesunięcie w prawo | 🍽️ **Zjedzone** — cała porcja |
+| ← krótkie przesunięcie w lewo | ½ **Zjedzone w połowie** — liczy się połowa kcal |
+| ←← długie przesunięcie w lewo | ↩️ **Cofnij wszystko** — nie zjedzone + cofnięcie „zrobione” (składniki wracają do spiżarni) |
+
+Poprzednia wersja (FR-87/v14) miała tylko dwa wyniki — dowolne
+przesunięcie w prawo = zjedzone, w lewo = nie zjedzone. Gest niósł więc
+jeden bit informacji, podczas gdy Planer śledzi trzy niezależne rzeczy
+(czy zrobione / czy zjedzone / ile zjedzone). Stąd zgłoszenie z
+2026-08-29: „coś nie do końca łapię mi przesuwanie w prawo i w lewo dań w
+dzisiejszym planerze” — nie było jak powiedzieć „ugotowałem, ale jeszcze
+nie zjadłem”, ani jak poprawić przypadkowe przesunięcie.
+
+W trakcie przesuwania karta **na bieżąco nazywa** akcję, którą wykona po
+puszczeniu palca (pigułka z napisem „🍳 Zrobione” / „🍽️ Zjedzone” /
+„½ Zjedzone w połowie” / „↩️ Cofnij wszystko”), a jej tło stopniowo
+nasyca się kolorem tej akcji, więc widać, że gest „domyka się” głębiej.
+Pod nagłówkiem „Dzisiejszy Planer” jest jednolinijkowa ściągawka z
+czterema wynikami — bez niej gest nie byłby odkrywalny.
+
+Stan karty (w odróżnieniu od tego, co gest *zrobi*) pokazują znaczniki:
+przekreślona nazwa dania = zjedzone w całości, plakietka „½ Zjedzone w
+połowie” = połowa porcji (nazwa NIE jest przekreślona — danie nie jest
+skończone), plakietka „🍳 Zrobione” = danie ma dziś wpis w historii
+gotowania. Przy połowie porcji kafelek kcal pokazuje „300 / 600 kcal”.
+
+Wprowadzenie połowy porcji wymagało rozszerzenia zapisu zjedzonego
+posiłku o pole `portion` (0–1) obok istniejących `done`/`kcal`/`name`.
+Wpisy zapisane wcześniej (i przez urządzenia z wcześniejszą wersją) nie
+mają tego pola i czytają się jako pełna porcja, więc historia kalorii
+sprzed tej zmiany nie zmienia się ani o kcal.
+
+## Kryteria akceptacji
+- Przesunięcie karty poniżej progu (~36 dp) nie robi nic i nie pokazuje
+  żadnej etykiety.
+- Krótkie przesunięcie w prawo dodaje wpis „zrobione dzisiaj” i odejmuje
+  składniki ze spiżarni — dokładnie to samo, co przycisk „✅ Zrobione
+  dzisiaj” na karcie przepisu.
+- Powtórzone krótkie przesunięcie w prawo na tym samym daniu tego samego
+  dnia NIE odejmuje składników drugi raz — pokazuje komunikat, że danie
+  jest już oznaczone jako zrobione.
+- Długie przesunięcie w prawo oznacza całą porcję jako zjedzoną
+  (pierścień kcal rośnie o pełne kcal dania).
+- Krótkie przesunięcie w lewo oznacza połowę porcji: pierścień kcal
+  rośnie o połowę kcal dania, karta pokazuje plakietkę „½”.
+- Długie przesunięcie w lewo czyści kartę: danie nie jest zjedzone, a
+  jeśli było dziś oznaczone jako zrobione — wpis znika, a składniki
+  wracają do spiżarni.
+- Wszystkie cztery akcje są idempotentne i niezależne od kolejności.
+- Zwykłe stuknięcie karty nadal otwiera podgląd przepisu (bez zmian).
+- Odczyt kcal dnia dla wpisów bez pola `portion` jest identyczny jak
+  przed zmianą.
+- `./gradlew :logic:test :app:assembleDebug` przechodzi
+  (`PlannerSwipeTest`, `EatenOperationsTest`, `CookHistoryOperationsTest`).
+
+## Historia rewizji
+- **v1** (2026-08-29): Pierwsza wersja, obie platformy w tej samej turze.
+  Zastępuje dwustanowy gest z FR-87/v14. Mapowanie odległość→akcja
+  wydzielone do czystej, testowanej jednostkowo logiki (`PlannerSwipe` w
+  `android/logic/`, `pdSwipeAction()` na webie), żeby żywa etykieta, żywe
+  tło i obsługa puszczenia palca nie mogły się rozjechać co do znaczenia
+  bieżącego gestu.

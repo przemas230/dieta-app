@@ -21,18 +21,33 @@ object EatenOperations {
      * of discarding it), so a summary that reads *only* done entries never
      * loses that context if something re-checks it later.
      */
-    fun setEaten(entries: Map<String, EatenEntry>, cat: String, done: Boolean, plannedKcal: Int?, plannedName: String?): Map<String, EatenEntry> {
+    fun setEaten(
+        entries: Map<String, EatenEntry>,
+        cat: String,
+        done: Boolean,
+        plannedKcal: Int?,
+        plannedName: String?,
+        portion: Double = 1.0,
+    ): Map<String, EatenEntry> {
         val entry = if (done) {
-            EatenEntry(done = true, kcal = plannedKcal ?: 0, name = plannedName)
+            EatenEntry(done = true, kcal = plannedKcal ?: 0, name = plannedName, portion = portion.coerceIn(0.0, 1.0))
         } else {
             val prev = entries[cat]
-            EatenEntry(done = false, kcal = prev?.kcal, name = prev?.name)
+            EatenEntry(done = false, kcal = prev?.kcal, name = prev?.name, portion = 0.0)
         }
         return entries + (cat to entry)
     }
 
+    /** FR-99: 0 when not eaten, otherwise the recorded fraction (1.0 for anything written before portions existed). */
+    fun portionOf(entries: Map<String, EatenEntry>, cat: String): Double {
+        val entry = entries[cat] ?: return 0.0
+        if (!entry.done) return 0.0
+        return entry.portion.coerceIn(0.0, 1.0)
+    }
+
+    /** FR-99: half a portion counts half the kcal -- matches index.html's `Math.round(e.kcal * portion)`. */
     fun dailyEatenKcal(entries: Map<String, EatenEntry>): Int =
-        entries.values.filter { it.done }.sumOf { it.kcal ?: 0 }
+        entries.values.filter { it.done }.sumOf { Math.round((it.kcal ?: 0) * it.portion.coerceIn(0.0, 1.0)).toInt() }
 
     /** FR-33/34: ad-hoc snacks add on top of the 5 Planer slots -- port of index.html's `(day.snacks||[]).forEach(s=> total += s.kcal)`. */
     fun snacksKcal(snacks: List<Snack>): Int = snacks.sumOf { it.kcal }

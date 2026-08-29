@@ -55,6 +55,7 @@ import com.przemas230.dietaapp.data.PantryCategory
 import com.przemas230.dietaapp.data.PantryItem
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.logic.AppThemes
+import com.przemas230.dietaapp.logic.PantryOperations
 import com.przemas230.dietaapp.logic.PantryDisplay
 import com.przemas230.dietaapp.logic.PantryTiles
 import com.przemas230.dietaapp.logic.RecipePantryMatching
@@ -78,16 +79,24 @@ import kotlin.math.roundToInt
 @Composable
 fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityLogViewModel: ActivityLogViewModel) {
     val items by viewModel.items.collectAsState()
+    // FR-98: canonical names the user deleted for good -- see
+    // PantryOperations.visibleTileNames for why a separate set is needed
+    // at all (the tiles themselves are derived, not stored).
+    val hidden by viewModel.hidden.collectAsState()
     var addTileCategory by remember { mutableStateOf<PantryCategory?>(null) }
     var actionTarget by remember { mutableStateOf<Pair<String, PantryCategory>?>(null) }
     var showClearAllConfirm by remember { mutableStateOf(false) }
+    var deleteForeverTarget by remember { mutableStateOf<String?>(null) }
+    var showRestoreHiddenConfirm by remember { mutableStateOf(false) }
 
     val recipeTileNames = remember(allRecipes) { PantryTiles.buildTileNames(allRecipes) }
     val unitCats = remember(allRecipes) { PantryTiles.computeTileUnitCats(allRecipes) }
     // Union with currently-tracked names too, so a custom tile (or an item
     // tracked via FR-16's "Mam to", which can use a name outside any recipe)
     // keeps showing even though it's not recipe-derived.
-    val tileNames = remember(recipeTileNames, items.keys) { (recipeTileNames + items.keys).sorted() }
+    val tileNames = remember(recipeTileNames, items.keys, hidden) {
+        PantryOperations.visibleTileNames(recipeTileNames, items.keys, hidden)
+    }
     val grouped = remember(tileNames, items) {
         tileNames.groupBy { name -> items[name]?.category ?: PantryTiles.categoryAndEmoji(name).first }
     }
@@ -102,8 +111,8 @@ fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityL
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            "Górna połowa kafelka = dodaj, dolna połowa = odejmij. Przytrzymaj śledzony kafelek, by zmienić " +
-                "kategorię albo usunąć śledzenie. Przyprawy: Mało → Wystarczy → Dużo.",
+            "Górna połowa kafelka = dodaj, dolna połowa = odejmij. Przytrzymaj kafelek, by zmienić " +
+                "kategorię, usunąć śledzenie albo usunąć produkt ze spiżarni na stałe. Przyprawy: Mało → Wystarczy → Dużo.",
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             style = MaterialTheme.typography.bodySmall,
         )
@@ -112,6 +121,17 @@ fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityL
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
         ) {
             Text("🗑️ Wyczyść całą spiżarnię")
+        }
+        // FR-98: only shown when there is actually something to bring back,
+        // so "usuń na stałe" never becomes an irreversible mistake the user
+        // can neither see nor undo.
+        if (hidden.isNotEmpty()) {
+            TextButton(
+                onClick = { showRestoreHiddenConfirm = true },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            ) {
+                Text("↩️ Przywróć usunięte produkty (${hidden.size})")
+            }
         }
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 78.dp),
@@ -183,7 +203,15 @@ fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityL
                                     viewModel.tileTapDelta(name, category, unitCat, dir)
                                     activityLogViewModel.log("pantry_add", "Spiżarnia: $name (${if (dir > 0) "+" else "-"}1)")
                                 },
-                                onLongPress = { if (entry != null) actionTarget = name to category },
+                                // FR-98: the menu used to open only for
+                                // TRACKED tiles, which made "usuń produkt na
+                                // stałe" unreachable for exactly the tiles
+                                // most worth removing -- recipe-derived ones
+                                // the user never tracks and doesn't want to
+                                // scroll past. Every tile opens it now; the
+                                // stock-specific rows inside simply do
+                                // nothing when there is no stock.
+                                onLongPress = { actionTarget = name to category },
                             )
                         }
                     }
@@ -197,6 +225,8 @@ fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityL
         AddCustomTileDialog(
             category = category,
             onAdd = { name ->
+                // FR-98: adding a product back by hand un-deletes it.
+                viewModel.unhide(name)
                 viewModel.tileTapDelta(name, category, unitCats[name] ?: "count", dir = 1)
                 activityLogViewModel.log("pantry_add", "Dodano własny produkt: $name (${category.label})")
             },
@@ -223,7 +253,43 @@ fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityL
                 viewModel.removeItem(name)
                 activityLogViewModel.log("pantry_delete", "Usunięto ze spiżarni: $name")
             },
+            onDeleteForever = { deleteForeverTarget = name },
             onDismiss = { actionTarget = null },
+        )
+    }
+    deleteForeverTarget?.let { name ->
+        AlertDialog(
+            onDismissRequest = { deleteForeverTarget = null },
+            title = { Text("Usunąć „$name” na stałe?") },
+            text = { Text("Kafelek zniknie ze Spiżarni razem ze stanem. Możesz go przywrócić przyciskiem „↩️ Przywróć usunięte produkty” na górze tego ekranu.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteForever(name)
+                    activityLogViewModel.log("pantry_delete", "Usunięto produkt ze spiżarni na stałe: $name")
+                    deleteForeverTarget = null
+                }) { Text("Usuń na stałe") }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteForeverTarget = null }) { Text("Anuluj") }
+            },
+        )
+    }
+    if (showRestoreHiddenConfirm) {
+        AlertDialog(
+            onDismissRequest = { showRestoreHiddenConfirm = false },
+            title = { Text("Przywrócić usunięte produkty?") },
+            text = { Text("${hidden.size} produktów wróci do Spiżarni jako nieśledzone kafelki, bez stanu.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val count = hidden.size
+                    viewModel.restoreHidden()
+                    activityLogViewModel.log("pantry_add", "Przywrócono usunięte produkty spiżarni ($count)")
+                    showRestoreHiddenConfirm = false
+                }) { Text("Przywróć") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestoreHiddenConfirm = false }) { Text("Anuluj") }
+            },
         )
     }
     if (showClearAllConfirm) {
@@ -422,6 +488,8 @@ private fun TileActionDialog(
     onChangeCategory: (PantryCategory) -> Unit,
     onChangeStep: (Double) -> Unit,
     onRemoveTracking: () -> Unit,
+    /** FR-98: "❌ Usuń produkt ze spiżarni na stałe" -- the caller confirms before actually doing it. */
+    onDeleteForever: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var selected by remember(name) { mutableStateOf(currentCategory) }
@@ -482,6 +550,16 @@ private fun TileActionDialog(
                     onRemoveTracking()
                     onDismiss()
                 }) { Text("🗑️ Usuń śledzenie (wyzeruj stan)") }
+                // FR-98: the row above only zeroes the stock and leaves the
+                // tile in the grid, which read as "nie da się usunąć
+                // produktu ze spiżarni całkowicie". This one removes the
+                // tile itself.
+                TextButton(onClick = {
+                    onDeleteForever()
+                    onDismiss()
+                }) {
+                    Text("❌ Usuń produkt ze spiżarni na stałe", color = MaterialTheme.colorScheme.error)
+                }
             }
         }
     }
