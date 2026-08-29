@@ -1,0 +1,46 @@
+Wersja v105 (2026-08-28)
+
+1. Naprawiono przycisk „✨ Gemini” na kartach przepisów (Web + Android).
+   Zgłoszenie użytkownika: „w Gemini otwiera się tylko strona do wpisania
+   tekstu” — gemini.google.com/app?q= faktycznie tylko WYPEŁNIA pole
+   czatu, nigdy go nie wysyła, więc trzeba było ręcznie kliknąć wyślij za
+   każdym razem. Nie ma udokumentowanego sposobu na automatyczną wysyłkę
+   czatu Gemini z poziomu zwykłego linku. Przełączone na Google Search
+   „AI Mode” (parametr `udm=50`) — ten sam model (Gemini) pod spodem, ale
+   strona wyników wyszukiwania odpowiada od razu po otwarciu, bez
+   niczego do kliknięcia. Etykieta przycisku bez zmian.
+
+   Android: zmiana wprowadzona w kodzie (RecipeListScreen.kt), ale
+   NIEZWERYFIKOWANA kompilacją w tej sesji — środowisko zdalne nie ma
+   dostępu do api.foojay.io (potrzebne do pobrania toolchainu JDK dla
+   Gradle), potwierdzone błędem 403. Zmiana jest jednoliniowa i
+   mechaniczna (identyczna z web), ale czeka na potwierdzenie kompilacją
+   w Android Studio lub lokalnej sesji z pełnym dostępem do sieci.
+
+2. Nowa funkcja: „📤 Kopiuj ten dzień na inne dni” w Planerze (Web).
+   Rozbudowa FR-90 (kopiowanie planu dnia) o brakujący, przeciwny kierunek
+   — dotychczasowy przycisk „Kopiuj plan z innego dnia” pozwalał wybrać
+   JEDNO źródło i wkleić je na dzień, na którym akurat stoisz. Oryginalna
+   motywacja tej funkcji („te same śniadania pon-pt”) wymaga jednak
+   odwrotnego przepływu: stoisz na dniu, którego plan Ci się podoba, i
+   chcesz rozesłać go na kilka innych dni naraz — dotąd wymagałoby to
+   wielokrotnego otwierania pickera osobno dla każdego dnia docelowego.
+
+   Nowy przycisk na każdej karcie dnia (wyszarzony, jeśli dzień jest
+   pusty — nie ma czego kopiować) otwiera modal z checkboxami pozostałych
+   6 dni tygodnia; po zaznaczeniu i kliknięciu „Kopiuj na zaznaczone dni”
+   plan (wszystkie kategorie, skala porcji, flaga resztek) jest kopiowany
+   na każdy zaznaczony dzień naraz, z podsumowującym potwierdzeniem.
+   Zero zaznaczonych dni = czytelny komunikat zamiast cichego no-opa.
+
+   Android: świadomie odłożone na tę turę — nietrywialna zmiana UI
+   (Compose, stan multi-select zamiast prostych onClick), której nie da
+   się zweryfikować kompilacją w tym środowisku (patrz punkt 1); zamiast
+   piętrzyć kolejny niezweryfikowany krok w Kotlinie bez możliwości
+   sprawdzenia, czeka na osobną turę z dostępem do Gradle/emulatora.
+   Odnotowane w android/PARITY.md.
+
+Techniczne: CACHE_NAME service workera podbity do "dieta-app-v105".
+Zweryfikowane na żywo (headless Chromium, w pełni offline): oba punkty
+przetestowane interaktywnie (przechwycone window.open dla Gemini,
+symulowane zaznaczenie checkboxów + potwierdzenie dla kopiowania).

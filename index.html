@@ -902,6 +902,19 @@
   .pd-header{display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:12px;}
   .pd-date{font-size:12px; color:var(--muted); text-transform:capitalize;}
   .pd-greeting{font-family:var(--font-heading); font-size:19px; font-weight:600; margin-top:2px;}
+  /* FR-94/v3 (2026-08-28): Klinika's own dashboard never got the fasting
+     status shown to every other theme via #fastingStatus -- that element
+     lives inside .header-collapsible, which Klinika hides entirely (see the
+     comment above that selector), so the feature was silently unreachable
+     in the app's own default theme. Styled like .pd-date/.pd-greeting
+     (theme/palette-aware vars) instead of reusing .fasting-status, whose
+     white-on-translucent colors were tuned for the dark teal header of the
+     other 11 themes and would be unreadable on Klinika's light card. */
+  .pd-fasting-status{
+    margin-top:4px; font-size:11.5px; color:var(--muted);
+    background:var(--line); border-radius:8px; padding:4px 8px; display:inline-block;
+  }
+  .pd-fasting-status.fasting{ background:var(--teal-pale); color:var(--teal-dark); font-weight:600; }
   .pd-signout{width:38px; height:38px; border-radius:50%; border:none; background:var(--card); color:var(--muted); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.08); cursor:pointer; flex:0 0 auto; font-size:16px; padding:0;}
   /* Requested 2026-08-25: the "Cel" square (target kcal) was dropped from
      renderPlannerDashboard()'s markup -- the remaining-kcal card (ring +
@@ -995,7 +1008,16 @@
   /* Requested 2026-08-26 ("na karcie dzisiejszy planer na każdym daniu z
      racji że jest dużo miejsca dodaj również... znacznik ile produktów
      potrzebnych do dania jest aktualnie w spiżarni a do trzeba kupić"). */
-  .pd-meal-pantry{font-size:10.5px; color:var(--muted); margin-top:1px;}
+  /* FR-97/v2 (2026-08-28, user: "klikalny znacznik spiżarni"): was a plain
+     <span>, now a <button> so it can jump straight to "sprawdź co masz" --
+     reset to look identical to the old text (no button chrome) plus the
+     same dotted-underline affordance already used for .recipe-title's own
+     "this text opens something" convention. */
+  .pd-meal-pantry{
+    font-size:10.5px; color:var(--muted); margin-top:1px;
+    background:none; border:none; padding:0; font-family:inherit; text-align:left;
+    text-decoration:underline dotted; text-underline-offset:2px; cursor:pointer;
+  }
   .pd-meal-kcal{font-size:12px; color:var(--muted); flex:0 0 auto;}
   .pd-meal-remove{background:none; border:none; color:var(--muted); font-size:15px; line-height:1; padding:4px; cursor:pointer; flex:0 0 auto;}
   .pd-meal-card-empty{border:1.5px dashed var(--line); background:transparent; box-shadow:none; color:var(--muted); justify-content:center; font-size:13px; font-weight:600;}
@@ -1067,6 +1089,20 @@
      theme's .day-card/.slot-row markup (still rendered for them by
      renderPlanner()) is completely untouched by these rules. */
   .clinic-bento:empty{ display:none; }
+  /* Weekly plan summary (2026-08-28). Uses only theme variables, so it
+     inherits every one of the 13 themes (incl. the Klinika palettes)
+     without a per-theme rule of its own. */
+  .wps-card{ margin:0 0 10px; }
+  .wps-title{ margin:0 0 8px; font-size:14px; }
+  .wps-row{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+  .wps-big{ font-size:24px; font-weight:800; color:var(--text); }
+  .wps-note{ font-size:12px; font-weight:700; padding:2px 8px; border-radius:999px; }
+  .wps-ok{ background:var(--teal-pale); color:var(--teal-dark); }
+  .wps-over{ background:var(--honey-pale); color:var(--honey-dark); }
+  .wps-under{ background:var(--plum-pale); color:var(--plum); }
+  .wps-sub{ font-size:11.5px; color:var(--muted); margin-top:2px; }
+  .wps-macros{ font-size:12px; color:var(--muted); margin-top:8px; padding-top:8px; border-top:1px solid var(--line); }
+  .wps-partial{ font-style:italic; }
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) .clinic-bento{
     display:flex; gap:8px; margin-bottom:12px;
   }
@@ -1739,6 +1775,7 @@
       <div class="pill-row" id="catPills"></div>
       <div class="toolbar" style="flex-wrap:wrap;">
         <input class="search" id="searchBox" type="text" placeholder="Szukaj przepisu lub składnika…">
+        <button class="fav-toggle" id="searchClearBtn" style="display:none;" title="Wyczyść wyszukiwanie">✕</button>
         <button class="fav-toggle" id="favToggle" title="Tylko ulubione przepisy">⭐</button>
         <button class="fav-toggle" id="ingFavToggle" title="Tylko z ulubionymi składnikami">🌟</button>
         <button class="fav-toggle" id="pantryFilterToggle" title="Dania z tego, co mam w spiżarni">🏺</button>
@@ -1777,6 +1814,16 @@
     </div>
     <div class="hint-text" style="margin:0 0 6px;">Albo tylko z konkretnego dnia — stuknij dzień, aby dodać jego składniki:</div>
     <div class="shop-day-strip" id="shopDayStrip"></div>
+    <!-- 2026-08-28: real shopping lists here get long (an 87-item list was
+         reported while debugging FR-87/v9's nav-bar overlap), and the list is
+         grouped by category rather than sorted by anything you'd scan for in
+         a shop -- so "did I already add mleko?" meant scrolling the whole
+         thing. Filters both the list and the tile view, since they render
+         the same state.shopping. -->
+    <div class="toolbar" style="margin:0 0 8px;">
+      <input class="search" id="shopSearchBox" type="text" placeholder="Szukaj na liście zakupów…">
+      <button class="btn ghost" id="shopSearchClear" style="display:none;" title="Wyczyść wyszukiwanie">✕</button>
+    </div>
     <div id="shopList"></div>
     <div class="shop-actions">
       <button class="btn primary" id="shareBtn">📤 Udostępnij (SMS / Messenger)</button>
@@ -1806,9 +1853,19 @@
          does the shopping/cooking) -- same WhatsApp/Kopiuj share pattern
          as the shopping list's own share row. -->
     <div class="shop-actions" id="plannerShareRow">
-      <button class="btn ghost" style="flex:1;" id="plannerShareWaBtn">🟢 WhatsApp</button>
-      <button class="btn ghost" style="flex:1;" id="plannerShareCopyBtn">📋 Kopiuj plan tygodnia</button>
+      <button class="btn primary" id="plannerShareNativeBtn">📤 Udostępnij plan tygodnia</button>
     </div>
+    <div class="shop-actions">
+      <button class="btn link-sm" style="flex:1;" id="plannerShareWaBtn">🟢 WhatsApp</button>
+      <button class="btn link-sm" style="flex:1;" id="plannerShareCopyBtn">📋 Kopiuj plan tygodnia</button>
+    </div>
+    <!-- 2026-08-28: the Planer showed per-day totals but nothing about the
+         week as a whole, so "is the week I just planned actually on target?"
+         meant adding up seven day cards by hand. Placed here, OUTSIDE
+         #plannerTodayWrap, deliberately: that wrapper is the carefully
+         sized full-screen "today" area (FR-87/v16), and anything added
+         inside it would change that layout. -->
+    <div id="plannerWeekSummary"></div>
     <div id="plannerDays"></div>
   </section>
 
@@ -1906,6 +1963,23 @@
         </div>
       </div>
 
+      <!-- 2026-08-28: the app had no way at all to get your data OUT of it.
+           Everything lives in localStorage plus (optionally) Firestore, and
+           this project's own history shows why that's not enough: FR-73 went
+           through several rounds of real sync failures, FR-89 added a
+           "reset all account data" button, and signing in on a second device
+           REPLACES local data rather than merging it (see the note in the
+           account card above). A plain JSON file the user controls is the
+           only recovery path that doesn't depend on the cloud working. -->
+      <div class="card">
+        <h3 style="margin:0 0 10px; font-size:15px;">💾 Kopia zapasowa danych</h3>
+        <div class="hint-text" style="margin:0 0 10px;">Zapisuje WSZYSTKIE Twoje dane (profil, spiżarnię, listę zakupów, planer, ulubione, własne przepisy, oceny, historię wagi i kalorii, ustawienia) do jednego pliku na tym urządzeniu. Plik możesz przechowywać gdzie chcesz i wczytać z powrotem w każdej chwili — również na innym urządzeniu albo po zresetowaniu danych. Działa niezależnie od logowania i od synchronizacji z chmurą.</div>
+        <button class="btn ghost" id="exportDataBtn" style="width:100%; margin-bottom:8px;">⬇️ Zapisz kopię zapasową do pliku</button>
+        <button class="btn ghost" id="importDataBtn" style="width:100%;">⬆️ Wczytaj kopię zapasową z pliku</button>
+        <input type="file" id="importDataInput" accept="application/json,.json" style="display:none;">
+        <div class="hint-text" style="margin:10px 0 0;">Wczytanie kopii ZASTĘPUJE obecne dane w aplikacji — przed nadpisaniem zapytamy o potwierdzenie i pokażemy, z kiedy jest wczytywana kopia.</div>
+      </div>
+
       <div class="card">
         <h3 style="margin:0 0 10px; font-size:15px;">🌍 Przepisy społeczności</h3>
         <label class="toggle-row"><input type="checkbox" id="setCommunityRecipes"> Pokazuj przepisy dodane przez innych użytkowników</label>
@@ -1979,6 +2053,8 @@
           <label>Jedzenie od (godz. 0-23)<input type="number" min="0" max="23" id="setFastingStart"></label>
           <label>Jedzenie do (godz. 0-23)<input type="number" min="0" max="23" id="setFastingEnd"></label>
         </div>
+        <label class="toggle-row" style="margin-top:10px;"><input type="checkbox" id="setFastingNotify"> Powiadamiaj o otwarciu i zamknięciu okna jedzenia</label>
+        <div class="hint-text" style="margin:0;">Dwa powiadomienia dziennie, dokładnie o ustawionych godzinach. Wymaga zgody na powiadomienia — jeśli jej jeszcze nie ma, aplikacja poprosi o nią przy włączaniu tej opcji.</div>
       </div>
 
       <div class="card">
@@ -2213,7 +2289,7 @@
 <div class="modal-overlay center" id="addRecipeOverlay">
   <div class="modal-sheet center-sheet">
     <div class="modal-head">
-      <h3>➕ Dodaj swój przepis</h3>
+      <h3 id="addRecipeTitle">➕ Dodaj swój przepis</h3>
       <button id="addRecipeClose">✕</button>
     </div>
     <div class="hint-text" style="margin:0 0 10px;">Twój przepis widoczny jest od razu tylko u Ciebie, oznaczony plakietką „Twój przepis”. Pola makroskładników są opcjonalne — bez nich przepis po prostu nie pokaże wyniku dopasowania 🎯 (tak jak inne niekompletne przepisy).</div>
@@ -2391,6 +2467,25 @@
       <button id="copyDayClose">✕</button>
     </div>
     <div id="copyDayBody"></div>
+  </div>
+</div>
+
+<!-- FR-90/v2 (2026-08-28, user: "będziemy w razie czego usuwać, pracuj"):
+     the complement of the picker above -- v1 only let you pull ONE day's
+     plan INTO the day you're standing on. The feature's own stated
+     motivation ("np. te same śniadania w pon-pt") is the opposite
+     direction: stand on a day you already like and PUSH it out to several
+     others at once, which v1's one-tap-one-target flow couldn't do without
+     reopening the picker per target day. Separate modal (not a mode toggle
+     on the existing one) because multi-select needs an explicit confirm
+     step, unlike v1's instant tap-to-copy. -->
+<div class="modal-overlay center" id="copySpreadOverlay">
+  <div class="modal-sheet center-sheet">
+    <div class="modal-head">
+      <h3>📤 Kopiuj ten dzień na inne dni</h3>
+      <button id="copySpreadClose">✕</button>
+    </div>
+    <div id="copySpreadBody"></div>
   </div>
 </div>
 
@@ -3393,7 +3488,13 @@ const DEFAULT_WATER_REMINDER = {enabled:false, intervalMinutes:90, activeFrom:"0
 // eating is one of the most-requested diet-app features per user reviews):
 // windowStart/windowEnd are hours-of-day (0-23) marking the EATING window,
 // e.g. 12-20 for a classic 16:8 schedule -- everything outside it is "post".
-const DEFAULT_FASTING = {enabled:false, windowStart:12, windowEnd:20};
+// `notify` (2026-08-28) is opt-in on top of the tracker itself: knowing the
+// window boundary is only useful if something tells you when it moves, but
+// nobody should start getting notifications just because they switched the
+// status text on. `lastNotified` remembers which boundary was last
+// announced ("<date>|open" / "<date>|close") so the same one is never sent
+// twice, no matter how often the check runs.
+const DEFAULT_FASTING = {enabled:false, windowStart:12, windowEnd:20, notify:false, lastNotified:""};
 // Requested 2026-08-26 ("dodaj też kilka innych schematów kolorystycznych
 // dla motywów klinika i klinika noc"): additional Klinika color variants,
 // see the [data-clinic-palette] CSS blocks above for the actual colors.
@@ -3474,6 +3575,11 @@ function loadState(){
       if(s.communityRecipesEnabled===undefined) s.communityRecipesEnabled = false;
       if(s.remainingKcalFillEnabled===undefined) s.remainingKcalFillEnabled = false;
       if(!s.fasting) s.fasting = {...DEFAULT_FASTING};
+      // Existing users have a `fasting` object from before the notify
+      // option existed -- fill in only what's missing, so their configured
+      // hours survive untouched.
+      if(s.fasting.notify===undefined) s.fasting.notify = false;
+      if(s.fasting.lastNotified===undefined) s.fasting.lastNotified = "";
       if(s.clinicPalette===undefined) s.clinicPalette = "default";
       if(!s.household) s.household = {id:null, name:"", inviteCode:null, members:[]};
       if(s._lastSyncedSnapshot===undefined) s._lastSyncedSnapshot = null;
@@ -4620,7 +4726,27 @@ function scaleIngredientText(text, scale){
   let value = parseFloat(m[1].replace(",", "."));
   if(m[3]) value = value / parseFloat(m[3]);
   const rest = m[4] || "";
-  return formatScaledAmount(value*scale) + (rest ? " " + rest : "");
+  const scaled = value*scale;
+  const amountText = formatScaledAmount(scaled);
+  if(!rest) return amountText;
+  // Decline the noun to match the new count (2026-08-28). Scaling only ever
+  // swapped the NUMBER before, so "2 jajka" at 3x read "6 jajka" and at 0.5x
+  // "1 jajka" -- both wrong in Polish, and visible on every scaled recipe
+  // card. The app already had the full declension table used by the pantry
+  // and the shopping list; it just wasn't reached from here.
+  // Matched on the WHOLE remaining text and only against that table, which
+  // is what keeps it safe: "jajka" and "awokado" are entries, while
+  // "g piersi z kurczaka" or "łyżeczka oliwy" are not, so a unit-led line
+  // is left exactly as it was.
+  // Integers only, deliberately. A fractional count takes the genitive
+  // singular in Polish ("0,5 jajka", "1,5 banana"), which is a form this
+  // table doesn't carry -- one/few/many are all it has. Declining 0.5 via
+  // the one/few/many rule produced "0,5 jajko" and "1,5 banany", i.e. it
+  // would have traded one wrong form for another. Leaving the recipe's own
+  // wording alone there is the behavior that was already correct.
+  const declined = Number.isInteger(scaled) ? PANTRY_PLURAL_FORMS[rest.trim().toLowerCase()] : null;
+  if(declined) return amountText + " " + declined[polishPluralCategory(scaled)];
+  return amountText + " " + rest;
 }
 function scaleRecipe(r, scale){
   if(!scale || scale===1) return r;
@@ -4759,21 +4885,76 @@ function renderEatenSummary(dailyTarget){
 // Requested 2026-08-26 (5 new features -- intermittent fasting/time-restricted
 // eating status, shown right under the kcal summary on "Dziś"). windowStart
 // >= windowEnd is treated as a window that wraps past midnight (e.g. 20-4).
-function renderFastingStatus(){
-  const el = document.getElementById("fastingStatus");
-  if(!el) return;
-  if(!state.fasting || !state.fasting.enabled){ el.style.display = "none"; return; }
+// Extracted (FR-94/v3, 2026-08-28) so both the non-Klinika header
+// (#fastingStatus, below) and Klinika's own renderPlannerDashboard() share
+// one computation instead of Klinika needing (and risking drifting from)
+// its own copy.
+function computeFastingStatus(){
+  if(!state.fasting || !state.fasting.enabled) return null;
   const {windowStart, windowEnd} = state.fasting;
   const now = new Date();
   const hour = now.getHours() + now.getMinutes()/60;
   const wraps = windowStart >= windowEnd;
   const inWindow = wraps ? (hour >= windowStart || hour < windowEnd) : (hour >= windowStart && hour < windowEnd);
   const fmt = h => `${String(h).padStart(2,"0")}:00`;
+  return {
+    inWindow,
+    text: inWindow
+      ? `🍽️ Okno jedzenia — post zacznie się o ${fmt(windowEnd)}`
+      : `⏳ Okno postu — jedzenie od ${fmt(windowStart)}`
+  };
+}
+// Decides whether a boundary notification is due, WITHOUT sending anything.
+// Split out deliberately: the actual showNotification() path needs a service
+// worker and a granted permission, neither of which can be exercised in the
+// headless checks used to verify this app -- but every rule that decides
+// "should the user be pinged right now" can be, and that is where the bugs
+// would live. `nowDate`/`todayKey` are passed in for the same reason.
+// The rule: fire once, within GRACE_MIN minutes after a boundary. Anything
+// later is stale (phone off, tab asleep) and a notification announcing an
+// eating window that opened three hours ago is worse than none. `key` makes
+// each boundary announceable exactly once per day.
+const FASTING_NOTIFY_GRACE_MIN = 10;
+function fastingNotificationDue(fasting, nowDate, todayKey){
+  if(!fasting || !fasting.enabled || !fasting.notify) return null;
+  const {windowStart, windowEnd} = fasting;
+  if(windowStart === windowEnd) return null;
+  const minutes = nowDate.getHours()*60 + nowDate.getMinutes();
+  const check = (boundaryHour, kind, title, body)=>{
+    const delta = minutes - boundaryHour*60;
+    if(delta < 0 || delta > FASTING_NOTIFY_GRACE_MIN) return null;
+    const key = `${todayKey}|${kind}`;
+    if(fasting.lastNotified === key) return null;
+    return {key, title, body};
+  };
+  return check(windowStart, "open", "🍽️ Okno jedzenia otwarte",
+               `Możesz jeść do ${String(windowEnd).padStart(2,"0")}:00.`)
+      || check(windowEnd, "close", "⏳ Okno jedzenia zamknięte",
+               `Post do ${String(windowStart).padStart(2,"0")}:00.`);
+}
+async function checkFastingNotification(){
+  const due = fastingNotificationDue(state.fasting, new Date(), todayStr());
+  if(!due) return;
+  // Marked as sent BEFORE awaiting the notification: if showNotification
+  // fails (permission revoked, no service worker), the user simply gets
+  // nothing -- retrying every minute for the rest of the grace window would
+  // be worse than staying quiet.
+  state.fasting.lastNotified = due.key;
+  saveState();
+  if(!("serviceWorker" in navigator) || !("Notification" in window) || Notification.permission!=="granted") return;
+  try{
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification(due.title, {body: due.body, tag:"fasting-window", icon:"icon-192.png"});
+  }catch(e){}
+}
+function renderFastingStatus(){
+  const el = document.getElementById("fastingStatus");
+  if(!el) return;
+  const status = computeFastingStatus();
+  if(!status){ el.style.display = "none"; return; }
   el.style.display = "inline-block";
-  el.classList.toggle("fasting", !inWindow);
-  el.textContent = inWindow
-    ? `🍽️ Okno jedzenia — post zacznie się o ${fmt(windowEnd)}`
-    : `⏳ Okno postu — jedzenie od ${fmt(windowStart)}`;
+  el.classList.toggle("fasting", !status.inWindow);
+  el.textContent = status.text;
 }
 
 // Swipe-right-to-mark-eaten on the header's meal rows. Pointer Events cover
@@ -4917,6 +5098,7 @@ function loadSettingsForm(){
   document.getElementById("setCommunityRecipes").checked = !!state.communityRecipesEnabled;
   document.getElementById("setRemainingKcalFill").checked = !!state.remainingKcalFillEnabled;
   document.getElementById("setFastingEnabled").checked = !!state.fasting.enabled;
+  document.getElementById("setFastingNotify").checked = !!state.fasting.notify;
   document.getElementById("setFastingStart").value = state.fasting.windowStart;
   document.getElementById("setFastingEnd").value = state.fasting.windowEnd;
   // FR-72/FR-89: sex/activity/goal now gated on `configured` the same way
@@ -4973,8 +5155,11 @@ document.querySelectorAll("[data-swipe-style]").forEach(btn=>{
 function renderFavIngChips(filterText){
   const box = document.getElementById("favIngChips");
   const all = buildPantryTileList().sort((a,b)=>a.localeCompare(b,'pl'));
-  const q = (filterText||"").trim().toLowerCase();
-  const items = q ? all.filter(n=>n.toLowerCase().includes(q)) : all;
+  // Diacritic-insensitive since 2026-08-28, same fix as FR-2/v6 -- most of
+  // this list's entries ("płatki owsiane", "sałata / mix sałat", "chleb
+  // żytni"…) were unreachable without typing the ogonek.
+  const q = foldDiacritics((filterText||"").trim().toLowerCase());
+  const items = q ? all.filter(n=>foldDiacritics(n.toLowerCase()).includes(q)) : all;
   box.innerHTML = "";
   const grid = document.createElement("div");
   grid.className = "chip-grid";
@@ -5018,6 +5203,7 @@ document.getElementById("setFastingEnabled").addEventListener("change", (e)=>{
   state.fasting.enabled = e.target.checked;
   saveState();
   renderFastingStatus();
+  renderPlannerDashboard();
 });
 ["setFastingStart","setFastingEnd"].forEach(id=>{
   document.getElementById(id).addEventListener("change", ()=>{
@@ -5027,9 +5213,33 @@ document.getElementById("setFastingEnabled").addEventListener("change", (e)=>{
     state.fasting.windowEnd = end;
     document.getElementById("setFastingStart").value = start;
     document.getElementById("setFastingEnd").value = end;
+    // Changing the hours invalidates any boundary already announced today --
+    // the old one no longer corresponds to a real boundary, and the new one
+    // deserves its own notification if it is still ahead.
+    state.fasting.lastNotified = "";
     saveState();
     renderFastingStatus();
+    renderPlannerDashboard();
   });
+});
+document.getElementById("setFastingNotify").addEventListener("change", async (e)=>{
+  const wanted = e.target.checked;
+  if(wanted && "Notification" in window && Notification.permission === "default"){
+    try{ await Notification.requestPermission(); }catch(err){}
+  }
+  if(wanted && (!("Notification" in window) || Notification.permission !== "granted")){
+    e.target.checked = false;
+    state.fasting.notify = false;
+    saveState();
+    toast("Bez zgody na powiadomienia ta opcja nie zadziała");
+    return;
+  }
+  state.fasting.notify = wanted;
+  // Starting fresh: don't let a boundary key left over from an earlier
+  // enable/disable cycle swallow today's next notification.
+  if(wanted) state.fasting.lastNotified = "";
+  saveState();
+  toast(wanted ? "Powiadomienia o oknie jedzenia włączone" : "Powiadomienia o oknie jedzenia wyłączone");
 });
 
 // Reads the *actual* active Cache Storage entry rather than a manually
@@ -5256,6 +5466,84 @@ document.getElementById("signOutBtn").addEventListener("click", ()=>{
 // disabled until it elapses) exists purely to slow down an irreversible,
 // account-wide action -- long enough to reconsider, short enough not to
 // be busywork.
+// ---------- LOCAL BACKUP: export / import all data as a JSON file ----------
+// 2026-08-28: added because the app had no way to get data OUT of it at all.
+// Reuses SYNCED_STATE_KEYS as the single definition of "everything that is
+// the user's data" -- the cloud already round-trips exactly this set, so a
+// backup that covered anything more or less than it would, by definition,
+// disagree with what signing in on a second device transfers. Deliberately
+// NOT a full `state` dump: that also holds transient/derived fields whose
+// meaning is tied to this device+session.
+const BACKUP_FORMAT = "dieta-app-backup";
+const BACKUP_VERSION = 1;
+function buildBackupPayload(){
+  const data = {};
+  SYNCED_STATE_KEYS.forEach(k=>{ if(state[k]!==undefined) data[k] = state[k]; });
+  return {format:BACKUP_FORMAT, version:BACKUP_VERSION, exportedAt:new Date().toISOString(), data};
+}
+document.getElementById("exportDataBtn").addEventListener("click", ()=>{
+  try{
+    const json = JSON.stringify(buildBackupPayload(), null, 2);
+    const blob = new Blob([json], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `dieta-app-kopia-${todayStr()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Revoked on a timer rather than immediately: some mobile browsers hand
+    // the blob off to the download manager asynchronously, and revoking in
+    // the same tick can cancel the download before it starts.
+    setTimeout(()=> URL.revokeObjectURL(url), 10000);
+    toast("Zapisano kopię zapasową");
+  }catch(e){
+    toast("Nie udało się zapisać kopii: " + e.message);
+  }
+});
+document.getElementById("importDataBtn").addEventListener("click", ()=>{
+  document.getElementById("importDataInput").click();
+});
+document.getElementById("importDataInput").addEventListener("change", (e)=>{
+  const file = e.target.files && e.target.files[0];
+  // Reset the input's value so picking the SAME file twice in a row still
+  // fires `change` the second time (browsers suppress it otherwise).
+  e.target.value = "";
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onerror = ()=> toast("Nie udało się odczytać pliku");
+  reader.onload = ()=>{
+    let payload;
+    try{ payload = JSON.parse(reader.result); }
+    catch(err){ toast("To nie jest poprawny plik kopii zapasowej (błąd odczytu)"); return; }
+    if(!payload || payload.format !== BACKUP_FORMAT || !payload.data || typeof payload.data !== "object"){
+      toast("To nie jest plik kopii zapasowej Dieta App");
+      return;
+    }
+    if(payload.version > BACKUP_VERSION){
+      toast("Ta kopia pochodzi z nowszej wersji aplikacji — zaktualizuj aplikację i spróbuj ponownie");
+      return;
+    }
+    const when = payload.exportedAt ? new Date(payload.exportedAt).toLocaleString("pl-PL") : "nieznanej daty";
+    if(!confirm(`Wczytać kopię zapasową z ${when}?\n\nZASTĄPI to wszystkie obecne dane w aplikacji (profil, spiżarnię, listę zakupów, planer, ulubione, własne przepisy, oceny i historię).`)) return;
+    // Only keys we know about are applied -- an older backup simply leaves
+    // newer fields at their current values instead of wiping them to
+    // undefined, and an unknown key from a hand-edited file is ignored
+    // rather than injected into `state`.
+    let applied = 0;
+    SYNCED_STATE_KEYS.forEach(k=>{
+      if(payload.data[k]!==undefined){ state[k] = payload.data[k]; applied++; }
+    });
+    saveState();
+    refreshUiAfterSync(true);
+    renderPlanner();
+    renderShop();
+    renderPantry();
+    toast(`Wczytano kopię zapasową (${applied} zestawów danych)`);
+  };
+  reader.readAsText(file);
+});
+
 let resetAccountDataCountdownTimer = null;
 function openResetAccountDataModal(){
   if(!firebaseReady || !currentFbUser || currentFbUser.isAnonymous){ toast("Zaloguj się na prawdziwe konto, żeby zresetować dane"); return; }
@@ -5803,7 +6091,10 @@ function recipeCard(r, onChange, opts={}){
         <button class="plan-btn" data-cook="${r.id}" title="Otwiera historię gotowania — stąd oznaczysz dzisiejsze wykonanie i ocenisz danie" style="flex:1; -webkit-user-select:none; user-select:none; touch-action:manipulation;">✅ Zrobione${cookEntries.length?` (${cookEntries.length}×)`:""}</button>
         <button class="plan-btn" data-schedule="${r.id}" style="flex:1;">📅 Zaplanuj</button>
       </div>
-      ${r.source==="custom" ? `<button class="plan-btn" data-delete-recipe="${r.id}" style="width:100%; margin-top:8px;" title="Usuń swój przepis">🗑️ Usuń</button>` : ""}
+      ${r.source==="custom" ? `<div class="card-action-row" style="margin-top:8px;">
+        <button class="plan-btn" data-edit-recipe="${r.id}" style="flex:1;" title="Edytuj swój przepis">✏️ Edytuj</button>
+        <button class="plan-btn" data-delete-recipe="${r.id}" style="flex:1;" title="Usuń swój przepis">🗑️ Usuń</button>
+      </div>` : ""}
     </div></div>
   `;
   if(expandable){
@@ -5853,6 +6144,18 @@ function recipeCard(r, onChange, opts={}){
     e.stopPropagation();
     loadRecipeComments(r.id, commentsList, commentsMoreBtn, true);
   });
+  const editRecipeBtn = card.querySelector("[data-edit-recipe]");
+  if(editRecipeBtn){
+    editRecipeBtn.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      // Read from state rather than closing over `r`: this card may have
+      // been rendered from a scaled/derived copy, and we must edit (and
+      // write back) the stored original.
+      const stored = state.myRecipes.find(x=> x.id === r.id);
+      if(!stored){ toast("Nie znaleziono tego przepisu"); return; }
+      openAddRecipeModal(stored);
+    });
+  }
   const deleteRecipeBtn = card.querySelector("[data-delete-recipe]");
   if(deleteRecipeBtn){
     deleteRecipeBtn.addEventListener("click", (e)=>{
@@ -5893,14 +6196,22 @@ function recipeCard(r, onChange, opts={}){
   });
   // Requested 2026-08-26 ("dodaj też button szukają w Gemini żeby sztuczna
   // inteligencja dostała prompt na propozycje przygotowania tego
-  // konkretnego dania rozpisane w szczegółach"): opens Gemini's web app
-  // with the prompt pre-filled via ?q= (same unofficial-but-widely-observed
-  // pattern as chatgpt.com/?q=... -- if Gemini ever stops honoring it, the
-  // button still opens Gemini itself, just without the pre-fill).
+  // konkretnego dania rozpisane w szczegółach"), FIXED 2026-08-28 (user:
+  // "w Gemini otwiera się tylko strona do wpisania tekstu"): gemini.google.
+  // com/app?q= only ever pre-FILLS the chat composer -- it never submits,
+  // so the user always had to tap send themselves, silently defeating the
+  // "one tap, get the recipe" point of the button. There is no documented
+  // param that auto-submits Gemini's own chat UI (a plain <a>/window.open
+  // can't script a cross-origin page either), so switched to Google
+  // Search's AI Mode (`udm=50`) instead: it's the same underlying model,
+  // but a search-results GET request answers immediately on load like any
+  // other search, with nothing left to tap. Button label kept as "✨
+  // Gemini" since that's what it delivers, just via a URL shape that
+  // actually returns an answer instead of a blank compose box.
   card.querySelector("[data-search-gemini]").addEventListener("click", (e)=>{
     e.stopPropagation();
     const prompt = `Rozpisz szczegółowo, krok po kroku, jak przygotować danie: ${r.name}. Podaj dokładne czasy, temperatury, ilości składników i wskazówki przydatne dla początkujących.`;
-    window.open("https://gemini.google.com/app?q=" + encodeURIComponent(prompt), "_blank");
+    window.open("https://www.google.com/search?q=" + encodeURIComponent(prompt) + "&udm=50", "_blank");
   });
   const macroInfoBtn = card.querySelector("[data-macro-info]");
   if(macroInfoBtn){
@@ -6166,8 +6477,17 @@ function renderRecipes(){
     return review && review.stars >= minRatingFilter;
   });
   if(searchTerm){
-    const t = searchTerm.toLowerCase();
-    items = items.filter(r=> r.name.toLowerCase().includes(t) || r.ingredients.some(i=>i.toLowerCase().includes(t)) );
+    // Diacritic-insensitive since 2026-08-28: this used to compare raw
+    // lowercased strings, so typing "roszponka" found nothing while the
+    // recipe is called "…roszponką" -- and every ogonek costs a long-press
+    // on a phone keyboard, which is exactly when people skip them. Uses the
+    // same foldDiacritics() the canonical-ingredient lookup already relied
+    // on, so search now behaves like the rest of the app's matching.
+    const t = foldDiacritics(searchTerm.toLowerCase());
+    items = items.filter(r=>
+      foldDiacritics(r.name.toLowerCase()).includes(t) ||
+      r.ingredients.some(i=> foldDiacritics(i.toLowerCase()).includes(t))
+    );
   }
   if(items.length===0){
     list.innerHTML = `<div class="empty">Brak przepisów spełniających kryteria.</div>`;
@@ -6190,8 +6510,21 @@ function renderRecipes(){
   items.forEach(r=> list.appendChild(recipeCard(r, null, {swipeable:true})) );
 }
 
+// Clear button added 2026-08-28 for parity with the shopping list's own
+// search (FR-99) -- on a phone, emptying a text field otherwise means
+// select-all-then-delete.
+function updateSearchClearBtn(){
+  const btn = document.getElementById("searchClearBtn");
+  if(btn) btn.style.display = searchTerm ? "" : "none";
+}
 document.getElementById("searchBox").addEventListener("input", e=>{
-  searchTerm = e.target.value; renderRecipes();
+  searchTerm = e.target.value; updateSearchClearBtn(); renderRecipes();
+});
+document.getElementById("searchClearBtn").addEventListener("click", ()=>{
+  searchTerm = "";
+  document.getElementById("searchBox").value = "";
+  updateSearchClearBtn();
+  renderRecipes();
 });
 document.getElementById("favToggle").addEventListener("click", e=>{
   onlyFav = !onlyFav;
@@ -6365,24 +6698,42 @@ document.getElementById("arIngredients").addEventListener("input", recalcAddReci
   const key = id.replace("ar","").toLowerCase();
   document.getElementById(id).addEventListener("input", ()=>{ arMacroDirty[key] = true; });
 });
-function openAddRecipeModal(){
-  document.getElementById("arName").value = "";
-  document.getElementById("arTime").value = "";
-  document.getElementById("arIngredients").value = "";
-  document.getElementById("arMethod").value = "";
-  document.getElementById("arInspiration").value = "";
-  document.getElementById("arKcal").value = "";
-  document.getElementById("arProtein").value = "";
-  document.getElementById("arCarbs").value = "";
-  document.getElementById("arFat").value = "";
-  document.getElementById("arAutoCalcHint").textContent = "Wpisz składniki, a kalorie i makroskładniki obliczą się automatycznie.";
-  arMacroDirty = {kcal:false, protein:false, carbs:false, fat:false};
+// FR-66/v7 (2026-08-28): the same modal now also EDITS an existing custom
+// recipe. Until now the only way to fix a typo, a wrong kcal figure or a
+// forgotten ingredient was delete-and-re-add -- which mints a NEW id, and
+// so silently orphans everything keyed by the old one: the recipe's own
+// star rating and comment (state.recipeReviews/recipeRating), its cooking
+// history (state.cooked), and any Planer slot still pointing at it
+// (state.planner). Editing in place keeps the id, so none of that breaks.
+let editingRecipeId = null;
+function openAddRecipeModal(existing){
+  editingRecipeId = existing ? existing.id : null;
+  document.getElementById("addRecipeTitle").textContent = existing ? "✏️ Edytuj swój przepis" : "➕ Dodaj swój przepis";
+  document.getElementById("arSaveBtn").textContent = existing ? "Zapisz zmiany" : "Zapisz przepis";
+  document.getElementById("arName").value = existing ? existing.name : "";
+  document.getElementById("arTime").value = existing && existing.time !== "—" ? existing.time : "";
+  document.getElementById("arIngredients").value = existing ? existing.ingredients.join("\n") : "";
+  document.getElementById("arMethod").value = existing && existing.method !== "—" ? existing.method : "";
+  document.getElementById("arInspiration").value = existing ? (existing.inspirationSource || "") : "";
+  document.getElementById("arKcal").value = existing ? existing.kcal : "";
+  document.getElementById("arProtein").value = existing && Number.isFinite(existing.protein) ? existing.protein : "";
+  document.getElementById("arCarbs").value = existing && Number.isFinite(existing.carbs) ? existing.carbs : "";
+  document.getElementById("arFat").value = existing && Number.isFinite(existing.fat) ? existing.fat : "";
+  document.getElementById("arAutoCalcHint").textContent = existing
+    ? "Zmiana składników przeliczy kalorie i makro na nowo — chyba że wpiszesz je ręcznie."
+    : "Wpisz składniki, a kalorie i makroskładniki obliczą się automatycznie.";
+  // When editing, the stored values ARE the user's own numbers as far as
+  // this form is concerned -- marking them dirty stops the auto-calculator
+  // from overwriting a figure they deliberately set earlier.
+  arMacroDirty = existing
+    ? {kcal:true, protein:Number.isFinite(existing.protein), carbs:Number.isFinite(existing.carbs), fat:Number.isFinite(existing.fat)}
+    : {kcal:false, protein:false, carbs:false, fat:false};
   const catSel = document.getElementById("arCat");
   catSel.innerHTML = CATS.map(c=>`<option value="${c.id}">${c.icon} ${c.label}</option>`).join("");
-  catSel.value = currentCat;
+  catSel.value = existing ? existing.cat : currentCat;
   document.getElementById("addRecipeOverlay").classList.add("show");
 }
-document.getElementById("openAddRecipeBtn").addEventListener("click", openAddRecipeModal);
+document.getElementById("openAddRecipeBtn").addEventListener("click", ()=> openAddRecipeModal());
 document.getElementById("addRecipeClose").addEventListener("click", ()=> document.getElementById("addRecipeOverlay").classList.remove("show"));
 document.getElementById("addRecipeOverlay").addEventListener("click", (e)=>{
   if(e.target===document.getElementById("addRecipeOverlay")) e.target.classList.remove("show");
@@ -6399,8 +6750,10 @@ document.getElementById("arSaveBtn").addEventListener("click", ()=>{
   const fat = parseFloat(document.getElementById("arFat").value);
   const hasFullMacros = [protein, carbs, fat].every(Number.isFinite);
   const inspirationSource = document.getElementById("arInspiration").value.trim();
+  // Keeping the id on edit is the whole point (see openAddRecipeModal's
+  // comment) -- everything else about the recipe is rebuilt from the form.
   const recipe = {
-    id: "custom-" + Date.now(),
+    id: editingRecipeId || ("custom-" + Date.now()),
     cat: document.getElementById("arCat").value,
     name,
     time: document.getElementById("arTime").value.trim() || "—",
@@ -6414,15 +6767,27 @@ document.getElementById("arSaveBtn").addEventListener("click", ()=>{
     recipe.protein = protein; recipe.carbs = carbs; recipe.fat = fat;
     recipe.fiber = 0; recipe.gi = 50; recipe.gl = Math.round(carbs*50/100*10)/10;
   }
-  state.myRecipes.push(recipe);
+  const editIndex = editingRecipeId ? state.myRecipes.findIndex(r=> r.id === editingRecipeId) : -1;
+  if(editIndex >= 0) state.myRecipes[editIndex] = recipe;
+  else state.myRecipes.push(recipe);
   saveState();
+  // Re-published either way: the community copy is keyed by recipe id, so
+  // an edit overwrites it in place rather than creating a duplicate. It
+  // goes back to `status:"pending"` -- deliberate, since the moderator
+  // approved the OLD text, not whatever it says now.
   pushCommunityRecipe(recipe);
   TILE_UNIT_CAT = computeTileUnitCats();
-  toast("Dodano Twój przepis");
+  toast(editIndex >= 0 ? "Zapisano zmiany w przepisie" : "Dodano Twój przepis");
   document.getElementById("addRecipeOverlay").classList.remove("show");
+  editingRecipeId = null;
   currentCat = browseCatGroupFor(recipe.cat).id;
   renderPills();
   renderRecipes();
+  // An edited recipe can be planned for a day and/or already on the
+  // shopping list, and both show its name/kcal -- refresh them so they
+  // don't keep displaying the pre-edit version until something else
+  // happens to redraw them.
+  if(editIndex >= 0){ renderPlanner(); renderShop(); renderHeader(); }
 });
 
 function pantryCoverageRatio(r){
@@ -6497,6 +6862,21 @@ function classify(label){
 const GROUP_ORDER = ["Nabiał bez laktozy","Warzywa i owoce","Mięso, ryby i jajka","Strączki, orzechy i nasiona","Pieczywo i zboża","Przyprawy i dodatki","Inne"];
 
 let shopViewMode = "list";
+// Deliberately NOT persisted in `state`: a search term is a transient way of
+// looking at the list, not part of it -- syncing it to the cloud would mean
+// one device could leave another device's list mysteriously filtered.
+let shopSearchTerm = "";
+// Matches the same folded, diacritic-insensitive way the recipe search does,
+// so "jajka" finds "jajka" and "zolty ser" finds "żółty ser".
+function shopKeysMatchingSearch(keys){
+  if(!shopSearchTerm) return keys;
+  const needle = foldDiacritics(shopSearchTerm.toLowerCase());
+  return keys.filter(k=>{
+    const item = state.shopping[k];
+    if(!item) return false;
+    return foldDiacritics(String(item.name).toLowerCase()).includes(needle);
+  });
+}
 // FR-58/62 extension (2026-08-11): which planner day(s) actually need a
 // given shopping list item, so the user can shop for just "today + jutro"
 // and stop instead of buying everything on the list in one go. Purely
@@ -6556,16 +6936,27 @@ function renderShop(){
   const box = document.getElementById("shopList");
   box.innerHTML = "";
   const isClinic = state.theme==="clinic" || state.theme==="clinic_dark";
-  const keys = Object.keys(state.shopping);
-  document.getElementById("shopCount").textContent = keys.length + " pozycji";
-  if(keys.length===0){
+  const allKeys = Object.keys(state.shopping);
+  const keys = shopKeysMatchingSearch(allKeys);
+  // Count reports the filtered view when filtering, so it never contradicts
+  // what's actually on screen -- with the unfiltered total kept alongside it
+  // so it's obvious the rest of the list still exists.
+  document.getElementById("shopCount").textContent = shopSearchTerm
+    ? `${keys.length} z ${allKeys.length} pozycji`
+    : `${allKeys.length} pozycji`;
+  document.getElementById("shopSearchClear").style.display = shopSearchTerm ? "" : "none";
+  if(allKeys.length===0){
     box.innerHTML = isClinic
       ? `<div class="empty"><div class="clinic-shop-empty-emoji">🛒</div><div class="clinic-shop-empty-title">Brak pozycji na liście</div>Lista zakupów jest pusta — dodaj składniki zaznaczając przepisy w zakładce Przepisy 🍽 lub przyciskiem w Planerze.</div>`
       : `<div class="empty">Lista jest pusta — dodaj składniki zaznaczając przepisy w zakładce Przepisy 🍽 lub przyciskiem w Planerze.</div>`;
     return;
   }
+  if(keys.length===0){
+    box.innerHTML = `<div class="empty">Nic nie pasuje do „${escapeHtml(shopSearchTerm)}” na liście zakupów.</div>`;
+    return;
+  }
   const ingredientDays = computeIngredientDays();
-  if(shopViewMode==="tiles"){ renderShopTiles(box, ingredientDays); return; }
+  if(shopViewMode==="tiles"){ renderShopTiles(box, ingredientDays, keys); return; }
   const groups = {};
   keys.forEach(k=>{
     const item = state.shopping[k];
@@ -6603,9 +6994,11 @@ function renderShop(){
 // spiżarnia (negative = still need to buy that much; ✓ = pantry already
 // covers the full planned quantity), per the user's request to see
 // "wartości ujemne produktów które są potrzebne".
-function renderShopTiles(box, ingredientDays){
+function renderShopTiles(box, ingredientDays, filteredKeys){
   ingredientDays = ingredientDays || computeIngredientDays();
-  const keys = Object.keys(state.shopping);
+  // filteredKeys comes from renderShop's own search filter; the fallback
+  // keeps this callable on its own (and still honors an active search).
+  const keys = filteredKeys || shopKeysMatchingSearch(Object.keys(state.shopping));
   const groups = {};
   keys.forEach(k=>{
     const item = state.shopping[k];
@@ -6651,6 +7044,15 @@ document.querySelectorAll("#shopViewToggle .pill").forEach(btn=>{
     document.querySelectorAll("#shopViewToggle .pill").forEach(b=> b.classList.toggle("active", b===btn));
     renderShop();
   });
+});
+document.getElementById("shopSearchBox").addEventListener("input", (e)=>{
+  shopSearchTerm = e.target.value.trim();
+  renderShop();
+});
+document.getElementById("shopSearchClear").addEventListener("click", ()=>{
+  shopSearchTerm = "";
+  document.getElementById("shopSearchBox").value = "";
+  renderShop();
 });
 
 function buildListText(){
@@ -6743,15 +7145,24 @@ document.getElementById("addWeekBtn").addEventListener("click", ()=>{
   if(added===0) toast(already ? "Wszystkie dania z Planera są już na liście" : "Planer jest jeszcze pusty — dodaj dania w zakładce Planer");
   else toast(`Dodano składniki z ${added} dań z całego tygodnia${already?` (${already} już było na liście)`:""}`);
 });
-document.getElementById("shareBtn").addEventListener("click", async ()=>{
-  const text = buildListText();
+// Extracted 2026-08-28 from #shareBtn's own handler, so the week plan
+// (FR-92) can offer the same native share sheet the shopping list already
+// had -- it shipped with only WhatsApp/clipboard, which on a phone means
+// no Messenger/Signal/SMS/e-mail unless we hand-code a button per target.
+// navigator.share is the platform's own answer to that, and it's already
+// proven here; the clipboard path stays as the desktop/unsupported
+// fallback rather than leaving the button dead.
+async function shareOrCopyText(title, text, fallbackMsg){
   if(navigator.share){
-    try{ await navigator.share({title:"Lista zakupów", text}); }
+    try{ await navigator.share({title, text}); }
     catch(e){ /* user cancelled, ignore */ }
-  }else{
-    try{ await navigator.clipboard.writeText(text); toast("Skopiowano — wklej w SMS lub Messengerze"); }
-    catch(e){ toast("Nie udało się skopiować"); }
+    return;
   }
+  try{ await navigator.clipboard.writeText(text); toast(fallbackMsg); }
+  catch(e){ toast("Nie udało się skopiować"); }
+}
+document.getElementById("shareBtn").addEventListener("click", ()=>{
+  shareOrCopyText("Lista zakupów", buildListText(), "Skopiowano — wklej w SMS lub Messengerze");
 });
 document.getElementById("smsBtn").addEventListener("click", ()=>{
   const text = encodeURIComponent(buildListText());
@@ -6765,15 +7176,37 @@ document.getElementById("copyBtn").addEventListener("click", async ()=>{
   try{ await navigator.clipboard.writeText(buildListText()); toast("Lista skopiowana do schowka"); }
   catch(e){ toast("Nie udało się skopiować"); }
 });
+// Generalized undo (2026-08-28), same rule as the Planer's own clear/random
+// buttons: "Usuń odhaczone" was the worst offender in the app -- an
+// irreversible delete with NEITHER a confirm NOR an undo, so a mistap on a
+// long list (87 items was a real reported case) silently destroyed work with
+// no way back. It stays instant (asking would be wrong for an in-flow
+// tidy-up action) but now offers undo. "Wyczyść całą listę" keeps its
+// confirm, being the nuclear option, and gains undo on top -- exactly the
+// split applied to the Planer in FR-21/v2 + FR-22/v2.
 document.getElementById("clearCheckedBtn").addEventListener("click", ()=>{
-  Object.keys(state.shopping).forEach(k=>{ if(state.shopping[k].checked) delete state.shopping[k]; });
+  const removed = Object.keys(state.shopping).filter(k => state.shopping[k].checked);
+  if(!removed.length){ toast("Nie ma odhaczonych pozycji do usunięcia"); return; }
+  const prevShopping = structuredClone(state.shopping);
+  removed.forEach(k=>{ delete state.shopping[k]; });
   saveState(); renderShop();
+  toast(`Usunięto ${removed.length} odhaczonych pozycji`, "Cofnij", ()=>{
+    state.shopping = prevShopping;
+    saveState(); renderShop();
+  });
 });
 document.getElementById("clearAllBtn").addEventListener("click", ()=>{
   if(!confirm("Na pewno wyczyścić całą listę zakupów?")) return;
+  const prevShopping = structuredClone(state.shopping);
+  const prevRecipeAdded = structuredClone(state.recipeAdded);
   state.shopping = {};
   state.recipeAdded = {};
   saveState(); renderShop(); renderRecipes();
+  toast("Wyczyszczono listę zakupów", "Cofnij", ()=>{
+    state.shopping = prevShopping;
+    state.recipeAdded = prevRecipeAdded;
+    saveState(); renderShop(); renderRecipes();
+  });
 });
 
 // ---------- SPIŻARNIA (PANTRY) ----------
@@ -7244,14 +7677,27 @@ function showCategoryPicker(canonName){
     body.appendChild(b);
   });
 }
+// Undo added 2026-08-28, completing the same audit that covered the Planer
+// (FR-21/v2, FR-22/v2) and the shopping list (FR-26/v2): a whole-scope
+// action, so it keeps its confirm() AND gains an undo. Only `pantry` needs
+// capturing -- the per-item unit/category/step overrides and customTiles are
+// deliberately NOT cleared by this button, so they're still there to apply
+// to the restored entries.
 document.getElementById("clearPantryBtn").addEventListener("click", ()=>{
   if(!confirm("Na pewno wyczyścić całą spiżarnię? Wszystkie śledzone produkty i przyprawy zostaną usunięte.")) return;
+  const prevPantry = structuredClone(state.pantry);
   addLog("pantry_delete", "Wyczyszczono całą spiżarnię");
   state.pantry = {};
   saveState();
   renderPantry();
   if(document.getElementById("view-shop").classList.contains("active")) renderShop();
-  toast("Wyczyszczono spiżarnię");
+  toast("Wyczyszczono spiżarnię", "Cofnij", ()=>{
+    state.pantry = prevPantry;
+    addLog("pantry_add", "Cofnięto wyczyszczenie spiżarni");
+    saveState();
+    renderPantry();
+    if(document.getElementById("view-shop").classList.contains("active")) renderShop();
+  });
 });
 function changeTileCategory(canonName, newCat){
   if(state.customTiles[canonName]){
@@ -7580,18 +8026,27 @@ function renderPlannerDashboard(){
       <span class="pd-meal-text">
         <span class="pd-meal-cat">${c.label}</span>
         <span class="pd-meal-name">${r.name}</span>
-        <span class="pd-meal-pantry">🏺 ${pantryHave}/${pantryTotal} w spiżarni</span>
+        <button type="button" class="pd-meal-pantry" data-pd-pantry-check="${r.id}" title="Sprawdź, czego brakuje w spiżarni">🏺 ${pantryHave}/${pantryTotal} w spiżarni</button>
       </span>
       <span class="pd-meal-kcal">${r.kcal} kcal</span>
       <button class="pd-meal-remove" data-pd-remove-cat="${c.id}" title="Usuń z planu">✕</button>
     </div>`;
   }).join("");
 
+  // FR-94/v3 (2026-08-28): #fastingStatus (used by every other theme) lives
+  // inside .header-collapsible, which Klinika hides completely -- without
+  // its own copy here, enabling the setting did nothing visible in this
+  // (default) theme. Same fix already applied to Android in FR-94/v2.
+  const fastingStatus = computeFastingStatus();
+  const fastingHtml = fastingStatus
+    ? `<div class="pd-fasting-status${fastingStatus.inWindow?'':' fasting'}">${fastingStatus.text}</div>`
+    : "";
   box.innerHTML = `
     <div class="pd-header">
       <div>
         <div class="pd-date">${clinicDateLabel()}</div>
         <div class="pd-greeting">${clinicGreetingText()}</div>
+        ${fastingHtml}
       </div>
       <button class="pd-signout" id="pdSignOutBtn" title="Wyloguj się z tego urządzenia">🚪</button>
     </div>
@@ -7647,10 +8102,21 @@ function renderPlannerDashboard(){
   attachPdMealCardSwipe(box, today);
   box.querySelectorAll("[data-pd-toggle-cat]").forEach(el=>{
     el.addEventListener("click", (e)=>{
-      if(e.target.closest("[data-pd-remove-cat]")) return;
+      if(e.target.closest("[data-pd-remove-cat]") || e.target.closest("[data-pd-pantry-check]")) return;
       if(el.dataset.pdSwiped==="1"){ delete el.dataset.pdSwiped; return; }
       const recipe = findRecipeById(el.dataset.pdRecipeId);
       if(recipe) openRecipePreviewModal(recipe);
+    });
+  });
+  // FR-97/v2 (2026-08-28): pantry badge is now a tap target of its own --
+  // jumps straight to "sprawdź co masz" instead of requiring a detour
+  // through the recipe preview modal just to see the same info in more
+  // detail (and get to the "🛒"/"+ Mam to" actions there).
+  box.querySelectorAll("[data-pd-pantry-check]").forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      const recipe = findRecipeById(btn.dataset.pdPantryCheck);
+      if(recipe) openPantryModal(recipe);
     });
   });
   box.querySelectorAll("[data-pd-remove-cat]").forEach(btn=>{
@@ -7686,9 +8152,71 @@ function renderPlannerDashboard(){
     btn.addEventListener("click", ()=> openPlannerModal(todayIdx, btn.dataset.pdAddCat));
   });
 }
+// Averages are taken over PLANNED days only, not over 7 -- a half-planned
+// week would otherwise report an average far under target and look like a
+// crash diet rather than an unfinished plan. Macros are summed only from
+// recipes that actually carry them (custom recipes may not), and reported
+// with the count they came from, so a partial figure never masquerades as
+// a complete one.
+function computeWeekPlanSummary(){
+  let plannedDays = 0, totalKcal = 0;
+  let macroMeals = 0, totalMeals = 0, p = 0, c = 0, f = 0;
+  DAYS.forEach((_, di)=>{
+    const dayMeals = state.planner[di] || {};
+    let dayKcal = 0, dayHasMeal = false;
+    CATS.forEach(cat=>{
+      const rid = dayMeals[cat.id];
+      if(!rid) return;
+      const base = findRecipeById(rid);
+      if(!base) return;
+      const r = scaleRecipe(base, getPlannerScale(di, cat.id));
+      dayHasMeal = true;
+      totalMeals++;
+      dayKcal += r.kcal || 0;
+      if(Number.isFinite(r.protein) && Number.isFinite(r.carbs) && Number.isFinite(r.fat)){
+        macroMeals++; p += r.protein; c += r.carbs; f += r.fat;
+      }
+    });
+    if(dayHasMeal){ plannedDays++; totalKcal += dayKcal; }
+  });
+  if(!plannedDays) return null;
+  return {
+    plannedDays, totalMeals, totalKcal,
+    avgKcal: Math.round(totalKcal / plannedDays),
+    macroMeals,
+    avgProtein: macroMeals ? Math.round(p / plannedDays) : null,
+    avgCarbs:   macroMeals ? Math.round(c / plannedDays) : null,
+    avgFat:     macroMeals ? Math.round(f / plannedDays) : null,
+  };
+}
+function renderWeekPlanSummary(){
+  const box = document.getElementById("plannerWeekSummary");
+  if(!box) return;
+  const s = computeWeekPlanSummary();
+  if(!s){ box.innerHTML = ""; return; }
+  const target = calcTargets(state.profile).daily;
+  const diff = s.avgKcal - target;
+  const diffLabel = Math.abs(diff) <= 50
+    ? `w celu (${target} kcal)`
+    : `${diff > 0 ? "+" : "−"}${Math.abs(diff)} kcal vs cel ${target}`;
+  const diffClass = Math.abs(diff) <= 50 ? "wps-ok" : (diff > 0 ? "wps-over" : "wps-under");
+  const macroLine = s.avgProtein !== null
+    ? `<div class="wps-macros">Średnio dziennie: B ${s.avgProtein} g · W ${s.avgCarbs} g · T ${s.avgFat} g${s.macroMeals < s.totalMeals ? ` <span class="wps-partial">(z ${s.macroMeals} z ${s.totalMeals} dań — reszta nie ma podanych makro)</span>` : ""}</div>`
+    : `<div class="wps-macros wps-partial">Żadne z zaplanowanych dań nie ma podanych makroskładników.</div>`;
+  box.innerHTML = `<div class="card wps-card">
+    <h4 class="wps-title">📊 Zaplanowany tydzień</h4>
+    <div class="wps-row">
+      <span class="wps-big">${s.avgKcal} kcal</span>
+      <span class="wps-note ${diffClass}">${diffLabel}</span>
+    </div>
+    <div class="wps-sub">średnio na dzień, z ${s.plannedDays} ${s.plannedDays===1?"zaplanowanego dnia":"zaplanowanych dni"} (${s.totalMeals} dań)</div>
+    ${macroLine}
+  </div>`;
+}
 function renderPlanner(){
   renderPlannerBento();
   renderPlannerDashboard();
+  renderWeekPlanSummary();
   const isClinic = state.theme==="clinic" || state.theme==="clinic_dark";
   // Requested 2026-08-25 (Klinika/Klinika (noc) only -- the other 11 themes
   // keep the button where it always was, right after the dashboard/bento
@@ -7767,13 +8295,18 @@ function renderPlanner(){
       ? `<div class="cdc-head"><h4>${day}</h4>${di===todayIdx?'<span class="cdc-badge today">Dziś</span>':''}<span class="cdc-badge kcal">${total} / ${calcTargets(state.profile).daily} kcal</span></div>`
       : `<h4>${day}</h4>`;
     const totalHtml = isClinic ? "" : `<div class="day-total">Razem: ${total} kcal</div>`;
+    // FR-90/v2: "kopiuj NA inne dni" only makes sense once this day itself
+    // has something worth spreading -- same disabled-when-empty pattern as
+    // the source-day buttons inside openCopyDayModal's own picker.
+    const hasOwnPlan = Object.values(state.planner[di] || {}).some(id => !!id);
     card.innerHTML = `${headHtml}${rowsHtml}${totalHtml}
       <button class="plan-btn" style="width:100%; margin-top:8px;" data-day-add="${di}">🛒 Dodaj składniki z tego dnia do listy zakupów</button>
       <div class="shop-actions" style="margin:8px 0 0;">
         <button class="btn ghost" style="flex:1; font-size:12px;" data-day-random="${di}">🎲 Losuj ten dzień</button>
         <button class="btn ghost" style="flex:1; font-size:12px;" data-day-clear="${di}">🗑️ Wyczyść ten dzień</button>
       </div>
-      <button class="btn ghost" style="width:100%; margin-top:6px; font-size:12px;" data-day-copy="${di}">📋 Kopiuj plan z innego dnia</button>`;
+      <button class="btn ghost" style="width:100%; margin-top:6px; font-size:12px;" data-day-copy="${di}">📋 Kopiuj plan z innego dnia</button>
+      <button class="btn ghost" style="width:100%; margin-top:6px; font-size:12px;" data-day-spread="${di}" ${hasOwnPlan?"":"disabled"} title="${hasOwnPlan?"":"Ten dzień jest pusty — nie ma czego kopiować"}">📤 Kopiuj ten dzień na inne dni</button>`;
     card.querySelectorAll("[data-pick-day]").forEach(btn=>{
       btn.addEventListener("click", ()=> openPlannerModal(btn.dataset.pickDay, btn.dataset.pickCat));
     });
@@ -7790,8 +8323,16 @@ function renderPlanner(){
         toast("Powtórzono resztki na kolejny dzień");
       });
     });
+    // Generalized undo (2026-08-28, following FR-91's toast(msg, undoLabel,
+    // onUndo) pattern): both of these used to gate a destructive rewrite of
+    // the whole day behind a blocking confirm() -- replaced with an instant
+    // action + "Cofnij" toast that restores the exact prior state of all
+    // three parallel maps for this day, same safety net as FR-91 without
+    // interrupting the tap with a native dialog.
     card.querySelector("[data-day-random]").addEventListener("click", ()=>{
-      if(!confirm(`Wygenerować losowo cały dzień „${day}"? Nadpisze wybrane tam dania.`)) return;
+      const prevPlan = structuredClone(state.planner[di] || {});
+      const prevScale = structuredClone(state.plannerScale[di] || {});
+      const prevLeftover = structuredClone(state.plannerLeftover[di] || {});
       const dailyTargets = calcTargets(state.profile);
       state.planner[di] = {};
       state.plannerScale[di] = {};
@@ -7804,17 +8345,31 @@ function renderPlanner(){
         state.plannerScale[di][c.id] = idealScaleFor(r, dailyTargets[c.id]);
       });
       saveState(); renderPlanner(); renderHeader();
-      toast(`Wygenerowano plan na ${day}`);
+      toast(`Wygenerowano plan na ${day}`, "Cofnij", ()=>{
+        state.planner[di] = prevPlan;
+        state.plannerScale[di] = prevScale;
+        state.plannerLeftover[di] = prevLeftover;
+        saveState(); renderPlanner(); renderHeader();
+      });
     });
     card.querySelector("[data-day-clear]").addEventListener("click", ()=>{
-      if(!confirm(`Wyczyścić wszystkie dania zaplanowane na „${day}"?`)) return;
+      const prevPlan = structuredClone(state.planner[di] || {});
+      const prevScale = structuredClone(state.plannerScale[di] || {});
+      const prevLeftover = structuredClone(state.plannerLeftover[di] || {});
       state.planner[di] = {};
       state.plannerScale[di] = {};
       state.plannerLeftover[di] = {};
       saveState(); renderPlanner(); renderHeader();
-      toast(`Wyczyszczono plan na ${day}`);
+      toast(`Wyczyszczono plan na ${day}`, "Cofnij", ()=>{
+        state.planner[di] = prevPlan;
+        state.plannerScale[di] = prevScale;
+        state.plannerLeftover[di] = prevLeftover;
+        saveState(); renderPlanner(); renderHeader();
+      });
     });
     card.querySelector("[data-day-copy]").addEventListener("click", ()=> openCopyDayModal(di));
+    const spreadBtn = card.querySelector("[data-day-spread]");
+    if(spreadBtn && !spreadBtn.disabled) spreadBtn.addEventListener("click", ()=> openCopySpreadModal(di));
     card.querySelectorAll("[data-scale-day]").forEach(btn=>{
       // stopPropagation: for Klinika's .cdc-row, this element is NESTED
       // inside the row's own "open picker" click target (see [data-pick-
@@ -7907,6 +8462,49 @@ document.getElementById("copyDayOverlay").addEventListener("click", (e)=>{
   if(e.target===document.getElementById("copyDayOverlay")) e.target.classList.remove("show");
 });
 
+// FR-90/v2 (2026-08-28): the push direction -- stand on a day whose plan
+// you like and spread it to several other days in one go (checkboxes +
+// explicit confirm, unlike openCopyDayModal's instant tap-to-copy, since
+// there's more than one target to commit at once here).
+function openCopySpreadModal(fromDay){
+  const body = document.getElementById("copySpreadBody");
+  body.innerHTML = `<div class="hint-text" style="margin:0 0 10px;">Wybierz dni, na które skopiować plan z „${DAYS[fromDay]}". Nadpisze to, co jest już zaplanowane na wybranych dniach.</div>`;
+  const grid = document.createElement("div");
+  grid.style.cssText = "display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;";
+  DAYS.forEach((dayName, di)=>{
+    if(di === fromDay) return;
+    const label = document.createElement("label");
+    label.className = "btn ghost";
+    label.style.cssText = "font-size:13px; display:flex; align-items:center; gap:6px; cursor:pointer;";
+    label.innerHTML = `<input type="checkbox" data-spread-target="${di}" style="margin:0;"> ${dayName}`;
+    grid.appendChild(label);
+  });
+  body.appendChild(grid);
+  const confirmBtn = document.createElement("button");
+  confirmBtn.className = "btn";
+  confirmBtn.style.cssText = "width:100%; margin-top:12px;";
+  confirmBtn.textContent = "📤 Kopiuj na zaznaczone dni";
+  confirmBtn.addEventListener("click", ()=>{
+    const targets = Array.from(body.querySelectorAll("[data-spread-target]:checked")).map(el => parseInt(el.dataset.spreadTarget, 10));
+    if(!targets.length){ toast("Zaznacz co najmniej jeden dzień"); return; }
+    targets.forEach(di=>{
+      state.planner[di] = structuredClone(state.planner[fromDay] || {});
+      state.plannerScale[di] = structuredClone(state.plannerScale[fromDay] || {});
+      state.plannerLeftover[di] = structuredClone(state.plannerLeftover[fromDay] || {});
+    });
+    saveState(); renderPlanner(); renderHeader();
+    document.getElementById("copySpreadOverlay").classList.remove("show");
+    const targetNames = targets.map(di => DAYS[di]).join(", ");
+    toast(`Skopiowano plan z „${DAYS[fromDay]}" na: ${targetNames}`);
+  });
+  body.appendChild(confirmBtn);
+  document.getElementById("copySpreadOverlay").classList.add("show");
+}
+document.getElementById("copySpreadClose").addEventListener("click", ()=> document.getElementById("copySpreadOverlay").classList.remove("show"));
+document.getElementById("copySpreadOverlay").addEventListener("click", (e)=>{
+  if(e.target===document.getElementById("copySpreadOverlay")) e.target.classList.remove("show");
+});
+
 // Requested 2026-08-26 ("dodaj też przynajmniej 5 nowych funkcji" --
 // research: users want their plan portable, e.g. to send to whoever does
 // the shopping/cooking) -- same text-building + WhatsApp/clipboard pattern
@@ -7931,6 +8529,11 @@ function buildWeekPlanText(){
   });
   return out;
 }
+// FR-92/v2 (2026-08-28): native share sheet, matching the shopping list's
+// own primary share button -- see shareOrCopyText's comment.
+document.getElementById("plannerShareNativeBtn").addEventListener("click", ()=>{
+  shareOrCopyText("Plan tygodnia", buildWeekPlanText(), "Skopiowano — wklej w SMS lub Messengerze");
+});
 document.getElementById("plannerShareWaBtn").addEventListener("click", ()=>{
   window.open("https://wa.me/?text=" + encodeURIComponent(buildWeekPlanText()), "_blank");
 });
@@ -7941,6 +8544,14 @@ document.getElementById("plannerShareCopyBtn").addEventListener("click", async (
 
 document.getElementById("autoPlanBtn").addEventListener("click", ()=>{
   if(!confirm("To nadpisze wszystkie dania zaplanowane w całym tygodniu. Na pewno chcesz wygenerować nowy plan?")) return;
+  // Generalized undo (2026-08-28): the per-day buttons dropped their
+  // confirm() in favor of an undo toast, but this one keeps BOTH -- it
+  // rewrites all 7x5 slots at once, so the blast radius justifies the
+  // interruption, and the undo is the safety net for having confirmed too
+  // fast rather than a replacement for asking.
+  const prevPlan = structuredClone(state.planner);
+  const prevScale = structuredClone(state.plannerScale);
+  const prevLeftover = structuredClone(state.plannerLeftover);
   const pools = {};
   CATS.forEach(c=>{ pools[c.id] = [...fittingPool(c.id, state.profile)].sort(()=>Math.random()-0.5); });
   const idx = {};
@@ -7959,7 +8570,12 @@ document.getElementById("autoPlanBtn").addEventListener("click", ()=>{
     });
   });
   saveState(); renderPlanner(); renderHeader();
-  toast("Wygenerowano plan na cały tydzień");
+  toast("Wygenerowano plan na cały tydzień", "Cofnij", ()=>{
+    state.planner = prevPlan;
+    state.plannerScale = prevScale;
+    state.plannerLeftover = prevLeftover;
+    saveState(); renderPlanner(); renderHeader();
+  });
 });
 
 // ---------- PLANNER RECIPE PICKER / DETAIL MODAL ----------
@@ -8100,7 +8716,26 @@ document.getElementById("plannerModalClose").addEventListener("click", ()=> plan
 plannerModalOverlay.addEventListener("click", (e)=>{ if(e.target===plannerModalOverlay) plannerModalOverlay.classList.remove("show"); });
 
 // ---------- PROGRESS ----------
-function todayStr(){ return new Date().toISOString().slice(0,10); }
+// Date keys are LOCAL calendar days, not UTC ones. Fixed 2026-08-28: every
+// one of these used `toISOString().slice(0,10)`, which is UTC -- and Poland
+// (this app's whole audience) is UTC+1/+2, so:
+//   * todayStr() returned YESTERDAY between local midnight and 01:00/02:00,
+//     meaning a glass of water or a meal logged just after midnight was
+//     filed under the previous day (and the day never rolled over on time);
+//   * addDaysToDateStr() was off by one ALL the time, because it built
+//     LOCAL midnight and then read the UTC date off it -- which is still
+//     the previous day east of Greenwich. Measured in a real browser set to
+//     Europe/Warsaw: "previous day" from 2026-08-28 landed on 2026-08-26
+//     (skipping a day each tap) and "next day" didn't move at all. The same
+//     three functions behaved correctly in UTC and America/New_York, which
+//     is exactly why this could sit here unnoticed.
+// Reading the local Y/M/D components sidesteps the timezone round-trip
+// entirely; there is no "correct" UTC offset to apply instead, because the
+// user's own calendar day IS the thing being keyed.
+function localDateStr(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function todayStr(){ return localDateStr(new Date()); }
 
 // Small inline-SVG icon shared by the header water strip and the Postęp
 // "Nawodnienie" cup row. Filled = solid blue (water logged for that slot),
@@ -8505,8 +9140,13 @@ function renderHistory(){
 }
 document.getElementById("clearHistoryBtn").addEventListener("click", ()=>{
   if(!confirm("Wyczyścić całą historię aktywności?")) return;
+  const prevHistory = structuredClone(state.history);
   state.history = [];
   saveState(); renderHistory();
+  toast("Wyczyszczono historię aktywności", "Cofnij", ()=>{
+    state.history = prevHistory;
+    saveState(); renderHistory();
+  });
 });
 document.getElementById("historyFrom").addEventListener("change", renderHistory);
 document.getElementById("historyTo").addEventListener("change", renderHistory);
@@ -8594,10 +9234,16 @@ function buildSnackAddForm(dateStr, onAdded){
   const SNACK_NAMES = Object.keys(SNACK_NUTRITION_DB);
   function hideSuggestions(){ suggestBox.style.display = "none"; suggestBox.innerHTML = ""; }
   function renderSuggestions(query){
-    const q = query.trim().toLowerCase();
+    // Diacritic-insensitive since 2026-08-28 (same fix as FR-2/v6 on the
+    // recipe search): 89 of the 336 snack names contain a Polish diacritic,
+    // and matching raw strings made every one of them unreachable unless
+    // the user typed the ogonek -- "jablko" returned zero suggestions for
+    // "jabłko". Folding both sides costs one pass over a 336-entry list.
+    const q = foldDiacritics(query.trim().toLowerCase());
     if(q.length < 2){ hideSuggestions(); return; }
-    const starts = SNACK_NAMES.filter(n=>n.startsWith(q));
-    const includes = SNACK_NAMES.filter(n=>!n.startsWith(q) && n.includes(q));
+    const folded = n => foldDiacritics(n.toLowerCase());
+    const starts = SNACK_NAMES.filter(n=>folded(n).startsWith(q));
+    const includes = SNACK_NAMES.filter(n=>!folded(n).startsWith(q) && folded(n).includes(q));
     const matches = starts.concat(includes).slice(0,8);
     if(!matches.length){ hideSuggestions(); return; }
     suggestBox.innerHTML = matches.map(n=>{
@@ -8667,12 +9313,12 @@ function dailyEatenKcal(date){
 function dateStrDaysAgo(n){
   const d = new Date();
   d.setDate(d.getDate()-n);
-  return d.toISOString().slice(0,10);
+  return localDateStr(d);
 }
 function addDaysToDateStr(dateStr, delta){
   const d = new Date(dateStr+"T00:00:00");
   d.setDate(d.getDate()+delta);
-  return d.toISOString().slice(0,10);
+  return localDateStr(d);
 }
 // Consecutive days (counting back from today) where eaten kcal is recorded
 // and lands within 15% of that day's target — today itself doesn't break
@@ -9065,6 +9711,53 @@ function onReminderSettingsChanged(){
 });
 document.getElementById("enableReminderBtn").addEventListener("click", enableWaterReminder);
 setInterval(checkWaterReminderSchedule, 30000);
+
+// ---------- CLOCK TICK ----------
+// Two things in this app depend on the wall clock rather than on anything
+// the user does, and both were previously only refreshed as a side effect
+// of some other render:
+//   * the intermittent-fasting status (FR-94) -- left on screen it kept
+//     claiming "okno jedzenia" long after the window had actually closed;
+//   * the calendar day itself -- as a PWA this is routinely left open
+//     overnight, and everything keyed by todayStr() (the kcal ring, water
+//     count, "Dzisiejszy Planer") kept showing YESTERDAY until the user
+//     happened to trigger a render.
+// Deliberately cheap and non-disruptive: the fasting status is patched in
+// place (no dashboard rebuild, which would interrupt an in-progress swipe
+// or reset scroll), and the full re-render happens only on the one tick a
+// day where the date actually changes.
+let lastSeenDateStr = todayStr();
+function refreshFastingStatusInPlace(){
+  const status = computeFastingStatus();
+  const headerEl = document.getElementById("fastingStatus");
+  const pdEl = document.querySelector(".pd-fasting-status");
+  // Presence changed (enabled/disabled since the last render) -- the
+  // dashboard has to be rebuilt for the element to appear or disappear.
+  if((!!status) !== (!!pdEl) && (state.theme==="clinic" || state.theme==="clinic_dark")){
+    renderPlannerDashboard();
+  }else if(status && pdEl){
+    pdEl.textContent = status.text;
+    pdEl.classList.toggle("fasting", !status.inWindow);
+  }
+  if(headerEl) renderFastingStatus();
+}
+setInterval(()=>{
+  const now = todayStr();
+  if(now !== lastSeenDateStr){
+    lastSeenDateStr = now;
+    // A new day: water rolls over, "eaten" starts empty, the planner's
+    // "today" moves on. renderHeader() already fans out to the dashboard.
+    renderHeader();
+    renderPlanner();
+    if(document.getElementById("view-progress").classList.contains("active")){
+      trackerViewDate = now;
+      renderTodayTracker();
+    }
+    return;
+  }
+  refreshFastingStatusInPlace();
+  checkFastingNotification();
+}, 60000);
 
 // ---------- WATER NOTIFICATION DIAGNOSTICS ----------
 async function renderWaterActionLog(){

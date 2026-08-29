@@ -1,0 +1,44 @@
+Wersja v113 (2026-08-28)
+
+Dwie poprawki językowo-użytkowe (Web only).
+
+1. Poprawna polska odmiana przy skalowaniu porcji (FR-20/v2).
+
+   Skalowanie dania w Planerze podmieniało dotąd wyłącznie LICZBĘ przy
+   składniku, zostawiając nazwę bez zmian. Efekt: „2 jajka” przy porcji 3×
+   czytało się „6 jajka”, a przy 0,5× „1 jajka” — obie formy niepoprawne
+   po polsku i widoczne na każdej przeskalowanej karcie przepisu.
+
+   Aplikacja miała już pełną tabelę odmian (używa jej spiżarnia i lista
+   zakupów) — skalowanie po prostu z niej nie korzystało. Teraz jest
+   „6 jajek”, „12 jajek”, „6 tortilli”, „9 bananów”.
+
+   Składniki podane w jednostkach („150 g piersi z kurczaka”, „1 łyżeczka
+   oliwy”) zmieniają wyłącznie liczbę — ich treść zostaje nietknięta.
+
+   Świadome ograniczenie: odmiana działa tylko dla liczb całkowitych.
+   Przy ułamku polszczyzna wymaga dopełniacza liczby pojedynczej
+   („0,5 jajka”, „1,5 banana”), a tej formy tabela nie zawiera — pierwsza
+   wersja tej poprawki, odmieniająca też ułamki, produkowała „0,5 jajko” i
+   „1,5 banany”, czyli zamieniała jeden błąd na inny. Przy ułamku zostaje
+   więc oryginalne brzmienie z przepisu, które i tak było poprawne.
+
+2. Przycisk czyszczenia w wyszukiwarce przepisów (FR-2/v7).
+
+   Dla spójności z wyszukiwarką listy zakupów, która dostała taki przycisk
+   przy okazji powstania. Na telefonie opróżnienie pola tekstowego inaczej
+   oznacza zaznacz-wszystko-i-usuń. Przycisk „✕” pojawia się tylko wtedy,
+   gdy coś jest wpisane.
+
+Zweryfikowane na żywo (headless Chromium, w pełni offline): odmiana
+sprawdzona na dziewięciu wzorcach składników przemnożonych przez pięć
+różnych skali; przycisk czyszczenia — ukryty na starcie, widoczny po
+wpisaniu frazy, po kliknięciu czyści pole i przywraca pełną listę.
+
+Techniczne: CACHE_NAME service workera podbity do "dieta-app-v113".
+
+Android: nieprzeniesione — to zdalne środowisko nie ma dostępu do
+api.foojay.io (toolchainy JDK dla Gradle, błąd 403), więc kodu w Kotlinie
+nie da się tu ani skompilować, ani przetestować. Warto sprawdzić przy
+okazji, czy Kotlinowe skalowanie porcji nie ma tego samego problemu z
+odmianą. Odnotowane w android/PARITY.md.

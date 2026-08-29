@@ -1,0 +1,54 @@
+Wersja v107 (2026-08-28)
+
+Kolejna runda „dwie zmiany naraz” (Web only — patrz uwaga o Androidzie na
+końcu).
+
+1. Natywne udostępnianie planu tygodnia — zamknięcie luki, która istniała
+   między wersjami od samego początku tej funkcji. Android od pierwszej
+   wersji miał przycisk „📤 Udostępnij plan”, otwierający systemowy arkusz
+   udostępniania (Messenger, Signal, SMS, e-mail — cokolwiek masz na
+   telefonie). Wersja webowa dostała wtedy tylko WhatsApp i schowek, więc
+   wysłanie planu gdziekolwiek indziej wymagało ręcznego wklejania — mimo
+   że przeglądarki na telefonach potrafią otworzyć dokładnie ten sam
+   systemowy arkusz. Teraz web ma to samo: nowy przycisk „📤 Udostępnij
+   plan tygodnia”, a tam gdzie przeglądarka tego nie wspiera (np. desktop),
+   kopiuje do schowka zamiast być martwym przyciskiem.
+
+   Przy okazji refaktoring: logika „udostępnij natywnie, a jak się nie da,
+   to skopiuj” była dotąd wpisana na sztywno w obsługę jednego przycisku na
+   liście zakupów. Wyjęta do wspólnej funkcji, z której korzystają teraz
+   oba ekrany — zamiast kopiowania tego samego kodu po raz drugi.
+
+2. Cofanie kasowania na liście zakupów — najgorszy przypadek w całej
+   aplikacji, znaleziony podczas przeglądu kodu pod kątem spójności z
+   poprzednią rundą (v106).
+
+   „Usuń odhaczone” kasował pozycje BEZ pytania I BEZ możliwości cofnięcia.
+   Jedno przypadkowe stuknięcie na długiej liście (a realnie zdarzały się
+   listy po 87 pozycji) po cichu niszczyło pracę, bez żadnej drogi powrotu.
+   Teraz nadal działa od razu — pytanie przy takiej porządkowej akcji
+   byłoby uciążliwe — ale pokazuje powiadomienie z liczbą usuniętych
+   pozycji i przyciskiem „Cofnij”.
+
+   „Wyczyść całą listę” zachowuje pytanie (to opcja ostateczna) i
+   dodatkowo dostaje „Cofnij”, które przywraca też oznaczenia „✓ Na liście
+   zakupów” na kartach przepisów — nie tylko samą listę.
+
+   Poprawiony też przypadek brzegowy: „Usuń odhaczone” przy braku
+   odhaczonych pozycji pokazuje teraz komunikat, zamiast udawać, że coś
+   zrobił.
+
+Zweryfikowane na żywo (headless Chromium, w pełni offline), każda ścieżka
+osobno: udostępnianie z działającym arkuszem systemowym (poprawny tytuł i
+treść, schowek nietknięty) i bez niego (kopiowanie + potwierdzenie);
+usunięcie 2 z 3 pozycji z listy (nieodhaczona nietknięta), cofnięcie
+przywracające komplet, przypadek „nic nie odhaczone”, oraz wyczyszczenie
+całej listy z cofnięciem przywracającym również powiązania z przepisami.
+
+Techniczne: CACHE_NAME service workera podbity do "dieta-app-v107".
+
+Android: obie zmiany świadomie NIE przeniesione w tej turze — to zdalne
+środowisko nie ma dostępu do api.foojay.io (repozytorium toolchainów JDK
+dla Gradle, błąd 403), więc kodu w Kotlinie nie da się tu ani
+skompilować, ani przetestować. Punkt 1 i tak dotyczy wyłącznie weba
+(Android miał tę funkcję od początku). Odnotowane w android/PARITY.md.

@@ -1,0 +1,57 @@
+Wersja v110 (2026-08-28)
+
+Runda „dwie zmiany naraz” (Web only — patrz uwaga o Androidzie na końcu).
+
+1. NAPRAWIONY BŁĄD: wyszukiwarka przepisów nie znajdowała dań, jeśli
+   pominąłeś polskie ogonki (FR-2/v6).
+
+   Znaleziony przypadkiem, przy okazji dodawania wyszukiwania na liście
+   zakupów w poprzedniej wersji. Wyszukiwarka przepisów porównywała napisy
+   dosłownie, więc wpisanie „roszponka” dawało ZERO wyników, mimo że w
+   bazie jest „Omlet z awokado, pomidorkami i roszponką”. Potwierdzone
+   pomiarowo na wszystkich 229 przepisach przed poprawką.
+
+   To szczególnie dokuczliwe na telefonie, gdzie każdy ogonek wymaga
+   przytrzymania klawisza — czyli dokładnie wtedy, kiedy ludzie je
+   pomijają. Teraz wyszukiwanie ignoruje ogonki w obie strony, zarówno w
+   nazwie dania, jak i w składnikach, korzystając z mechanizmu, który
+   aplikacja i tak już miała (używanego przy rozpoznawaniu składników).
+
+2. NOWE: podsumowanie odżywcze zaplanowanego tygodnia (FR-100).
+
+   Planer pokazywał sumy kalorii dla pojedynczych dni, ale nic o tygodniu
+   jako całości — więc sprawdzenie „czy tydzień, który właśnie ułożyłem,
+   trzyma się mojego celu?” wymagało ręcznego dodawania siedmiu kart.
+
+   Nowa karta „📊 Zaplanowany tydzień” (nad listą dni) pokazuje średnią
+   liczbę kalorii na dzień, porównanie z celem („w celu” albo o ile
+   odbiegasz), z ilu dni i dań policzona jest ta średnia, oraz średnie
+   dzienne makroskładniki.
+
+   Ważny szczegół: średnia liczona jest po dniach ZAPLANOWANYCH, nie po
+   siedmiu. Tydzień zaplanowany w połowie pokazywałby inaczej średnią
+   dwukrotnie zaniżoną i wyglądał jak głodówka, choć jest po prostu
+   nieskończonym planem. Dlatego karta zawsze podaje, z ilu dni liczy.
+   Podobnie makro: sumowane tylko z dań, które je mają (własne przepisy
+   mogą nie mieć), z podaną liczbą takich dań — żeby częściowy wynik nigdy
+   nie udawał pełnego.
+
+   Karta nie pojawia się wcale, dopóki nic nie jest zaplanowane.
+
+Zweryfikowane na żywo (headless Chromium, w pełni offline): wyszukiwarka
+znajduje teraz przepis zarówno z ogonkami, jak i bez (przed poprawką: 0
+wyników bez ogonków); podsumowanie sprawdzone na pustym tygodniu (nic się
+nie renderuje), na 3 zaplanowanych dniach (średnia po dniach
+zaplanowanych, nie po siedmiu — obie wartości policzone i porównane),
+z uwzględnieniem skali porcji, oraz wizualnie zrzutem ekranu na pełnym
+5-dniowym planie.
+
+Techniczne: CACHE_NAME service workera podbity do "dieta-app-v110".
+Nowa karta używa wyłącznie zmiennych motywu, więc działa we wszystkich 13
+motywach bez osobnych reguł; celowo umieszczona poza pełnoekranową sekcją
+„dziś”, żeby nie ruszać jej starannie wymierzonego układu.
+
+Android: obie zmiany NIE przeniesione — to zdalne środowisko nie ma
+dostępu do api.foojay.io (repozytorium toolchainów JDK dla Gradle, błąd
+403), więc kodu w Kotlinie nie da się tu ani skompilować, ani
+przetestować. Odnotowane w android/PARITY.md.

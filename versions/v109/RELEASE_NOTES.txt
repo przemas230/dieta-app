@@ -1,0 +1,51 @@
+Wersja v109 (2026-08-28)
+
+Kolejna runda „dwie zmiany naraz” (Web only — patrz uwaga o Androidzie na
+końcu).
+
+1. Edycja własnych przepisów (FR-66/v7) — brakująca, ważniejsza niż
+   wygląda funkcja.
+
+   Dotąd własny przepis można było dodać i usunąć, ale NIE poprawić.
+   Literówka w nazwie, zła liczba kalorii albo zapomniany składnik
+   oznaczały usunięcie i wpisanie wszystkiego od nowa — a to nadaje
+   przepisowi NOWY identyfikator. Ponieważ wszystko, co odwołuje się do
+   przepisu, jest kluczowane po identyfikatorze, taka „poprawka” po cichu
+   odłączała: ocenę gwiazdkową i komentarz, całą historię gotowania tego
+   dania oraz zaplanowane sloty w Planerze, które zaczynały wskazywać na
+   nieistniejący przepis.
+
+   Teraz na karcie własnego przepisu jest przycisk „✏️ Edytuj” obok
+   „🗑️ Usuń”. Otwiera ten sam formularz, wypełniony obecnymi wartościami,
+   i zapisuje zmiany zachowując identyfikator — więc oceny, historia i
+   Planer zostają nienaruszone. Planer i lista zakupów od razu pokazują
+   nową nazwę i kalorie.
+
+2. Cofanie dwóch ostatnich akcji kasujących bez zabezpieczenia
+   (FR-28/v2, FR-42/v2) — domknięcie audytu zaczętego w v106 i v107.
+
+   „🗑️ Wyczyść całą spiżarnię” i „Wyczyść całą historię aktywności”
+   zachowują pytanie o potwierdzenie (obie kasują wszystko w swoim
+   zakresie), ale dodatkowo pokazują teraz powiadomienie z przyciskiem
+   „Cofnij”. Po tej rundzie w aplikacji nie ma już akcji kasującej dane,
+   której nie da się cofnąć jednym kliknięciem.
+
+   Przy cofnięciu wyczyszczenia spiżarni do historii aktywności trafia
+   osobny wpis, żeby dziennik odzwierciedlał to, co faktycznie się stało,
+   zamiast zostawiać samo „Wyczyszczono całą spiżarnię”.
+
+Zweryfikowane na żywo (headless Chromium, w pełni offline): przepis z
+oceną 5★, komentarzem, wpisem historii gotowania i zaplanowanym slotem
+został wyedytowany — wszystkie powiązania przetrwały, liczba przepisów nie
+wzrosła, Planer natychmiast pokazał nową nazwę i kalorie; osobno
+sprawdzone, że „➕ Dodaj” po edycji nadal dodaje nowy przepis, a nie
+nadpisuje poprzedni. Dla spiżarni i historii: wyczyszczenie i cofnięcie z
+porównaniem zawartości przed i po (w tym ustawień jednostek, których
+czyszczenie spiżarni celowo nie rusza).
+
+Techniczne: CACHE_NAME service workera podbity do "dieta-app-v109".
+
+Android: obie zmiany NIE przeniesione — to zdalne środowisko nie ma
+dostępu do api.foojay.io (repozytorium toolchainów JDK dla Gradle, błąd
+403), więc kodu w Kotlinie nie da się tu ani skompilować, ani
+przetestować. Odnotowane w android/PARITY.md.
