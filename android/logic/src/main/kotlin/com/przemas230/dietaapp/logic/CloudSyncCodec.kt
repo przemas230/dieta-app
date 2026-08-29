@@ -418,11 +418,11 @@ object CloudSyncCodec {
     }
 
     /** index.html's state.water = {date: "YYYY-MM-DD" (UTC), count}. Decoding ignores a remote count from a different (UTC) day, same "today only" scope as eaten. */
-    fun encodeWater(count: Int): Map<String, Any?> = mapOf("date" to todayUtcDateString(), "count" to count)
+    fun encodeWater(count: Int): Map<String, Any?> = mapOf("date" to todayDateString(), "count" to count)
 
     fun decodeWater(map: Map<*, *>?): Int? {
         if (map == null) return null
-        if (map["date"] as? String != todayUtcDateString()) return null
+        if (map["date"] as? String != todayDateString()) return null
         return numberFrom(map["count"])?.toInt()
     }
 
@@ -585,7 +585,17 @@ object CloudSyncCodec {
     }
 
     /** Public so CloudSyncCoordinator can target today's nested Firestore field path (e.g. "eaten.$today") without duplicating this calculation. */
-    fun todayUtcDateString(): String = LocalDate.now(ZoneOffset.UTC).toString()
+    /**
+     * FR-101 (ported 2026-08-29): renamed from `todayUtcDateString` and
+     * switched to the LOCAL calendar day, because this feeds `state.water`'s
+     * `date` field and the `waterHistory.<date>` path -- both of which
+     * index.html has keyed by the local day since 2026-08-28. While these
+     * two disagreed, a glass of water logged after local midnight landed
+     * under a different key on each platform. The ISO timestamp formatter
+     * above deliberately stays on UTC: that one serialises an INSTANT
+     * (shared byte-for-byte with web's `toISOString()`), not a calendar day.
+     */
+    fun todayDateString(): String = AppDates.todayKey()
 
     /** The full syncable-state document -- what gets pushed to `users/{uid}` with SetOptions.merge(). */
     fun encodeAll(

@@ -1,0 +1,113 @@
+Wersja v116 (2026-08-29)
+========================
+
+Runda z trzech próśb do Planera plus zlikwidowanie wszystkich rozjazdów
+między wersją webową a Androidem, które narosły przez równoległą sesję
+("weź z tej drugiej sesji tutaj zmerguj zmiany żeby nie było rozbieżności,
+tam już nie będę kontynuował tylko tutaj").
+
+1. PRZEBUDOWANY GEST NA KARTACH DAŃ
+   --------------------------------
+   Zgłoszenie: "jedno przesunięcie to zrobione i wtedy podświetla na zielono
+   że gotowe do zjedzenia a drugie takie samo przesunięcie niech skreśla i
+   wyszarza delikatnie jako oznaczenie że zjedzone".
+
+   Odległość przesunięcia przestała cokolwiek wybierać. Gest przechodzi
+   teraz krok po kroku przez cykl życia dania:
+
+     →   nic → 🍳 ZROBIONE   (wpis w historii gotowania + odjęcie składników
+                              ze spiżarni; karta robi się zielona)
+     →   zrobione → 🍴 ZJEDZONE (kalorie doliczone; nazwa przekreślona,
+                              cała karta delikatnie wyszarzona)
+     ←   krok wstecz — oddaje dokładnie to, co krok naprzód zabrał:
+         kalorie przy cofaniu zjedzenia, składniki do spiżarni przy
+         cofaniu zrobienia.
+
+   Gdy w danym kierunku nie ma już dokąd iść, karta mówi to wprost
+   ("✓ już zjedzone" / "— nic do cofnięcia") zamiast przesuwać się bez
+   efektu.
+
+   CZUŁOŚĆ: jeden próg zamiast dwóch i wyraźnie niższy (30 dp zamiast
+   36/105). Skoro jeden krok to jeden krok niezależnie od tego, jak daleko
+   pojedzie palec, nie ma powodu wymagać długiego przeciągnięcia.
+
+   NAPRAWIONE ŁAPANIE GESTU (Web): trzeba było łapać kartę przy krawędzi,
+   bo kod ignorował gest zaczęty na dowolnym przycisku — a znacznik
+   spiżarni ("🏺 0/3 w spiżarni") stał się przyciskiem w ŚRODKU karty.
+   Teraz wyjątkiem jest tylko "✕" (usuń z planu).
+
+2. NAPRAWA: DOLNY PASEK PRZESTAŁ JEŹDZIĆ RAZEM Z DANIEM
+   ----------------------------------------------------
+   Zgłoszenie: "dolny pasek z kartami nie przesuwał się przy przesuwaniu
+   dania, bo teraz rozciąga się tak samo jak to co przesuwam".
+
+   Przesuwana karta wyjeżdżała poza szerokość widoku, przez co strona
+   dostawała poziome przewijanie — a wtedy wszystko zakotwiczone do okna, w
+   tym pływający dolny pasek nawigacji, jechało razem z palcem. Karta jest
+   teraz przycięta do swojego miejsca: przejeżdża pełny dystans, ale nie
+   może poszerzyć niczego wokół siebie.
+
+3. NOWE: GEST TAKŻE NA KARTACH DNI TYGODNIA (FR-104)
+   -------------------------------------------------
+   Ten sam gest działa teraz na wierszach posiłków w kartach dni niżej na
+   ekranie. Żeby oznaczyć wczorajszy obiad, nie trzeba już iść do Postępu.
+
+   Dzień o indeksie N w Planerze (który jest powtarzalnym szablonem
+   tygodniowym) oznacza "ten dzień tygodnia w bieżącym tygodniu" — i to
+   pod tą datą zapisuje się zjedzenie i zrobienie.
+
+4. NOWE: DOWOLNA WIELKOŚĆ PORCJI (FR-105)
+   ---------------------------------------
+   Przytrzymanie karty dania otwiera suwak 0–100% plus cztery gotowe
+   wielkości (¼, ½, ¾, cała porcja), z podglądem kalorii na żywo. 0%
+   oznacza "nic nie zjedzone".
+
+   Połowa porcji zniknęła z gestu właśnie dlatego: gest, który znaczy
+   "jeden krok", nie może jednocześnie znaczyć "62% porcji" bez powrotu do
+   zgadywania odległości. Wielkość porcji jest wartością ciągłą, więc
+   dostała element, który potrafi ją wyrazić.
+
+5. ZLIKWIDOWANE ROZJAZDY WEB → ANDROID
+   ------------------------------------
+   Wszystko, co równoległa sesja zrobiła tylko na webie (bo nie mogła tam
+   skompilować Kotlina), działa teraz też w aplikacji:
+
+   - FR-101 — DATY. To był najpoważniejszy z nich. Android nie tyle nie
+     miał poprawki, co był NIESPÓJNY SAM ZE SOBĄ: osiem miejsc liczyło
+     dzień w UTC, a Planer lokalnie, więc tuż po północy Planer pokazywał
+     już nowy dzień, a licznik wody i kalorii zapisywał do poprzedniego.
+     Wszystko sprowadzone do jednej wspólnej funkcji.
+   - FR-2 — polskie znaki w wyszukiwaniu. Ten sam błąd co na webie, tyle że
+     w CZTERECH miejscach: wyszukiwarka przepisów, podpowiedzi przekąsek,
+     filtr składników i filtr ulubionych. "zolty" znajduje teraz "żółty ser".
+   - FR-20 — odmiana przy skalowaniu porcji. "2 jajka" przy 3× czytało się
+     "6 jajka"; teraz "6 jajek".
+   - FR-99 — wyszukiwarka listy zakupów, z licznikiem "N z M pozycji".
+   - FR-100 — karta "📊 Zaplanowany tydzień" nad listą dni.
+   - FR-98 — kopia zapasowa danych do pliku. Na Androidzie przez systemowy
+     wybór pliku zamiast pobierania, ale FORMAT jest identyczny: kopia
+     zrobiona na telefonie wczytuje się w przeglądarce i odwrotnie.
+   - FR-21/22/26/28 — "Cofnij" po wylosowaniu i wyczyszczeniu dnia, po
+     wyczyszczeniu listy zakupów i po wyczyszczeniu spiżarni.
+
+Weryfikacja
+-----------
+Android: `./gradlew :logic:test :app:assembleDebug` przechodzą, plus
+przeklikane na emulatorze — wszystkie kroki gestu z odczytem realnych liczb
+(0/1480 → zielona karta "Zrobione" → 345/1480 z przekreśleniem → z powrotem),
+gest na karcie Soboty pokazujący ten sam stan co karta u góry, wybór ¼ porcji
+dający 86/1480 kcal, karta podsumowania tygodnia, filtr listy zakupów
+("1 z 13"), oraz pełny obieg kopii zapasowej: zapis pliku 6,3 kB do Downloads
+i jego ponowne wczytanie.
+
+Web: sprawdzona liczbowo czysta logika (te same przejścia stanów i ta sama
+mapa dzień→data co po stronie Kotlina) i kontrola składni skryptu. Strona
+webowa tej rundy NIE była klikana na żywo — rozszerzenie przeglądarkowe nie
+było podłączone.
+
+Czego nie zrobiono: cofanie czyszczenia historii aktywności (FR-42/v2) nie ma
+odpowiednika na Androidzie, bo tam nie ma osobnego przycisku czyszczenia
+historii — jedyne takie wywołania są częścią resetu konta i wylogowania.
+
+Wersje: Android versionCode 86→87, versionName 0.1.85→0.1.86 (APK w
+android/dist zsynchronizowany), Web CACHE_NAME v115→v116.

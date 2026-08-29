@@ -1,71 +1,92 @@
 package com.przemas230.dietaapp.logic
 
 /**
- * FR-103 (2026-08-29): what a horizontal swipe on a "Dzisiejszy Planer" meal
- * card means, as a pure function of how far it travelled -- the exact port
- * of index.html's `pdSwipeAction(dx)`.
+ * FR-103 (2026-08-29, REBUILT the same day after live feedback): what a
+ * horizontal swipe on a Planer meal row means -- the exact port of
+ * index.html's `pdMealStage`/`pdNextStage`.
  *
- * The previous gesture (FR-87/v14) had two outcomes: any right swipe =
- * eaten, any left swipe = not eaten. That carried one bit of information
- * while the Planer actually tracks three separate things (cooked / eaten /
- * how much of it), which is why the user reported it as "coś nie do końca
- * łapię" -- there was no way to say "I made it but haven't eaten it yet",
- * and no way to correct an accidental one either. The DISTANCE now picks
- * the action:
+ * v1 mapped swipe DISTANCE to one of four outcomes (short right = cooked,
+ * long right = eaten, short left = half a portion, long left = reset). The
+ * user tried it and asked for something that follows the dish's own
+ * lifecycle instead: "jedno przesunięcie to zrobione i wtedy podświetla na
+ * zielono że gotowe do zjedzenia a drugie takie samo przesunięcie niech
+ * skreśla i wyszarza delikatnie jako oznaczenie że zjedzone". So the
+ * gesture is now one STEP along a three-state line, and the direction alone
+ * decides which way:
  *
  * ```
- *  ->  short   COOKED   cook-history entry + pantry subtraction
- *  ->  long    EATEN    whole portion
- *  <-  short   HALF     half a portion (half the kcal)
- *  <-  long    RESET    not eaten + undo today's cook entry
+ *   NONE  --swipe right-->  COOKED  --swipe right-->  EATEN
+ *   NONE  <--swipe left--   COOKED  <--swipe left--   EATEN
  * ```
  *
- * Kept here (rather than inline in PlannerScreen) so the thresholds and
- * the four outcomes are unit-testable without Compose, and so the live
- * drag label, the live tint and the release handler physically cannot
- * disagree about what the current drag means.
+ * Forward steps subtract (pantry on COOKED, kcal on EATEN); backward steps
+ * give exactly that back -- "cofnięcie niech cofa odejmowanie zarówno
+ * kalorii tak jak teraz jak i rzeczy do spiżarni". Partial portions moved
+ * out of the gesture entirely and onto a long-press (FR-105), because a
+ * gesture meaning "one step" cannot also mean "62% of a portion" without
+ * going back to guessing distances.
+ *
+ * The stage is DERIVED from the cook history and the eaten record, never
+ * stored: both already existed and are still written by the rest of the app
+ * (the recipe card's own "✅ Zrobione dzisiaj", the Postęp checkbox), so
+ * this stays a view of those two rather than a third source of truth that
+ * could disagree with them.
  */
 object PlannerSwipe {
-    /** Distance (in dp) past which a swipe commits its "short" action. */
-    const val SHORT_DP = 36f
+    /**
+     * How far a drag must travel to count as one step.
+     *
+     * Deliberately small (user: "żeby to przesuwanie było bardziej czułe"):
+     * one step is one step no matter how far the finger goes, so there is no
+     * reason to demand a long drag -- only enough to tell a swipe from a tap.
+     */
+    const val COMMIT_DP = 30f
 
-    /** Distance (in dp) past which a swipe commits its "long" action instead. */
-    const val LONG_DP = 105f
+    /** How far the card is allowed to travel visually before it stops following the finger. */
+    const val MAX_DP = 96f
 
-    /** How far a card is allowed to visually travel -- a bit past LONG_DP so the strongest action still has room to ramp up. */
-    const val MAX_DP = 130f
-
-    enum class Action(val label: String) {
+    enum class Stage(val label: String) {
+        NONE(""),
         COOKED("🍳 Zrobione"),
         EATEN("🍴 Zjedzone"),
-        HALF("½ Zjedzone w połowie"),
-        RESET("↩️ Cofnij wszystko"),
+    }
+
+    private val ORDER = listOf(Stage.NONE, Stage.COOKED, Stage.EATEN)
+
+    /**
+     * One step from [stage] in [direction] (+1 right, -1 left), or null when
+     * there is nowhere further to go that way -- the caller then says
+     * "already eaten" / "nothing to undo" instead of letting the card slide
+     * with no explanation.
+     */
+    fun nextStage(stage: Stage, direction: Int): Stage? {
+        val next = ORDER.indexOf(stage) + if (direction > 0) 1 else -1
+        if (next < 0 || next >= ORDER.size) return null
+        return ORDER[next]
+    }
+
+    /** The stage a meal is currently at, derived from the two records that already track it. */
+    fun stageOf(isEaten: Boolean, isCooked: Boolean): Stage = when {
+        isEaten -> Stage.EATEN
+        isCooked -> Stage.COOKED
+        else -> Stage.NONE
+    }
+
+    /** Whether a drag of [dx] px commits a step, and in which direction (0 = not far enough). */
+    fun directionFor(dx: Float, commitThreshold: Float): Int = when {
+        dx >= commitThreshold -> 1
+        dx <= -commitThreshold -> -1
+        else -> 0
     }
 
     /**
-     * [dx] and the thresholds must be in the SAME unit (px on Android, CSS
-     * px on web) -- the caller converts dp to px once and passes both.
-     * Returns null inside the dead zone, i.e. releasing there does nothing.
+     * 0..1 ramp of how far past the commit threshold the drag has travelled,
+     * for the live background tint -- so the card visibly "locks in" deeper
+     * as the finger keeps going instead of snapping to one flat colour.
      */
-    fun actionFor(dx: Float, shortThreshold: Float, longThreshold: Float): Action? = when {
-        dx >= longThreshold -> Action.EATEN
-        dx >= shortThreshold -> Action.COOKED
-        dx <= -longThreshold -> Action.RESET
-        dx <= -shortThreshold -> Action.HALF
-        else -> null
-    }
-
-    /**
-     * 0..1 ramp of how far INTO the current action's own band the drag has
-     * travelled, for the live background tint -- so a card visibly "locks
-     * in" deeper as the finger keeps going, instead of the colour jumping
-     * between two flat states at the thresholds.
-     */
-    fun intensityFor(dx: Float, action: Action, shortThreshold: Float, longThreshold: Float, maxTravel: Float): Float {
-        val isLong = action == Action.EATEN || action == Action.RESET
-        val base = if (isLong) longThreshold else shortThreshold
-        val span = if (isLong) (maxTravel - longThreshold) else (longThreshold - shortThreshold)
+    fun intensityFor(dx: Float, commitThreshold: Float, maxTravel: Float): Float {
+        val span = maxTravel - commitThreshold
         if (span <= 0f) return 1f
-        return ((kotlin.math.abs(dx) - base) / span).coerceIn(0f, 1f)
+        return ((kotlin.math.abs(dx) - commitThreshold) / span).coerceIn(0f, 1f)
     }
 }

@@ -86,40 +86,24 @@ fun LocalPersistenceCoordinator(
     LaunchedEffect(Unit) {
         val data = withContext(Dispatchers.IO) { LocalStateStore.load(context) }
         if (data != null) {
-            (data["displayName"] as? String)?.let { profileViewModel.setDisplayName(it) }
-            CloudSyncCodec.decodeProfile(data["profile"] as? Map<*, *>)?.let { profileViewModel.save(it) }
-            CloudSyncCodec.decodePantry(data["pantry"] as? Map<*, *>)?.let { pantryViewModel.replaceAll(it) }
-            CloudSyncCodec.decodePantryHidden(data["pantryHidden"] as? Map<*, *>)?.let { pantryViewModel.replaceHidden(it) }
-            (data["theme"] as? String)?.let { themeViewModel.setTheme(it) }
-            (data["uiScale"] as? Number)?.toDouble()?.let { uiScaleViewModel.setScale(it) }
-            (data["swipeRatingStyle"] as? String)?.let { raw ->
-                SwipeRatingStyle.entries.find { it.name == raw }?.let { swipeRatingStyleViewModel.setStyle(it) }
-            }
-            CloudSyncCodec.decodeFavIngredients(data["favIngredients"] as? Map<*, *>)?.let { favoriteIngredientsViewModel.replaceAll(it) }
-            CloudSyncCodec.decodeRecipeRating(data["recipeRating"] as? Map<*, *>)?.let { recipeViewModel.replaceRatings(it) }
-            CloudSyncCodec.decodeCooked(data["cooked"] as? Map<*, *>)?.let { recipeViewModel.replaceCooked(it) }
-            CloudSyncCodec.decodeReviews(data["recipeReviews"] as? Map<*, *>)?.let { recipeViewModel.replaceReviews(it) }
-            CloudSyncCodec.decodeMyRecipes(data["myRecipes"] as? List<*>)?.let { recipeViewModel.replaceMyRecipes(it) }
-            CloudSyncCodec.decodeFavIngredients(data["favorites"] as? Map<*, *>)?.let { recipeViewModel.replaceFavoriteRecipes(it) }
-            (data["communityRecipesEnabled"] as? Boolean)?.let { recipeViewModel.setCommunityRecipesEnabled(it) }
-            (data["remainingKcalFillEnabled"] as? Boolean)?.let { remainingKcalFillViewModel.setEnabled(it) }
-            (data["fastingEnabled"] as? Boolean)?.let { fastingViewModel.setEnabled(it) }
-            (data["fastingWindowStart"] as? Number)?.toInt()?.let { fastingViewModel.setWindowStart(it) }
-            (data["fastingWindowEnd"] as? Number)?.toInt()?.let { fastingViewModel.setWindowEnd(it) }
-            CloudSyncCodec.decodeShopping(data["shopping"] as? Map<*, *>)?.let { shoppingViewModel.replaceAll(it) }
-            CloudSyncCodec.decodeWeekPlan(
-                data["planner"] as? Map<*, *>,
-                data["plannerScale"] as? Map<*, *>,
-                data["plannerLeftover"] as? Map<*, *>,
-            )?.let { plannerViewModel.replaceAll(it) }
-            CloudSyncCodec.decodeDateIntMap(data["waterHistory"] as? Map<*, *>)?.let { waterViewModel.replaceHistory(it) }
-            // FR-83: eatenViewModel now derives kcalHistory straight from the
-            // full per-date map it restores here, so there's no separate
-            // "kcalHistory" field left to load first.
-            CloudSyncCodec.decodeEaten(data["eaten"] as? Map<*, *>)?.let { eatenViewModel.replaceAll(it) }
-            CloudSyncCodec.decodeWater(data["water"] as? Map<*, *>)?.let { waterViewModel.setCount(it) }
-            CloudSyncCodec.decodeWeights(data["weights"] as? List<*>)?.let { weightViewModel.replaceAll(it) }
-            CloudSyncCodec.decodeActivityLog(data["activityLog"] as? List<*>)?.let { activityLogViewModel.replaceAll(it) }
+            applyLocalSnapshot(
+                data = data,
+                profileViewModel = profileViewModel,
+                pantryViewModel = pantryViewModel,
+                themeViewModel = themeViewModel,
+                uiScaleViewModel = uiScaleViewModel,
+                swipeRatingStyleViewModel = swipeRatingStyleViewModel,
+                favoriteIngredientsViewModel = favoriteIngredientsViewModel,
+                recipeViewModel = recipeViewModel,
+                shoppingViewModel = shoppingViewModel,
+                plannerViewModel = plannerViewModel,
+                eatenViewModel = eatenViewModel,
+                waterViewModel = waterViewModel,
+                weightViewModel = weightViewModel,
+                activityLogViewModel = activityLogViewModel,
+                remainingKcalFillViewModel = remainingKcalFillViewModel,
+                fastingViewModel = fastingViewModel,
+            )
         }
         initialLoadDone = true
     }
@@ -167,4 +151,68 @@ fun LocalPersistenceCoordinator(
         )
         withContext(Dispatchers.IO) { LocalStateStore.save(context, data) }
     }
+}
+
+/**
+ * FR-98 (ported to Android 2026-08-29): applies one saved snapshot onto
+ * every ViewModel.
+ *
+ * Extracted from LocalPersistenceCoordinator's own startup effect so the
+ * backup IMPORT can reuse the exact same path. Two implementations of
+ * "restore everything from a map" would be two places to forget a field the
+ * next time one is added -- and a backup that silently skips a field is
+ * worse than no backup, because it looks like it worked.
+ */
+internal fun applyLocalSnapshot(
+    data: Map<String, Any?>,
+    profileViewModel: ProfileViewModel,
+    pantryViewModel: PantryViewModel,
+    themeViewModel: ThemeViewModel,
+    uiScaleViewModel: UiScaleViewModel,
+    swipeRatingStyleViewModel: SwipeRatingStyleViewModel,
+    favoriteIngredientsViewModel: FavoriteIngredientsViewModel,
+    recipeViewModel: RecipeViewModel,
+    shoppingViewModel: ShoppingViewModel,
+    plannerViewModel: PlannerViewModel,
+    eatenViewModel: EatenViewModel,
+    waterViewModel: WaterViewModel,
+    weightViewModel: WeightViewModel,
+    activityLogViewModel: ActivityLogViewModel,
+    remainingKcalFillViewModel: RemainingKcalFillViewModel,
+    fastingViewModel: FastingViewModel,
+) {
+            (data["displayName"] as? String)?.let { profileViewModel.setDisplayName(it) }
+            CloudSyncCodec.decodeProfile(data["profile"] as? Map<*, *>)?.let { profileViewModel.save(it) }
+            CloudSyncCodec.decodePantry(data["pantry"] as? Map<*, *>)?.let { pantryViewModel.replaceAll(it) }
+            CloudSyncCodec.decodePantryHidden(data["pantryHidden"] as? Map<*, *>)?.let { pantryViewModel.replaceHidden(it) }
+            (data["theme"] as? String)?.let { themeViewModel.setTheme(it) }
+            (data["uiScale"] as? Number)?.toDouble()?.let { uiScaleViewModel.setScale(it) }
+            (data["swipeRatingStyle"] as? String)?.let { raw ->
+                SwipeRatingStyle.entries.find { it.name == raw }?.let { swipeRatingStyleViewModel.setStyle(it) }
+            }
+            CloudSyncCodec.decodeFavIngredients(data["favIngredients"] as? Map<*, *>)?.let { favoriteIngredientsViewModel.replaceAll(it) }
+            CloudSyncCodec.decodeRecipeRating(data["recipeRating"] as? Map<*, *>)?.let { recipeViewModel.replaceRatings(it) }
+            CloudSyncCodec.decodeCooked(data["cooked"] as? Map<*, *>)?.let { recipeViewModel.replaceCooked(it) }
+            CloudSyncCodec.decodeReviews(data["recipeReviews"] as? Map<*, *>)?.let { recipeViewModel.replaceReviews(it) }
+            CloudSyncCodec.decodeMyRecipes(data["myRecipes"] as? List<*>)?.let { recipeViewModel.replaceMyRecipes(it) }
+            CloudSyncCodec.decodeFavIngredients(data["favorites"] as? Map<*, *>)?.let { recipeViewModel.replaceFavoriteRecipes(it) }
+            (data["communityRecipesEnabled"] as? Boolean)?.let { recipeViewModel.setCommunityRecipesEnabled(it) }
+            (data["remainingKcalFillEnabled"] as? Boolean)?.let { remainingKcalFillViewModel.setEnabled(it) }
+            (data["fastingEnabled"] as? Boolean)?.let { fastingViewModel.setEnabled(it) }
+            (data["fastingWindowStart"] as? Number)?.toInt()?.let { fastingViewModel.setWindowStart(it) }
+            (data["fastingWindowEnd"] as? Number)?.toInt()?.let { fastingViewModel.setWindowEnd(it) }
+            CloudSyncCodec.decodeShopping(data["shopping"] as? Map<*, *>)?.let { shoppingViewModel.replaceAll(it) }
+            CloudSyncCodec.decodeWeekPlan(
+                data["planner"] as? Map<*, *>,
+                data["plannerScale"] as? Map<*, *>,
+                data["plannerLeftover"] as? Map<*, *>,
+            )?.let { plannerViewModel.replaceAll(it) }
+            CloudSyncCodec.decodeDateIntMap(data["waterHistory"] as? Map<*, *>)?.let { waterViewModel.replaceHistory(it) }
+            // FR-83: eatenViewModel now derives kcalHistory straight from the
+            // full per-date map it restores here, so there's no separate
+            // "kcalHistory" field left to load first.
+            CloudSyncCodec.decodeEaten(data["eaten"] as? Map<*, *>)?.let { eatenViewModel.replaceAll(it) }
+            CloudSyncCodec.decodeWater(data["water"] as? Map<*, *>)?.let { waterViewModel.setCount(it) }
+            CloudSyncCodec.decodeWeights(data["weights"] as? List<*>)?.let { weightViewModel.replaceAll(it) }
+            CloudSyncCodec.decodeActivityLog(data["activityLog"] as? List<*>)?.let { activityLogViewModel.replaceAll(it) }
 }

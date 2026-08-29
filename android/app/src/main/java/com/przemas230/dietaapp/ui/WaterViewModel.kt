@@ -7,6 +7,7 @@ import java.time.ZoneOffset
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.przemas230.dietaapp.logic.AppDates
 
 /** FR-70: today's hydration count (0-8 glasses). Local-only for now, same as the other local-only ViewModels -- see android/PARITY.md. */
 class WaterViewModel : ViewModel() {
@@ -37,7 +38,7 @@ class WaterViewModel : ViewModel() {
     }
 
     private fun recordTodayInHistory() {
-        val today = LocalDate.now(ZoneOffset.UTC).toString()
+        val today = AppDates.todayKey()
         _history.value = _history.value + (today to _count.value)
     }
 }

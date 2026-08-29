@@ -124,6 +124,7 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import com.przemas230.dietaapp.logic.PolishText
 
 /**
  * Requested 2026-08-26 ("czcionka podoba się to dla mnie i nie podoba się
@@ -512,8 +513,9 @@ private fun IngredientSearchDialog(
 ) {
     var draft by remember { mutableStateOf(currentTerm) }
     val filtered = remember(draft, ingredientNames) {
-        val query = draft.trim().lowercase()
-        if (query.isBlank()) ingredientNames else ingredientNames.filter { it.lowercase().contains(query) }
+        // FR-2/v6 (ported 2026-08-29): diacritics-insensitive.
+        val query = PolishText.searchKey(draft.trim())
+        if (query.isBlank()) ingredientNames else ingredientNames.filter { PolishText.searchKey(it).contains(query) }
     }
     Dialog(onDismissRequest = onDismiss) {
         Card(modifier = Modifier.fillMaxWidth()) {

@@ -169,6 +169,8 @@ import kotlinx.coroutines.tasks.await
 import java.util.Calendar
 import kotlin.math.max
 import kotlin.math.roundToInt
+import com.przemas230.dietaapp.logic.PolishText
+import com.przemas230.dietaapp.ui.applyLocalSnapshot
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -868,7 +870,21 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                 )
             }
             composable(Screen.Shopping.route) {
-                ShoppingScreen(viewModel = shoppingViewModel, plannerViewModel = plannerViewModel, pantryViewModel = pantryViewModel)
+                ShoppingScreen(
+                    viewModel = shoppingViewModel,
+                    plannerViewModel = plannerViewModel,
+                    pantryViewModel = pantryViewModel,
+                    onShowUndoSnackbar = { message, actionLabel, onUndo ->
+                        snackbarScope.launch {
+                            val result = snackbarHostState.showSnackbar(
+                                message = message,
+                                actionLabel = actionLabel,
+                                duration = SnackbarDuration.Long,
+                            )
+                            if (result == SnackbarResult.ActionPerformed) onUndo()
+                        }
+                    },
+                )
             }
             composable(Screen.Planner.route) {
                 PlannerScreen(
@@ -887,6 +903,12 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     // (short left swipe), so the callback carries how much
                     // was eaten, not just whether it was.
                     onSetEaten = { cat, eaten, portion, kcal, name -> eatenViewModel.setEaten(cat, eaten, kcal, name, portion) },
+                    // FR-104/FR-105: the week's day cards and the portion
+                    // picker act on a specific day, not necessarily today.
+                    eatenEntriesForDate = { dateKey -> eatenViewModel.entriesForDate(dateKey) },
+                    onSetEatenOnDate = { dateKey, cat, eaten, portion, kcal, name ->
+                        eatenViewModel.setEatenOnDate(dateKey, cat, eaten, kcal, name, portion)
+                    },
                     remainingKcalFillEnabled = remainingKcalFillEnabled,
                     fastingEnabled = fastingEnabled,
                     fastingWindowStart = fastingWindowStart,
@@ -920,7 +942,21 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                 )
             }
             composable(Screen.Pantry.route) {
-                PantryScreen(viewModel = pantryViewModel, allRecipes = allRecipes, activityLogViewModel = activityLogViewModel)
+                PantryScreen(
+                    viewModel = pantryViewModel,
+                    allRecipes = allRecipes,
+                    activityLogViewModel = activityLogViewModel,
+                    onShowUndoSnackbar = { message, actionLabel, onUndo ->
+                        snackbarScope.launch {
+                            val result = snackbarHostState.showSnackbar(
+                                message = message,
+                                actionLabel = actionLabel,
+                                duration = SnackbarDuration.Long,
+                            )
+                            if (result == SnackbarResult.ActionPerformed) onUndo()
+                        }
+                    },
+                )
             }
             composable(Screen.Settings.route) {
                 SettingsScreen(
@@ -952,6 +988,32 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     recipeModerationViewModel = recipeModerationViewModel,
                     remainingKcalFillViewModel = remainingKcalFillViewModel,
                     fastingViewModel = fastingViewModel,
+                    // FR-98: MainActivity already hoists every ViewModel and
+                    // owns applyLocalSnapshot (shared with the startup restore
+                    // in LocalPersistenceCoordinator), so restoring a backup
+                    // goes through exactly the same path a normal app launch
+                    // does -- no second "put everything back" implementation
+                    // that could quietly miss a field.
+                    onImportBackup = { data ->
+                        applyLocalSnapshot(
+                            data = data,
+                            profileViewModel = profileViewModel,
+                            pantryViewModel = pantryViewModel,
+                            themeViewModel = themeViewModel,
+                            uiScaleViewModel = uiScaleViewModel,
+                            swipeRatingStyleViewModel = swipeRatingStyleViewModel,
+                            favoriteIngredientsViewModel = favoriteIngredientsViewModel,
+                            recipeViewModel = recipeViewModel,
+                            shoppingViewModel = shoppingViewModel,
+                            plannerViewModel = plannerViewModel,
+                            eatenViewModel = eatenViewModel,
+                            waterViewModel = waterViewModel,
+                            weightViewModel = weightViewModel,
+                            activityLogViewModel = activityLogViewModel,
+                            remainingKcalFillViewModel = remainingKcalFillViewModel,
+                            fastingViewModel = fastingViewModel,
+                        )
+                    },
                     onClearLocalData = {
                         // FR-79: "wyczyść dane lokalne". The on-disk cloud-sync
                         // baseline is cleared right away (harmless regardless of
@@ -1456,13 +1518,16 @@ private fun QuickAddSnackDialog(onDismiss: () -> Unit, onAdd: (name: String, kca
         }
     }
     val suggestions = remember(name) {
-        val q = name.trim().lowercase()
+        // FR-2/v6 (ported 2026-08-29): typing "jogurt naturalny" without
+        // the diacritics it doesn't have is fine, but "zurek" for "żurek"
+        // used to find nothing.
+        val q = PolishText.searchKey(name.trim())
         if (q.length < 2) {
             emptyList()
         } else {
             val names = SnackNutritionDb.TABLE.keys
-            val starts = names.filter { it.startsWith(q) }
-            val includes = names.filter { !it.startsWith(q) && it.contains(q) }
+            val starts = names.filter { PolishText.searchKey(it).startsWith(q) }
+            val includes = names.filter { !PolishText.searchKey(it).startsWith(q) && PolishText.searchKey(it).contains(q) }
             (starts + includes).take(8)
         }
     }

@@ -12,7 +12,14 @@ data class PluralForms(val one: String, val few: String, val many: String)
  * drift between the two versions.
  */
 object PantryDisplay {
-    private val PANTRY_PLURAL_FORMS: Map<String, PluralForms> = mapOf(
+    /**
+     * FR-20/v2 (ported 2026-08-29): no longer private. PlannerOperations'
+     * ingredient scaling needs the same table -- it used to swap only the
+     * NUMBER, so "2 jajka" at 3× read "6 jajka" and at 0.5× "1 jajka",
+     * both wrong in Polish and visible on every scaled recipe card. The
+     * table was already here; it simply wasn't reachable from there.
+     */
+    val PANTRY_PLURAL_FORMS: Map<String, PluralForms> = mapOf(
         "ananas" to PluralForms("ananas", "ananasy", "ananasów"),
         "awokado" to PluralForms("awokado", "awokado", "awokado"),
         "banan" to PluralForms("banan", "banany", "bananów"),

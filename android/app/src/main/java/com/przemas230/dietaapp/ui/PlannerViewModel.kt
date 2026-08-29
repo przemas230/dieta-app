@@ -82,6 +82,16 @@ class PlannerViewModel(application: Application) : AndroidViewModel(application)
         _weekPlan.value = PlannerOperations.clearDay(_weekPlan.value, day)
     }
 
+    /**
+     * FR-21/v2 + FR-22/v2: puts one day back exactly as it was, for the
+     * "Cofnij" after randomising or clearing it. A whole-day replace rather
+     * than replaying per-slot writes, so scale and leftover flags come back
+     * too instead of only the recipe ids.
+     */
+    fun replaceDay(day: Int, meals: Map<String, com.przemas230.dietaapp.data.PlannedMeal>) {
+        _weekPlan.value = _weekPlan.value + (day to meals)
+    }
+
     /** "🔁 Losuj inne danie" for one slot. */
     fun regenerateSlot(day: Int, cat: String, profile: Profile) {
         val macroTargets = ProfileCalculations.calcMacroTargets(profile)

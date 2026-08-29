@@ -77,7 +77,16 @@ import kotlin.math.roundToInt
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityLogViewModel: ActivityLogViewModel) {
+fun PantryScreen(
+    viewModel: PantryViewModel,
+    allRecipes: List<Recipe>,
+    activityLogViewModel: ActivityLogViewModel,
+    // FR-21/22/26/28/42 v2 (ported to Android 2026-08-29): destructive
+    // "wyczyść/losuj" actions offer a Cofnij, the way the web version has
+    // since 2026-08-28. MainActivity owns the SnackbarHostState (same
+    // hoisting pattern PlannerScreen already uses), this just asks for one.
+    onShowUndoSnackbar: (message: String, actionLabel: String, onUndo: () -> Unit) -> Unit = { _, _, _ -> },
+) {
     val items by viewModel.items.collectAsState()
     // FR-102: canonical names the user deleted for good -- see
     // PantryOperations.visibleTileNames for why a separate set is needed
@@ -299,9 +308,17 @@ fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityL
             text = { Text("Usunie śledzenie wszystkich produktów i przypraw. Własne kafelki i zmienione kategorie/jednostki zostają.") },
             confirmButton = {
                 TextButton(onClick = {
+                    // FR-28/v2: snapshot BEFORE clearing, so "Cofnij" puts
+                    // back the real quantities rather than re-adding empty
+                    // tiles. Cheap -- the pantry is a small in-memory map.
+                    val before = items
                     viewModel.replaceAll(emptyMap())
                     activityLogViewModel.log("pantry_delete", "Wyczyszczono całą spiżarnię")
                     showClearAllConfirm = false
+                    onShowUndoSnackbar("Wyczyszczono spiżarnię (${before.size})", "Cofnij") {
+                        viewModel.replaceAll(before)
+                        activityLogViewModel.log("pantry_add", "Cofnięto wyczyszczenie spiżarni")
+                    }
                 }) { Text("Wyczyść") }
             },
             dismissButton = {

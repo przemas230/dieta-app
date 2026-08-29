@@ -64,12 +64,15 @@ object RecipeBrowsing {
             if (category == "sniadania") recipe.cat == "sniadania" || recipe.cat == "drugie"
             else recipe.cat == category
         }
-        val term = searchTerm.trim().lowercase()
+        // FR-2/v6 (ported 2026-08-29): diacritics-insensitive, so "zolty"
+        // finds "żółty ser". Folded once here rather than per candidate --
+        // this runs over the whole recipe list on every keystroke.
+        val term = PolishText.searchKey(searchTerm.trim())
         return all.filter { recipe ->
             matchesCategory(recipe) &&
                 (term.isEmpty() ||
-                    recipe.name.lowercase().contains(term) ||
-                    recipe.ingredients.any { it.lowercase().contains(term) }) &&
+                    PolishText.searchKey(recipe.name).contains(term) ||
+                    recipe.ingredients.any { PolishText.searchKey(it).contains(term) }) &&
                 (!glutenFree || isGlutenFree(recipe)) &&
                 (!lactoseFree || isLactoseFree(recipe))
         }

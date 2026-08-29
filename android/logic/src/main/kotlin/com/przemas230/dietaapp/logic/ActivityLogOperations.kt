@@ -13,7 +13,7 @@ object ActivityLogOperations {
     fun filterByDateRange(entries: List<ActivityLogEntry>, fromDateStr: String?, toDateStr: String?): List<ActivityLogEntry> {
         if (fromDateStr.isNullOrEmpty() && toDateStr.isNullOrEmpty()) return entries
         return entries.filter { entry ->
-            val entryDate = java.time.Instant.ofEpochMilli(entry.tsEpochMillis).atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
+            val entryDate = AppDates.dateKey(entry.tsEpochMillis)
             val afterFrom = fromDateStr.isNullOrEmpty() || entryDate >= fromDateStr
             val beforeTo = toDateStr.isNullOrEmpty() || entryDate <= toDateStr
             afterFrom && beforeTo

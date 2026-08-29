@@ -106,15 +106,17 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-92 | Udostępnianie / eksport planu tygodnia | ✅ v2 (2026-08-28): dodane „📤 Udostępnij plan tygodnia” (`navigator.share`) — **web dogonił Androida, który miał natywny arkusz od v1**; luka przeoczona przy v1, web miał tylko WhatsApp+schowek. Fallback na schowek tam, gdzie API niedostępne. Zweryfikowane na żywo obie ścieżki | ✅ v1 (2026-08-26), zweryfikowane na emulatorze: „📤 Udostępnij plan” + „📋 Kopiuj”, kliknięcie „Kopiuj” pokazało Toast „Plan tygodnia skopiowany do schowka” — `PlannerOperations.buildWeekPlanText`. Bez zmian w v2 (Android był tu stroną wzorcową) |
 | FR-93 | Podpowiedzi zamienników składników w spiżarni | ✅ v1 (2026-08-26): „🔁 Masz w spiżarni (ta sama kategoria): …” dla brakujących składników w oknie „sprawdź co masz” | ✅ v1 (2026-08-26), zweryfikowane na emulatorze: dodano „cebula” (Warzywa) do spiżarni, `PantryCheckDialog` pokazał podpowiedź dla „pęczek szczypiorku” i „1 pomidor” (też Warzywa), brak podpowiedzi dla „3 jajka”/chleba (inna/brak kategorii) — dokładnie zgodnie z kryteriami |
 | FR-94 | Śledzenie okna postu przerywanego (intermittent fasting) | ✅ v5 (2026-08-28): dodane POWIADOMIENIA o otwarciu/zamknięciu okna jedzenia (osobny, domyślnie wyłączony przełącznik; prosi o zgodę i cofa się przy odmowie; 10-minutowe okno tolerancji; ta sama granica nigdy dwa razy). Logika decyzyjna wydzielona do czystej `fastingNotificationDue()`, przetestowana na 14 przypadkach. ✅ v3 (2026-08-28): opcja w Ustawieniach, status „🍽️ Okno jedzenia…”/„⏳ Okno postu…” pod podsumowaniem kcal na ekranie „Dziś”, lokalny `state.fasting` w `SYNCED_STATE_KEYS`. **v1 miał realny bug, tego samego typu co Android's v1** — status renderował się do `#fastingStatus`, ale ten element leży wewnątrz `.header-collapsible`, którą CSS Klinika/Klinika (noc) chowa całkowicie, a Klinika jest domyślnym motywem webowej appki od FR-87/v8, więc status nigdy nie był widoczny w praktyce; znaleziony dopiero podczas sesji uruchamiającej `index.html` na żywo (headless Chromium) do sprawdzenia całej nocnej rundy FR-90–97 (v1 był zweryfikowany tylko kompilacją/składniowo). Naprawione tym samym wzorcem co Android: logika wydzielona do `computeFastingStatus()`, doszła też do `renderPlannerDashboard()` pod „Cześć, {imię}!”, nowy styl `.pd-fasting-status` dopasowany do jasnej karty Klinika (w tym wariantów Ocean/Terakota). Zweryfikowane na żywo zrzutami ekranu obu stanów + regresją na motywie nie-Klinika. CACHE_NAME→v104, `versions/v104/`. | ✅ v2 (2026-08-26): **v1 miał realny bug** — status był podpięty WYŁĄCZNIE do `HeaderKcalPanel`, które nie renderuje się `if (!isClinicHeader)`, a Klinika to domyślny motyw od FR-87/v10, więc status nigdy się nie pokazywał w praktyce; naprawione tym samym wzorcem co FR-96 (`fastingEnabled`/`fastingWindowStart`/`fastingWindowEnd` doprowadzone do `PlannerDashboard`), zweryfikowane WIZUALNIE na emulatorze — „⏳ Okno postu — jedzenie od 12:00” faktycznie widoczne. Lokalne-tylko (`FastingViewModel`+`LocalPersistenceCoordinator`, nie `CloudSyncCoordinator`), świadoma asymetria z web (patrz FR-94.md Uwagi). `versionCode` 84→85, `versionName` 0.1.83→0.1.84 |
-| FR-101 | Dni kalendarzowe liczone lokalnie, nie w UTC | ✅ v1 (2026-08-28): **najpoważniejszy błąd znaleziony w tej sesji** — `toISOString()` liczyło daty w UTC, a Polska to UTC+1/+2: `todayStr()` zwracało WCZORAJ między północą a 01:00/02:00, a `addDaysToDateStr()` było przesunięte o dzień ZAWSZE (strzałka „poprzedni dzień” 28.08→26.08, „następny” nie działała wcale). Naprawione w 3 funkcjach `index.html` + `todayStr()` w `sw.js`. Zweryfikowane w 5 strefach czasowych + realnym klikaniem strzałek | ❌ **BŁĄD POTWIERDZONY, NIENAPRAWIONY** — wbrew pierwotnemu przypuszczeniu Android nie używa domyślnego `LocalDate.now()`, tylko JAWNIE wymusza `ZoneOffset.UTC` w 8 miejscach; do tego NIESPÓJNIE, bo `PlannerScreen` liczy lokalnie — więc tuż po północy Planer pokazuje nowy dzień, a licznik kalorii/wody zapisuje do poprzedniego. Dokładne lokalizacje i plan naprawy w `Functional requirements/FR-101.md` oraz w logu niżej |
+| FR-101 | Dni kalendarzowe liczone lokalnie, nie w UTC | ✅ v1 (2026-08-28): **najpoważniejszy błąd znaleziony w tej sesji** — `toISOString()` liczyło daty w UTC, a Polska to UTC+1/+2: `todayStr()` zwracało WCZORAJ między północą a 01:00/02:00, a `addDaysToDateStr()` było przesunięte o dzień ZAWSZE (strzałka „poprzedni dzień” 28.08→26.08, „następny” nie działała wcale). Naprawione w 3 funkcjach `index.html` + `todayStr()` w `sw.js`. Zweryfikowane w 5 strefach czasowych + realnym klikaniem strzałek | ✅ v2 (2026-08-29): **NAPRAWIONE**. Osiem miejsc z wymuszonym `ZoneOffset.UTC` (WaterViewModel, WeightViewModel, EatenViewModel.todayUtc, PostepScreen ×2, WaterNotificationStore ×2, ActivityLogOperations, CloudSyncCodec.todayUtcDateString) sprowadzone do JEDNEJ funkcji `AppDates` liczącej dzień lokalnie. Serializacja znaczników czasu (ISO `…Z`) celowo zostaje w UTC — to chwila, nie dzień kalendarzowy. Rozjazd z PlannerScreen (który liczył lokalnie) zlikwidowany
 | FR-95 | Wyszukiwanie AI (Gemini) na kartach przepisów + klik tytułu tylko na rozwiniętej karcie | ✅ v2 (2026-08-28): trzeci przycisk „✨ Gemini” obok Google/YouTube; klik tytułu aktywny wyłącznie gdy karta rozwinięta. **v1 otwierał gemini.google.com/app, który tylko WYPEŁNIA pole czatu bez wysyłki** — zgłoszone przez użytkownika po realnym użyciu; naprawione przełączeniem na Google Search „AI Mode” (`udm=50`, ten sam model, ale strona wyników odpowiada od razu). Zweryfikowane na żywo (headless Chromium, przechwycone `window.open`) | ⏳ v2 (2026-08-28): ten sam URL przełączony w `RecipeListScreen.kt` — **niezweryfikowane kompilacją w tej sesji** (środowisko zdalne, `:app:compileDebugKotlin` blokowane przez 403 z `api.foojay.io` przy pobieraniu toolchainu JDK; zmiana jednoliniowa/mechaniczna, czeka na kompilację w Android Studio lub lokalnej sesji z pełnym dostępem do sieci). v1 (2026-08-26) było zweryfikowane na emulatorze: przycisk „✨ Gemini” obecny; klik tytułu na ZWINIĘTEJ karcie nie zmienił `mCurrentFocus` (zostało w appce), na ROZWINIĘTEJ otworzył `com.android.chrome` — oba warunki potwierdzone |
 | FR-96 | Wypełnianie kolorem kafelka „Pozostało” w Planerze | ✅ v1 (2026-08-26): opt-in w Ustawieniach → Wygląd, pasek proporcjonalny do zjedzonych kcal na kafelku POZOSTAŁO (motyw Klinika), `state.remainingKcalFill` w `SYNCED_STATE_KEYS` | ✅ v1 (2026-08-26), zweryfikowane na emulatorze: po włączeniu i zjedzeniu 330/1480 kcal kafelek pokazał jasnozielony pasek od lewej ≈22% szerokości, zgodnie z proporcją. Lokalne-tylko (`RemainingKcalFillViewModel`, nie `CloudSyncCoordinator`), świadoma asymetria z web |
 | FR-97 | Znacznik stanu spiżarni na kartach „Dzisiejszy Planer” | ✅ v2 (2026-08-28): znacznik jest teraz KLIKALNY — otwiera od razu okno „sprawdź co masz” (FR-16) dla tego dania, zamiast wymagać drogi przez podgląd przepisu. `<span>`→`<button>` z resetem stylu + kropkowane podkreślenie (konwencja jak `.recipe-title`). Zweryfikowane na żywo (headless Chromium): znacznik otwiera spiżarnię, reszta karty nadal podgląd przepisu | ⏳ v1 (2026-08-26), zweryfikowane na emulatorze: dodany przepis pokazał „🏺 0/3 w spiżarni” od razu po dodaniu, wykorzystuje istniejące `pantryMatch`. **v2 (klikalność) NIE przeniesiona** — jw. |
-| FR-98 | Kopia zapasowa danych do pliku (eksport i import) | ✅ v1 (2026-08-28): Ustawienia → Konto, eksport wszystkich danych (`SYNCED_STATE_KEYS`) do pliku JSON z datą w nazwie + import zastępujący dane po potwierdzeniu; odrzuca plik obcy/uszkodzony/z nowszej wersji formatu bez ruszania danych. Zweryfikowane na żywo (realne pobranie pliku → wyczyszczenie → import → porównanie pól) | ❌ nieprzeniesione — środowisko tej sesji nie kompiluje Kotlina (403 z `api.foojay.io`). **Nie jest to przepisanie 1:1**: Android potrzebuje `ACTION_CREATE_DOCUMENT`/`ACTION_OPEN_DOCUMENT` (Storage Access Framework) zamiast blobu i linku `download` — osobny kawałek pracy, nie port |
-| FR-99 | Wyszukiwanie na liście zakupów | ✅ v1 (2026-08-28): pole filtrujące nad listą, niewrażliwe na polskie znaki („zolty” → „żółty ser”), wspólne dla widoku listy i kafelków; licznik „N z M pozycji”, przycisk „✕”; filtr NIE wpływa na udostępnianie ani kasowanie. Zweryfikowane na żywo, 7 przypadków | ❌ nieprzeniesione — jw. (403 z `api.foojay.io`) |
-| FR-100 | Podsumowanie odżywcze zaplanowanego tygodnia | ✅ v1 (2026-08-28): karta „📊 Zaplanowany tydzień” nad listą dni — średnia kcal/dzień (po dniach ZAPLANOWANYCH, nie po 7), porównanie z celem, liczba dni i dań, średnie makro; nie renderuje się przy pustym tygodniu. Zweryfikowane na żywo + zrzut ekranu | ❌ nieprzeniesione — środowisko tej sesji nie kompiluje Kotlina (403 z `api.foojay.io`) |
+| FR-98 | Kopia zapasowa danych do pliku (eksport i import) | ✅ v1 (2026-08-28): Ustawienia → Konto, eksport wszystkich danych (`SYNCED_STATE_KEYS`) do pliku JSON z datą w nazwie + import zastępujący dane po potwierdzeniu; odrzuca plik obcy/uszkodzony/z nowszej wersji formatu bez ruszania danych. Zweryfikowane na żywo (realne pobranie pliku → wyczyszczenie → import → porównanie pól) | ✅ v2 (2026-08-29): przeniesione. **Nie 1:1** — Storage Access Framework (`ACTION_CREATE_DOCUMENT`/`ACTION_OPEN_DOCUMENT`) zamiast pobierania bloba, ale IDENTYCZNY format pliku (`BackupFile`), więc kopia z telefonu wczytuje się w przeglądarce i odwrotnie. Import idzie tą samą ścieżką co zwykły start aplikacji (`applyLocalSnapshot`, wydzielone z `LocalPersistenceCoordinator`). Zweryfikowane na emulatorze: zapis pliku 6,3 kB do Downloads i jego ponowny odczyt z potwierdzeniem daty
+| FR-99 | Wyszukiwanie na liście zakupów | ✅ v1 (2026-08-28): pole filtrujące nad listą, niewrażliwe na polskie znaki („zolty” → „żółty ser”), wspólne dla widoku listy i kafelków; licznik „N z M pozycji”, przycisk „✕”; filtr NIE wpływa na udostępnianie ani kasowanie. Zweryfikowane na żywo, 7 przypadków | ✅ v2 (2026-08-29): przeniesione — pole nad listą, licznik „N z M pozycji”, „✕” tylko przy aktywnym filtrze, odporność na ogonki przez `PolishText`. Fraza nie jest zapisywana ani synchronizowana, tak jak na webie. Zweryfikowane na emulatorze: przy 13 pozycjach „jajk” dało „Lista zakupów (1 z 13)”
+| FR-100 | Podsumowanie odżywcze zaplanowanego tygodnia | ✅ v1 (2026-08-28): karta „📊 Zaplanowany tydzień” nad listą dni — średnia kcal/dzień (po dniach ZAPLANOWANYCH, nie po 7), porównanie z celem, liczba dni i dań, średnie makro; nie renderuje się przy pustym tygodniu. Zweryfikowane na żywo + zrzut ekranu | ✅ v2 (2026-08-29): przeniesione — karta nad listą dni, liczenie w `WeekPlanSummary` (moduł logic) z testami na obie decyzje, na których stoi wiarygodność liczby: średnia po dniach ZAPLANOWANYCH i makra tylko z dań, które je mają. Zweryfikowane na emulatorze: „489 kcal · −991 kcal vs cel 1480 · z 3 zaplanowanych dni (5 dań)”
 | FR-102 | Trwałe usuwanie produktu ze spiżarni | ✅ v1 (2026-08-29): „❌ Usuń produkt ze spiżarni na stałe” w menu po przytrzymaniu KAŻDEGO kafelka (wcześniej tylko dla `state.customTiles`), nowy klucz `pantryHidden` w `SYNCED_STATE_KEYS`+`MAP_MERGE_KEYS`, filtr w `buildPantryTileList()`, przycisk „↩️ Przywróć usunięte produkty (N)” na górze Spiżarni, ponowne dodanie ręczne odblokowuje. ⏳ nie klikane na żywo w przeglądarce w tej rundzie | ✅ v1 (2026-08-29), zweryfikowane na emulatorze: menu otwiera się teraz też dla kafelków NIEŚLEDZONYCH (`onLongPress` bez `entry != null`), usunięcie „feta / ser bez laktozy” zdjęło kafelek i zmieniło licznik Nabiał 9→8, przeżyło `am force-stop`+restart, „↩️ Przywróć usunięte produkty (1)” przywróciło kafelek i samo zniknęło. `PantryStore.loadHidden/saveHidden`, `PantryOperations.visibleTileNames/hideForever`, sync przez `CloudSyncCodec.encode/decodePantryHidden` |
 | FR-103 | Stopniowany gest przesuwania na kartach „Dzisiejszy Planer” | ✅ v1 (2026-08-29): `pdSwipeAction(dx)` mapuje odległość na 4 akcje (36/105/130 px), żywa pigułka z nazwą akcji + narastające tło, ściągawka pod nagłówkiem, plakietki stanu, `portion` na wpisie `state.eaten[date][cat]`, `cookedTodayIndex/undoCookedToday` (data liczona lokalnie, zgodnie z FR-101). ⏳ nie klikane na żywo w przeglądarce (logika sprawdzona liczbowo w Node — te same 11 wartości dx co test Kotlina) | ✅ v1 (2026-08-29), zweryfikowane na emulatorze wszystkie 4 akcje z odczytem liczb: 0/1480 → „🍳 Zrobione” (plakietka) → długie w prawo 345/1480 → krótkie w lewo 173/1480 + „½ Zjedzone w połowie” + „173 / 345 kcal” → długie w lewo z powrotem 0/1480 i obie plakietki znikają. `PlannerSwipe` (logic, testy jednostkowe), `EatenEntry.portion`, `RecipeViewModel.isCookedToday/undoCookedToday` |
+| FR-104 | Gest „zrobione/zjedzone” także na kartach dni tygodnia | ✅ v1 (2026-08-29): wiersze `.cdc-row` z daniem dostały ten sam gest co karta dashboardu, na dacie danego dnia bieżącego tygodnia (`dateForDayIndex`); puste sloty bez zmian. ⏳ nie klikane na żywo w przeglądarce | ✅ v1 (2026-08-29), zweryfikowane na emulatorze: przesunięcie w lewo na wierszu „Śniadanie” karty Soboty cofnęło danie ze „zjedzone” do „zrobione”, a karta w „Dzisiejszym Planerze” pokazywała dokładnie ten sam stan przed i po (jedno źródło prawdy, nie dwie kopie) |
+| FR-105 | Dowolna wielkość zjedzonej porcji | ✅ v1 (2026-08-29): przytrzymanie karty otwiera suwak 0–100% + ¼/½/¾/cała, z podglądem kcal na żywo; 0% = niezjedzone. ⏳ nie klikane na żywo w przeglądarce | ✅ v1 (2026-08-29), zweryfikowane na emulatorze: przytrzymanie karty → suwak 100% · 345 kcal → wybór „¼ porcji” → 86/1480 kcal, plakietka „¼ porcji zjedzone”, kafelek „86 / 345 kcal” |
 
 ## Uwagi do częściowych wpisów
 
@@ -1159,6 +1161,73 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
   85→86, `versionName` 0.1.84→0.1.85, zweryfikowane `aapt dump badging`
   PRZED kopią do `dist/`, `android/dist/version.json` + `app-debug.apk`
   zsynchronizowane. CACHE_NAME→v115 na Web, `versions/v115/`.
+
+- **Runda „zlikwiduj rozjazdy + przebuduj gest” (2026-08-29, druga tego dnia)**:
+  użytkownik poprosił o scalenie wszystkiego z równoległej sesji („tam już nie
+  będę kontynuował tylko tutaj”) plus trzy zmiany w Planerze. Obie platformy w
+  tej samej turze, weryfikacja na emulatorze (`Medium_Phone_API_35`).
+
+  **Przebudowany gest (FR-103/v2)**: odległość przestała wybierać akcję —
+  gest przechodzi teraz KROK po kroku przez cykl życia dania
+  (`nic → zrobione → zjedzone` w prawo, odwrotnie w lewo). Krok naprzód
+  odejmuje, krok wstecz oddaje dokładnie to samo. Przy okazji dwa realne
+  błędy trafiania/układu: (a) na webie `pointerdown` ignorował gest zaczęty
+  na DOWOLNYM `<button>`, a znacznik spiżarni z FR-97 stał się przyciskiem w
+  ŚRODKU karty — więc przeciąganie od środka po cichu nie działało i trzeba
+  było łapać kartę przy krawędzi, dokładnie jak zgłoszono; (b) przesuwana
+  karta wyjeżdżała poza szerokość widoku, dokument dostawał poziome
+  przewijanie i pływający dolny pasek nawigacji jechał razem z palcem —
+  naprawione przycięciem (`overflow-x: clip` na webie, `clipToBounds()` na
+  Androidzie), więc karta nadal przejeżdża pełny dystans, tylko nie może już
+  poszerzyć niczego wokół siebie.
+
+  **FR-104 (gest na kartach dni) i FR-105 (dowolna porcja)** — patrz ich
+  wiersze w tabeli. FR-104 wymagał uogólnienia obu zapisów z „dzisiaj” na
+  dowolną datę; FR-105 przeniósł „pół porcji” z gestu na przytrzymanie, bo
+  gest znaczący „jeden krok” nie może jednocześnie znaczyć „62% porcji” bez
+  powrotu do zgadywania odległości.
+
+  **Zlikwidowane rozjazdy Web→Android** (wszystkie z równoległej sesji, która
+  nie mogła kompilować Kotlina): FR-101 (daty UTC → lokalne, patrz niżej),
+  FR-2/v8 (ogonki w czterech wyszukiwarkach), FR-20/v3 (odmiana rzeczownika
+  przy skalowaniu porcji), FR-99 (wyszukiwarka listy zakupów), FR-100
+  (podsumowanie tygodnia), FR-98 (kopia zapasowa do pliku), FR-21/22/26/28 v2
+  (cofanie losowania i czyszczenia dnia, listy zakupów i spiżarni).
+
+  **FR-101 był najgorszy z nich i wart osobnej uwagi**: Android nie tyle
+  „nie miał” poprawki, co był NIESPÓJNY SAM ZE SOBĄ — osiem miejsc wymuszało
+  `ZoneOffset.UTC`, a `PlannerScreen` liczył dzień lokalnie, więc tuż po
+  północy Planer pokazywał już nowy dzień, podczas gdy licznik wody i kalorii
+  zapisywał do poprzedniego. To gorzej niż pierwotny błąd webowy, gdzie
+  przynajmniej wszyscy mylili się w tę samą stronę. Naprawione jedną wspólną
+  funkcją (`AppDates`) zamiast ośmiu poprawek — o to chodzi, żeby następna
+  funkcja z kluczem daty nie mogła po cichu wybrać innej strefy. Znika przy
+  okazji rozjazd opisany w poprzednim wpisie tej listy: `cookedOnDateIndex`
+  liczy teraz dzień lokalnie po OBU stronach.
+
+  **Wzorzec, który się powtórzył trzeci raz**: audyt z 2026-08-28 znalazł te
+  same trzy klasy błędów co na webie (daty UTC, ogonki, odmiana), bo powstały
+  jako web'owe i zostały wiernie przeniesione RAZEM Z BŁĘDEM. Przy kolejnych
+  portach warto pytać nie tylko „czy zachowanie jest takie samo”, ale też
+  „czy nie kopiuję właśnie błędu”. Trzy nowe wspólne moduły w `logic/`
+  (`AppDates`, `PolishText`, `PortionText`) istnieją głównie po to, żeby
+  następnym razem nie było czego kopiować cztery razy.
+
+  **Czego NIE zrobiono**: FR-42/v2 (cofanie czyszczenia historii aktywności)
+  nie ma odpowiednika na Androidzie, bo tam nie ma osobnego przycisku
+  czyszczenia historii — jedyne wywołania `activityLogViewModel.clear()` są
+  częścią resetu konta i wylogowania, gdzie cofanie nie miałoby sensu.
+  Strona webowa tej rundy (przebudowany gest, gest na kartach dni, wybór
+  porcji) nie była klikana na żywo — rozszerzenie przeglądarkowe nie było
+  podłączone; sprawdzone tylko uruchomieniem czystej logiki w Node (te same
+  przejścia stanów i ta sama mapa dzień→data co po stronie Kotlina) i
+  kontrolą składni skryptu.
+
+  `./gradlew :logic:test :app:assembleDebug` przechodzą (m.in. nowe
+  `PlannerSwipeTest`, `PolishTextTest`, `WeekPlanSummaryTest` i rozszerzone
+  `CookHistoryOperationsTest`/`EatenOperationsTest`/`PlannerOperationsTest`),
+  `versionCode` 86→87, `versionName` 0.1.85→0.1.86, `android/dist/`
+  zsynchronizowane. CACHE_NAME→v116 na Web, `versions/v116/`.
 
 ## Jak to utrzymywać
 

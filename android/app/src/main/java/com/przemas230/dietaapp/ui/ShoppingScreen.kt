@@ -72,6 +72,8 @@ import com.przemas230.dietaapp.logic.ShoppingDisplay
 import com.przemas230.dietaapp.logic.ShoppingOperations
 import com.przemas230.dietaapp.ui.theme.LocalDietaThemeId
 import java.util.Calendar
+import com.przemas230.dietaapp.logic.PolishText
+import androidx.compose.material3.OutlinedTextField
 
 /**
  * FR-25/FR-27: list built exclusively from recipes (per-ingredient "🛒" on a
@@ -84,7 +86,16 @@ import java.util.Calendar
  * via ShoppingDisplay.
  */
 @Composable
-fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewModel, pantryViewModel: PantryViewModel) {
+fun ShoppingScreen(
+    viewModel: ShoppingViewModel,
+    plannerViewModel: PlannerViewModel,
+    pantryViewModel: PantryViewModel,
+    // FR-21/22/26/28/42 v2 (ported to Android 2026-08-29): destructive
+    // "wyczyść/losuj" actions offer a Cofnij, the way the web version has
+    // since 2026-08-28. MainActivity owns the SnackbarHostState (same
+    // hoisting pattern PlannerScreen already uses), this just asks for one.
+    onShowUndoSnackbar: (message: String, actionLabel: String, onUndo: () -> Unit) -> Unit = { _, _, _ -> },
+) {
     val items by viewModel.items.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
     val allRecipes by plannerViewModel.allRecipes.collectAsState()
@@ -94,6 +105,11 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
     // just presentation, per the FR's own "przełącznik widoku nie zmienia
     // zawartości" criterion.
     var tileView by remember { mutableStateOf(false) }
+    // FR-99 (ported to Android 2026-08-29). Deliberately NOT persisted and
+    // NOT synced: a search term is a transient way of LOOKING at the list,
+    // not part of it -- syncing it would mean one device could leave another
+    // device's list mysteriously filtered.
+    var searchTerm by remember { mutableStateOf("") }
     var showClearAllConfirm by remember { mutableStateOf(false) }
     val todayIdx = remember { ShoppingDayStrip.todayIndex(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) - 1) }
     val recipesById = remember(allRecipes) { allRecipes.associateBy { it.id } }
@@ -103,6 +119,16 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
     // FR-87: motyw "Klinika" pokazuje wiersz z kolorowym badge kategorii
     // (IngredientCanon.CANON_INFO.cat -- dane juz istnieja, zero nowej logiki).
     val isClinic = AppThemes.isClinicFamily(LocalDietaThemeId.current)
+    // FR-99: `items` stays the FULL list and `visibleItems` is what gets
+    // rendered. Keeping them apart is what lets "lista jest pusta" and "nic
+    // nie pasuje" stay two different messages -- collapsing them would tell
+    // someone with an empty list that their search found nothing, instead of
+    // how to add the first ingredient. Diacritics-insensitive via
+    // PolishText, same as every other search in the app.
+    val visibleItems = remember(items, searchTerm) {
+        if (searchTerm.isBlank()) items
+        else items.filterValues { PolishText.contains(it.name, searchTerm.trim()) }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -112,8 +138,37 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Lista zakupów (${items.size})", style = MaterialTheme.typography.titleMedium)
+            Text(
+                // FR-99: "N z M pozycji" while filtering, so the count never
+                // contradicts what is on screen but still shows the rest of
+                // the list exists.
+                if (searchTerm.isBlank()) {
+                    "Lista zakupów (${items.size})"
+                } else {
+                    "Lista zakupów (${visibleItems.size} z ${items.size})"
+                },
+                style = MaterialTheme.typography.titleMedium,
+            )
             TextButton(onClick = { viewModel.clearChecked() }) { Text("Usuń kupione") }
+        }
+
+        // FR-99: real shopping lists here get long (an 87-item one was
+        // recorded while debugging FR-87/v9) and are ordered by category --
+        // useful in the shop, useless for answering "did I already add
+        // milk?" without scrolling the whole thing.
+        if (items.isNotEmpty()) {
+            OutlinedTextField(
+                value = searchTerm,
+                onValueChange = { searchTerm = it },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                singleLine = true,
+                placeholder = { Text("Szukaj na liście zakupów…") },
+                trailingIcon = {
+                    if (searchTerm.isNotEmpty()) {
+                        TextButton(onClick = { searchTerm = "" }) { Text("✕") }
+                    }
+                },
+            )
         }
 
         Row(
@@ -210,8 +265,8 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
             // ShoppingOperations.buildShareText() already uses for the
             // share-sheet text export (PantryTiles.categoryAndEmoji +
             // CATEGORY_ORDER) rather than inventing a second scheme.
-            val grouped = remember(items) {
-                items.entries.groupBy { PantryTiles.categoryAndEmoji(it.value.name).first }
+            val grouped = remember(visibleItems) {
+                visibleItems.entries.groupBy { PantryTiles.categoryAndEmoji(it.value.name).first }
             }
             LazyVerticalGrid(columns = GridCells.Fixed(3), contentPadding = PaddingValues(12.dp)) {
                 PantryTiles.CATEGORY_ORDER.forEach { category ->
@@ -237,10 +292,24 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
         } else {
             // Requested 2026-08-25: same fix as the tile view above, grouped
             // into visible category sections instead of one flat sorted list.
-            val grouped = remember(items) {
-                items.entries.groupBy { PantryTiles.categoryAndEmoji(it.value.name).first }
+            val grouped = remember(visibleItems) {
+                visibleItems.entries.groupBy { PantryTiles.categoryAndEmoji(it.value.name).first }
             }
             LazyColumn(contentPadding = PaddingValues(12.dp)) {
+                // FR-99: a filter that matches nothing says so, with the
+                // phrase that was typed -- distinct from the "list is empty"
+                // message above, which is about having nothing to shop for.
+                if (visibleItems.isEmpty()) {
+                    item {
+                        Text(
+                            "Nic nie pasuje do „${searchTerm.trim()}” na liście zakupów.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.fillMaxWidth().padding(24.dp),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
                 PantryTiles.CATEGORY_ORDER.forEach { category ->
                     val group = grouped[category]?.sortedBy { it.value.name } ?: return@forEach
                     item {
@@ -279,7 +348,18 @@ fun ShoppingScreen(viewModel: ShoppingViewModel, plannerViewModel: PlannerViewMo
             title = { Text("Wyczyścić całą listę zakupów?") },
             text = { Text("Usunie wszystkie pozycje, także te jeszcze nieodhaczone.") },
             confirmButton = {
-                TextButton(onClick = { viewModel.clearAll(); showClearAllConfirm = false }) { Text("Wyczyść") }
+                TextButton(onClick = {
+                    // FR-26/v2: snapshot BEFORE clearing so "Cofnij" restores
+                    // the real list -- quantities, checked flags and the
+                    // recipe links that drive "czy ten przepis jest na
+                    // liście" -- not just the item names.
+                    val before = items
+                    viewModel.clearAll()
+                    showClearAllConfirm = false
+                    onShowUndoSnackbar("Wyczyszczono listę zakupów (${before.size})", "Cofnij") {
+                        viewModel.replaceAll(before)
+                    }
+                }) { Text("Wyczyść") }
             },
             dismissButton = {
                 TextButton(onClick = { showClearAllConfirm = false }) { Text("Anuluj") }

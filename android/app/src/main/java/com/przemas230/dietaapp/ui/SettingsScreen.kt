@@ -74,6 +74,14 @@ import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.UiScale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import com.przemas230.dietaapp.logic.PolishText
+import com.przemas230.dietaapp.data.BackupFile
+import com.przemas230.dietaapp.logic.AppDates
+import java.time.Instant
+import java.time.format.DateTimeFormatter
+import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 
 /** FR-71: the 4 pill tabs, in index.html's own order. */
 private enum class SettingsTab(val emoji: String, val label: String) {
@@ -120,6 +128,11 @@ fun SettingsScreen(
     // touches, so MainActivity (which already hoists every ViewModel)
     // supplies this rather than SettingsScreen collecting them all itself.
     onClearLocalData: () -> Unit = {},
+    // FR-98 (ported to Android 2026-08-29): restoring a backup has to reach
+    // every ViewModel, exactly like onClearLocalData above -- MainActivity
+    // already hoists them all and owns applyLocalSnapshot, so it does the
+    // applying and this screen only supplies the parsed file.
+    onImportBackup: (data: Map<String, Any?>) -> Unit = {},
     // FR-89: unlike onClearLocalData above (local-only, cloud document
     // untouched, always paired with signing out), this wipes BOTH the
     // Firestore document AND local storage while STAYING signed in -- so
@@ -187,6 +200,7 @@ fun SettingsScreen(
                             // above it (that was the pre-FR-71 layout).
                             ProfileCard(profileViewModel, plannerViewModel, shoppingViewModel, allRecipes)
                             CloudAccountCard(authViewModel, onClearLocalData, onResetAccountData)
+                            BackupCard(onImportBackup = onImportBackup)
                             CommunityRecipesCard(recipeViewModel, onBrowseUsers)
                             MyRecipesCard(recipeViewModel, recipeModerationViewModel)
                             RecipeModerationCard(authViewModel, recipeModerationViewModel)
@@ -1302,7 +1316,8 @@ private fun FavoriteIngredientsCard(
     }
     val visibleNames = remember(allNames, query) {
         val q = query.trim().lowercase(java.util.Locale("pl", "PL"))
-        if (q.isEmpty()) allNames else allNames.filter { it.lowercase(java.util.Locale("pl", "PL")).contains(q) }
+        // FR-2/v6 (ported 2026-08-29): diacritics-insensitive.
+        if (q.isEmpty()) allNames else allNames.filter { PolishText.contains(it, q) }
     }
 
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -1337,5 +1352,139 @@ private fun FavoriteIngredientsCard(
                 }
             }
         }
+    }
+}
+
+/**
+ * FR-98 (ported to Android 2026-08-29): save every bit of the user's data to
+ * a file on the device, and load it back.
+ *
+ * Why it exists at all: this app has no other way to get data OUT of itself.
+ * Everything lives in local storage plus optionally Firestore, and this
+ * project's own history shows why that is not enough — FR-73 went through
+ * several real sync failures, FR-89 added a button that wipes an account,
+ * and signing in on a second device REPLACES local data rather than merging
+ * it. In each of those, a file the user holds is the last line of defence.
+ *
+ * Not a 1:1 port of the web version: there is no blob download on Android,
+ * so this goes through the Storage Access Framework and the user picks where
+ * the file lands. The FILE FORMAT is identical (see BackupFile), so a backup
+ * taken on the phone restores in the browser and vice versa.
+ */
+@Composable
+private fun BackupCard(onImportBackup: (Map<String, Any?>) -> Unit) {
+    val context = LocalContext.current
+    var pendingImport by remember { mutableStateOf<BackupFile.ParseResult.Ok?>(null) }
+
+    fun toast(message: String) = Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val json = BackupFile.buildJson(context, Instant.now().toString())
+        if (json == null) {
+            toast("Nie ma jeszcze żadnych danych do zapisania")
+            return@rememberLauncherForActivityResult
+        }
+        try {
+            context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray(Charsets.UTF_8)) }
+                ?: throw IllegalStateException("Nie udało się otworzyć pliku do zapisu")
+            toast("Zapisano kopię zapasową")
+        } catch (e: Exception) {
+            toast("Nie udało się zapisać kopii: ${e.message}")
+        }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val text = try {
+            context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+        } catch (e: Exception) {
+            null
+        }
+        if (text == null) {
+            toast("Nie udało się odczytać pliku")
+            return@rememberLauncherForActivityResult
+        }
+        // Each failure gets its own message: "this isn't our file" and "this
+        // file is damaged" are different problems with different fixes, and
+        // NEITHER of them touches the data already in the app.
+        when (val parsed = BackupFile.parse(text)) {
+            is BackupFile.ParseResult.Ok -> pendingImport = parsed
+            BackupFile.ParseResult.NotABackup -> toast("To nie jest plik kopii zapasowej Dieta App")
+            BackupFile.ParseResult.Unreadable -> toast("To nie jest poprawny plik kopii zapasowej (błąd odczytu)")
+            is BackupFile.ParseResult.TooNew ->
+                toast("Ta kopia pochodzi z nowszej wersji aplikacji — zaktualizuj aplikację i spróbuj ponownie")
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("💾 Kopia zapasowa danych", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                "Zapisuje wszystkie Twoje dane (profil, spiżarnia, lista zakupów, planer, ulubione, własne " +
+                    "przepisy, oceny, historia wagi i kalorii, ustawienia) do jednego pliku na urządzeniu. " +
+                    "Działa niezależnie od logowania i synchronizacji — to jedyna droga odzyskania danych, " +
+                    "która nie zależy od tego, czy chmura działa. Plik jest zgodny z wersją przeglądarkową.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Button(
+                onClick = { exportLauncher.launch(BackupFile.suggestedFileName(AppDates.todayKey())) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("⬇️ Zapisz kopię zapasową do pliku")
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            OutlinedButton(
+                onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("⬆️ Wczytaj kopię zapasową z pliku")
+            }
+        }
+    }
+
+    pendingImport?.let { parsed ->
+        val whenLabel = remember(parsed.exportedAt) {
+            parsed.exportedAt?.let { raw ->
+                try {
+                    val instant = Instant.parse(raw)
+                    DateTimeFormatter.ofPattern("d.MM.yyyy, HH:mm")
+                        .withZone(java.time.ZoneId.systemDefault())
+                        .format(instant)
+                } catch (e: Exception) {
+                    raw
+                }
+            } ?: "nieznanej daty"
+        }
+        AlertDialog(
+            onDismissRequest = { pendingImport = null },
+            title = { Text("Wczytać kopię z $whenLabel?") },
+            text = {
+                Text(
+                    "ZASTĄPI to wszystkie obecne dane w aplikacji (profil, spiżarnię, listę zakupów, " +
+                        "planer, ulubione, własne przepisy, oceny i historię).",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onImportBackup(parsed.data)
+                    pendingImport = null
+                    toast("Wczytano kopię zapasową")
+                }) { Text("Wczytaj") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingImport = null }) { Text("Anuluj") }
+            },
+        )
     }
 }

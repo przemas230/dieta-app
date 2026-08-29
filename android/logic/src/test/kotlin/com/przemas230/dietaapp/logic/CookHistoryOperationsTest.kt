@@ -52,29 +52,52 @@ class CookHistoryOperationsTest {
         assertEquals(entries, CookHistoryOperations.removeEntry(entries, "unknown", 0))
     }
 
-    // ---- FR-103: "was this cooked today" for the Planer swipe ----
+    // ---- FR-103/FR-104: "was this cooked on that day" for the Planer swipe ----
 
     @Test
-    fun `cookedTodayIndex finds only entries from the same UTC day`() {
-        val now = 1_756_000_000_000L
-        val yesterday = now - 86_400_000L
-        val entries = mapOf("r1" to listOf(CookEntry(yesterday), CookEntry(now)))
-        assertEquals(1, CookHistoryOperations.cookedTodayIndex(entries, "r1", now))
-        assertEquals(0, CookHistoryOperations.cookedTodayIndex(entries, "r1", yesterday))
+    fun `cookedOnDateIndex finds only entries from the requested LOCAL day`() {
+        val today = AppDates.today()
+        val yesterday = today.minusDays(1)
+        val entries = mapOf(
+            "r1" to listOf(
+                CookEntry(AppDates.noonEpochMillis(yesterday)),
+                CookEntry(AppDates.noonEpochMillis(today)),
+            ),
+        )
+        assertEquals(1, CookHistoryOperations.cookedOnDateIndex(entries, "r1", today.toString()))
+        assertEquals(0, CookHistoryOperations.cookedOnDateIndex(entries, "r1", yesterday.toString()))
     }
 
     @Test
-    fun `cookedTodayIndex returns -1 for an unknown recipe or a stale-only history`() {
-        val now = 1_756_000_000_000L
-        val entries = mapOf("r1" to listOf(CookEntry(now - 5 * 86_400_000L)))
-        assertEquals(-1, CookHistoryOperations.cookedTodayIndex(entries, "r1", now))
-        assertEquals(-1, CookHistoryOperations.cookedTodayIndex(entries, "nieznany", now))
+    fun `cookedOnDateIndex returns -1 for an unknown recipe or a day with nothing logged`() {
+        val today = AppDates.today()
+        val entries = mapOf("r1" to listOf(CookEntry(AppDates.noonEpochMillis(today.minusDays(5)))))
+        assertEquals(-1, CookHistoryOperations.cookedOnDateIndex(entries, "r1", today.toString()))
+        assertEquals(-1, CookHistoryOperations.cookedOnDateIndex(entries, "nieznany", today.toString()))
     }
 
     @Test
-    fun `cookedTodayIndex points at the LAST of several entries on the same day`() {
-        val now = 1_756_000_000_000L
-        val entries = mapOf("r1" to listOf(CookEntry(now - 3_600_000L), CookEntry(now - 60_000L)))
-        assertEquals(1, CookHistoryOperations.cookedTodayIndex(entries, "r1", now))
+    fun `cookedOnDateIndex points at the LAST of several entries on the same day`() {
+        val today = AppDates.today()
+        val noon = AppDates.noonEpochMillis(today)
+        val entries = mapOf("r1" to listOf(CookEntry(noon - 3_600_000L), CookEntry(noon + 3_600_000L)))
+        assertEquals(1, CookHistoryOperations.cookedOnDateIndex(entries, "r1", today.toString()))
+    }
+
+    @Test
+    fun `FR-104 addOnDate logs against a day that is not today, and is found there`() {
+        val target = AppDates.today().minusDays(3)
+        val entries = CookHistoryOperations.addOnDate(emptyMap(), "r1", target)
+        assertEquals(0, CookHistoryOperations.cookedOnDateIndex(entries, "r1", target.toString()))
+        assertEquals(-1, CookHistoryOperations.cookedOnDateIndex(entries, "r1", AppDates.today().toString()))
+    }
+
+    @Test
+    fun `FR-101 a cook entry logged at local noon reads back as that same local day`() {
+        // The regression this guards: comparing the raw epoch (a UTC day)
+        // instead of the local calendar day put entries logged in the first
+        // hour or two of a Polish day under the previous one.
+        val day = AppDates.today()
+        assertEquals(day.toString(), AppDates.dateKey(AppDates.noonEpochMillis(day)))
     }
 }

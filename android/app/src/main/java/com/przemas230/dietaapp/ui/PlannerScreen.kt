@@ -11,6 +11,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -60,6 +61,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.style.TextAlign
@@ -87,6 +89,7 @@ import com.przemas230.dietaapp.data.Profile
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.data.Snack
 import com.przemas230.dietaapp.logic.AppThemes
+import com.przemas230.dietaapp.logic.AppDates
 import com.przemas230.dietaapp.logic.CookHistoryOperations
 import com.przemas230.dietaapp.logic.EatenOperations
 import com.przemas230.dietaapp.logic.FastingOperations
@@ -95,6 +98,8 @@ import com.przemas230.dietaapp.logic.MacroGrams
 import com.przemas230.dietaapp.logic.PlannerCategory
 import com.przemas230.dietaapp.logic.PlannerOperations
 import com.przemas230.dietaapp.logic.PlannerSwipe
+import com.przemas230.dietaapp.logic.WeekPlanSummary
+import com.przemas230.dietaapp.logic.PortionText
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.RecipeMatching
 import com.przemas230.dietaapp.logic.RecipePantryMatching
@@ -109,6 +114,10 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import androidx.compose.material3.Slider
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.ExperimentalFoundationApi
 
 /**
  * FR-18/20/21/22/23/24: 7 day cards, each with the 5 meal-slot rows from
@@ -119,6 +128,7 @@ import kotlinx.coroutines.launch
  * ingredients to the shopping list" button (the Zakupy tab's own whole-week
  * version of this is FR-27, see ShoppingScreen.kt).
  */
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun PlannerScreen(
     plannerViewModel: PlannerViewModel,
@@ -157,6 +167,13 @@ fun PlannerScreen(
     onWaterTap: (Int) -> Unit = {},
     onWaterSetCount: (Int) -> Unit = {},
     onSetEaten: (cat: String, eaten: Boolean, portion: Double, plannedKcal: Int?, plannedName: String?) -> Unit = { _, _, _, _, _ -> },
+    // FR-104/FR-105: the week's day cards act on THEIR day, not today, and
+    // the portion picker can be opened from either -- so both the read and
+    // the write side need a date. Kept as lambdas (not the EatenViewModel
+    // itself) to match how every other cross-screen dependency reaches this
+    // composable from MainActivity.
+    eatenEntriesForDate: (dateKey: String) -> Map<String, EatenEntry> = { emptyMap() },
+    onSetEatenOnDate: (dateKey: String, cat: String, eaten: Boolean, portion: Double, plannedKcal: Int?, plannedName: String?) -> Unit = { _, _, _, _, _, _ -> },
     // Requested 2026-08-26: opt-in fill-with-color on the "POZOSTAŁO" tile,
     // see RemainingKcalFillViewModel/SettingsScreen's matching card.
     remainingKcalFillEnabled: Boolean = false,
@@ -176,39 +193,49 @@ fun PlannerScreen(
 ) {
     val allRecipes by plannerViewModel.allRecipes.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
+    // FR-105: which meal the portion picker is open for (null = closed).
+    // Held here, next to the other dialogs this screen owns, so the row
+    // composables stay free of dialog state.
+    var portionPickerTarget by remember { mutableStateOf<PortionTarget?>(null) }
     // FR-103 (2026-08-29): carrying out one of the four swipe actions needs
     // the cook history AND the pantry, both of which live here (this screen
     // already owns recipeViewModel/pantryViewModel for RecipePreviewDialog)
     // rather than in PlannerDashboard, which deliberately takes no
     // ViewModels. The dashboard just reports WHICH action was committed.
-    val handlePlannerSwipe: (String, PlannerSwipe.Action, Recipe, Int) -> Unit = { cat, action, recipe, scaledKcal ->
-        when (action) {
-            PlannerSwipe.Action.COOKED -> {
-                // Idempotent: a second short right-swipe on the same dish on
-                // the same day must NOT subtract the pantry twice.
-                if (recipeViewModel.isCookedToday(recipe.id)) {
-                    onShowUndoSnackbar("To danie jest już oznaczone jako zrobione dzisiaj", "OK") {}
-                } else {
-                    recipeViewModel.markCookedToday(recipe.id)
-                    pantryViewModel.subtractForRecipe(recipe)
-                    activityLogViewModel.log("cook_subtract", "Ugotowano „${recipe.name}” — odjęto składniki ze spiżarni")
-                    onShowUndoSnackbar("🍳 Zrobione — odjęto składniki ze spiżarni", "Cofnij") {
-                        if (recipeViewModel.undoCookedToday(recipe.id)) {
-                            pantryViewModel.restoreForRecipe(recipe)
-                            activityLogViewModel.log("pantry_add", "Cofnięto wpis „${recipe.name}” — przywrócono w spiżarni")
-                        }
+    // One STEP of the meal's lifecycle (FR-103 rebuilt): the row reports
+    // which direction was swiped and on which day; this decides what that
+    // means and performs it. Forward steps subtract (pantry, then kcal),
+    // backward steps give back exactly what their forward twin took.
+    val handlePlannerSwipe: (String, Int, Recipe, Int, LocalDate) -> Unit = { cat, direction, recipe, scaledKcal, date ->
+        val dateKey = date.toString()
+        val stage = PlannerSwipe.stageOf(
+            isEaten = EatenOperations.isEaten(eatenEntriesForDate(dateKey), cat),
+            isCooked = recipeViewModel.isCookedOn(recipe.id, dateKey),
+        )
+        when (PlannerSwipe.nextStage(stage, direction)) {
+            null -> onShowUndoSnackbar(
+                if (direction > 0) "To danie jest już oznaczone jako zjedzone" else "Nie ma czego cofać",
+                "OK",
+            ) {}
+            PlannerSwipe.Stage.COOKED -> if (stage == PlannerSwipe.Stage.NONE) {
+                recipeViewModel.markCookedOn(recipe.id, date)
+                pantryViewModel.subtractForRecipe(recipe)
+                activityLogViewModel.log("cook_subtract", "Ugotowano „${recipe.name}” — odjęto składniki ze spiżarni")
+                onShowUndoSnackbar("🍳 Zrobione — odjęto składniki ze spiżarni", "Cofnij") {
+                    if (recipeViewModel.undoCookedOn(recipe.id, dateKey)) {
+                        pantryViewModel.restoreForRecipe(recipe)
                     }
                 }
+            } else {
+                // Stepping BACK from eaten: no longer eaten, but the dish was
+                // really made, so the pantry stays subtracted.
+                onSetEatenOnDate(dateKey, cat, false, 0.0, scaledKcal, recipe.name)
             }
-            PlannerSwipe.Action.EATEN -> onSetEaten(cat, true, 1.0, scaledKcal, recipe.name)
-            PlannerSwipe.Action.HALF -> onSetEaten(cat, true, 0.5, scaledKcal, recipe.name)
-            PlannerSwipe.Action.RESET -> {
-                onSetEaten(cat, false, 0.0, scaledKcal, recipe.name)
-                // "pasuje też móc cofnąć zrobienie bo mogło się przez
-                // przypadek kliknąć" -- the long left swipe resets the card
-                // completely, cook log included, restoring the ingredients
-                // the cook entry took out of the pantry.
-                if (recipeViewModel.undoCookedToday(recipe.id)) {
+            PlannerSwipe.Stage.EATEN -> onSetEatenOnDate(dateKey, cat, true, 1.0, scaledKcal, recipe.name)
+            PlannerSwipe.Stage.NONE -> {
+                // Stepping back out of "cooked" -- "cofnięcie niech cofa
+                // odejmowanie ... rzeczy do spiżarni".
+                if (recipeViewModel.undoCookedOn(recipe.id, dateKey)) {
                     pantryViewModel.restoreForRecipe(recipe)
                     activityLogViewModel.log("pantry_add", "Cofnięto wpis „${recipe.name}” — przywrócono w spiżarni")
                 }
@@ -219,12 +246,12 @@ fun PlannerScreen(
     // Requested 2026-08-26 (RecipePreviewDialog's full RecipeCardBody reuse).
     val pantryItems by pantryViewModel.items.collectAsState()
     val cookedMap by recipeViewModel.cooked.collectAsState()
-    // FR-103: which dishes already carry a "zrobione" entry for today --
-    // derived from the same StateFlow the cook-history modal reads, so the
-    // card's chip updates the moment the swipe writes one.
-    val cookedTodayIds = remember(cookedMap) {
-        val now = System.currentTimeMillis()
-        cookedMap.keys.filter { CookHistoryOperations.cookedTodayIndex(cookedMap, it, now) >= 0 }.toSet()
+    // FR-103/FR-104: "is this dish cooked on that day", as a plain function
+    // of the same StateFlow the cook-history modal reads -- so every row
+    // (dashboard card and each day card) resolves its own stage from one
+    // source and updates the moment a swipe writes an entry.
+    val isCookedOnDate: (String, String) -> Boolean = { recipeId, dateKey ->
+        CookHistoryOperations.cookedOnDateIndex(cookedMap, recipeId, dateKey) >= 0
     }
     val reviews by recipeViewModel.reviews.collectAsState()
     val favoriteRecipeIds by recipeViewModel.favoriteRecipes.collectAsState()
@@ -262,7 +289,12 @@ fun PlannerScreen(
     // ViewModel/logiki) i przeprojektowane karty dni. Reszta motywow ma
     // dokladnie ten sam DayCard co dotychczas.
     val isClinic = AppThemes.isClinicFamily(LocalDietaThemeId.current)
-    val todayIndex = remember { (LocalDate.now().dayOfWeek.value - 1).coerceIn(0, 6) }
+    val todayIndex = remember { (AppDates.today().dayOfWeek.value - 1).coerceIn(0, 6) }
+    // FR-104: the Planer is a repeating WEEKLY template indexed 0..6
+    // (Monday..Sunday) while "eaten"/"cooked" are per calendar DATE. Bridged
+    // here, once: day index N means "that weekday of the week containing
+    // today", so a day card can act on a real day.
+    val dateForDayIndex: (Int) -> LocalDate = { di -> AppDates.today().plusDays((di - todayIndex).toLong()) }
     // Requested 2026-08-25 (Web FR-87/v14 day-strip follow-up, ported here):
     // tapping a day-strip chip on the dashboard scrolls the matching day's
     // now-full-screen card (see DayCardClinic's fillParentMaxHeight() call
@@ -314,10 +346,13 @@ fun PlannerScreen(
                     onDayJump = { di -> scrollScope.launch { listState.animateScrollToItem(1 + di) } },
                     onWaterTap = onWaterTap,
                     onWaterSetCount = onWaterSetCount,
-                    onSwipeAction = { cat, action, recipe, scaledKcal ->
-                        handlePlannerSwipe(cat, action, recipe, scaledKcal)
+                    onSwipeStep = { cat, direction, recipe, scaledKcal, date ->
+                        handlePlannerSwipe(cat, direction, recipe, scaledKcal, date)
                     },
-                    cookedTodayIds = cookedTodayIds,
+                    isCookedOnDate = isCookedOnDate,
+                    onOpenPortionPicker = { cat, recipe, scaledKcal, date ->
+                        portionPickerTarget = PortionTarget(cat, recipe, scaledKcal, date)
+                    },
                     remainingKcalFillEnabled = remainingKcalFillEnabled,
                     fastingEnabled = fastingEnabled,
                     fastingWindowStart = fastingWindowStart,
@@ -338,6 +373,16 @@ fun PlannerScreen(
             }) }
             item { SharePlanButtons(weekPlan = weekPlan, recipesById = recipesById) }
         }
+        // FR-100 (ported to Android 2026-08-29): "📊 Zaplanowany tydzień"
+        // above the day list -- average kcal per PLANNED day (not per 7, see
+        // WeekPlanSummary) against the profile's target, plus average macros
+        // when the planned dishes carry them.
+        item {
+            val summary = remember(weekPlan, recipesById) { WeekPlanSummary.compute(weekPlan, recipesById) }
+            if (summary != null) {
+                WeekPlanSummaryCard(summary = summary, kcalTarget = kcalTargets.daily)
+            }
+        }
         itemsIndexed(PlannerOperations.DAYS_PL) { day, dayName ->
             val slotClick: (String) -> Unit = { cat -> slotPicker = day to cat }
             val scaleClick: (String, Double) -> Unit = { cat, currentScale ->
@@ -347,15 +392,34 @@ fun PlannerScreen(
             val previewClick: (Recipe, Double) -> Unit = { recipe, scale -> previewRecipe = recipe to scale }
             val prepAheadFor: (String) -> Recipe? = { cat -> PlannerOperations.prepAheadSuggestion(weekPlan, day, cat, recipesById) }
             val applyPrepAhead: (String, String) -> Unit = { cat, recipeId -> plannerViewModel.planLeftover(day, cat, recipeId) }
+            // FR-21/v2 + FR-22/v2 (ported to Android 2026-08-29): both of
+            // these overwrite a whole day, so both snapshot it first and
+            // offer "Cofnij". The snapshot is taken inside the confirmed
+            // action, not when the button is pressed, so a day edited while
+            // the confirmation dialog is open still restores correctly.
             val randomizeDay: () -> Unit = {
                 pendingConfirm = PendingConfirm(
                     "Wygenerować losowo cały dzień „$dayName”? Nadpisze wybrane tam dania.",
-                ) { plannerViewModel.randomizeDay(day, profile) }
+                ) {
+                    val before = weekPlan[day].orEmpty()
+                    plannerViewModel.randomizeDay(day, profile)
+                    onShowUndoSnackbar("Wylosowano dzień „$dayName”", "Cofnij") {
+                        plannerViewModel.replaceDay(day, before)
+                    }
+                }
             }
             val clearDay: () -> Unit = {
                 pendingConfirm = PendingConfirm(
                     "Wyczyścić wszystkie dania zaplanowane na „$dayName”?",
-                ) { plannerViewModel.clearDay(day) }
+                ) {
+                    val before = weekPlan[day].orEmpty()
+                    plannerViewModel.clearDay(day)
+                    if (before.isNotEmpty()) {
+                        onShowUndoSnackbar("Wyczyszczono „$dayName” (${before.size})", "Cofnij") {
+                            plannerViewModel.replaceDay(day, before)
+                        }
+                    }
+                }
             }
             val addDayToShopping: () -> Unit = { shoppingViewModel.addDayPlan(weekPlan[day].orEmpty(), recipesById) }
             val copyDayClick: () -> Unit = { copyDayTarget = day }
@@ -393,6 +457,13 @@ fun PlannerScreen(
                     onClearDay = clearDay,
                     onAddDayToShopping = addDayToShopping,
                     onCopyDayClick = copyDayClick,
+                    date = dateForDayIndex(day),
+                    eatenEntries = eatenEntriesForDate(dateForDayIndex(day).toString()),
+                    isCookedOnDate = isCookedOnDate,
+                    onSwipeStep = handlePlannerSwipe,
+                    onOpenPortionPicker = { cat, recipe, scaledKcal, date ->
+                        portionPickerTarget = PortionTarget(cat, recipe, scaledKcal, date)
+                    },
                 )
             } else {
                 DayCard(
@@ -510,6 +581,69 @@ fun PlannerScreen(
         )
     }
 
+    // FR-105 (2026-08-29, requested: "dodaj opcje dowolnej porcji"): the
+    // swipe now steps whole stages, so "how much of it did I actually eat"
+    // needed its own way in -- a long press on the row. `portion` on the
+    // eaten entry has been a 0..1 number since FR-103, so this is purely the
+    // missing UI; no data-model or kcal-maths change.
+    portionPickerTarget?.let { target ->
+        var percent by remember(target) {
+            val current = EatenOperations.portionOf(eatenEntriesForDate(target.date.toString()), target.cat)
+            mutableStateOf((if (current > 0.0) current else 1.0).toFloat() * 100f)
+        }
+        val chosen = (percent / 100f).toDouble()
+        AlertDialog(
+            onDismissRequest = { portionPickerTarget = null },
+            title = { Text(target.recipe.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+            text = {
+                Column {
+                    Text(
+                        "Przesuń suwak albo wybierz gotową wielkość. Licznik kalorii policzy dokładnie tyle, ile zaznaczysz.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        "${percent.roundToInt()}% · ${PortionText.kcalFor(target.scaledKcal, chosen)} kcal",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Slider(
+                        value = percent,
+                        onValueChange = { percent = it },
+                        valueRange = 0f..100f,
+                        steps = 19,
+                    )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        PortionText.PRESETS.forEach { (value, label) ->
+                            FilterChip(
+                                selected = kotlin.math.abs(chosen - value) < 0.001,
+                                onClick = { percent = (value * 100).toFloat() },
+                                label = { Text(label) },
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val dateKey = target.date.toString()
+                    // 0% means "not eaten at all" rather than "eaten, none of
+                    // it" -- otherwise the row would sit in a state the swipe
+                    // stages don't recognise.
+                    if (chosen <= 0.0) {
+                        onSetEatenOnDate(dateKey, target.cat, false, 0.0, target.scaledKcal, target.recipe.name)
+                    } else {
+                        onSetEatenOnDate(dateKey, target.cat, true, chosen, target.scaledKcal, target.recipe.name)
+                    }
+                    portionPickerTarget = null
+                }) { Text("Zapisz") }
+            },
+            dismissButton = {
+                TextButton(onClick = { portionPickerTarget = null }) { Text("Anuluj") }
+            },
+        )
+    }
     val confirm = pendingConfirm
     if (confirm != null) {
         AlertDialog(
@@ -543,6 +677,19 @@ fun PlannerScreen(
 }
 
 private class PendingConfirm(val message: String, val action: () -> Unit)
+
+/**
+ * FR-105: which meal row the portion picker is open for. Carries the date
+ * as well as the category, because the picker can be opened from the
+ * dashboard (today) or from any day card (FR-104) and must write back to
+ * the right day.
+ */
+private data class PortionTarget(
+    val cat: String,
+    val recipe: Recipe,
+    val scaledKcal: Int,
+    val date: java.time.LocalDate,
+)
 
 /**
  * Requested 2026-08-26 ("dodaj też przynajmniej 5 nowych funkcji...
@@ -767,6 +914,7 @@ private fun DayCard(
  * slot same as the picker dialog's "— brak / wyczyść —" row, empty slots
  * are a dashed "+ [category]" placeholder opening that same picker).
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PlannerDashboard(
     displayName: String,
@@ -793,14 +941,16 @@ private fun PlannerDashboard(
     onDayJump: (dayIndex: Int) -> Unit = {},
     onWaterTap: (Int) -> Unit = {},
     onWaterSetCount: (Int) -> Unit = {},
-    // FR-103 (2026-08-29, Web parity): the meal-card swipe is no longer
-    // "right = eaten / left = not eaten" -- the DISTANCE now picks one of
-    // four actions (see PlannerSwipe). The card reports which one the user
-    // committed to; PlannerScreen owns the ViewModels needed to carry it
-    // out (cook history + pantry live there, not here).
-    onSwipeAction: (cat: String, action: PlannerSwipe.Action, recipe: Recipe, scaledKcal: Int) -> Unit = { _, _, _, _ -> },
-    /** FR-103: recipe ids already logged as cooked TODAY -- drives the "🍳 Zrobione" chip on the cards. */
-    cookedTodayIds: Set<String> = emptySet(),
+    // FR-103 (rebuilt 2026-08-29, Web parity): the meal-card swipe is one
+    // STEP along the dish's lifecycle, and only its DIRECTION matters
+    // (+1 forward, -1 back). The card reports the direction and its own
+    // date; PlannerScreen owns the ViewModels needed to carry it out (cook
+    // history + pantry live there, not here).
+    onSwipeStep: (cat: String, direction: Int, recipe: Recipe, scaledKcal: Int, date: LocalDate) -> Unit = { _, _, _, _, _ -> },
+    /** FR-103/FR-104: "is this dish logged as cooked on that day" -- drives each row's stage. */
+    isCookedOnDate: (recipeId: String, dateKey: String) -> Boolean = { _, _ -> false },
+    /** FR-105: long-press a meal row -> pick how much of it was actually eaten. */
+    onOpenPortionPicker: (cat: String, recipe: Recipe, scaledKcal: Int, date: LocalDate) -> Unit = { _, _, _, _ -> },
     remainingKcalFillEnabled: Boolean = false,
     // Bug fixed 2026-08-26: see PlannerScreen's matching param doc comment --
     // this is the only place fasting status can actually reach the screen
@@ -812,6 +962,11 @@ private fun PlannerDashboard(
     headerActions: @Composable RowScope.() -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    // FR-104: every row needs to know which calendar day it acts on. The
+    // dashboard is always today; the day cards pass their own (see
+    // DayCardClinic). Local calendar day, via AppDates -- see FR-101.
+    val today = remember { AppDates.today() }
+    val todayKey = remember(today) { today.toString() }
     val eatenKcal = EatenOperations.dailyEatenKcal(eatenEntries) + EatenOperations.snacksKcal(snacks)
     val remaining = (kcalTarget - eatenKcal).coerceAtLeast(0)
     val kcalPct = if (kcalTarget > 0) (eatenKcal.toFloat() / kcalTarget).coerceIn(0f, 1f) else 0f
@@ -1026,7 +1181,7 @@ private fun PlannerDashboard(
         // FR-103: a one-line cheat sheet for the four swipe outcomes -- the
         // gesture is only discoverable if something says it exists.
         Text(
-            "← ½ połowa · ←← cofnij  |  → 🍳 zrobione · →→ 🍴 zjedzone",
+            "→ 🍳 zrobione → 🍴 zjedzone  ·  ← cofa krok  ·  przytrzymaj = ile zjedzone",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 9.5.sp,
@@ -1069,34 +1224,32 @@ private fun PlannerDashboard(
                 // portion reads as half (chip + half the kcal) instead of
                 // being indistinguishable from a whole one.
                 val portion = EatenOperations.portionOf(eatenEntries, category.id)
-                val isHalf = eaten && portion > 0.0 && portion < 1.0
-                val cookedToday = recipe.id in cookedTodayIds
+                val isPartial = eaten && portion > 0.0 && portion < 1.0
+                val stage = PlannerSwipe.stageOf(isEaten = eaten, isCooked = isCookedOnDate(recipe.id, todayKey))
                 // Same drag-gesture shape as RecipeListScreen's existing
                 // swipe-to-rate (Animatable offset,
                 // detectHorizontalDragGestures, live colour feedback), but
-                // the DISTANCE now picks one of four actions instead of
-                // just its direction picking one of two -- see
-                // PlannerSwipe, which owns that mapping so the live label,
-                // the live tint and the release handler cannot disagree.
-                // A plain tap still opens the recipe preview.
+                // only the DIRECTION matters now: one swipe = one step along
+                // the dish's lifecycle (see PlannerSwipe). A plain tap still
+                // opens the recipe preview; a long press opens the portion
+                // picker (FR-105).
                 val offsetX = remember(category.id) { Animatable(0f) }
                 val swipeScope = rememberCoroutineScope()
                 val density = LocalDensity.current
                 val swipeMaxPx = with(density) { PlannerSwipe.MAX_DP.dp.toPx() }
-                val swipeShortPx = with(density) { PlannerSwipe.SHORT_DP.dp.toPx() }
-                val swipeLongPx = with(density) { PlannerSwipe.LONG_DP.dp.toPx() }
-                val liveAction = PlannerSwipe.actionFor(offsetX.value, swipeShortPx, swipeLongPx)
-                val dragTint = if (liveAction == null) {
+                val swipeCommitPx = with(density) { PlannerSwipe.COMMIT_DP.dp.toPx() }
+                val liveDirection = PlannerSwipe.directionFor(offsetX.value, swipeCommitPx)
+                val liveTarget = if (liveDirection == 0) null else PlannerSwipe.nextStage(stage, liveDirection)
+                val dragTint = if (liveDirection == 0) {
                     Color.Transparent
+                } else if (liveTarget == null) {
+                    // Nowhere further to go this way -- a neutral grey, so the
+                    // card still reacts but never promises a change it won't make.
+                    Color(0xFF9E9E9E).copy(alpha = 0.14f)
                 } else {
-                    val intensity = PlannerSwipe.intensityFor(offsetX.value, liveAction, swipeShortPx, swipeLongPx, swipeMaxPx)
-                    val base = when (liveAction) {
-                        PlannerSwipe.Action.EATEN -> Color(0xFF2E8C5A)
-                        PlannerSwipe.Action.COOKED -> Color(0xFF60B478)
-                        PlannerSwipe.Action.HALF -> Color(0xFFD2963C)
-                        PlannerSwipe.Action.RESET -> Color(0xFFBE463C)
-                    }
-                    base.copy(alpha = 0.14f + 0.26f * intensity)
+                    val intensity = PlannerSwipe.intensityFor(offsetX.value, swipeCommitPx, swipeMaxPx)
+                    val base = if (liveDirection > 0) Color(0xFF3CAA6E) else Color(0xFFC08A3C)
+                    base.copy(alpha = 0.14f + 0.24f * intensity)
                 }
                 // Bug reported 2026-08-25 ("przy przesuwaniu nie ma kolorów"):
                 // Card/Surface always paints its OWN containerColor on top of
@@ -1106,8 +1259,21 @@ private fun PlannerDashboard(
                 // the tint into `colors.containerColor` instead (the color
                 // Card itself paints) is the only place a Card's background
                 // can actually be influenced from outside.
-                val cardContainerColor = dragTint.compositeOver(MaterialTheme.colorScheme.surface)
-                Box(modifier = Modifier.weight(1f)) {
+                // FR-103: the card shows WHICH STAGE it is at, since that is
+                // what the swipe steps through -- "zrobione" gets a green
+                // wash ("podświetla na zielono że gotowe do zjedzenia") and
+                // "zjedzone" is dimmed with the name struck through
+                // ("skreśla i wyszarza delikatnie").
+                val stageBase = when (stage) {
+                    PlannerSwipe.Stage.COOKED -> MaterialTheme.colorScheme.primaryContainer
+                    else -> MaterialTheme.colorScheme.surface
+                }
+                val cardContainerColor = dragTint.compositeOver(stageBase)
+                // Bug reported 2026-08-29 ("dolny pasek z kartami przesuwa
+                // się przy przesuwaniu dania"): clipToBounds keeps the
+                // dragged card's travel inside its own slot, so nothing it
+                // does can visually reach the rest of the screen.
+                Box(modifier = Modifier.weight(1f).clipToBounds()) {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1116,9 +1282,9 @@ private fun PlannerDashboard(
                             .pointerInput(category.id) {
                                 detectHorizontalDragGestures(
                                     onDragEnd = {
-                                        val committed = PlannerSwipe.actionFor(offsetX.value, swipeShortPx, swipeLongPx)
+                                        val committed = PlannerSwipe.directionFor(offsetX.value, swipeCommitPx)
                                         swipeScope.launch {
-                                            if (committed != null) onSwipeAction(category.id, committed, recipe, kcal)
+                                            if (committed != 0) onSwipeStep(category.id, committed, recipe, kcal, today)
                                             offsetX.animateTo(0f)
                                         }
                                     },
@@ -1130,12 +1296,25 @@ private fun PlannerDashboard(
                                     }
                                 }
                             }
-                            .clickable { onPreviewRecipe(recipe, meal.scale) },
+                            // FR-105: long press = "ile z tego zjadłeś".
+                            // combinedClickable rather than a second
+                            // pointerInput so tap and long-press stay one
+                            // gesture detector and can't both fire.
+                            .combinedClickable(
+                                onClick = { onPreviewRecipe(recipe, meal.scale) },
+                                onLongClick = { onOpenPortionPicker(category.id, recipe, kcal, today) },
+                            ),
                         shape = MaterialTheme.shapes.large,
                         colors = CardDefaults.cardColors(containerColor = cardContainerColor),
                         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                     ) {
-                        Row(modifier = Modifier.fillMaxHeight().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .padding(10.dp)
+                                .alpha(if (stage == PlannerSwipe.Stage.EATEN) 0.62f else 1f),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             Text(category.emoji, fontSize = 18.sp)
                             Spacer(modifier = Modifier.width(10.dp))
                             Column(modifier = Modifier.weight(1f)) {
@@ -1173,18 +1352,18 @@ private fun PlannerDashboard(
                                 // has to show all three -- struck-through
                                 // name = eaten whole (above), these chips =
                                 // the other two.
-                                if (cookedToday || isHalf) {
+                                if (stage == PlannerSwipe.Stage.COOKED || isPartial) {
                                     Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                                        if (cookedToday) {
+                                        if (stage == PlannerSwipe.Stage.COOKED) {
                                             MealStateChip(
-                                                "🍳 Zrobione",
+                                                "🍳 Zrobione — gotowe do zjedzenia",
                                                 MaterialTheme.colorScheme.primaryContainer,
                                                 MaterialTheme.colorScheme.onPrimaryContainer,
                                             )
                                         }
-                                        if (isHalf) {
+                                        if (isPartial) {
                                             MealStateChip(
-                                                "½ Zjedzone w połowie",
+                                                PortionText.label(portion),
                                                 MaterialTheme.colorScheme.tertiaryContainer,
                                                 MaterialTheme.colorScheme.onTertiaryContainer,
                                             )
@@ -1193,7 +1372,7 @@ private fun PlannerDashboard(
                                 }
                             }
                             Text(
-                                if (isHalf) "${Math.round(kcal * portion).toInt()} / $kcal kcal" else "$kcal kcal",
+                                if (isPartial) "${Math.round(kcal * portion).toInt()} / $kcal kcal" else "$kcal kcal",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -1207,12 +1386,16 @@ private fun PlannerDashboard(
                     // gone -- while dragging, the card names the action it
                     // would commit to right now; at rest it falls back to
                     // the old discrete hint.
-                    if (liveAction != null) {
-                        val toTheRight = liveAction == PlannerSwipe.Action.COOKED || liveAction == PlannerSwipe.Action.EATEN
+                    if (liveDirection != 0) {
                         Text(
-                            liveAction.label,
+                            when {
+                                liveTarget == null && liveDirection > 0 -> "✓ już zjedzone"
+                                liveTarget == null -> "— nic do cofnięcia"
+                                liveDirection > 0 -> liveTarget.label
+                                else -> "↩️ Cofnij"
+                            },
                             modifier = Modifier
-                                .align(if (toTheRight) Alignment.CenterEnd else Alignment.CenterStart)
+                                .align(if (liveDirection > 0) Alignment.CenterEnd else Alignment.CenterStart)
                                 .padding(horizontal = 12.dp)
                                 .clip(MaterialTheme.shapes.small)
                                 .background(MaterialTheme.colorScheme.surface)
@@ -1353,6 +1536,71 @@ private fun BentoMetricTile(value: String, label: String, modifier: Modifier = M
 }
 
 /**
+ * FR-100: the week's planned nutrition at a glance. Kept deliberately quiet
+ * about anything it cannot back up -- if only some dishes carry macros, it
+ * says so with the count rather than averaging over the ones it has and
+ * presenting that as the week's figure.
+ */
+@Composable
+private fun WeekPlanSummaryCard(summary: WeekPlanSummary.Summary, kcalTarget: Int) {
+    val (comparison, onTarget) = remember(summary.avgKcal, kcalTarget) {
+        WeekPlanSummary.targetComparison(summary.avgKcal, kcalTarget)
+    }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("📊 Zaplanowany tydzień", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    "${summary.avgKcal} kcal",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    comparison,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (onTarget) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+            }
+            val dayWord = if (summary.plannedDays == 1) "zaplanowanego dnia" else "zaplanowanych dni"
+            Text(
+                "średnio na dzień, z ${summary.plannedDays} $dayWord (${summary.totalMeals} dań)",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            if (summary.avgProtein != null) {
+                val partial = if (summary.macroMeals < summary.totalMeals) {
+                    " (z ${summary.macroMeals} z ${summary.totalMeals} dań — reszta nie ma podanych makro)"
+                } else {
+                    ""
+                }
+                Text(
+                    "Średnio dziennie: B ${summary.avgProtein} g · W ${summary.avgCarbs} g · T ${summary.avgFat} g$partial",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Text(
+                    "Żadne z zaplanowanych dań nie ma podanych makroskładników.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/**
  * FR-103: a small rounded status chip under a meal card's dish name --
  * "what this card currently IS" (cooked today / eaten only half), as
  * opposed to the drag label, which says what a swipe WOULD do.
@@ -1378,6 +1626,7 @@ private fun MealStateChip(text: String, background: Color, contentColor: Color) 
  * wiersze posilkow jako zaokraglone chipy z emoji-avatarem zamiast
  * OutlinedButton na cala szerokosc.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DayCardClinic(
     day: Int,
@@ -1397,8 +1646,19 @@ private fun DayCardClinic(
     onClearDay: () -> Unit,
     onAddDayToShopping: () -> Unit,
     onCopyDayClick: () -> Unit = {},
+    // FR-104 (2026-08-29, requested: "dodaj też gest na kartach dni"): the
+    // same zrobione/zjedzone step gesture the dashboard card has, on the
+    // date THIS weekday maps to in the current week. Defaults make it a
+    // no-op for any caller that doesn't wire it (the 11 non-Klinika themes
+    // use DayCard, not this one).
+    date: LocalDate = AppDates.today(),
+    eatenEntries: Map<String, EatenEntry> = emptyMap(),
+    isCookedOnDate: (recipeId: String, dateKey: String) -> Boolean = { _, _ -> false },
+    onSwipeStep: (cat: String, direction: Int, recipe: Recipe, scaledKcal: Int, date: LocalDate) -> Unit = { _, _, _, _, _ -> },
+    onOpenPortionPicker: (cat: String, recipe: Recipe, scaledKcal: Int, date: LocalDate) -> Unit = { _, _, _, _ -> },
     modifier: Modifier = Modifier,
 ) {
+    val dateKey = remember(date) { date.toString() }
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -1436,13 +1696,83 @@ private fun DayCardClinic(
             PlannerOperations.PLANNER_CATEGORIES.forEach { category ->
                 val meal = dayMeals[category.id]
                 val recipe = meal?.let { recipesById[it.recipeId] }
+                // FR-104: only a row that actually holds a dish has a stage
+                // to step through -- an empty slot keeps its plain
+                // tap-to-pick behaviour, untouched.
+                val rowKcal = if (recipe != null && meal != null) PlannerOperations.scaledKcal(recipe, meal.scale) else 0
+                val rowEaten = EatenOperations.isEaten(eatenEntries, category.id)
+                val rowPortion = EatenOperations.portionOf(eatenEntries, category.id)
+                val rowStage = if (recipe == null) {
+                    PlannerSwipe.Stage.NONE
+                } else {
+                    PlannerSwipe.stageOf(isEaten = rowEaten, isCooked = isCookedOnDate(recipe.id, dateKey))
+                }
+                val rowOffset = remember(category.id, dateKey) { Animatable(0f) }
+                val rowScope = rememberCoroutineScope()
+                val rowDensity = LocalDensity.current
+                val rowMaxPx = with(rowDensity) { PlannerSwipe.MAX_DP.dp.toPx() }
+                val rowCommitPx = with(rowDensity) { PlannerSwipe.COMMIT_DP.dp.toPx() }
+                val rowDirection = PlannerSwipe.directionFor(rowOffset.value, rowCommitPx)
+                val rowTarget = if (rowDirection == 0) null else PlannerSwipe.nextStage(rowStage, rowDirection)
+                val rowBase = when (rowStage) {
+                    PlannerSwipe.Stage.COOKED -> MaterialTheme.colorScheme.primaryContainer
+                    else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                }
+                val rowTint = when {
+                    rowDirection == 0 -> Color.Transparent
+                    rowTarget == null -> Color(0xFF9E9E9E).copy(alpha = 0.14f)
+                    rowDirection > 0 -> Color(0xFF3CAA6E).copy(
+                        alpha = 0.14f + 0.24f * PlannerSwipe.intensityFor(rowOffset.value, rowCommitPx, rowMaxPx),
+                    )
+                    else -> Color(0xFFC08A3C).copy(
+                        alpha = 0.14f + 0.24f * PlannerSwipe.intensityFor(rowOffset.value, rowCommitPx, rowMaxPx),
+                    )
+                }
+                // clipToBounds for the same reason the dashboard card has it:
+                // a row sliding sideways must not be able to move anything
+                // else on screen ("dolny pasek z kartami się przesuwa").
+                Box(modifier = Modifier.fillMaxWidth().clipToBounds()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .offset { IntOffset(rowOffset.value.roundToInt(), 0) }
                         .clip(MaterialTheme.shapes.medium)
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
-                        .clickable { onSlotClick(category.id) }
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                        .background(rowTint.compositeOver(rowBase))
+                        .then(
+                            if (recipe != null && meal != null) {
+                                Modifier.pointerInput(category.id, dateKey) {
+                                    detectHorizontalDragGestures(
+                                        onDragEnd = {
+                                            val committed = PlannerSwipe.directionFor(rowOffset.value, rowCommitPx)
+                                            rowScope.launch {
+                                                if (committed != 0) onSwipeStep(category.id, committed, recipe, rowKcal, date)
+                                                rowOffset.animateTo(0f)
+                                            }
+                                        },
+                                        onDragCancel = { rowScope.launch { rowOffset.animateTo(0f) } },
+                                    ) { change, dragAmount ->
+                                        change.consume()
+                                        rowScope.launch {
+                                            rowOffset.snapTo((rowOffset.value + dragAmount).coerceIn(-rowMaxPx, rowMaxPx))
+                                        }
+                                    }
+                                }
+                            } else {
+                                Modifier
+                            },
+                        )
+                        .then(
+                            if (recipe != null && meal != null) {
+                                Modifier.combinedClickable(
+                                    onClick = { onSlotClick(category.id) },
+                                    onLongClick = { onOpenPortionPicker(category.id, recipe, rowKcal, date) },
+                                )
+                            } else {
+                                Modifier.clickable { onSlotClick(category.id) }
+                            },
+                        )
+                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                        .alpha(if (rowStage == PlannerSwipe.Stage.EATEN) 0.62f else 1f),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(
@@ -1462,7 +1792,32 @@ private fun DayCardClinic(
                             meal!!.isLeftover -> "🍱 ${recipe.name}"
                             else -> recipe.name
                         }
-                        Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textDecoration = if (rowStage == PlannerSwipe.Stage.EATEN) TextDecoration.LineThrough else TextDecoration.None,
+                        )
+                        if (rowStage == PlannerSwipe.Stage.COOKED || (rowEaten && rowPortion > 0.0 && rowPortion < 1.0)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                if (rowStage == PlannerSwipe.Stage.COOKED) {
+                                    MealStateChip(
+                                        "🍳 Zrobione",
+                                        MaterialTheme.colorScheme.primaryContainer,
+                                        MaterialTheme.colorScheme.onPrimaryContainer,
+                                    )
+                                }
+                                if (rowEaten && rowPortion > 0.0 && rowPortion < 1.0) {
+                                    MealStateChip(
+                                        PortionText.label(rowPortion),
+                                        MaterialTheme.colorScheme.tertiaryContainer,
+                                        MaterialTheme.colorScheme.onTertiaryContainer,
+                                    )
+                                }
+                            }
+                        }
                     }
                     if (recipe != null && meal != null) {
                         Text(
@@ -1476,6 +1831,26 @@ private fun DayCardClinic(
                         TextButton(onClick = { onPreviewClick(recipe, meal.scale) }) { Text("👁️") }
                         TextButton(onClick = { onRegenerateSlot(category.id) }) { Text("🔁") }
                     }
+                }
+                if (rowDirection != 0) {
+                    Text(
+                        when {
+                            rowTarget == null && rowDirection > 0 -> "✓ już zjedzone"
+                            rowTarget == null -> "— nic do cofnięcia"
+                            rowDirection > 0 -> rowTarget.label
+                            else -> "↩️ Cofnij"
+                        },
+                        modifier = Modifier
+                            .align(if (rowDirection > 0) Alignment.CenterEnd else Alignment.CenterStart)
+                            .padding(horizontal = 10.dp)
+                            .clip(MaterialTheme.shapes.small)
+                            .background(MaterialTheme.colorScheme.surface)
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
                 }
                 if (recipe == null) {
                     val suggestion = prepAheadFor(category.id)

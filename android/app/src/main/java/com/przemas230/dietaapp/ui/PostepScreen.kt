@@ -54,6 +54,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import com.przemas230.dietaapp.logic.AppDates
 
 /**
  * FR-37/FR-40/FR-41/FR-42/FR-60/FR-83: the Postęp tab -- previously a bare
@@ -91,7 +92,7 @@ fun PostepScreen(
     val allRecipes by plannerViewModel.allRecipes.collectAsState()
     val recipesById = remember(allRecipes) { allRecipes.associateBy { it.id } }
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
-    val today = remember { LocalDate.now(ZoneOffset.UTC) }
+    val today = remember { AppDates.today() }
     val dailyTarget = remember(profile) { ProfileCalculations.calcTargets(profile).daily }
     // FR-87: motyw "Klinika" -- kropki wody jako pelne kolka + przyciski
     // +/-, kafelek wagi z delta 30-dniowa. Ten sam WaterViewModel.setCount/
@@ -447,7 +448,7 @@ private fun ActivityHistoryCard(entries: List<ActivityLogEntry>, onClear: () -> 
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         visible.forEach { entry ->
                             val dt = remember(entry.tsEpochMillis) {
-                                Instant.ofEpochMilli(entry.tsEpochMillis).atZone(ZoneOffset.UTC).format(formatter)
+                                Instant.ofEpochMilli(entry.tsEpochMillis).atZone(java.time.ZoneId.systemDefault()).format(formatter)
                             }
                             Column {
                                 Text(dt, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

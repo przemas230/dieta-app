@@ -6,6 +6,7 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import org.json.JSONArray
 import org.json.JSONObject
+import com.przemas230.dietaapp.logic.AppDates
 
 /**
  * FR-38/39: separate, small SharedPreferences store for the water
@@ -83,13 +84,13 @@ object WaterNotificationStore {
     /** Today's water count as last known by the notification side -- 0 if the stored date isn't today. */
     fun readPendingWaterCount(context: Context): Int {
         val p = prefs(context)
-        val today = LocalDate.now(ZoneOffset.UTC).toString()
+        val today = AppDates.todayKey()
         val storedDate = p.getString(KEY_PENDING_DATE, null)
         return if (storedDate == today) p.getInt(KEY_PENDING_COUNT, 0) else 0
     }
 
     fun writePendingWaterCount(context: Context, count: Int) {
-        val today = LocalDate.now(ZoneOffset.UTC).toString()
+        val today = AppDates.todayKey()
         prefs(context).edit()
             .putString(KEY_PENDING_DATE, today)
             .putInt(KEY_PENDING_COUNT, count)

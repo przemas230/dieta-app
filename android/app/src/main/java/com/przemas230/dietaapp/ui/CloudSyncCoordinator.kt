@@ -369,7 +369,7 @@ fun CloudSyncCoordinator(
     ) {
         if (uid == null || !hasReceivedFirstSnapshot) return@LaunchedEffect
         delay(1500)
-        val today = CloudSyncCodec.todayUtcDateString()
+        val today = CloudSyncCodec.todayDateString()
 
         // See class doc, "Fourth change" -- only fields that actually
         // changed since lastKnownFields was last updated get pushed, so a

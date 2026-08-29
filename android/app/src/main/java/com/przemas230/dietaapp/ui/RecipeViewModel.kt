@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.przemas230.dietaapp.logic.AppDates
+import java.time.LocalDate
 
 /**
  * Thin StateFlow/Android glue around RecipeBrowsing (in the :logic module,
@@ -143,19 +145,24 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         _cooked.value = CookHistoryOperations.removeEntry(_cooked.value, recipeId, index)
     }
 
-    /** FR-103: has this dish already been logged as cooked today? Keeps the Planer's short right-swipe idempotent. */
-    fun isCookedToday(recipeId: String): Boolean =
-        CookHistoryOperations.cookedTodayIndex(_cooked.value, recipeId, System.currentTimeMillis()) >= 0
+    /** FR-103/FR-104: is this dish logged as cooked on [dateKey] (defaults to today)? Keeps the forward swipe idempotent. */
+    fun isCookedOn(recipeId: String, dateKey: String = AppDates.todayKey()): Boolean =
+        CookHistoryOperations.cookedOnDateIndex(_cooked.value, recipeId, dateKey) >= 0
+
+    /** FR-104: mark cooked on an arbitrary day -- the week's day cards can log a dish for Tuesday while it is Saturday. */
+    fun markCookedOn(recipeId: String, date: LocalDate) {
+        _cooked.value = CookHistoryOperations.addOnDate(_cooked.value, recipeId, date)
+    }
 
     /**
-     * FR-103: exact inverse of [markCookedToday] for today's entry -- the
-     * Planer's long left-swipe ("cofnij wszystko", the user's "pasuje też
-     * móc cofnąć zrobienie bo mogło się przez przypadek kliknąć").
-     * Returns false when there was nothing logged today; the pantry
-     * restore is the caller's job, same split as [markCookedToday].
+     * FR-103/FR-104: exact inverse of [markCookedOn] for that day's entry --
+     * the Planer's backward swipe ("cofnięcie niech cofa odejmowanie...
+     * rzeczy do spiżarni"). Returns false when there was nothing logged
+     * that day; the pantry restore is the caller's job, same split as
+     * [markCookedToday].
      */
-    fun undoCookedToday(recipeId: String): Boolean {
-        val index = CookHistoryOperations.cookedTodayIndex(_cooked.value, recipeId, System.currentTimeMillis())
+    fun undoCookedOn(recipeId: String, dateKey: String = AppDates.todayKey()): Boolean {
+        val index = CookHistoryOperations.cookedOnDateIndex(_cooked.value, recipeId, dateKey)
         if (index < 0) return false
         _cooked.value = CookHistoryOperations.removeEntry(_cooked.value, recipeId, index)
         return true

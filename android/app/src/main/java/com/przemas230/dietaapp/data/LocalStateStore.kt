@@ -56,6 +56,16 @@ object LocalStateStore {
         }
     }
 
+    /**
+     * FR-98: the same JSON conversion the local-state file uses, exposed so
+     * [BackupFile] can wrap/unwrap exactly that shape instead of growing a
+     * second, subtly different encoder for the same data.
+     */
+    fun mapToJsonObject(map: Map<*, *>): JSONObject = mapToJson(map)
+
+    /** FR-98: see [mapToJsonObject] -- the decode half. */
+    fun jsonObjectToMapPublic(obj: JSONObject): Map<String, Any?> = jsonObjectToMap(obj)
+
     private fun mapToJson(map: Map<*, *>): JSONObject {
         val obj = JSONObject()
         map.forEach { (k, v) -> obj.put(k.toString(), anyToJson(v)) }

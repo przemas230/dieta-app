@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
+import com.przemas230.dietaapp.logic.AppDates
 
 /**
  * FR-36/FR-33/FR-34/FR-83: "did I eat this" state, keyed by date (mirrors
@@ -68,12 +69,22 @@ class EatenViewModel : ViewModel() {
      * swiping the "wrong" way on a card already in that state did the
      * opposite of what it looked like it should).
      */
-    fun setEaten(cat: String, eaten: Boolean, plannedKcal: Int?, plannedName: String?, portion: Double = 1.0) {
-        val key = todayUtc().toString()
-        val day = _days.value[key] ?: EatenDay()
+    fun setEaten(cat: String, eaten: Boolean, plannedKcal: Int?, plannedName: String?, portion: Double = 1.0) =
+        setEatenOnDate(todayUtc().toString(), cat, eaten, plannedKcal, plannedName, portion)
+
+    /**
+     * FR-104/FR-105: same as [setEaten] but for an explicit date key --
+     * needed by the week's day cards (which act on their own day, not
+     * today) and by the portion picker (which can be opened from either).
+     */
+    fun setEatenOnDate(dateKey: String, cat: String, eaten: Boolean, plannedKcal: Int?, plannedName: String?, portion: Double = 1.0) {
+        val day = _days.value[dateKey] ?: EatenDay()
         val newEntries = EatenOperations.setEaten(day.entries, cat, eaten, plannedKcal, plannedName, portion)
-        applyDays(_days.value + (key to day.copy(entries = newEntries)))
+        applyDays(_days.value + (dateKey to day.copy(entries = newEntries)))
     }
+
+    /** FR-104: the eaten record for an arbitrary day, so a day card can render its own stage. */
+    fun entriesForDate(dateKey: String): Map<String, EatenEntry> = _days.value[dateKey]?.entries.orEmpty()
 
     /** FR-33/34: the global "➕" quick-add dialog's "+ Dodaj" button -- always today. */
     fun addSnack(name: String, kcal: Int) = addSnackForDate(todayUtc(), name, kcal)
@@ -113,5 +124,7 @@ class EatenViewModel : ViewModel() {
         }
     }
 
-    private fun todayUtc(): LocalDate = LocalDate.now(ZoneOffset.UTC)
+    // FR-101 (ported 2026-08-29): the user's LOCAL calendar day, not UTC --
+    // see AppDates for why this used to be wrong and what it broke.
+    private fun todayUtc(): LocalDate = AppDates.today()
 }

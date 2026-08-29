@@ -72,3 +72,15 @@ Filtr progu oceny pokazuje wyłącznie przepisy, których ocena gwiazdkowa (⭐ 
   starcie, pojawia się po wpisaniu frazy (1 pasujący przepis), a
   kliknięcie czyści pole i przywraca pełną listę (106 kart w tej
   kategorii). CACHE_NAME→v113, `versions/v113/`.
+
+- **v8** (2026-08-29, PORT NA ANDROIDA): odporność na polskie znaki
+  diakrytyczne dodana też po stronie Kotlina. Audyt z 2026-08-28 wykazał ten
+  sam błąd w CZTERECH miejscach (wyszukiwarka przepisów w `RecipeBrowsing`,
+  podpowiedzi przekąsek w `MainActivity`, filtr składników w
+  `RecipeListScreen`, filtr ulubionych składników w `SettingsScreen`) —
+  wszystkie wiernie przeniesione z weba razem z błędem. Wspólna funkcja
+  (`PolishText`) zamiast czterech poprawek, żeby piąte pole wyszukiwania
+  dostało to za darmo. Świadomie NIE przez `java.text.Normalizer` z NFD:
+  „ł” nie ma formy rozłożonej, więc ta droga cicho zostawia najczęstszy
+  polski znak — czyli dokładnie tę literę, która jest w „brokuł”, „żółty”
+  i „masło”.

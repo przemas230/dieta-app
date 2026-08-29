@@ -97,8 +97,32 @@ object PlannerOperations {
         val (numberPart, denominatorPart, rest) = match.destructured
         var value = numberPart.replace(',', '.').toDoubleOrNull() ?: return text
         if (denominatorPart.isNotEmpty()) value /= denominatorPart.toDouble()
-        val scaledLabel = formatScaledAmount(value * scale)
-        return if (rest.isNotEmpty()) "$scaledLabel $rest" else scaledLabel
+        val scaled = value * scale
+        val scaledLabel = formatScaledAmount(scaled)
+        if (rest.isEmpty()) return scaledLabel
+        // FR-20/v2 (ported 2026-08-29): decline the noun to match the new
+        // count. Matched on the WHOLE remaining text and only against the
+        // pantry's declension table, which is what keeps it safe: "jajka"
+        // and "awokado" are entries, while "g piersi z kurczaka" or
+        // "łyżeczka oliwy" are not, so a unit-led line is left exactly as
+        // it was.
+        //
+        // Integers only, deliberately. A fractional count takes the
+        // genitive singular in Polish ("0,5 jajka", "1,5 banana"), a form
+        // this table doesn't carry -- one/few/many is all it has. Declining
+        // 0.5 through the one/few/many rule produced "0,5 jajko" and
+        // "1,5 banany", i.e. it would trade one wrong form for another;
+        // leaving the recipe's own wording alone there is what was already
+        // correct.
+        val isWholeCount = scaled == Math.floor(scaled) && !scaled.isInfinite()
+        val forms = if (isWholeCount) PantryDisplay.PANTRY_PLURAL_FORMS[rest.trim().lowercase()] else null
+        if (forms == null) return "$scaledLabel $rest"
+        val declined = when (PantryDisplay.polishPluralCategory(scaled.toInt())) {
+            "one" -> forms.one
+            "few" -> forms.few
+            else -> forms.many
+        }
+        return "$scaledLabel $declined"
     }
 
     fun scaleIngredients(ingredients: List<String>, scale: Double): List<String> =

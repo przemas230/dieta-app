@@ -8,6 +8,7 @@ import java.time.ZoneOffset
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.przemas230.dietaapp.logic.AppDates
 
 /** FR-40: weight log, local-only for now, same as the other local-only ViewModels -- see android/PARITY.md. */
 class WeightViewModel : ViewModel() {
@@ -16,7 +17,7 @@ class WeightViewModel : ViewModel() {
 
     /** Returns false (caller shows "Podaj prawidłową wagę") if kg is outside the valid range. */
     fun addWeight(kg: Double): Boolean {
-        val today = LocalDate.now(ZoneOffset.UTC).toString()
+        val today = AppDates.todayKey()
         val result = WeightOperations.addWeight(_entries.value, today, kg) ?: return false
         _entries.value = result
         return true

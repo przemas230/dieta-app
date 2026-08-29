@@ -95,4 +95,27 @@ class EatenOperationsTest {
         val under = EatenOperations.setEaten(emptyMap(), "obiad", true, 600, "Zupa", portion = -1.0)
         assertEquals(0, EatenOperations.dailyEatenKcal(under))
     }
+
+    // ---- FR-105: arbitrary portions ----
+
+    @Test
+    fun `an arbitrary portion counts its exact share of the kcal`() {
+        val entries = EatenOperations.setEaten(emptyMap(), "obiad", true, 700, "Zupa", portion = 0.35)
+        assertEquals(0.35, EatenOperations.portionOf(entries, "obiad"))
+        assertEquals(245, EatenOperations.dailyEatenKcal(entries))
+    }
+
+    @Test
+    fun `PortionText names the round fractions and falls back to a percentage`() {
+        assertEquals("½ porcji zjedzone", PortionText.label(0.5))
+        assertEquals("¼ porcji zjedzone", PortionText.label(0.25))
+        assertEquals("Cała porcja zjedzone", PortionText.label(1.0))
+        assertEquals("35% porcji zjedzone", PortionText.label(0.35))
+    }
+
+    @Test
+    fun `PortionText kcal matches what the daily total actually counts`() {
+        val entries = EatenOperations.setEaten(emptyMap(), "obiad", true, 601, "X", portion = 0.5)
+        assertEquals(EatenOperations.dailyEatenKcal(entries), PortionText.kcalFor(601, 0.5))
+    }
 }

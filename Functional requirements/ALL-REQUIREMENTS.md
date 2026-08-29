@@ -46,6 +46,8 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-92: Udostępnianie / eksport planu tygodnia](#fr-92-udostępnianie--eksport-planu-tygodnia)
 - [FR-97: Znacznik stanu spiżarni na kartach „Dzisiejszy Planer”](#fr-97-znacznik-stanu-spiżarni-na-kartach-dzisiejszy-planer)
 - [FR-103: Stopniowany gest przesuwania na kartach „Dzisiejszy Planer”](#fr-103-stopniowany-gest-przesuwania-na-kartach-dzisiejszy-planer)
+- [FR-104: Gest „zrobione/zjedzone” także na kartach dni tygodnia](#fr-104-gest-zrobionezjedzone-także-na-kartach-dni-tygodnia)
+- [FR-105: Dowolna wielkość zjedzonej porcji](#fr-105-dowolna-wielkość-zjedzonej-porcji)
 - [FR-100: Podsumowanie odżywcze zaplanowanego tygodnia](#fr-100-podsumowanie-odżywcze-zaplanowanego-tygodnia)
 
 ### Lista zakupów
@@ -276,6 +278,19 @@ Filtr progu oceny pokazuje wyłącznie przepisy, których ocena gwiazdkowa (⭐ 
   starcie, pojawia się po wpisaniu frazy (1 pasujący przepis), a
   kliknięcie czyści pole i przywraca pełną listę (106 kart w tej
   kategorii). CACHE_NAME→v113, `versions/v113/`.
+
+
+- **v8** (2026-08-29, PORT NA ANDROIDA): odporność na polskie znaki
+  diakrytyczne dodana też po stronie Kotlina. Audyt z 2026-08-28 wykazał ten
+  sam błąd w CZTERECH miejscach (wyszukiwarka przepisów w `RecipeBrowsing`,
+  podpowiedzi przekąsek w `MainActivity`, filtr składników w
+  `RecipeListScreen`, filtr ulubionych składników w `SettingsScreen`) —
+  wszystkie wiernie przeniesione z weba razem z błędem. Wspólna funkcja
+  (`PolishText`) zamiast czterech poprawek, żeby piąte pole wyszukiwania
+  dostało to za darmo. Świadomie NIE przez `java.text.Normalizer` z NFD:
+  „ł” nie ma formy rozłożonej, więc ta droga cicho zostawia najczęstszy
+  polski znak — czyli dokładnie tę literę, która jest w „brokuł”, „żółty”
+  i „masło”.
 
 ---
 
@@ -691,6 +706,18 @@ Dla każdego zaplanowanego dania można zmienić mnożnik porcji (predefiniowane
   „6 tortilli”, „6 bananów”/„9 bananów”, przy nietkniętych wierszach
   jednostkowych. CACHE_NAME→v113, `versions/v113/`.
 
+
+- **v3** (2026-08-29, PORT NA ANDROIDA): skalowanie porcji odmienia teraz
+  rzeczownik także w Kotlinie. `PlannerOperations.scaleIngredientText`
+  podmieniał wyłącznie LICZBĘ, więc „2 jajka” przy 3× czytało się „6 jajka”,
+  a przy 0,5× „1 jajka” — tabela odmian była już przeniesiona w
+  `PantryDisplay`, tylko nie była stamtąd wołana. Dopasowanie na CAŁYM
+  pozostałym tekście i wyłącznie do tej tabeli, co czyni je bezpiecznym:
+  „jajka” i „awokado” są w tabeli, a „g piersi z kurczaka” czy „łyżeczka
+  oliwy” nie, więc linia zaczynająca się od jednostki zostaje nietknięta.
+  Ułamki celowo bez odmiany — polski bierze tam dopełniacz liczby
+  pojedynczej („0,5 jajka”), formy której tabela one/few/many nie zna.
+
 ---
 
 # FR-21: Losowe generowanie planu — cały tydzień lub pojedynczy dzień
@@ -733,6 +760,14 @@ Gradle/emulatora, odnotowane w `android/PARITY.md`.
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-28, Web only): Dodane cofanie dla obu wariantów losowania; `confirm()` usunięty z wariantu jednodniowego, zachowany dla całotygodniowego. Zmiana z własnej rekomendacji, razem z FR-22 (patrz tam pełne uzasadnienie niespójności, którą to naprawia). Zweryfikowane na żywo (headless Chromium): wylosowanie pustego dnia wypełniło 5 kategorii, „Cofnij” przywróciło go do pustego; wylosowanie całego tygodnia wypełniło dzień 0 i dzień 5, „Cofnij” przywróciło dzień 0 do pierwotnego `{"sniadania":"S1"}` i dzień 5 do pustego — czyli cofnięcie działa na całej strukturze, nie tylko na dniu, który akurat był widoczny. CACHE_NAME→v106, `versions/v106/`.
 
+
+- **v3** (2026-08-29, PORT NA ANDROIDA): „🎲 Losuj ten dzień” oferuje teraz
+  „Cofnij” także w aplikacji natywnej. Migawka dnia robiona jest w momencie
+  POTWIERDZENIA, nie naciśnięcia przycisku, więc dzień zmieniony przy
+  otwartym okienku potwierdzenia też przywraca się poprawnie. Przywracany
+  jest cały dzień naraz (`PlannerViewModel.replaceDay`), więc wracają też
+  skala porcji i znaczniki resztek, a nie same identyfikatory przepisów.
+
 ---
 
 # FR-22: Czyszczenie planu — cały tydzień lub pojedynczy dzień
@@ -773,6 +808,12 @@ Gradle/emulatora, odnotowane w `android/PARITY.md`.
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-28, Web only): Blokujące `confirm()` zamienione na natychmiastową akcję + „Cofnij” w powiadomieniu. Zmiana z własnej rekomendacji (użytkownik: „dodawaj swoje rekomendowane zmiany jak i refactoringi”): mechanizm cofania istniał od FR-91, ale był podpięty tylko pod JEDNĄ akcję, mimo że dwie inne, znacznie bardziej destrukcyjne (czyszczenie i losowanie całego dnia), wciąż używały natywnego okienka — niespójność UX i słabsze zabezpieczenie, bo `confirm()` chroni przed pomyłką tylko zanim ją popełnisz, a nie po. Zweryfikowane na żywo (headless Chromium): wyczyszczenie dnia z zaplanowanym śniadaniem, potwierdzone `state.planner[0] === {}`, kliknięcie „Cofnij” przywróciło `{"sniadania":"S1"}`. CACHE_NAME→v106, `versions/v106/`.
+
+
+- **v3** (2026-08-29, PORT NA ANDROIDA): „🗑️ Wyczyść ten dzień” oferuje
+  teraz „Cofnij” także w aplikacji natywnej — ta sama migawka całego dnia co
+  w FR-21/v3. Pusty dzień nie pokazuje propozycji cofnięcia, bo nie ma czego
+  cofać.
 
 ---
 
@@ -953,6 +994,12 @@ Gradle/emulatora, odnotowane w `android/PARITY.md`.
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-28, Web only): Dodane cofanie obu akcji kasujących. Zmiana z własnej rekomendacji, znaleziona przy przeglądzie kodu pod kątem spójności z FR-21/v2 i FR-22/v2: **„Usuń odhaczone” był najgorszym przypadkiem w całej aplikacji** — nieodwracalne kasowanie BEZ potwierdzenia I BEZ cofania, więc jedno przypadkowe stuknięcie na długiej liście (realnie zgłaszane były listy po 87 pozycji) po cichu niszczyło pracę bez żadnej drogi powrotu. Przy okazji dodany brakujący przypadek brzegowy: przy zerowej liczbie odhaczonych pozycji przycisk pokazuje teraz komunikat zamiast udawać, że coś zrobił. Zweryfikowane na żywo (headless Chromium), cztery przypadki osobno: usunięcie 2 z 3 pozycji (nieodhaczona nietknięta), cofnięcie przywracające komplet, przypadek „nic nie odhaczone” (lista nietknięta, komunikat pokazany, cofanie nieoferowane) oraz wyczyszczenie całej listy z cofnięciem przywracającym też `recipeAdded`. CACHE_NAME→v107, `versions/v107/`.
 
+
+- **v3** (2026-08-29, PORT NA ANDROIDA): „Wyczyść całą listę” oferuje teraz
+  „Cofnij” także w aplikacji natywnej. Migawka robiona przed czyszczeniem
+  przywraca prawdziwą listę — ilości, odhaczenia i powiązania z przepisami,
+  które decydują o tym, czy przepis „jest na liście” — a nie same nazwy.
+
 ---
 
 # FR-27: Dodanie składników z całego tygodnia z Planera
@@ -1028,6 +1075,11 @@ Zgłoszony 2026-08-11: użytkownik zgłosił, że aplikacja "zacina się" po dod
   na żywo (headless Chromium): 2 pozycje + ustawiony override jednostki →
   wyczyszczenie (0 pozycji, override nietknięty) → „Cofnij” → obie pozycje
   z powrotem, override nadal ten sam. CACHE_NAME→v109, `versions/v109/`.
+
+
+- **v3** (2026-08-29, PORT NA ANDROIDA): „🗑️ Wyczyść całą spiżarnię”
+  oferuje teraz „Cofnij” także w aplikacji natywnej, z migawką sprzed
+  czyszczenia, więc wracają realne ilości, a nie puste kafelki.
 
 ---
 
@@ -4938,6 +4990,30 @@ Odnotowane w `android/PARITY.md`.
   kopią, uszkodzony JSON, nowsza wersja formatu) — każda pokazała właściwy
   komunikat i zostawiła dane nietknięte. CACHE_NAME→v108, `versions/v108/`.
 
+
+- **v2** (2026-08-29, PORT NA ANDROIDA): kopia zapasowa do pliku działa też
+  w aplikacji natywnej. **Nie jest to przepisanie 1:1** — na Androidzie nie
+  ma pobierania bloba, więc zapis i odczyt idą przez Storage Access
+  Framework (`ACTION_CREATE_DOCUMENT` / `ACTION_OPEN_DOCUMENT`), a
+  użytkownik sam wybiera miejsce pliku. FORMAT pliku jest identyczny
+  (`BackupFile`), więc kopia zrobiona na telefonie wczytuje się w
+  przeglądarce i odwrotnie — co jest w zasadzie sensem posiadania tego po
+  obu stronach.
+
+  Import przechodzi przez DOKŁADNIE tę samą ścieżkę co zwykłe uruchomienie
+  aplikacji (`applyLocalSnapshot`, wydzielone z
+  `LocalPersistenceCoordinator`) — dwie implementacje „przywróć wszystko z
+  mapy” to dwa miejsca, w których można zapomnieć o polu przy następnej
+  zmianie, a kopia, która po cichu pomija pole, jest gorsza niż jej brak, bo
+  wygląda na udaną. Każdy powód odrzucenia pliku ma własny komunikat i
+  ŻADEN nie rusza danych już w aplikacji.
+
+  Zweryfikowane na emulatorze: zapis do `/sdcard/Download/` z poprawnie
+  podpowiedzianą nazwą `dieta-app-kopia-2026-08-29.json`, plik 6,3 kB z
+  właściwą kopertą `{format, version, exportedAt, data}`, a następnie odczyt
+  tego samego pliku — okienko potwierdzenia pokazało datę „29.08.2026,
+  09:49”, a po wczytaniu plan i podsumowanie tygodnia były nietknięte.
+
 ---
 
 # FR-99: Wyszukiwanie na liście zakupów
@@ -5017,6 +5093,17 @@ skompilować ani przetestować. Odnotowane w `android/PARITY.md`.
   aktywnym filtrze zwracający wszystkie 5 pozycji. CACHE_NAME→v108,
   `versions/v108/`.
 
+
+- **v2** (2026-08-29, PORT NA ANDROIDA): wyszukiwarka listy zakupów działa
+  też w aplikacji natywnej — pole nad listą, licznik „N z M pozycji”,
+  przycisk „✕” widoczny tylko przy aktywnym filtrze, odporność na polskie
+  znaki (przez `PolishText`, patrz FR-2/v8). Zachowany podział na `items`
+  (pełna lista) i `visibleItems` (przefiltrowana) z tego samego powodu co na
+  webie: „lista jest pusta” i „nic nie pasuje” muszą zostać dwoma różnymi
+  komunikatami. Fraza nie jest zapisywana ani synchronizowana. Zweryfikowane
+  na emulatorze: po dodaniu 13 pozycji wpisanie „jajk” dało nagłówek
+  „Lista zakupów (1 z 13)”.
+
 ---
 
 # FR-100: Podsumowanie odżywcze zaplanowanego tygodnia
@@ -5090,6 +5177,16 @@ skompilować ani przetestować. Odnotowane w `android/PARITY.md`.
   poniżej celu). Sprawdzone też wizualnie zrzutem ekranu na pełnym,
   5-dniowym planie w domyślnym motywie Klinika. CACHE_NAME→v110,
   `versions/v110/`.
+
+
+- **v2** (2026-08-29, PORT NA ANDROIDA): karta „📊 Zaplanowany tydzień”
+  dodana nad listą dni w aplikacji natywnej. Liczenie wydzielone do
+  `WeekPlanSummary` w module `logic` i pokryte testami — obie decyzje, na
+  których stoi wiarygodność tej liczby (średnia po dniach ZAPLANOWANYCH, nie
+  po siedmiu; makra tylko z dań, które je mają, wraz z licznikiem), są tam
+  zapisane jako testy, a nie tylko jako komentarz. Zweryfikowane na
+  emulatorze: przy 5 daniach w 3 dniach karta pokazała „489 kcal · −991 kcal
+  vs cel 1480 · średnio na dzień, z 3 zaplanowanych dni (5 dań)”.
 
 ---
 
@@ -5212,6 +5309,29 @@ powinny zostać potraktowane osobno. Odnotowane w `android/PARITY.md`.
   niespójnie — `PlannerScreen` używa czasu lokalnego, więc tuż po północy
   Planer i licznik kalorii pokazują różne dni. Dokładne lokalizacje i
   planowana naprawa wypisane w Uwagach wyżej.
+
+
+- **v2** (2026-08-29, PORT NA ANDROIDA): błąd opisany w v1 jako
+  „POTWIERDZONY, NIENAPRAWIONY na Androidzie” został naprawiony. Android
+  wymuszał `ZoneOffset.UTC` w ośmiu miejscach (`WaterViewModel`,
+  `WeightViewModel`, `EatenViewModel.todayUtc`, `PostepScreen` ×2,
+  `WaterNotificationStore` ×2, `ActivityLogOperations`,
+  `CloudSyncCodec.todayUtcDateString`), podczas gdy `PlannerScreen` liczył
+  dzień lokalnie — czyli aplikacja była niespójna SAMA ZE SOBĄ: tuż po
+  północy Planer pokazywał już nowy dzień, a licznik wody i kalorii
+  zapisywał do poprzedniego. To gorzej niż pierwotny błąd webowy, gdzie
+  przynajmniej wszyscy mylili się w tę samą stronę.
+
+  Naprawione przez jedną wspólną funkcję (`AppDates`) zamiast ośmiu
+  niezależnych wywołań — o to właśnie chodzi, żeby następna funkcja z kluczem
+  daty nie mogła po cichu wybrać innej strefy. Serializacja ZNACZNIKÓW CZASU
+  (`CloudSyncCodec`'s ISO `…Z`, wspólna z web'owym `toISOString()`) celowo
+  zostaje w UTC — chwila to chwila, niezależnie od tego, gdzie się ją czyta.
+  `CloudSyncCodec.todayUtcDateString()` przemianowane na `todayDateString()`
+  i przestawione na dzień lokalny, bo zasila pole `date` licznika wody i
+  ścieżkę `waterHistory.<data>` — dopóki się rozjeżdżały, szklanka wody
+  zapisana po lokalnej północy lądowała pod innym kluczem na każdej
+  platformie.
 
 ---
 
@@ -5350,3 +5470,165 @@ sprzed tej zmiany nie zmienia się ani o kcal.
   `android/logic/`, `pdSwipeAction()` na webie), żeby żywa etykieta, żywe
   tło i obsługa puszczenia palca nie mogły się rozjechać co do znaczenia
   bieżącego gestu.
+
+
+- **v2** (2026-08-29, PRZEBUDOWA po odklikaniu v1): gest przestał wybierać
+  akcję na podstawie ODLEGŁOŚCI przesunięcia, a zaczął przechodzić KROK po
+  kroku przez cykl życia dania. Zgłoszenie: „jedno przesunięcie to zrobione
+  i wtedy podświetla na zielono że gotowe do zjedzenia a drugie takie samo
+  przesunięcie niech skreśla i wyszarza delikatnie jako oznaczenie że
+  zjedzone (…) cofnięcie niech cofa odejmowanie zarówno kalorii tak jak
+  teraz jak i rzeczy do spiżarni”.
+
+  Nowy model: `nic → zrobione → zjedzone` w prawo, dokładnie odwrotnie w
+  lewo. Krok naprzód odejmuje (składniki przy „zrobione”, kalorie przy
+  „zjedzone”), krok wstecz oddaje dokładnie to, co jego odpowiednik zabrał.
+  Karta na bieżąco nazywa krok, który wykona, a gdy w danym kierunku nie ma
+  już dokąd iść, mówi to wprost („✓ już zjedzone” / „— nic do cofnięcia”)
+  zamiast przesuwać się bez efektu.
+
+  **Wygląd stanu** (też z prośby): „zrobione” = zielone tło karty (gotowe do
+  zjedzenia), „zjedzone” = przekreślona nazwa i delikatnie wyszarzona cała
+  karta.
+
+  **Czułość** („żeby to przesuwanie było bardziej czułe”): jeden próg
+  zamiast dwóch, i to niski (30 dp). Skoro jeden krok to jeden krok
+  niezależnie od tego, jak daleko pojedzie palec, nie ma powodu wymagać
+  długiego przeciągnięcia — wystarczy odróżnić przesunięcie od stuknięcia.
+
+  **Naprawiony realny błąd trafiania w gest (Web)**: `pointerdown`
+  ignorował gest zaczęty na DOWOLNYM `<button>`, a znacznik spiżarni
+  (FR-97) stał się przyciskiem w ŚRODKU karty — więc przeciąganie
+  rozpoczęte gdziekolwiek koło środka po cichu nic nie robiło i trzeba było
+  łapać kartę przy krawędzi. Dokładnie to zgłosił użytkownik („muszę od
+  krawędzi złapać ten prostokąt (…) niech działa przynajmniej od połowy
+  kafelka”). Teraz wyjątkiem jest tylko przycisk „✕” (usuń z planu);
+  stuknięcie znacznika spiżarni nadal działa, bo stuknięcie nigdy nie
+  przekracza progu blokady osi.
+
+  **Naprawiony przesuwający się dolny pasek**: przesuwana karta wyjeżdżała
+  poza szerokość widoku, przez co dokument dostawał poziome przewijanie i
+  wszystko zakotwiczone do okna — w tym pływający dolny pasek nawigacji —
+  jechało razem z palcem. Na webie naprawione przycięciem listy
+  (`overflow-x: clip`), na Androidzie `Modifier.clipToBounds()` na slocie
+  karty. Karta nadal przejeżdża pełny dystans, po prostu nie może już
+  poszerzyć niczego wokół siebie.
+
+  **Połowa porcji wyprowadzona z gestu** do przytrzymania — patrz FR-105.
+  Zweryfikowane na emulatorze: cztery kolejne przesunięcia dały 0/1480 →
+  zielona karta „🍳 Zrobione” → 345/1480 z przekreśleniem i wyszarzeniem →
+  z powrotem, a dolny pasek nie drgnął.
+
+---
+
+# FR-104: Gest „zrobione/zjedzone” także na kartach dni tygodnia
+
+**Obszar:** Planer (motyw Klinika), Android + Web
+**Status:** Zaimplementowane na obu platformach
+
+## Opis
+Ten sam krokowy gest, który FR-103 wprowadził w sekcji „Dzisiejszy Planer”,
+działa teraz również na wierszach posiłków w **kartach dni tygodnia** niżej
+na ekranie Planera. Przesunięcie w prawo przesuwa danie o krok naprzód
+(nic → zrobione → zjedzone), w lewo — o krok wstecz, z cofnięciem tego, co
+krok naprzód odjął (składniki ze spiżarni, kalorie z licznika).
+
+Zgłoszenie: „dodaj też gest na kartach dni jak proponujesz” (2026-08-29).
+Wcześniej, żeby oznaczyć wczorajszy obiad jako zjedzony, trzeba było iść do
+zakładki Postęp i przełączać checkboxy — gest istniał wyłącznie dla dzisiaj.
+
+**Most między tygodniem a kalendarzem.** Planer jest powtarzalnym szablonem
+tygodniowym indeksowanym 0–6 (poniedziałek–niedziela), a „zjedzone” i
+„zrobione” są zapisywane per konkretna DATA. Te dwie rzeczy muszą się gdzieś
+spotkać — robią to w jednym miejscu (`dateForDayIndex()` na webie,
+`dateForDayIndex` w `PlannerScreen` na Androidzie): dzień o indeksie N
+oznacza „ten dzień tygodnia w tygodniu zawierającym dzisiaj”. Data jest
+liczona z lokalnych składowych, nie z UTC — patrz FR-101.
+
+Puste sloty (bez zaplanowanego dania) zachowują dotychczasowe zachowanie:
+stuknięcie otwiera wybór dania, gest ich nie dotyczy, bo nie mają stanu, po
+którym można się przesuwać.
+
+## Kryteria akceptacji
+- Wiersz posiłku w karcie dnia z zaplanowanym daniem reaguje na przesunięcie
+  w prawo/lewo tak samo jak karta w „Dzisiejszym Planerze”.
+- Stan pokazany na karcie dnia i w „Dzisiejszym Planerze” dla tego samego
+  dania w tym samym dniu jest zawsze taki sam (oba czytają ten sam zapis,
+  żaden nie trzyma własnej kopii).
+- Oznaczenie „zrobione” na karcie np. wtorku zapisuje wpis w historii
+  gotowania z datą wtorku tego tygodnia, nie dzisiejszą.
+- Puste sloty nadal otwierają wybór dania stuknięciem i nie reagują na gest.
+- Przesunięcie wiersza nie porusza niczego poza nim (patrz FR-103, ten sam
+  problem z przycinaniem).
+- Zwykłe stuknięcie wiersza z daniem nadal otwiera wybór dania — przesunięcie
+  nie liczy się jako stuknięcie.
+- `./gradlew :logic:test :app:assembleDebug` przechodzi.
+
+## Historia rewizji
+- **v1** (2026-08-29): Pierwsza wersja, obie platformy w tej samej turze.
+  Wymagała uogólnienia zapisu „zrobione” z „dzisiaj” na dowolną datę
+  (`cookedOnDateIndex`/`markRecipeCookedOnDate`/`undoCookedOnDate` na webie,
+  `CookHistoryOperations.cookedOnDateIndex`/`addOnDate` +
+  `RecipeViewModel.isCookedOn/markCookedOn/undoCookedOn` na Androidzie) oraz
+  zapisu „zjedzone” (`EatenViewModel.setEatenOnDate`/`entriesForDate`).
+  Zweryfikowane na emulatorze: przesunięcie w lewo na wierszu „Śniadanie” w
+  karcie Soboty cofnęło danie ze stanu „zjedzone” do „zrobione”, a karta w
+  „Dzisiejszym Planerze” pokazywała dokładnie ten sam stan przed i po.
+
+---
+
+# FR-105: Dowolna wielkość zjedzonej porcji
+
+**Obszar:** Planer (motyw Klinika), Android + Web
+**Status:** Zaimplementowane na obu platformach
+
+## Opis
+Przytrzymanie karty dania (w „Dzisiejszym Planerze” albo w karcie dnia
+tygodnia) otwiera wybór, **ile z tego dania faktycznie zostało zjedzone**:
+suwak 0–100% plus cztery gotowe wielkości (¼, ½, ¾, cała porcja). Licznik
+kalorii liczy dokładnie tyle, ile zaznaczono — okienko pokazuje tę liczbę na
+żywo, jeszcze przed zapisaniem.
+
+Zgłoszenie: „dodaj opcje dowolnej porcji jak proponujesz” (2026-08-29).
+
+Pole `portion` (0–1) istniało na wpisie zjedzonego posiłku od FR-103 — to
+wymaganie dokłada wyłącznie brakujący interfejs do niego. Model danych i
+sposób liczenia kalorii nie zmieniają się ani trochę, więc historia sprzed
+tej zmiany zostaje bez zmian.
+
+Wybranie 0% oznacza „nic nie zjedzone”, czyli kasuje oznaczenie zjedzenia —
+a nie zapisuje „zjedzone, ale zero”. Bez tego karta mogłaby wylądować w
+stanie, którego kroki gestu z FR-103 nie rozpoznają.
+
+**Dlaczego przytrzymanie, a nie gest.** FR-103 w pierwszej wersji próbował
+zmieścić „pół porcji” w przesunięciu w lewo. Użytkownik poprosił, żeby gest
+znaczył jeden krok naprzód/wstecz, i słusznie: gest, który znaczy „jeden
+krok”, nie może jednocześnie znaczyć „62% porcji” bez powrotu do zgadywania
+odległości. Wielkość porcji jest z natury wartością ciągłą, więc dostała
+element, który potrafi ją wyrazić — suwak.
+
+## Kryteria akceptacji
+- Przytrzymanie karty dania otwiera okienko z suwakiem i czterema gotowymi
+  wielkościami; zwykłe stuknięcie nadal robi to, co robiło (podgląd przepisu
+  w „Dzisiejszym Planerze”, wybór dania w karcie dnia).
+- Okienko pokazuje na żywo procent i odpowiadającą mu liczbę kalorii.
+- Zapisanie wartości > 0 oznacza danie jako zjedzone w tej części; licznik
+  dnia rośnie dokładnie o tyle kalorii.
+- Zapisanie 0% oznacza danie jako niezjedzone.
+- Karta pokazuje plakietkę z wielkością porcji, gdy jest ona mniejsza niż
+  cała (np. „¼ porcji zjedzone”), i kafelek kcal w formie „86 / 345 kcal”.
+- Nazwy okrągłych ułamków (¼, ½, ¾, cała) są słowne; dowolna inna wartość
+  z suwaka pokazuje się jako procent.
+- Historia kalorii dla wpisów bez pola `portion` jest identyczna jak przed
+  zmianą.
+- `./gradlew :logic:test :app:assembleDebug` przechodzi (`PortionText`,
+  `EatenOperationsTest`).
+
+## Historia rewizji
+- **v1** (2026-08-29): Pierwsza wersja, obie platformy w tej samej turze.
+  Nazewnictwo wielkości porcji i przeliczanie kalorii wydzielone do wspólnej,
+  testowanej logiki (`PortionText` w `android/logic/`, `PORTION_PRESETS`/
+  `portionLabel()` na webie), żeby obie platformy mówiły to samo o tej samej
+  liczbie. Zweryfikowane na emulatorze: przytrzymanie karty otworzyło suwak
+  ustawiony na 100% · 345 kcal, wybór „¼ porcji” i zapis dał 86/1480 kcal na
+  pierścieniu, plakietkę „¼ porcji zjedzone” i kafelek „86 / 345 kcal”.

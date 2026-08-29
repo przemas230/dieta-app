@@ -291,4 +291,33 @@ class PlannerOperationsTest {
 
         assertEquals("obiady-1", result[0]?.get("obiady")?.recipeId)
     }
+
+    // ---- FR-20/v2 (ported 2026-08-29): the noun follows the new count ----
+
+    @Test
+    fun `scaling a counted ingredient declines the noun, not just the number`() {
+        assertEquals("6 jajek", PlannerOperations.scaleIngredientText("2 jajka", 3.0))
+        assertEquals("3 jajka", PlannerOperations.scaleIngredientText("1 jajka", 3.0))
+        assertEquals("2 banany", PlannerOperations.scaleIngredientText("1 banan", 2.0))
+    }
+
+    @Test
+    fun `a unit-led ingredient keeps its own wording`() {
+        // "g piersi z kurczaka" is not in the declension table, and must not be.
+        assertEquals("300 g piersi z kurczaka", PlannerOperations.scaleIngredientText("150 g piersi z kurczaka", 2.0))
+        assertEquals("2 łyżeczka oliwy", PlannerOperations.scaleIngredientText("1 łyżeczka oliwy", 2.0))
+    }
+
+    @Test
+    fun `a fractional count is left undeclined on purpose`() {
+        // Polish takes the genitive singular there ("0,5 jajka"), a form the
+        // one/few/many table cannot express -- declining it would trade one
+        // wrong form for another.
+        assertEquals("0,5 jajka", PlannerOperations.scaleIngredientText("1 jajka", 0.5))
+    }
+
+    @Test
+    fun `scale 1 is untouched`() {
+        assertEquals("2 jajka", PlannerOperations.scaleIngredientText("2 jajka", 1.0))
+    }
 }

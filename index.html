@@ -975,6 +975,18 @@
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) .pd-today-list{
     flex:1;
   }
+  /* Bug reported 2026-08-29 ("dolny pasek z kartami przesuwa się przy
+     przesuwaniu dania, rozciąga się tak samo jak to co przesuwam"): a card
+     dragged sideways is translated, and a translated element that leaves the
+     viewport still counts towards the document's scroll width. The page
+     therefore gained horizontal scroll mid-gesture, and everything anchored
+     to the viewport -- including Klinika's floating bottom nav pill --
+     slid along with the finger. Clipping the list is the fix at the source:
+     the card can still travel its full PD_SWIPE_MAX, it just can't make the
+     document any wider while doing it. `clip` rather than `hidden` so this
+     never turns the list into its own scroll container. */
+  .pd-today-list{ overflow-x:clip; }
+  .day-card{ overflow-x:clip; }
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) .pd-meal-card,
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) .pd-meal-card-empty{
     flex:1;
@@ -1021,6 +1033,9 @@
   .pd-swipe-action.strong{color:#0f6e3c;}
   .pd-swipe-action.warn{color:#a5522a;}
   .pd-swipe-action.bad{color:#a33227;}
+  /* Shown when a swipe in this direction has nowhere further to go, so the
+     card never slides with no explanation. */
+  .pd-swipe-action.muted{color:var(--muted);}
   /* FR-103 status chips under the dish name: what the card currently IS,
      as opposed to what a swipe WOULD do. */
   .pd-meal-flags{display:flex; gap:5px; flex-wrap:wrap; margin-top:2px;}
@@ -1029,6 +1044,13 @@
     background:var(--teal-pale); color:var(--teal-dark); white-space:nowrap;
   }
   .pd-meal-flag.half{background:var(--honey-pale); color:var(--honey-dark);}
+  /* FR-103: "zrobione" = ready to eat, washed green. Deliberately a tint of
+     the card rather than a border, so it reads at a glance while scrolling
+     without changing the card's size (a border would, and the meal rows are
+     flex-sized -- see .pd-today-list). */
+  .pd-meal-card.stage-cooked{background:var(--teal-pale);}
+  /* "zjedzone" = done with, gently greyed out and struck through. */
+  .pd-meal-card.stage-eaten{opacity:.62;}
   /* Half a portion is NOT finished, so it deliberately does not get the
      struck-through treatment a fully eaten meal gets -- just dimmed. */
   .pd-meal-card.eaten.half .pd-meal-name{ text-decoration:none; opacity:.8; }
@@ -1186,7 +1208,15 @@
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-row{
     display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:16px;
     cursor:pointer; margin-bottom:4px;
+    /* FR-104: needed by the swipe -- position for the floating action pill,
+       touch-action so the browser's own scroll recogniser doesn't claim the
+       horizontal drag first (same reason .pd-meal-card sets it), and
+       user-select so dragging across the dish name doesn't select text. */
+    position:relative; touch-action:pan-y; -webkit-user-select:none; user-select:none;
   }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-row.stage-cooked{ background:var(--teal-pale); }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-row.stage-eaten{ opacity:.62; }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-row.stage-eaten .cdc-dish{ text-decoration:line-through; }
   [data-theme="clinic"] .cdc-row{ background:rgba(0,0,0,.03); }
   [data-theme="clinic_dark"] .cdc-row{ background:rgba(255,255,255,.05); }
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-avatar{
@@ -5071,96 +5101,215 @@ function attachSwipeToEat(){
     row.addEventListener("pointercancel", finish);
   });
 }
-// FR-103 (2026-08-29, user: "coś nie do końca łapie mi przesuwanie w prawo
-// i w lewo dań w dzisiejszym planerze, mam pomysł żeby to przebudować w
-// sposób taki że jedno albo krótkie przesunięcie daje że zrobione a długie
-// przesunięcie że zjedzone; w lewo natomiast można cofnąć zjedzenie np. że
-// połowa dania tylko zjedzona albo wcale nie zjedzone, oczywiście pasuje
-// też móc cofnąć zrobienie bo mogło się przez przypadek kliknąć").
+// FR-103 (2026-08-29, REBUILT the same day after live feedback): the swipe
+// on a "Dzisiejszy Planer" meal card is a STEP through the meal's own
+// lifecycle, not a menu of four distance-selected actions.
 //
-// The previous version (2026-08-25) had exactly two outcomes -- any right
-// swipe = eaten, any left swipe = not eaten -- which meant the gesture
-// carried one bit of information while the Planer actually tracks three
-// separate things (cooked / eaten / how much). That's why it "didn't quite
-// click": there was no way to say "I made it but haven't eaten it yet",
-// and no way to correct an accidental tap on either.
+// v1 (earlier the same day) mapped swipe DISTANCE to one of four outcomes
+// (short right = cooked, long right = eaten, short left = half a portion,
+// long left = reset). The user tried it and asked for something simpler and
+// closer to how the dish actually progresses: "jedno przesunięcie to
+// zrobione i wtedy podświetla na zielono że gotowe do zjedzenia a drugie
+// takie samo przesunięcie niech skreśla i wyszarza delikatnie jako
+// oznaczenie że zjedzone". So:
 //
-// Now the DISTANCE of the swipe picks the action, and the card says which
-// one out loud (the .pd-swipe-action pill) before the finger is lifted:
+//   →  from nothing  ->  🍳 ZROBIONE  (cook-history entry + pantry subtract,
+//                                      card turns green = "ready to eat")
+//   →  from cooked   ->  🍴 ZJEDZONE  (kcal counted, name struck through,
+//                                      card dimmed)
+//   ←  from eaten    ->  back to ZROBIONE (kcal given back, still cooked)
+//   ←  from cooked   ->  back to nothing  (cook entry removed, ingredients
+//                                          returned to the pantry)
 //
-//   →  short (>= PD_SHORT)  🍳 Zrobione            (cook log + pantry subtract)
-//   →  long  (>= PD_LONG)   🍽️ Zjedzone            (whole portion)
-//   ←  short (<= -PD_SHORT) ½ Zjedzone w połowie   (half portion, half kcal)
-//   ←  long  (<= -PD_LONG)  ↩️ Cofnij wszystko     (not eaten + undo today's cook)
+// Every step is reversible by the opposite swipe, and each one undoes
+// exactly what its forward twin did -- "cofnięcie niech cofa odejmowanie
+// zarówno kalorii tak jak teraz jak i rzeczy do spiżarni". Partial portions
+// moved OUT of the gesture entirely and onto a long-press (openPortionPicker),
+// because a gesture that means "one step forward" cannot also mean "62% of
+// a portion" without going back to guessing distances.
 //
-// Everything is idempotent and order-independent -- swiping short-right
-// twice does NOT subtract the pantry twice, and the long-left reset works
-// whether the card was cooked, eaten, half-eaten or all three. axis-locks
-// against vertical scrolling the same way attachSwipeRating() does.
-const PD_SHORT = 36, PD_LONG = 105, PD_SWIPE_MAX = 130;
-// Which of the four actions a given horizontal distance commits to, or
-// null inside the dead zone. Pure function of dx, so the live label, the
-// live tint and the release handler can never disagree about what the
-// current drag means.
-function pdSwipeAction(dx){
-  if(dx >= PD_LONG) return {id:"eaten", label:"🍴 Zjedzone", cls:"strong", tint:[46,140,90], side:"at-right"};
-  if(dx >= PD_SHORT) return {id:"cooked", label:"🍳 Zrobione", cls:"good", tint:[96,180,120], side:"at-right"};
-  if(dx <= -PD_LONG) return {id:"reset", label:"↩️ Cofnij wszystko", cls:"bad", tint:[190,70,60], side:"at-left"};
-  if(dx <= -PD_SHORT) return {id:"half", label:"½ Zjedzone w połowie", cls:"warn", tint:[210,150,60], side:"at-left"};
-  return null;
+// PD_COMMIT is deliberately small (user: "żeby to przesuwanie było bardziej
+// czułe"): one step is one step regardless of how far the finger travels, so
+// there is no reason to demand a long drag -- only enough to tell a swipe
+// apart from a tap.
+// FR-105 (2026-08-29): an arbitrary portion, not just the half the swipe
+// used to offer. `portion` on the eaten entry has been a 0..1 number since
+// FR-103, so this is purely the missing UI for it -- nothing about the data
+// model or the kcal maths changes.
+const PORTION_PRESETS = [
+  [0.25, "¼ porcji"],
+  [0.5, "½ porcji"],
+  [0.75, "¾ porcji"],
+  [1, "Cała porcja"],
+];
+function portionLabel(p){
+  const preset = PORTION_PRESETS.find(([v])=> Math.abs(v - p) < 0.001);
+  if(preset) return `${preset[1]} zjedzone`;
+  return `${Math.round(p*100)}% porcji zjedzone`;
 }
-function attachPdMealCardSwipe(box, today){
+// Long-press a meal card -> "ile z tego zjadłeś". Writing any portion above
+// 0 also marks the meal eaten, and 0 unmarks it, so the picker can never
+// leave the card in a state the swipe stages don't recognise (e.g. "eaten,
+// 0% of it").
+function openPortionPicker(date, cat, recipe){
+  let overlay = document.getElementById("portionPickerOverlay");
+  if(!overlay){
+    overlay = document.createElement("div");
+    overlay.className = "modal-overlay center";
+    overlay.id = "portionPickerOverlay";
+    overlay.innerHTML = `
+      <div class="modal-sheet" style="max-width:340px;">
+        <div class="modal-head"><h3 id="portionPickerTitle">Ile zjedzone?</h3><button class="modal-close" type="button">✕</button></div>
+        <div id="portionPickerBody"></div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector(".modal-close").addEventListener("click", ()=> overlay.classList.remove("show"));
+    overlay.addEventListener("click", (e)=>{ if(e.target===overlay) overlay.classList.remove("show"); });
+  }
+  const current = eatenPortion(date, cat);
+  document.getElementById("portionPickerTitle").textContent = recipe ? recipe.name : "Ile zjedzone?";
+  const body = document.getElementById("portionPickerBody");
+  const kcalOf = p => recipe ? Math.round(recipe.kcal * p) : 0;
+  const commit = (p)=>{
+    if(p <= 0) setEaten(date, cat, false);
+    else setEaten(date, cat, true, p);
+    saveState();
+    overlay.classList.remove("show");
+    toast(p <= 0 ? "Oznaczono jako niezjedzone" : `${portionLabel(p)} — ${kcalOf(p)} kcal`);
+    refreshPdAfterSwipe();
+  };
+  body.innerHTML = `
+    <div class="hint-text" style="margin:0 0 10px;">Przesuń suwak albo wybierz gotową wielkość. Licznik kalorii policzy dokładnie tyle, ile zaznaczysz.</div>
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+      <input type="range" id="portionRange" min="0" max="100" step="5" value="${Math.round((current || 1)*100)}" style="flex:1;">
+      <span id="portionRangeLabel" style="font-weight:800; min-width:96px; text-align:right; font-size:13px;"></span>
+    </div>
+    <div id="portionPresetRow" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;"></div>
+    <button class="btn primary" id="portionSaveBtn" style="width:100%; margin-bottom:8px;">Zapisz</button>
+    <button class="btn ghost" id="portionNoneBtn" style="width:100%; color:var(--danger); border-color:var(--danger);">Nic nie zjedzone</button>
+  `;
+  const range = document.getElementById("portionRange");
+  const rangeLabel = document.getElementById("portionRangeLabel");
+  const syncLabel = ()=>{
+    const p = Number(range.value)/100;
+    rangeLabel.textContent = `${range.value}% · ${kcalOf(p)} kcal`;
+  };
+  range.addEventListener("input", syncLabel);
+  syncLabel();
+  const presetRow = document.getElementById("portionPresetRow");
+  PORTION_PRESETS.forEach(([value,label])=>{
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "ing-chip";
+    b.textContent = label;
+    b.addEventListener("click", ()=>{ range.value = String(Math.round(value*100)); syncLabel(); });
+    presetRow.appendChild(b);
+  });
+  document.getElementById("portionSaveBtn").addEventListener("click", ()=> commit(Number(range.value)/100));
+  document.getElementById("portionNoneBtn").addEventListener("click", ()=> commit(0));
+  overlay.classList.add("show");
+}
+const PD_COMMIT = 30, PD_SWIPE_MAX = 96;
+// The three states a planned meal can be in. Derived, never stored: "cooked"
+// is a cook-history entry for today, "eaten" is state.eaten -- both already
+// existed and are still written by every other part of the app (the recipe
+// card's own "✅ Zrobione dzisiaj", the Postęp checkbox), so this stays a
+// VIEW of those two, not a fourth source of truth that could disagree.
+function pdMealStage(date, cat, recipeId){
+  if(isEaten(date, cat)) return "eaten";
+  if(recipeId && isCookedToday(recipeId, date)) return "cooked";
+  return "none";
+}
+const PD_STAGE_LABEL = {none:"", cooked:"🍳 Zrobione", eaten:"🍴 Zjedzone"};
+// What one step in `dir` (+1 right, -1 left) from `stage` lands on, or null
+// when there is nowhere further to go in that direction.
+function pdNextStage(stage, dir){
+  const order = ["none", "cooked", "eaten"];
+  const i = order.indexOf(stage);
+  const next = i + (dir > 0 ? 1 : -1);
+  if(next < 0 || next >= order.length) return null;
+  return order[next];
+}
+function attachPdMealCardSwipe(box, date){
   const AXIS_LOCK = 10;
-  box.querySelectorAll(".pd-meal-card:not(.pd-meal-card-empty)").forEach(card=>{
+  box.querySelectorAll(".pd-meal-card:not(.pd-meal-card-empty), .cdc-swipe-row").forEach(card=>{
     let startX=null, startY=null, dx=0, axis=null;
     const labelEl = card.querySelector(".pd-swipe-action");
     const clearDragStyle = ()=>{
       card.style.backgroundColor = "";
       if(labelEl){ labelEl.className = "pd-swipe-action"; labelEl.textContent = ""; }
     };
+    const cardDate = card.dataset.pdDate || date;
+    const stageNow = ()=> pdMealStage(cardDate, card.dataset.pdToggleCat, card.dataset.pdRecipeId);
+    let pressTimer = null, longFired = false;
+    const cancelPress = ()=>{ clearTimeout(pressTimer); pressTimer = null; };
     card.addEventListener("pointerdown", (e)=>{
-      if(e.target.closest("button")) return;
+      // Only the explicit "remove from plan" ✕ is excluded. The pantry
+      // badge (FR-97, a <button> since the pantry-check popup was wired to
+      // it) sits in the MIDDLE of the card, and excluding every <button>
+      // -- which this used to do -- meant a drag started anywhere near the
+      // middle silently did nothing. That is exactly what the user hit:
+      // "muszę od krawędzi złapać ten prostokąt... niech działa
+      // przynajmniej od połowy kafelka". Its own tap still works, because
+      // a tap never crosses AXIS_LOCK and so never sets pdSwiped.
+      if(e.target.closest("[data-pd-remove-cat]")) return;
       startX = e.clientX; startY = e.clientY; dx = 0; axis = null;
       card.style.transition = "none";
+      // FR-105: long-press opens the portion picker. Cancelled the moment
+      // the finger moves enough to be a swipe (see pointermove below), so
+      // the two gestures never fire together.
+      longFired = false;
+      cancelPress();
+      pressTimer = setTimeout(()=>{
+        longFired = true;
+        card.dataset.pdSwiped = "1";
+        card.style.transform = "translateX(0)";
+        startX = null; startY = null; dx = 0; axis = null;
+        const recipe = card.dataset.pdRecipeId ? findRecipeById(card.dataset.pdRecipeId) : null;
+        openPortionPicker(cardDate, card.dataset.pdToggleCat, plannedRecipeFor(cardDate, card.dataset.pdToggleCat) || recipe);
+      }, 520);
     });
     card.addEventListener("pointermove", (e)=>{
       if(startX===null) return;
       const ddx = e.clientX - startX, ddy = e.clientY - startY;
       if(axis===null && (Math.abs(ddx) > AXIS_LOCK || Math.abs(ddy) > AXIS_LOCK)){
         axis = Math.abs(ddx) > Math.abs(ddy) ? "x" : "y";
+        cancelPress();
       }
       if(axis === "x"){
         if(e.cancelable) e.preventDefault();
         dx = Math.max(-PD_SWIPE_MAX, Math.min(PD_SWIPE_MAX, ddx));
         card.style.transform = `translateX(${dx}px)`;
-        const action = pdSwipeAction(dx);
-        if(action){
-          // Alpha ramps from the moment the action becomes reachable up to
-          // its next threshold, so the card visibly "locks in" deeper as
-          // the finger keeps going instead of jumping between two states.
-          const span = action.id==="eaten" || action.id==="reset" ? (PD_SWIPE_MAX - PD_LONG) : (PD_LONG - PD_SHORT);
-          const base = action.id==="eaten" || action.id==="reset" ? PD_LONG : PD_SHORT;
-          const intensity = Math.max(0, Math.min(1, (Math.abs(dx) - base) / span));
-          const [r,g,b] = action.tint;
-          card.style.backgroundColor = `rgba(${r},${g},${b},${(0.12 + 0.20*intensity).toFixed(2)})`;
-          if(labelEl){
-            labelEl.className = `pd-swipe-action show ${action.cls} ${action.side}`;
-            labelEl.textContent = action.label;
+        const target = Math.abs(dx) >= PD_COMMIT ? pdNextStage(stageNow(), dx > 0 ? 1 : -1) : null;
+        if(target === null){
+          clearDragStyle();
+          // Already at the end of the line in this direction -- say so
+          // instead of letting the card slide with no feedback at all.
+          if(Math.abs(dx) >= PD_COMMIT && labelEl){
+            labelEl.className = `pd-swipe-action show muted ${dx > 0 ? "at-right" : "at-left"}`;
+            labelEl.textContent = dx > 0 ? "✓ już zjedzone" : "— nic do cofnięcia";
           }
         }else{
-          clearDragStyle();
+          const intensity = Math.min(1, (Math.abs(dx) - PD_COMMIT) / (PD_SWIPE_MAX - PD_COMMIT));
+          const tint = dx > 0 ? [60,170,110] : [190,120,60];
+          card.style.backgroundColor = `rgba(${tint[0]},${tint[1]},${tint[2]},${(0.12 + 0.18*intensity).toFixed(2)})`;
+          if(labelEl){
+            labelEl.className = `pd-swipe-action show ${dx > 0 ? "good at-right" : "warn at-left"}`;
+            labelEl.textContent = target === "none" ? "↩️ Cofnij zrobienie" : (dx > 0 ? PD_STAGE_LABEL[target] : `↩️ Cofnij — ${PD_STAGE_LABEL[target].toLowerCase()}`);
+          }
         }
       }
     });
     const finish = ()=>{
+      cancelPress();
       if(startX===null) return;
       card.style.transition = "transform .15s ease, background-color .2s ease";
       card.style.transform = "translateX(0)";
-      const action = axis==="x" ? pdSwipeAction(dx) : null;
+      const committed = axis==="x" && Math.abs(dx) >= PD_COMMIT ? (dx > 0 ? 1 : -1) : 0;
       clearDragStyle();
-      if(action){
+      if(committed){
         card.dataset.pdSwiped = "1";
-        applyPdSwipeAction(action.id, card.dataset.pdToggleCat, card.dataset.pdRecipeId, today);
+        applyPdStageStep(card.dataset.pdToggleCat, card.dataset.pdRecipeId, cardDate, committed);
       }
       startX=null; startY=null; dx=0; axis=null;
     };
@@ -5168,48 +5317,42 @@ function attachPdMealCardSwipe(box, today){
     card.addEventListener("pointercancel", finish);
   });
 }
-// The four outcomes of pdSwipeAction(), split out from the gesture code so
-// the same transitions can be triggered from anywhere else later (a long-
-// press menu, a keyboard shortcut, the Android port's own equivalent)
-// without re-deriving what "zrobione" or "cofnij" actually mean.
-function applyPdSwipeAction(actionId, cat, recipeId, today){
+// One step of the lifecycle, split out from the gesture so the same
+// transitions can be driven from anywhere else (a long-press menu, the
+// Android port's equivalent) without re-deriving what each stage means.
+function applyPdStageStep(cat, recipeId, date, dir){
   const recipe = recipeId ? findRecipeById(recipeId) : null;
-  const scaled = recipe ? plannedRecipeFor(today, cat) || recipe : null;
-  if(actionId === "cooked"){
+  const scaled = recipe ? (plannedRecipeFor(date, cat) || recipe) : null;
+  const from = pdMealStage(date, cat, recipeId);
+  const to = pdNextStage(from, dir);
+  if(to === null){
+    toast(dir > 0 ? "To danie jest już oznaczone jako zjedzone" : "Nie ma czego cofać");
+    return;
+  }
+  if(to === "cooked" && from === "none"){
     if(!scaled){ toast("Brak przepisu w tym slocie"); return; }
-    if(isCookedToday(scaled.id)){
-      toast("To danie jest już oznaczone jako zrobione dzisiaj");
-      return;
-    }
-    // Same call the recipe card's "✅ Zrobione dzisiaj" button makes --
-    // one cook-history entry plus the pantry subtraction, no duplicate
-    // logic here.
-    markRecipeCookedToday(scaled, null);
-    toast("🍳 Zrobione — odjęto składniki ze spiżarni", "Cofnij", ()=>{
-      undoCookedToday(scaled);
-      saveState(); renderPantry(); refreshPdAfterSwipe();
-    });
-  }else if(actionId === "eaten"){
-    setEaten(today, cat, true, 1);
+    markRecipeCookedOnDate(scaled, date);
+    toast("🍳 Zrobione — odjęto składniki ze spiżarni");
+  }else if(to === "eaten"){
+    setEaten(date, cat, true, 1);
     saveState();
     toast("🍴 Zjedzone");
-  }else if(actionId === "half"){
-    setEaten(today, cat, true, 0.5);
+  }else if(to === "cooked" && from === "eaten"){
+    // Step back one: no longer eaten, but still cooked -- the pantry stays
+    // subtracted, because the dish really was made.
+    setEaten(date, cat, false);
     saveState();
-    toast("½ Zjedzone w połowie — liczy się połowa kcal");
-  }else if(actionId === "reset"){
-    const wasEaten = isEaten(today, cat);
-    setEaten(today, cat, false);
-    const undidCook = scaled ? undoCookedToday(scaled) : false;
+    toast("↩️ Cofnięto zjedzenie — danie nadal zrobione");
+  }else if(to === "none"){
+    const undid = scaled ? undoCookedOnDate(scaled, date) : false;
     saveState();
-    if(undidCook) renderPantry();
-    toast(undidCook ? "↩️ Cofnięto zjedzenie i zrobienie — składniki wróciły do spiżarni"
-                    : (wasEaten ? "↩️ Cofnięto zjedzenie" : "↩️ Nic do cofnięcia"));
+    if(undid) renderPantry();
+    toast(undid ? "↩️ Cofnięto zrobienie — składniki wróciły do spiżarni" : "↩️ Cofnięto");
   }
   refreshPdAfterSwipe();
 }
 function refreshPdAfterSwipe(){
-  setTimeout(()=>{ renderPlannerDashboard(); renderHeader(); renderTodayTracker(); }, 140);
+  setTimeout(()=>{ renderPlanner(); renderHeader(); renderTodayTracker(); }, 140);
 }
 
 const GLUTEN_KEYWORDS = ["chleb","bułk","pęczak","peczak","bulgur","jęczmien","jeczmien","orkiszow","tortilla","wafle żytnie","wafle gryczane","kuskus","kasza manna","makaron"];
@@ -6405,40 +6548,38 @@ function formatDatePl(iso){
   const d = new Date(iso);
   return d.toLocaleDateString('pl-PL', {day:'2-digit', month:'2-digit', year:'numeric'});
 }
-// FR-103 (2026-08-29): "jedno albo krótkie przesunięcie daje że zrobione".
-// The Planer's swipe needs to know whether THIS dish was already logged as
-// cooked today, so the gesture stays idempotent (a second short swipe must
-// not subtract the pantry twice) and so the opposite gesture knows what to
-// undo. state.cooked[id] entries store a full ISO timestamp; todayStr() is
-// the same UTC yyyy-mm-dd slice, so comparing the first 10 chars is exact,
-// not a locale guess.
-function cookedTodayIndex(recipeId){
+// FR-103 (2026-08-29): the Planer's swipe needs to know whether THIS dish
+// was already logged as cooked ON A GIVEN DAY -- "today" for the dashboard
+// card, and the matching day of the current week for the day-card rows
+// (FR-104). Keeping it date-parameterised rather than today-only means the
+// two callers share one definition of "is this cooked" instead of drifting.
+//
+// The date comparison deliberately does NOT slice the stored timestamp:
+// markRecipeCookedOnDate stores a full `toISOString()`, whose date part is
+// the UTC day, while todayStr()/localDateStr() have been the LOCAL calendar
+// day since FR-101 (2026-08-28). Slicing the string would disagree with
+// every other date key in the app between local midnight and 01:00/02:00 in
+// Poland -- exactly the class of bug FR-101 was written to kill.
+function cookedOnDateIndex(recipeId, date){
   const entries = state.cooked[recipeId] || [];
-  const today = todayStr();
+  const wanted = date || todayStr();
   for(let i=entries.length-1; i>=0; i--){
-    // NOT `entries[i].date.slice(0,10)`: markRecipeCookedToday stores a full
-    // `toISOString()` timestamp, whose date part is the UTC day, while
-    // todayStr() has been the LOCAL calendar day since FR-101 (2026-08-28).
-    // Slicing the string would therefore disagree with every other date key
-    // in the app between local midnight and 01:00/02:00 in Poland -- exactly
-    // the class of bug FR-101 was written to kill. Parsing the timestamp and
-    // re-formatting it locally keeps both sides on the same calendar.
     const raw = entries[i].date;
     if(!raw) continue;
     const d = new Date(raw);
     if(isNaN(d.getTime())) continue;
-    if(localDateStr(d) === today) return i;
+    if(localDateStr(d) === wanted) return i;
   }
   return -1;
 }
-function isCookedToday(recipeId){ return cookedTodayIndex(recipeId) >= 0; }
-// Exact inverse of markRecipeCookedToday for today's entry -- same
+function isCookedToday(recipeId, date){ return cookedOnDateIndex(recipeId, date) >= 0; }
+// Exact inverse of markRecipeCookedOnDate for that day's entry -- same
 // restore path the cook-history modal's own "✕" row uses (precise
 // `subtracted` amounts when the entry has them, full-recipe fallback for
 // entries written before 2026-08-22). Returns false if there was nothing
 // to undo.
-function undoCookedToday(r){
-  const idx = cookedTodayIndex(r.id);
+function undoCookedOnDate(r, date){
+  const idx = cookedOnDateIndex(r.id, date);
   if(idx < 0) return false;
   const entry = state.cooked[r.id][idx];
   if(entry.subtracted) restoreSubtractedToPantry(entry.subtracted, r.name);
@@ -6447,12 +6588,24 @@ function undoCookedToday(r){
   if(state.cooked[r.id].length === 0) delete state.cooked[r.id];
   return true;
 }
-function markRecipeCookedToday(r, onChange){
+// Logs the dish as cooked and takes its ingredients out of the pantry.
+// `date` (yyyy-mm-dd) defaults to today; a different day still stores a real
+// timestamp -- noon of that day, not midnight, so that re-reading it through
+// localDateStr() lands on the intended day in every timezone rather than
+// tipping over into the neighbouring one.
+function markRecipeCookedOnDate(r, date, onChange){
   const subtracted = subtractRecipeFromPantry(r);
   state.cooked[r.id] = state.cooked[r.id] || [];
-  state.cooked[r.id].push({date:new Date().toISOString(), subtracted});
+  const when = (!date || date === todayStr()) ? new Date() : new Date(date + "T12:00:00");
+  state.cooked[r.id].push({date: when.toISOString(), subtracted});
   saveState(); renderPantry();
   if(onChange) onChange();
+}
+// Kept as the name every pre-FR-103 call site (recipe card, cook-history
+// modal) already uses, now a thin wrapper -- those callers always mean
+// today and always want the toast.
+function markRecipeCookedToday(r, onChange){
+  markRecipeCookedOnDate(r, todayStr(), onChange);
   toast("Odjęto składniki ze spiżarni");
 }
 function openCookHistoryModal(r, onChange){
@@ -8245,16 +8398,17 @@ function renderPlannerDashboard(){
       return `<button class="pd-meal-card pd-meal-card-empty" data-pd-add-cat="${c.id}">+ ${c.label}</button>`;
     }
     const done = isEaten(today, c.id);
-    // FR-103: three independent bits of state now, so the card has to show
-    // all three -- struck-through name = eaten whole, "½" chip = eaten
-    // half (NOT struck through, it isn't finished), "🍳" chip = logged as
-    // cooked today.
+    // FR-103: the card shows WHICH STAGE the meal is at, since that is what
+    // the swipe now steps through. "cooked" gets a green wash ("podświetla
+    // na zielono że gotowe do zjedzenia"), "eaten" strikes the name through
+    // and dims the whole card ("skreśla i wyszarza delikatnie"). A partial
+    // portion (set by long-press, FR-105) additionally shows how much.
     const portion = eatenPortion(today, c.id);
-    const isHalf = done && portion > 0 && portion < 1;
-    const cookedToday = isCookedToday(r.id);
+    const isPartial = done && portion > 0 && portion < 1;
+    const stage = pdMealStage(today, c.id, r.id);
     const flags = [];
-    if(cookedToday) flags.push('<span class="pd-meal-flag">🍳 Zrobione</span>');
-    if(isHalf) flags.push('<span class="pd-meal-flag half">½ Zjedzone w połowie</span>');
+    if(stage === "cooked") flags.push('<span class="pd-meal-flag">🍳 Zrobione — gotowe do zjedzenia</span>');
+    if(isPartial) flags.push(`<span class="pd-meal-flag half">${portionLabel(portion)}</span>`);
     // Requested 2026-08-26: pantry coverage badge, same pantryMatch() used
     // by the recipe card's own "🏺 Stan spiżarni" widget -- there's
     // visibly enough room on this card now that the meal-list flexes to
@@ -8262,7 +8416,7 @@ function renderPlannerDashboard(){
     // instead of requiring a tap into the recipe preview to see it.
     const pantryTotal = r.ingredients.length;
     const pantryHave = r.ingredients.filter(i=>pantryMatch(i)).length;
-    return `<div class="pd-meal-card${done?' eaten':''}${isHalf?' half':''}" data-pd-toggle-cat="${c.id}" data-pd-recipe-id="${r.id}">
+    return `<div class="pd-meal-card stage-${stage}${done?' eaten':''}${isPartial?' half':''}" data-pd-toggle-cat="${c.id}" data-pd-recipe-id="${r.id}" data-pd-date="${today}">
       <span class="pd-swipe-action"></span>
       <span class="pd-meal-avatar">${c.icon}</span>
       <span class="pd-meal-text">
@@ -8271,7 +8425,7 @@ function renderPlannerDashboard(){
         <button type="button" class="pd-meal-pantry" data-pd-pantry-check="${r.id}" title="Sprawdź, czego brakuje w spiżarni">🏺 ${pantryHave}/${pantryTotal} w spiżarni</button>
         ${flags.length ? `<span class="pd-meal-flags">${flags.join("")}</span>` : ""}
       </span>
-      <span class="pd-meal-kcal">${isHalf ? `${Math.round(r.kcal*portion)} / ${r.kcal}` : r.kcal} kcal</span>
+      <span class="pd-meal-kcal">${isPartial ? `${Math.round(r.kcal*portion)} / ${r.kcal}` : r.kcal} kcal</span>
       <button class="pd-meal-remove" data-pd-remove-cat="${c.id}" title="Usuń z planu">✕</button>
     </div>`;
   }).join("");
@@ -8316,7 +8470,7 @@ function renderPlannerDashboard(){
     </div>
     <div class="pd-strip">${stripHtml}</div>
     <h3 class="pd-section-title">Dzisiejszy Planer</h3>
-    <div class="pd-swipe-legend">← ½ połowa &nbsp;·&nbsp; ←← cofnij &nbsp;|&nbsp; → 🍳 zrobione &nbsp;·&nbsp; →→ 🍴 zjedzone</div>
+    <div class="pd-swipe-legend">→ 🍳 zrobione → 🍴 zjedzone &nbsp;·&nbsp; ← cofa krok &nbsp;·&nbsp; przytrzymaj = ile zjedzone</div>
     <div class="pd-today-list">${mealsHtml}</div>
   `;
 
@@ -8518,7 +8672,17 @@ function renderPlanner(){
         }
       }
       if(isClinic){
-        return `<div class="cdc-row" data-pick-day="${di}" data-pick-cat="${c.id}" title="${isLeftover?'Resztki z wcześniej ugotowanej większej porcji':''}">
+        // FR-104: the same stage gesture as the dashboard card, on the
+        // date this weekday maps to in the current week. Only rows that
+        // actually hold a dish get it -- an empty slot has no stage to
+        // step through, and its tap-to-pick must stay untouched.
+        const rowDate = dateForDayIndex(di);
+        const rowStage = chosenRecipe ? pdMealStage(rowDate, c.id, chosenRecipe.id) : "none";
+        const swipeAttrs = chosenRecipe
+          ? ` data-pd-toggle-cat="${c.id}" data-pd-recipe-id="${chosenRecipe.id}" data-pd-date="${rowDate}"`
+          : "";
+        return `<div class="cdc-row${chosenRecipe?" cdc-swipe-row stage-"+rowStage:""}" data-pick-day="${di}" data-pick-cat="${c.id}"${swipeAttrs} title="${isLeftover?'Resztki z wcześniej ugotowanej większej porcji':''}">
+          ${chosenRecipe?'<span class="pd-swipe-action"></span>':''}
           <span class="cdc-avatar">${c.icon}</span>
           <span class="cdc-text">
             <span class="cdc-cat">${c.label}</span>
@@ -8551,8 +8715,18 @@ function renderPlanner(){
       </div>
       <button class="btn ghost" style="width:100%; margin-top:6px; font-size:12px;" data-day-copy="${di}">📋 Kopiuj plan z innego dnia</button>
       <button class="btn ghost" style="width:100%; margin-top:6px; font-size:12px;" data-day-spread="${di}" ${hasOwnPlan?"":"disabled"} title="${hasOwnPlan?"":"Ten dzień jest pusty — nie ma czego kopiować"}">📤 Kopiuj ten dzień na inne dni</button>`;
+    // FR-104: same attacher as the dashboard -- it picks up .cdc-swipe-row
+    // and reads each row's own data-pd-date, so nothing here needs to know
+    // how a stage step works.
+    attachPdMealCardSwipe(card, todayStr());
     card.querySelectorAll("[data-pick-day]").forEach(btn=>{
-      btn.addEventListener("click", ()=> openPlannerModal(btn.dataset.pickDay, btn.dataset.pickCat));
+      btn.addEventListener("click", ()=>{
+        // FR-104: the row is now swipeable, so a drag that happened to end
+        // on it must not also count as "open the dish picker". Same
+        // pdSwiped handshake the dashboard card already uses.
+        if(btn.dataset.pdSwiped==="1"){ delete btn.dataset.pdSwiped; return; }
+        openPlannerModal(btn.dataset.pickDay, btn.dataset.pickCat);
+      });
     });
     card.querySelectorAll("[data-prep-apply]").forEach(btn=>{
       const wrap = btn.closest(".prep-suggest");
@@ -8980,6 +9154,21 @@ function localDateStr(d){
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 function todayStr(){ return localDateStr(new Date()); }
+// FR-104 (2026-08-29): the Planer is a repeating WEEKLY template indexed
+// 0..6 (Monday..Sunday), while "eaten"/"cooked" are per calendar DATE. To
+// let the day cards carry the same zrobione/zjedzone gesture the dashboard
+// card has, the two have to be bridged somewhere -- here, once: day index N
+// means "that weekday of the week containing today". Built from local
+// date parts (not UTC, not date arithmetic on a timestamp) for the same
+// reason FR-101 rewrote todayStr().
+function dateForDayIndex(di){
+  const now = new Date();
+  const jsDay = now.getDay();
+  const todayIdx = jsDay === 0 ? 6 : jsDay - 1;
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  d.setDate(d.getDate() + (di - todayIdx));
+  return localDateStr(d);
+}
 
 // Small inline-SVG icon shared by the header water strip and the Postęp
 // "Nawodnienie" cup row. Filled = solid blue (water logged for that slot),
