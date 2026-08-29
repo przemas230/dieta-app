@@ -47,9 +47,11 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-97: Znacznik stanu spiżarni na kartach „Dzisiejszy Planer”](#fr-97-znacznik-stanu-spiżarni-na-kartach-dzisiejszy-planer)
 - [FR-103: Stopniowany gest przesuwania na kartach „Dzisiejszy Planer”](#fr-103-stopniowany-gest-przesuwania-na-kartach-dzisiejszy-planer)
 - [FR-104: Gest „zrobione/zjedzone” także na kartach dni tygodnia](#fr-104-gest-zrobionezjedzone-także-na-kartach-dni-tygodnia)
+- [FR-109: Przeniesienie zaplanowanego dania na inny dzień](#fr-109-przeniesienie-zaplanowanego-dania-na-inny-dzień)
 - [FR-105: Dowolna wielkość zjedzonej porcji](#fr-105-dowolna-wielkość-zjedzonej-porcji)
 - [FR-107: Zapamiętana wielkość porcji dla danego dania](#fr-107-zapamiętana-wielkość-porcji-dla-danego-dania)
 - [FR-100: Podsumowanie odżywcze zaplanowanego tygodnia](#fr-100-podsumowanie-odżywcze-zaplanowanego-tygodnia)
+- [FR-110: Realizacja tygodnia — ile z planu faktycznie zjedzone](#fr-110-realizacja-tygodnia--ile-z-planu-faktycznie-zjedzone)
 
 ### Lista zakupów
 - [FR-25: Budowanie listy zakupów ze składników przepisów](#fr-25-budowanie-listy-zakupów-ze-składników-przepisów)
@@ -176,6 +178,10 @@ Przegląd wymagań pod kątem wzajemnych sprzeczności. Żadna z poniższych par
 21. **FR-108 (ostrzeżenie o braku) vs FR-16 (znacznik „🏺 N/M w spiżarni”).** Odpowiadają na dwa różne pytania i dlatego nie zastępują się nawzajem: FR-16 mówi o OBECNOŚCI składnika („czy jest jakikolwiek ryż”), FR-108 o ILOŚCI („czy starczy go na to, co zaplanowane”). Produkt może być policzony przez FR-16 jako „mam” i jednocześnie zgłoszony przez FR-108 jako niewystarczający — to nie sprzeczność, tylko dwa poziomy szczegółowości tej samej informacji.
 22. **FR-108 vs FR-15/FR-103 (odejmowanie ze spiżarni po ugotowaniu).** Muszą być czytane razem, inaczej ostrzeżenie kłamie. Danie oznaczone jako zrobione JUŻ odjęło swoje składniki, więc policzenie go nadal jako „potrzebne” pokazałoby brak dokładnie po zjedzeniu obiadu. Rozstrzygnięcie: FR-108 pomija posiłki zrobione w swoim dniu, a cofnięcie oznaczenia (FR-103) przywraca i stan spiżarni, i ostrzeżenie.
 23. **FR-108 vs FR-106 (propozycja przeniesienia zakupów do spiżarni).** Domykają tę samą pętlę z dwóch stron: FR-106 wypełnia spiżarnię tym, co kupione, a FR-108 mówi, kiedy tego przestaje wystarczać. Zaakceptowanie propozycji FR-106 potrafi więc wyciszyć ostrzeżenie FR-108 bez żadnego dodatkowego kroku — i tak ma być.
+
+24. **FR-109 (przeniesienie dania) vs FR-90 (kopiowanie planu dnia).** Łatwo pomylić, bo obie przestawiają tydzień, ale robią co innego: kopiowanie POWIELA cały dzień i świadomie NADPISUJE cel (użytkownik potwierdza to w oknie), FR-109 przenosi JEDEN slot i nigdy nie nadpisuje — zajęty dzień zamienia się z nim miejscami. Różnica jest zamierzona: przy kopiowaniu całego dnia strata jest widoczna od razu (cały dzień się zmienia), przy pojedynczym slocie nie byłoby po niej śladu.
+25. **FR-109 vs FR-103/FR-104 (gest zrobione/zjedzone).** Przycisk „📅” leży na karcie, która jest też polem gestu, więc jest — tak jak „✕” — wyłączony ze startu przeciągnięcia; przeciąganie od małej, jednoznacznej kontrolki nic nie znaczy. Uwaga na przyszłość: przeniesienie dania NIE przenosi wpisów „zjedzone”/„zrobione”, bo te są przypisane do konkretnej DATY, a nie do slotu — przesunięcie planu na inny dzień nie zmienia tego, co się danego dnia zjadło.
+26. **FR-110 (realizacja tygodnia) vs FR-100 (podsumowanie zaplanowanego tygodnia).** Stoją na jednej karcie i celowo mierzą dwie różne rzeczy: FR-100 uśrednia po dniach ZAPLANOWANYCH (bez względu na datę), FR-110 liczy wyłącznie dni DO DZIŚ. Gdyby ujednolicić zakresy, jedna z tych liczb przestałaby znaczyć to, po co powstała — średnia stałaby się chwiejna na początku tygodnia, albo realizacja zawsze niska.
 
 ---
 
@@ -5940,3 +5946,118 @@ dalej, bo to ma być zachęta przed zakupami, a nie raport magazynowy.
   (po ugotowaniu stan spadł do 0, a mimo to nie zgłoszono braku), a
   cofnięcie „zrobione” przywróciło i stan 38 g, i ostrzeżenie. Skala 2×
   podniosła potrzebę ze 150 g na 300 g.
+
+---
+
+# FR-109: Przeniesienie zaplanowanego dania na inny dzień
+
+**Obszar:** Planer, Android + Web
+**Status:** Zaimplementowane na obu platformach
+
+## Opis
+Przy każdym zaplanowanym daniu — na karcie „Dzisiejszy Planer" i w każdym
+wierszu kart dni tygodnia — jest przycisk **📅**. Otwiera listę dni, na
+które można to danie przenieść (w ten sam slot: śniadanie zostaje
+śniadaniem).
+
+Każdy dzień na liście jest podpisany tym, co już w tym miejscu ma:
+
+> Poniedziałek
+> **Wtorek ⇄ Pasta z wędzonego łososia i serka bez laktozy na chlebie**
+> Środa
+
+To jedyna rzecz, którą trzeba wiedzieć przed stuknięciem — dzień z „⇄"
+oznacza **zamianę**, nie nadpisanie.
+
+Do tej pory jedynym sposobem przesunięcia dania było usunięcie go i wybranie
+od nowa z listy. Przy okazji ginęła **wielkość porcji** (1×–2×) i znacznik
+**„🍱 resztki"**, bo nowy wybór zawsze startuje od wartości domyślnych. Tutaj
+oba jadą razem z daniem.
+
+**Dlaczego zamiana, a nie nadpisanie.** Nadpisanie po cichu skasowałoby
+danie, które ktoś świadomie zaplanował, i po fakcie nie zostaje na ekranie
+nic, po czym można by tę stratę zauważyć. Zamiana jest zawsze odwracalna
+powtórzeniem tego samego ruchu — i zwykle właśnie o to chodzi przy
+przestawianiu tygodnia („te dwa niech się zamienią miejscami"). Z tego samego
+powodu „Cofnij" to dokładnie ten sam ruch w drugą stronę, a nie osobna
+ścieżka odtwarzania.
+
+Przeniesienie dnia na siebie samego albo pustego slotu nie robi nic.
+
+## Kryteria akceptacji
+- Przycisk 📅 pojawia się tylko przy slotach, które faktycznie mają danie.
+- Przeniesienie na pusty dzień zostawia dzień źródłowy pusty.
+- Przeniesienie na zajęty dzień zamienia dania miejscami — żadne nie ginie.
+- Wielkość porcji i znacznik „resztki" wędrują razem z daniem (w obie strony
+  przy zamianie).
+- „Cofnij" przywraca stan sprzed przeniesienia, w tym po zamianie oba dania.
+- Lista dni podpisuje zajęte dni nazwą dania, które tam stoi.
+- Stuknięcie przycisku nie otwiera podglądu przepisu ani nie zmienia dania
+  (nie „przecieka" do wiersza pod spodem), a przeciągnięcie zaczęte na tym
+  przycisku nie uruchamia gestu zrobione/zjedzone.
+
+## Historia rewizji
+- **v1** (2026-08-30): Pierwsza wersja, obie platformy w tej samej turze.
+  Logika w `PlannerOperations.moveMeal` (moduł `logic`) z pięcioma testami:
+  przeniesienie ze skalą i znacznikiem resztek, zamiana zamiast nadpisania,
+  powtórzenie ruchu jako cofnięcie zamiany, nietykanie innych slotów i dni,
+  brak zmian przy pustym slocie i dniu na samego siebie. Zweryfikowane na
+  żywo w Chrome (zamiana z zachowaniem skali 1,5× i znacznika resztek,
+  cofnięcie, przeniesienie na pusty dzień, przyciski tylko przy zapełnionych
+  slotach w obu wariantach kart dni) oraz na emulatorze Androida
+  (okno „Przenieś na inny dzień" z podpisanymi dniami, zamiana z powiadomieniem
+  „Zamieniono z Wtorek" i działającym „Cofnij" po obu stronach).
+
+---
+
+# FR-110: Realizacja tygodnia — ile z planu faktycznie zjedzone
+
+**Obszar:** Planer (karta „📊 Zaplanowany tydzień"), Android + Web
+**Status:** Zaimplementowane na obu platformach
+
+## Opis
+Na dole karty „📊 Zaplanowany tydzień" (FR-100) dochodzi jedna linia:
+
+> ✅ Zrealizowane: 1 z 5 posiłków (20%)
+> licząc dni do dziś włącznie — to, co jeszcze przed Tobą, nie liczy się na minus
+
+Cała reszta tej karty mówi, jak tydzień **miał** wyglądać: średnie kalorie,
+makro, liczba zaplanowanych dni. Nigdzie — ani tu, ani gdzie indziej — nie
+było powiedziane, czy tak wyszło.
+
+**Dwie decyzje sprawiają, że ta liczba jest w ogóle warta pokazania:**
+
+1. **Liczą się tylko dni do dzisiaj włącznie.** Mierzenie względem całego
+   tygodnia pokazywałoby w poniedziałek wieczorem „realizację 13%" komuś, kto
+   trzyma się planu idealnie — czyli karałoby za kalendarz, a nie za cokolwiek,
+   co ta osoba zrobiła.
+2. **Liczą się tylko sloty zaplanowane.** Zjedzenie czegoś spoza planu nie jest
+   niewykonaniem planu, a wliczanie tego pozwoliłoby, żeby dzień przekąsek
+   czytał się jak dzień trzymania się planu.
+
+Kiedy dla dni, które już były, nic nie było zaplanowane, linia nie pojawia się
+w ogóle — zamiast pokazywać „0 z 0".
+
+Powyżej 70% liczba jest wyróżniona kolorem — to nie ocena, tylko potwierdzenie
+tego, co i tak widać.
+
+## Kryteria akceptacji
+- Linia liczy tylko sloty zaplanowane w dniach od poniedziałku do dziś
+  włącznie.
+- Danie zjedzone w dniu jeszcze przed nami nie podnosi liczby.
+- Przekąska albo cokolwiek spoza planu nie podnosi liczby.
+- Odznaczenie posiłku obniża liczbę z powrotem.
+- Brak czegokolwiek zaplanowanego w dniach, które już były = brak linii.
+- Procent jest zaokrąglony do pełnych jedności; 2 z 3 to 67%.
+
+## Historia rewizji
+- **v1** (2026-08-30): Pierwsza wersja, obie platformy w tej samej turze.
+  Logika w `WeekPlanSummary.realization` (moduł `logic`) z pięcioma testami
+  (liczenie wyłącznie do dziś, idealny poniedziałek jako 100% a nie ułamek
+  tygodnia, nieliczenie posiłków spoza planu, brak wiersza gdy nic jeszcze nie
+  było zaplanowane, zaokrąglanie). Zweryfikowane na żywo w Chrome: „0 z 4"
+  → po zjedzeniu zaplanowanego obiadu „1 z 4 (25%)" → dodanie przekąski spoza
+  planu niczego nie zmieniło → cofnięcie wróciło do „0 z 4"; przy udawanym
+  poniedziałku (dania zaplanowane tylko na późniejsze dni) funkcja zwróciła
+  `null`, czyli brak wiersza. Na emulatorze Androida karta pokazała
+  „✅ Zrealizowane: 1 z 5 posiłków (20%)" wraz z wierszem wyjaśniającym.

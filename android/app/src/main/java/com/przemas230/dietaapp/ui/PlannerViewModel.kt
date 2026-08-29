@@ -55,6 +55,16 @@ class PlannerViewModel(application: Application) : AndroidViewModel(application)
         _weekPlan.value = PlannerOperations.setMeal(_weekPlan.value, day, cat, meal)
     }
 
+    /**
+     * FR-109: moves one planned dish to the same slot on another day,
+     * swapping if that day is taken -- see [PlannerOperations.moveMeal] for
+     * why a swap and not an overwrite. Being its own inverse when swapping,
+     * and a plain move back otherwise, this is also what "Cofnij" calls.
+     */
+    fun moveMeal(fromDay: Int, toDay: Int, cat: String) {
+        _weekPlan.value = PlannerOperations.moveMeal(_weekPlan.value, fromDay, toDay, cat)
+    }
+
     fun clearSlot(day: Int, cat: String) {
         _weekPlan.value = PlannerOperations.clearSlot(_weekPlan.value, day, cat)
     }

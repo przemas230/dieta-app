@@ -277,6 +277,8 @@ fun PlannerScreen(
     val macroTargets = remember(profile) { ProfileCalculations.calcMacroTargets(profile) }
 
     var slotPicker by remember { mutableStateOf<Pair<Int, String>?>(null) }
+    // FR-109: which (day, category) slot is being moved to another day.
+    var moveTarget by remember { mutableStateOf<Pair<Int, String>?>(null) }
     var pendingConfirm by remember { mutableStateOf<PendingConfirm?>(null) }
     // Requested 2026-08-26 ("📋 Kopiuj plan z innego dnia"): the day INDEX
     // being copied INTO -- non-null shows CopyDayPickerDialog below.
@@ -344,6 +346,7 @@ fun PlannerScreen(
                         }
                     },
                     onSlotClick = { cat -> slotPicker = todayIndex to cat },
+                    onMoveSlot = { cat -> moveTarget = todayIndex to cat },
                     onSignOut = onSignOut,
                     onPreviewRecipe = { recipe, scale -> previewRecipe = recipe to scale },
                     pantryItems = pantryItems,
@@ -383,8 +386,23 @@ fun PlannerScreen(
         // when the planned dishes carry them.
         item {
             val summary = remember(weekPlan, recipesById) { WeekPlanSummary.compute(weekPlan, recipesById) }
+            // FR-110: "zrealizowane X z Y" for the days already behind us.
+            // Not remembered on eatenEntriesForDate (a lambda, freshly
+            // created on every recomposition) -- it is keyed on the eaten
+            // map for THIS week's days instead, so ticking a meal updates
+            // the number immediately.
+            val eatenWeek = (0..todayIndex).map { eatenEntriesForDate(dateForDayIndex(it).toString()) }
+            val realization = remember(weekPlan, todayIndex, eatenWeek) {
+                WeekPlanSummary.realization(weekPlan, todayIndex) { day, cat ->
+                    EatenOperations.isEaten(eatenWeek[day], cat)
+                }
+            }
             if (summary != null) {
-                WeekPlanSummaryCard(summary = summary, kcalTarget = kcalTargets.daily)
+                WeekPlanSummaryCard(
+                    summary = summary,
+                    kcalTarget = kcalTargets.daily,
+                    realization = realization,
+                )
             }
         }
         itemsIndexed(PlannerOperations.DAYS_PL) { day, dayName ->
@@ -454,6 +472,7 @@ fun PlannerScreen(
                     onSlotClick = slotClick,
                     onScaleClick = scaleClick,
                     onRegenerateSlot = regenerateSlot,
+                    onMoveSlot = { cat -> moveTarget = day to cat },
                     onPreviewClick = previewClick,
                     prepAheadFor = prepAheadFor,
                     onApplyPrepAhead = applyPrepAhead,
@@ -479,6 +498,7 @@ fun PlannerScreen(
                     onSlotClick = slotClick,
                     onScaleClick = scaleClick,
                     onRegenerateSlot = regenerateSlot,
+                    onMoveSlot = { cat -> moveTarget = day to cat },
                     onPreviewClick = previewClick,
                     prepAheadFor = prepAheadFor,
                     onApplyPrepAhead = applyPrepAhead,
@@ -582,6 +602,61 @@ fun PlannerScreen(
             },
             commentsViewModel = recipeCommentsViewModel,
             onDismiss = { previewRecipe = null },
+        )
+    }
+
+    // FR-109 (2026-08-30): "przenieś na inny dzień". Every day is offered,
+    // each labelled with what it currently holds in the SAME slot, because
+    // that is the one thing the user needs to know before tapping: an
+    // occupied day means a swap, not an overwrite.
+    moveTarget?.let { (fromDay, cat) ->
+        val category = PlannerOperations.PLANNER_CATEGORIES.find { it.id == cat }
+        val movedRecipe = recipesById[weekPlan[fromDay]?.get(cat)?.recipeId]
+        AlertDialog(
+            onDismissRequest = { moveTarget = null },
+            title = { Text("Przenieś na inny dzień", maxLines = 2) },
+            text = {
+                Column {
+                    Text(
+                        movedRecipe?.name?.let { "$it — ${category?.label ?: cat}, ${PlannerOperations.DAYS_PL[fromDay]}" }
+                            ?: "Ten slot jest pusty.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    PlannerOperations.DAYS_PL.forEachIndexed { day, dayName ->
+                        if (day == fromDay) return@forEachIndexed
+                        val occupant = recipesById[weekPlan[day]?.get(cat)?.recipeId]
+                        TextButton(
+                            onClick = {
+                                plannerViewModel.moveMeal(fromDay, day, cat)
+                                moveTarget = null
+                                onShowUndoSnackbar(
+                                    if (occupant == null) "Przeniesiono na $dayName" else "Zamieniono z $dayName",
+                                    "Cofnij",
+                                ) {
+                                    // The move is its own inverse when the
+                                    // target was occupied, and a plain move
+                                    // back when it was not -- one call either
+                                    // way (see PlannerOperations.moveMeal).
+                                    plannerViewModel.moveMeal(day, fromDay, cat)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                if (occupant == null) dayName else "$dayName ⇄ ${occupant.name}",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { moveTarget = null }) { Text("Anuluj") }
+            },
         )
     }
 
@@ -820,6 +895,7 @@ private fun DayCard(
     onSlotClick: (cat: String) -> Unit,
     onScaleClick: (cat: String, currentScale: Double) -> Unit,
     onRegenerateSlot: (cat: String) -> Unit,
+    onMoveSlot: (cat: String) -> Unit,
     onPreviewClick: (recipe: Recipe, scale: Double) -> Unit,
     prepAheadFor: (cat: String) -> Recipe?,
     onApplyPrepAhead: (cat: String, recipeId: String) -> Unit,
@@ -871,6 +947,11 @@ private fun DayCard(
                         TextButton(onClick = { onRegenerateSlot(category.id) }) {
                             Text("🔁")
                         }
+                        // FR-109: moving a dish to another day used to mean
+                        // deleting it and picking it again from scratch,
+                        // which also threw away its portion scale and its
+                        // "resztki" flag.
+                        TextButton(onClick = { onMoveSlot(category.id) }) { Text("📅") }
                     }
                 }
                 if (recipe == null) {
@@ -954,6 +1035,9 @@ private fun PlannerDashboard(
     onToggleEaten: (cat: String, plannedKcal: Int?, plannedName: String?) -> Unit,
     onClearSlot: (cat: String) -> Unit,
     onSlotClick: (cat: String) -> Unit,
+    // FR-109: "przenieś na inny dzień" on today's card too -- rearranging a
+    // week usually starts from the day you are standing on.
+    onMoveSlot: (cat: String) -> Unit = {},
     onSignOut: () -> Unit,
     // Requested 2026-08-26: reports a meal-card tap up to PlannerScreen,
     // which owns the single shared RecipePreviewDialog instance (and the
@@ -1422,6 +1506,13 @@ private fun PlannerDashboard(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            // FR-109: next to "usuń", because the two are the
+                            // same kind of decision -- this dish does not
+                            // belong here -- and until now only the
+                            // destructive half of it existed.
+                            IconButton(onClick = { onMoveSlot(category.id) }, modifier = Modifier.size(32.dp)) {
+                                Text("📅", style = MaterialTheme.typography.bodySmall)
+                            }
                             IconButton(onClick = { onClearSlot(category.id) }, modifier = Modifier.size(32.dp)) {
                                 Text("✕", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
@@ -1588,7 +1679,13 @@ private fun BentoMetricTile(value: String, label: String, modifier: Modifier = M
  * presenting that as the week's figure.
  */
 @Composable
-private fun WeekPlanSummaryCard(summary: WeekPlanSummary.Summary, kcalTarget: Int) {
+private fun WeekPlanSummaryCard(
+    summary: WeekPlanSummary.Summary,
+    kcalTarget: Int,
+    // FR-110: null when nothing was planned for the part of the week already
+    // behind us -- then no row is drawn at all, rather than "0 z 0".
+    realization: WeekPlanSummary.Realization? = null,
+) {
     val (comparison, onTarget) = remember(summary.avgKcal, kcalTarget) {
         WeekPlanSummary.targetComparison(summary.avgKcal, kcalTarget)
     }
@@ -1642,6 +1739,31 @@ private fun WeekPlanSummaryCard(summary: WeekPlanSummary.Summary, kcalTarget: In
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            // FR-110: the rest of this card says what the week was SUPPOSED to
+            // look like; this one line is the only place that says whether it
+            // actually happened.
+            if (realization != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                val mealWord = when {
+                    realization.plannedSoFar == 1 -> "posiłku"
+                    else -> "posiłków"
+                }
+                Text(
+                    "✅ Zrealizowane: ${realization.eatenMeals} z ${realization.plannedSoFar} $mealWord (${realization.percent}%)",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (realization.percent >= 70) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+                Text(
+                    "licząc dni do dziś włącznie — to, co jeszcze przed Tobą, nie liczy się na minus",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -1685,6 +1807,7 @@ private fun DayCardClinic(
     onSlotClick: (cat: String) -> Unit,
     onScaleClick: (cat: String, currentScale: Double) -> Unit,
     onRegenerateSlot: (cat: String) -> Unit,
+    onMoveSlot: (cat: String) -> Unit,
     onPreviewClick: (recipe: Recipe, scale: Double) -> Unit,
     prepAheadFor: (cat: String) -> Recipe?,
     onApplyPrepAhead: (cat: String, recipeId: String) -> Unit,
@@ -1897,6 +2020,11 @@ private fun DayCardClinic(
                         )
                         TextButton(onClick = { onPreviewClick(recipe, meal.scale) }) { Text("👁️") }
                         TextButton(onClick = { onRegenerateSlot(category.id) }) { Text("🔁") }
+                        // FR-109: moving a dish to another day used to mean
+                        // deleting it and picking it again from scratch,
+                        // which also threw away its portion scale and its
+                        // "resztki" flag.
+                        TextButton(onClick = { onMoveSlot(category.id) }) { Text("📅") }
                     }
                 }
                 if (rowDirection != 0) {

@@ -46,6 +46,32 @@ object PlannerOperations {
         return plan + (day to dayMap)
     }
 
+    /**
+     * FR-109: moves one planned dish to the SAME slot on another day.
+     *
+     * Until now the only way to shift Wednesday's dinner to Thursday was to
+     * delete it and pick it again from scratch -- which also threw away its
+     * portion scale and its "resztki" flag, both of which are carried along
+     * here for free because they live on [PlannedMeal] itself.
+     *
+     * **An occupied target SWAPS rather than overwrites.** Overwriting would
+     * silently destroy a dish the user deliberately planned, and afterwards
+     * there is nothing left on screen to notice the loss by. A swap is
+     * always reversible by repeating the same move, and "these two should
+     * trade places" is usually what rearranging a week means anyway.
+     *
+     * Moving a day onto itself, or moving an empty slot, returns the plan
+     * untouched rather than writing a no-op entry.
+     */
+    fun moveMeal(plan: WeekPlan, fromDay: Int, toDay: Int, cat: String): WeekPlan {
+        if (fromDay == toDay) return plan
+        val source = plan[fromDay]?.get(cat) ?: return plan
+        val target = plan[toDay]?.get(cat)
+        val fromMap = plan[fromDay].orEmpty().let { if (target == null) it - cat else it + (cat to target) }
+        val toMap = plan[toDay].orEmpty() + (cat to source)
+        return plan + (fromDay to fromMap) + (toDay to toMap)
+    }
+
     fun setScale(plan: WeekPlan, day: Int, cat: String, scale: Double): WeekPlan {
         val current = plan[day]?.get(cat) ?: return plan
         return setMeal(plan, day, cat, current.copy(scale = scale))

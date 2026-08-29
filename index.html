@@ -1079,6 +1079,8 @@
   }
   .pd-meal-kcal{font-size:12px; color:var(--muted); flex:0 0 auto;}
   .pd-meal-remove{background:none; border:none; color:var(--muted); font-size:15px; line-height:1; padding:4px; cursor:pointer; flex:0 0 auto;}
+  /* FR-109 */
+  .pd-meal-move{font-size:13px;}
   .pd-meal-card-empty{border:1.5px dashed var(--line); background:transparent; box-shadow:none; color:var(--muted); justify-content:center; font-size:13px; font-weight:600;}
   /* Bug reported 2026-08-25 ("jak ucięty jest pasek z ikonami na dole"):
      `main` only reserves 6px of bottom padding (shared by every theme),
@@ -1162,6 +1164,9 @@
   .wps-sub{ font-size:11.5px; color:var(--muted); margin-top:2px; }
   .wps-macros{ font-size:12px; color:var(--muted); margin-top:8px; padding-top:8px; border-top:1px solid var(--line); }
   .wps-partial{ font-style:italic; }
+  /* FR-110 */
+  .wps-real{ font-size:12.5px; font-weight:700; color:var(--muted); margin-top:8px; padding-top:8px; border-top:1px solid var(--line); }
+  .wps-real-ok{ color:var(--teal-dark); }
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) .clinic-bento{
     display:flex; gap:8px; margin-bottom:12px;
   }
@@ -2544,6 +2549,19 @@
      czego najbardziej potrzebują użytkownicy" -- research flagged meal-plan
      re-entry friction as a common complaint): "Kopiuj plan z innego dnia"
      picker, opened from each day card's own action row (renderPlanner()). -->
+<!-- FR-109 (2026-08-30): "przenieś danie na inny dzień" — do tej pory
+     jedynym sposobem było usunięcie dania i wybranie go od nowa, co gubiło
+     też wielkość porcji i znacznik "resztki". -->
+<div class="modal-overlay center" id="moveMealOverlay">
+  <div class="modal-sheet center-sheet">
+    <div class="modal-head">
+      <h3>📅 Przenieś na inny dzień</h3>
+      <button id="moveMealClose">✕</button>
+    </div>
+    <div id="moveMealBody"></div>
+  </div>
+</div>
+
 <div class="modal-overlay center" id="copyDayOverlay">
   <div class="modal-sheet center-sheet">
     <div class="modal-head">
@@ -5408,7 +5426,9 @@ function attachPdMealCardSwipe(box, date){
       // "muszę od krawędzi złapać ten prostokąt... niech działa
       // przynajmniej od połowy kafelka". Its own tap still works, because
       // a tap never crosses AXIS_LOCK and so never sets pdSwiped.
-      if(e.target.closest("[data-pd-remove-cat]")) return;
+      // FR-109's "📅" opens a day picker; like the ✕ it is a small
+      // explicit control, and starting a drag from it means nothing.
+      if(e.target.closest("[data-pd-remove-cat]") || e.target.closest("[data-pd-move-cat]") || e.target.closest("[data-move-day]")) return;
       startX = e.clientX; startY = e.clientY; dx = 0; axis = null;
       startedAt = Date.now();
       card.style.transition = "none";
@@ -8671,6 +8691,7 @@ function renderPlannerDashboard(){
         ${flags.length ? `<span class="pd-meal-flags">${flags.join("")}</span>` : ""}
       </span>
       <span class="pd-meal-kcal">${isPartial ? `${Math.round(r.kcal*portion)} / ${r.kcal}` : r.kcal} kcal</span>
+      <button class="pd-meal-remove pd-meal-move" data-pd-move-cat="${c.id}" title="Przenieś na inny dzień">📅</button>
       <button class="pd-meal-remove" data-pd-remove-cat="${c.id}" title="Usuń z planu">✕</button>
     </div>`;
   }).join("");
@@ -8745,7 +8766,7 @@ function renderPlannerDashboard(){
   attachPdMealCardSwipe(box, today);
   box.querySelectorAll("[data-pd-toggle-cat]").forEach(el=>{
     el.addEventListener("click", (e)=>{
-      if(e.target.closest("[data-pd-remove-cat]") || e.target.closest("[data-pd-pantry-check]")) return;
+      if(e.target.closest("[data-pd-remove-cat]") || e.target.closest("[data-pd-pantry-check]") || e.target.closest("[data-pd-move-cat]")) return;
       if(el.dataset.pdSwiped==="1"){ delete el.dataset.pdSwiped; return; }
       const recipe = findRecipeById(el.dataset.pdRecipeId);
       if(recipe) openRecipePreviewModal(recipe);
@@ -8760,6 +8781,13 @@ function renderPlannerDashboard(){
       e.stopPropagation();
       const recipe = findRecipeById(btn.dataset.pdPantryCheck);
       if(recipe) openPantryModal(recipe);
+    });
+  });
+  // FR-109: same slot, another day -- see openMoveMealModal.
+  box.querySelectorAll("[data-pd-move-cat]").forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      openMoveMealModal(todayIdx, btn.dataset.pdMoveCat);
     });
   });
   box.querySelectorAll("[data-pd-remove-cat]").forEach(btn=>{
@@ -8832,6 +8860,37 @@ function computeWeekPlanSummary(){
     avgFat:     macroMeals ? Math.round(f / plannedDays) : null,
   };
 }
+// FR-110: how much of the plan actually happened -- "8 z 15 posiłków" for
+// the part of the week already behind us. The card above says what the week
+// was SUPPOSED to look like; nothing anywhere said whether it did.
+//
+// Two judgement calls make the number worth showing at all:
+//   1. Only days up to and INCLUDING today count. Measuring against the
+//      whole week would report a 13% "realizacja" every Monday evening for
+//      a plan being followed perfectly -- punishing the user for the
+//      calendar rather than for anything they did.
+//   2. Only PLANNED slots count. Eating something unplanned is not a failure
+//      to follow the plan, and counting it would let a day of snacks read as
+//      a day of adherence.
+// Returns null when nothing was planned for the days that already happened,
+// so the caller renders no row at all rather than "0 z 0".
+function computeWeekRealization(){
+  const now = new Date();
+  const jsDay = now.getDay();
+  const todayIdx = jsDay === 0 ? 6 : jsDay - 1;
+  let planned = 0, eaten = 0;
+  for(let di = 0; di <= todayIdx; di++){
+    const dayPlan = state.planner[di] || {};
+    const date = dateForDayIndex(di);
+    CATS.forEach(c=>{
+      if(!dayPlan[c.id]) return;
+      planned++;
+      if(isEaten(date, c.id)) eaten++;
+    });
+  }
+  if(planned === 0) return null;
+  return {eaten, planned, percent: Math.round(eaten * 100 / planned)};
+}
 function renderWeekPlanSummary(){
   const box = document.getElementById("plannerWeekSummary");
   if(!box) return;
@@ -8843,6 +8902,13 @@ function renderWeekPlanSummary(){
     ? `w celu (${target} kcal)`
     : `${diff > 0 ? "+" : "−"}${Math.abs(diff)} kcal vs cel ${target}`;
   const diffClass = Math.abs(diff) <= 50 ? "wps-ok" : (diff > 0 ? "wps-over" : "wps-under");
+  // FR-110: the only line on this card that talks about what actually
+  // happened, rather than what was planned.
+  const real = computeWeekRealization();
+  const realLine = real
+    ? `<div class="wps-real ${real.percent >= 70 ? "wps-real-ok" : ""}">✅ Zrealizowane: ${real.eaten} z ${real.planned} ${real.planned===1?"posiłku":"posiłków"} (${real.percent}%)` +
+      `<div class="wps-sub">licząc dni do dziś włącznie — to, co jeszcze przed Tobą, nie liczy się na minus</div></div>`
+    : "";
   const macroLine = s.avgProtein !== null
     ? `<div class="wps-macros">Średnio dziennie: B ${s.avgProtein} g · W ${s.avgCarbs} g · T ${s.avgFat} g${s.macroMeals < s.totalMeals ? ` <span class="wps-partial">(z ${s.macroMeals} z ${s.totalMeals} dań — reszta nie ma podanych makro)</span>` : ""}</div>`
     : `<div class="wps-macros wps-partial">Żadne z zaplanowanych dań nie ma podanych makroskładników.</div>`;
@@ -8854,6 +8920,7 @@ function renderWeekPlanSummary(){
     </div>
     <div class="wps-sub">średnio na dzień, z ${s.plannedDays} ${s.plannedDays===1?"zaplanowanego dnia":"zaplanowanych dni"} (${s.totalMeals} dań)</div>
     ${macroLine}
+    ${realLine}
   </div>`;
 }
 function renderPlanner(){
@@ -8935,6 +9002,7 @@ function renderPlanner(){
           </span>
           ${baseRecipe?`<span class="cdc-scale" data-scale-day="${di}" data-scale-cat="${c.id}" title="Wielkość porcji — kliknij, by zmienić">${scaleLabel}</span>`:""}
           <button class="cdc-regen" data-regen-day="${di}" data-regen-cat="${c.id}" title="Losuj inne danie">🔁</button>
+          ${chosenRecipe?`<button class="cdc-regen" data-move-day="${di}" data-move-cat="${c.id}" title="Przenieś na inny dzień">📅</button>`:""}
         </div>${prepSuggestHtml}`;
       }
       return `<div class="slot-row">
@@ -8942,6 +9010,7 @@ function renderPlanner(){
         <button class="slot-pick" data-pick-day="${di}" data-pick-cat="${c.id}" title="${isLeftover?'Resztki z wcześniej ugotowanej większej porcji':''}">${pickLabel}</button>
         ${baseRecipe?`<button class="scale-btn" data-scale-day="${di}" data-scale-cat="${c.id}" title="Wielkość porcji — kliknij, by zmienić">${scaleLabel}</button>`:""}
         <button class="regen-btn" data-regen-day="${di}" data-regen-cat="${c.id}" title="Losuj inne danie">🔁</button>
+        ${baseRecipe?`<button class="regen-btn" data-move-day="${di}" data-move-cat="${c.id}" title="Przenieś na inny dzień">📅</button>`:""}
       </div>${prepSuggestHtml}`;
     }).join("");
     const headHtml = isClinic
@@ -9064,6 +9133,14 @@ function renderPlanner(){
       if(added===0 && empty===4){ toast("Ten dzień nie ma jeszcze wybranych dań"); }
       else toast(`Dodano składniki z ${added} dań ze dnia ${day}${already?` (${already} już było na liście)`:""}`);
     });
+    // FR-109: przeniesienie dania na inny dzien (zamiana, gdy tam juz cos
+    // jest) -- patrz openMoveMealModal.
+    card.querySelectorAll("[data-move-day]").forEach(btn=>{
+      btn.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        openMoveMealModal(parseInt(btn.dataset.moveDay, 10), btn.dataset.moveCat);
+      });
+    });
     card.querySelectorAll("[data-regen-day]").forEach(btn=>{
       btn.addEventListener("click", (e)=>{
         e.stopPropagation();
@@ -9094,6 +9171,77 @@ function renderPlanner(){
 // overwriting whatever was there. `structuredClone` for a real deep copy --
 // without it, edits to plannerScale[fromDay] would also silently mutate
 // the "target" day's plannerScale, since object spread is shallow.
+// FR-109: moves one planned dish to the SAME slot on another day, carrying
+// its portion scale and its "resztki" flag along -- both were lost by the
+// only previous route (delete + pick again from scratch).
+//
+// An occupied target SWAPS rather than overwrites. Overwriting would
+// silently destroy a dish the user deliberately planned, and afterwards
+// there is nothing left on screen to notice the loss by; a swap is always
+// reversible by repeating the same move, which is exactly what "Cofnij"
+// does below.
+function moveMealToDay(fromDay, toDay, cat){
+  if(fromDay === toDay) return false;
+  const source = (state.planner[fromDay] || {})[cat];
+  if(!source) return false;
+  const target = (state.planner[toDay] || {})[cat] || "";
+  const sourceScale = getPlannerScale(fromDay, cat);
+  const targetScale = getPlannerScale(toDay, cat);
+  const sourceLeftover = !!((state.plannerLeftover[fromDay] || {})[cat]);
+  const targetLeftover = !!((state.plannerLeftover[toDay] || {})[cat]);
+
+  state.planner[fromDay] = state.planner[fromDay] || {};
+  state.planner[toDay] = state.planner[toDay] || {};
+  state.planner[fromDay][cat] = target;
+  state.planner[toDay][cat] = source;
+  setPlannerScale(fromDay, cat, target ? targetScale : 1);
+  setPlannerScale(toDay, cat, sourceScale);
+  state.plannerLeftover[fromDay] = state.plannerLeftover[fromDay] || {};
+  state.plannerLeftover[toDay] = state.plannerLeftover[toDay] || {};
+  if(target && targetLeftover) state.plannerLeftover[fromDay][cat] = true;
+  else delete state.plannerLeftover[fromDay][cat];
+  if(sourceLeftover) state.plannerLeftover[toDay][cat] = true;
+  else delete state.plannerLeftover[toDay][cat];
+  return true;
+}
+// Every day is offered, each labelled with what it currently holds in the
+// SAME slot -- the one thing worth knowing before tapping, because a day
+// that already holds something means a swap.
+function openMoveMealModal(fromDay, cat){
+  const catDef = CATS.find(c=>c.id===cat);
+  const recipe = findRecipeById((state.planner[fromDay] || {})[cat] || "");
+  const body = document.getElementById("moveMealBody");
+  body.innerHTML = `<div class="hint-text" style="margin:0 0 10px;">${recipe
+    ? `„${recipe.name}" — ${catDef ? catDef.label : cat}, ${DAYS[fromDay]}. Dzień, który ma już coś w tym miejscu, zamieni się z tym daniem — nic nie przepadnie.`
+    : "Ten slot jest pusty."}</div>`;
+  const grid = document.createElement("div");
+  grid.style.cssText = "display:grid; grid-template-columns:1fr; gap:8px;";
+  DAYS.forEach((dayName, di)=>{
+    if(di === fromDay) return;
+    const occupant = findRecipeById((state.planner[di] || {})[cat] || "");
+    const btn = document.createElement("button");
+    btn.className = "btn ghost";
+    btn.style.cssText = "font-size:13px; text-align:left;";
+    btn.textContent = occupant ? `${dayName} ⇄ ${occupant.name}` : dayName;
+    btn.addEventListener("click", ()=>{
+      if(!moveMealToDay(fromDay, di, cat)) return;
+      saveState(); renderPlanner(); renderHeader();
+      document.getElementById("moveMealOverlay").classList.remove("show");
+      toast(occupant ? `Zamieniono z „${dayName}"` : `Przeniesiono na „${dayName}"`, "Cofnij", ()=>{
+        moveMealToDay(di, fromDay, cat);
+        saveState(); renderPlanner(); renderHeader();
+      });
+    });
+    grid.appendChild(btn);
+  });
+  body.appendChild(grid);
+  document.getElementById("moveMealOverlay").classList.add("show");
+}
+document.getElementById("moveMealClose").addEventListener("click", ()=> document.getElementById("moveMealOverlay").classList.remove("show"));
+document.getElementById("moveMealOverlay").addEventListener("click", (e)=>{
+  if(e.target===document.getElementById("moveMealOverlay")) e.target.classList.remove("show");
+});
+
 function openCopyDayModal(targetDay){
   const body = document.getElementById("copyDayBody");
   body.innerHTML = `<div class="hint-text" style="margin:0 0 10px;">Wybierz dzień, z którego skopiować plan na „${DAYS[targetDay]}". Nadpisze to, co jest już zaplanowane na „${DAYS[targetDay]}".</div>`;

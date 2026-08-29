@@ -120,6 +120,8 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-106 | Propozycja przeniesienia zakupów do spiżarni | ✅ v1 (2026-08-29): po odhaczeniu OSTATNIEJ pozycji dania — powiadomienie „Masz już wszystko na «X»” z akcją „Do spiżarni”; `fullyBoughtRecipes()` wyprowadzone z `contributions`, `stockRecipeToPantry()` tworzy pozycje, których nie było. ✅ zweryfikowane na żywo w Chrome: 5-składnikowy przepis zgłoszony dopiero po piątym odhaczeniu, przyjęcie utworzyło 5 pozycji, powtórne dodanie 150→300 | ✅ v1 (2026-08-29): `ShoppingOperations.fullyBoughtRecipes` + `RecipePantryMatching.stockFromRecipe` z testami, wpięte w oba widoki listy przez jeden wspólny `onTicked`. ⏳ przejście przez UI na emulatorze NIE dokończone — dotknięcia checkboxów listy nie rejestrowały się w narzędziu (ograniczenie testowania, nie stwierdzona wada) |
 | FR-107 | Zapamiętana wielkość porcji dla danego dania | ✅ v1 (2026-08-29): okienko porcji otwiera się na nawyku dla TEGO dania + podpowiedź „Zwykle zjadasz ½ porcji tego dania”; próg dwóch wystąpień, cała porcja nigdy nie jest zgłaszana. ✅ zweryfikowane na żywo w Chrome: po dwóch połówkach suwak startuje na „50% · 160 kcal” z podpowiedzią | ✅ v1 (2026-08-29): `PortionHistory` w `logic/` z ośmioma testami, `eatenDays` doprowadzone do `PlannerScreen`. ⏳ wariant „z historią” nie odklikany na emulatorze — wymagałby wpisów z dwóch różnych dni |
 | FR-108 | Ostrzeżenie, że produktu nie starczy na zaplanowane dania | ✅ v1 (2026-08-30): czerwona karta na górze Spiżarni + obwódka i znacznik „⚠” na kafelku; tylko produkty śledzone, tylko posiłki jeszcze przed nami, niezgodne jednostki pomijane. ✅ zweryfikowane na żywo w Chrome (38 g skyru vs 150 g w przepisie; uzupełnienie, brak śledzenia, zmiana jednostki i „zrobione” wyciszają ostrzeżenie, cofnięcie je przywraca) | ✅ v1 (2026-08-30): `PantryShortage` w `logic/` z 14 testami, dane z Planera i historii gotowania podane z MainActivity. ✅ zweryfikowane na żywo na emulatorze: 1 jajko vs śniadanie na 2 — karta „jajko — masz 1, trzeba 2” i kafelek z czerwoną obwódką i znacznikiem „⚠ 1”; wcześniej funkcja poprawnie milczała, bo danie było już zjedzone |
+| FR-109 | Przeniesienie zaplanowanego dania na inny dzień | ✅ v1 (2026-08-30): przycisk 📅 przy każdym zaplanowanym daniu (karta dzisiejsza + wiersze kart dni), lista dni podpisanych tym, co już mają w tym slocie; zajęty dzień = ZAMIANA, nie nadpisanie; skala porcji i znacznik „resztki” jadą razem z daniem. ✅ zweryfikowane na żywo w Chrome (zamiana ze skalą 1,5× i resztkami, cofnięcie, przeniesienie na pusty dzień, przyciski tylko przy zapełnionych slotach) | ✅ v1 (2026-08-30): `PlannerOperations.moveMeal` z pięcioma testami, `PlannerViewModel.moveMeal`, okno wyboru dnia + Snackbar z „Cofnij”. ✅ zweryfikowane na żywo na emulatorze: „Zamieniono z Wtorek”, a „Cofnij” przywróciło oba dania na swoje miejsca |
+| FR-110 | Realizacja tygodnia — ile z planu faktycznie zjedzone | ✅ v1 (2026-08-30): wiersz „✅ Zrealizowane: X z Y posiłków (Z%)” na dole karty „📊 Zaplanowany tydzień”; liczone tylko dni do dziś włącznie i tylko sloty zaplanowane. ✅ zweryfikowane na żywo w Chrome (0 z 4 → 1 z 4 po zjedzeniu → przekąska spoza planu bez wpływu → cofnięcie wraca do 0 z 4; udawany poniedziałek = brak wiersza zamiast „0 z 0”) | ✅ v1 (2026-08-30): `WeekPlanSummary.realization` z pięcioma testami, wiersz w `WeekPlanSummaryCard`. ✅ zweryfikowane na żywo na emulatorze: „✅ Zrealizowane: 1 z 5 posiłków (20%)” |
 
 ## Uwagi do częściowych wpisów
 
@@ -1452,6 +1454,39 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 
   `versionCode` 90→91, `versionName` 0.1.89→0.1.90, CACHE_NAME→v119,
   `versions/v119/`.
+
+- **Przenoszenie dań i realizacja tygodnia (2026-08-30)**: FR-109 i FR-110,
+  obie platformy w jednej turze, obie przeklikane po obu stronach.
+
+  **FR-109** zamyka coś, co było brakiem od początku: nie dało się przesunąć
+  dania na inny dzień inaczej niż usuwając je i wybierając od nowa — co
+  gubiło wielkość porcji i znacznik „resztki”, bo nowy wybór zawsze startuje
+  od domyślnych. Kluczowa decyzja: **zajęty dzień ZAMIENIA się, nie jest
+  nadpisywany**. Nadpisanie skasowałoby po cichu danie zaplanowane
+  świadomie, a po fakcie nie ma na ekranie niczego, po czym można by tę
+  stratę zauważyć. Zamiana jest własną odwrotnością, więc „Cofnij” to
+  dosłownie ten sam ruch w drugą stronę — jedno wywołanie, nie osobna
+  ścieżka odtwarzania stanu.
+
+  Uwaga na przyszłość, zapisana też w ALL-REQUIREMENTS: przeniesienie planu
+  NIE przenosi wpisów „zjedzone”/„zrobione”, bo te są przypisane do konkretnej
+  DATY, a nie do slotu. To jest zamierzone — przestawienie planu nie zmienia
+  tego, co się danego dnia faktycznie zjadło.
+
+  **FR-110** dokłada jeden wiersz do karty FR-100 i cała jego wartość siedzi
+  w zakresie liczenia: **tylko dni do dziś włącznie**. Licząc względem całego
+  tygodnia, idealnie trzymany plan pokazywałby w poniedziałek wieczorem
+  „13%” — liczbę o kalendarzu, nie o użytkowniku. Drugie ograniczenie: liczą
+  się wyłącznie sloty zaplanowane, więc dzień przekąsek nie może czytać się
+  jak dzień trzymania się planu. Gdy dla dni, które już były, nic nie było
+  zaplanowane, wiersza nie ma w ogóle (zamiast „0 z 0”).
+
+  Obie funkcje celowo NIE ujednolicają zakresu z FR-100 (średnia po dniach
+  zaplanowanych, bez względu na datę) — ujednolicenie zepsułoby jedną z tych
+  dwóch liczb.
+
+  `versionCode` 91→92, `versionName` 0.1.90→0.1.91, CACHE_NAME→v120,
+  `versions/v120/`.
 
 ## Jak to utrzymywać
 

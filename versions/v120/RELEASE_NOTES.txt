@@ -1,0 +1,79 @@
+Wersja v120 (2026-08-30)
+========================
+
+Dwie rzeczy w Planerze: przenoszenie dań między dniami i informacja, ile z
+planu faktycznie zostało zjedzone.
+
+1. PRZENIEŚ DANIE NA INNY DZIEŃ (FR-109)
+   --------------------------------------
+   Przy każdym zaplanowanym daniu — na karcie „Dzisiejszy Planer" i w każdym
+   wierszu kart dni tygodnia — jest przycisk 📅. Otwiera listę dni, na które
+   można to danie przenieść (w ten sam slot: śniadanie zostaje śniadaniem).
+
+   Każdy dzień jest podpisany tym, co już w tym miejscu ma:
+
+       Poniedziałek
+       Wtorek ⇄ Pasta z wędzonego łososia i serka bez laktozy na chlebie
+       Środa
+
+   To jedyna rzecz, którą trzeba wiedzieć przed stuknięciem: dzień z „⇄"
+   oznacza ZAMIANĘ, a nie nadpisanie.
+
+   Do tej pory jedynym sposobem przesunięcia dania było usunięcie go i
+   wybranie od nowa z listy. Przy okazji ginęła wielkość porcji (1×–2×) i
+   znacznik „🍱 resztki", bo nowy wybór zawsze startuje od wartości
+   domyślnych. Teraz oba jadą razem z daniem.
+
+   DLACZEGO ZAMIANA, A NIE NADPISANIE: nadpisanie po cichu skasowałoby
+   danie, które zaplanowałeś świadomie, a po fakcie nie zostaje na ekranie
+   nic, po czym można by tę stratę zauważyć. Zamiana jest zawsze odwracalna
+   powtórzeniem tego samego ruchu — i zwykle właśnie o to chodzi przy
+   przestawianiu tygodnia. Z tego samego powodu „Cofnij" to dokładnie ten
+   sam ruch w drugą stronę.
+
+2. ILE Z PLANU FAKTYCZNIE ZJEDZONE (FR-110)
+   -----------------------------------------
+   Na dole karty „📊 Zaplanowany tydzień" dochodzi jedna linia:
+
+       ✅ Zrealizowane: 1 z 5 posiłków (20%)
+       licząc dni do dziś włącznie — to, co jeszcze przed Tobą, nie liczy
+       się na minus
+
+   Cała reszta tej karty mówi, jak tydzień MIAŁ wyglądać. Nigdzie nie było
+   powiedziane, czy tak wyszło.
+
+   DWIE DECYZJE sprawiają, że ta liczba jest warta pokazania:
+   - Liczą się tylko dni do dzisiaj włącznie. Inaczej w poniedziałek
+     wieczorem, przy idealnie trzymanym planie, pokazywałaby „13%" — czyli
+     karałaby za kalendarz, a nie za cokolwiek, co zrobiłeś.
+   - Liczą się tylko sloty zaplanowane. Zjedzenie czegoś spoza planu nie
+     jest niewykonaniem planu, a wliczanie tego pozwoliłoby, żeby dzień
+     przekąsek czytał się jak dzień trzymania się planu.
+
+   Kiedy dla dni, które już były, nic nie było zaplanowane, linia nie
+   pojawia się w ogóle — zamiast pokazywać „0 z 0".
+
+Weryfikacja
+-----------
+Logika obu funkcji ma testy jednostkowe w module `logic` (5 + 5).
+
+Web, na żywo w Chrome:
+- FR-109: zamiana zachowała skalę 1,5× i znacznik resztek po obu stronach,
+  powtórzenie ruchu cofnęło zamianę, przeniesienie na pusty dzień zostawiło
+  dzień źródłowy pusty; przyciski pojawiają się tylko przy zapełnionych
+  slotach, w obu wariantach kart dni; kliknięcie przycisku nie otwiera
+  podglądu przepisu.
+- FR-110: „0 z 4" → po zjedzeniu zaplanowanego obiadu „1 z 4 (25%)" →
+  przekąska spoza planu niczego nie zmieniła → cofnięcie wróciło do „0 z 4".
+  Przy udawanym poniedziałku (dania tylko na późniejsze dni) funkcja zwraca
+  brak wiersza, zamiast „0 z 0".
+
+Android, na żywo na emulatorze:
+- FR-109: okno „Przenieś na inny dzień" z dniami podpisanymi ich daniami,
+  zamiana z powiadomieniem „Zamieniono z Wtorek", a „Cofnij" przywróciło
+  oba dania na swoje miejsca (sprawdzone po obu stronach zamiany).
+- FR-110: karta pokazała „✅ Zrealizowane: 1 z 5 posiłków (20%)" wraz z
+  wierszem wyjaśniającym.
+
+Wersje: Android versionCode 91→92, versionName 0.1.90→0.1.91 (APK w
+android/dist zsynchronizowany), Web CACHE_NAME v119→v120.

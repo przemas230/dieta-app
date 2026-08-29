@@ -79,6 +79,53 @@ object WeekPlanSummary {
     }
 
     /**
+     * FR-110: how much of the plan actually happened -- "8 z 15 posiłków" for
+     * the part of the week that is already behind us.
+     *
+     * The card above it says what the week was SUPPOSED to look like; nothing
+     * anywhere said whether it did. Two judgement calls make the number worth
+     * showing at all:
+     *
+     * 1. **Only days up to and including today count.** Measuring against the
+     *    whole week would report a 13% "realizacja" every Monday evening for
+     *    a plan being followed perfectly -- a number that punishes the user
+     *    for the calendar rather than for anything they did.
+     * 2. **Only PLANNED slots count.** Eating something unplanned is not a
+     *    failure to follow the plan, and counting it would let a day of
+     *    snacks read as a day of adherence.
+     */
+    data class Realization(val eatenMeals: Int, val plannedSoFar: Int) {
+        val percent: Int get() = if (plannedSoFar == 0) 0 else Math.round(eatenMeals * 100.0 / plannedSoFar).toInt()
+    }
+
+    /**
+     * @param isEaten asked once per planned slot up to [todayDayIndex] -- taken
+     *   as a lambda because "eaten" is stored per calendar DATE on both
+     *   platforms while the plan is a weekday template, and only the caller
+     *   knows how its week maps onto real dates.
+     * @return null when nothing was planned for the part of the week that has
+     *   already happened -- the caller shows no row rather than "0 z 0".
+     */
+    fun realization(
+        weekPlan: WeekPlan,
+        todayDayIndex: Int,
+        isEaten: (dayIndex: Int, categoryId: String) -> Boolean,
+    ): Realization? {
+        var planned = 0
+        var eaten = 0
+        for (day in 0..todayDayIndex.coerceIn(0, 6)) {
+            val dayMeals = weekPlan[day].orEmpty()
+            PlannerOperations.PLANNER_CATEGORIES.forEach { category ->
+                dayMeals[category.id] ?: return@forEach
+                planned++
+                if (isEaten(day, category.id)) eaten++
+            }
+        }
+        if (planned == 0) return null
+        return Realization(eaten, planned)
+    }
+
+    /**
      * How the average compares to the daily target. ±50 kcal counts as "on
      * target" -- the same tolerance index.html uses, chosen so normal
      * rounding across five meals doesn't read as missing the goal.

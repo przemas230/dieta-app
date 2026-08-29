@@ -66,6 +66,63 @@ class PlannerOperationsTest {
         assertEquals("r3", plan[1]?.get("obiady")?.recipeId)
     }
 
+    // ---- FR-109: przenoszenie dania na inny dzien ----
+
+    @Test
+    fun `moveMeal carries the dish, its scale and its leftover flag to the new day`() {
+        val plan = PlannerOperations.setMeal(emptyMap(), 2, "obiady", PlannedMeal("r1", scale = 1.5, isLeftover = true))
+
+        val moved = PlannerOperations.moveMeal(plan, fromDay = 2, toDay = 4, cat = "obiady")
+
+        assertNull(moved[2]?.get("obiady"))
+        assertEquals("r1", moved[4]?.get("obiady")?.recipeId)
+        assertEquals(1.5, moved[4]?.get("obiady")?.scale)
+        assertEquals(true, moved[4]?.get("obiady")?.isLeftover)
+    }
+
+    @Test
+    fun `moveMeal onto an occupied slot swaps the two dishes instead of destroying one`() {
+        var plan = PlannerOperations.setMeal(emptyMap(), 2, "obiady", PlannedMeal("r1"))
+        plan = PlannerOperations.setMeal(plan, 4, "obiady", PlannedMeal("r2"))
+
+        val moved = PlannerOperations.moveMeal(plan, fromDay = 2, toDay = 4, cat = "obiady")
+
+        assertEquals("r1", moved[4]?.get("obiady")?.recipeId)
+        assertEquals("r2", moved[2]?.get("obiady")?.recipeId, "the displaced dish must survive somewhere")
+    }
+
+    @Test
+    fun `repeating the same move undoes a swap`() {
+        var plan = PlannerOperations.setMeal(emptyMap(), 2, "obiady", PlannedMeal("r1"))
+        plan = PlannerOperations.setMeal(plan, 4, "obiady", PlannedMeal("r2"))
+
+        val there = PlannerOperations.moveMeal(plan, 2, 4, "obiady")
+        val back = PlannerOperations.moveMeal(there, 2, 4, "obiady")
+
+        assertEquals("r1", back[2]?.get("obiady")?.recipeId)
+        assertEquals("r2", back[4]?.get("obiady")?.recipeId)
+    }
+
+    @Test
+    fun `moveMeal leaves other categories and days alone`() {
+        var plan = PlannerOperations.setMeal(emptyMap(), 2, "obiady", PlannedMeal("r1"))
+        plan = PlannerOperations.setMeal(plan, 2, "kolacje", PlannedMeal("r2"))
+        plan = PlannerOperations.setMeal(plan, 5, "obiady", PlannedMeal("r3"))
+
+        val moved = PlannerOperations.moveMeal(plan, 2, 4, "obiady")
+
+        assertEquals("r2", moved[2]?.get("kolacje")?.recipeId)
+        assertEquals("r3", moved[5]?.get("obiady")?.recipeId)
+    }
+
+    @Test
+    fun `moving an empty slot or a day onto itself changes nothing`() {
+        val plan = PlannerOperations.setMeal(emptyMap(), 2, "obiady", PlannedMeal("r1"))
+
+        assertEquals(plan, PlannerOperations.moveMeal(plan, 2, 2, "obiady"))
+        assertEquals(plan, PlannerOperations.moveMeal(plan, 3, 5, "obiady"))
+    }
+
     @Test
     fun `clearSlot removes only the targeted day-category pair`() {
         var plan = PlannerOperations.setMeal(emptyMap(), 0, "obiady", PlannedMeal("r1"))
