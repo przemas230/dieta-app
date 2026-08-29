@@ -1,0 +1,72 @@
+Wersja v118 (2026-08-29)
+========================
+
+Punkty 3 i 4 z listy proponowanych ulepszeń.
+
+1. ZAKUPY TRAFIAJĄ DO SPIŻARNI (FR-106)
+   -------------------------------------
+   Kiedy odhaczysz OSTATNIĄ pozycję potrzebną do jakiegoś dania, aplikacja
+   pokazuje: „Masz już wszystko na «nazwa dania»" z przyciskiem „Do
+   spiżarni". Po naciśnięciu składniki tego dania trafiają do spiżarni w
+   ilościach z przepisu.
+
+   Do tej pory odhaczenie przełączało tylko znacznik „kupione" — nic nie
+   docierało do spiżarni, mimo że aplikacja właśnie się dowiedziała, co
+   zostało kupione. Spiżarnię trzeba było wypełniać ręcznie, kafelek po
+   kafelku. A na spiżarni stoją dwie inne rzeczy: znacznik „🏺 N/M w
+   spiżarni" na kartach Planera i gest „🍳 Zrobione", który odejmuje
+   składniki.
+
+   PROPOZYCJA, NIE AUTOMAT: kupienie to nie gotowanie, a rzeczy bywają
+   odkładane z powrotem na półkę. Ciche dopisywanie przy każdym odhaczeniu
+   byłoby hałaśliwe i czasem po prostu nieprawdziwe. Powiadomienie pojawia
+   się raz na danie i nic nie robi bez naciśnięcia.
+
+   ZMIANA WZGLĘDEM TEGO, CO PROPONOWAŁEM: pierwotnie napisałem, że
+   aplikacja zapyta, „czy je ugotowałeś". Przy pisaniu okazało się to
+   niepoprawne — odhaczenie listy zakupów znaczy „kupiłem", a oznaczenie
+   „zrobione" ODJĘŁOBY ze spiżarni to, co właśnie kupiłeś. Właściwą akcją w
+   tym momencie jest napełnienie spiżarni; gotowanie zostaje tam, gdzie
+   było, czyli w geście na karcie Planera.
+
+2. APLIKACJA PAMIĘTA, ILE ZWYKLE ZJADASZ (FR-107)
+   -----------------------------------------------
+   Okienko wyboru porcji (przytrzymanie karty dania) otwiera się teraz tam,
+   gdzie zwykle lądujesz PRZY TYM KONKRETNYM DANIU, i mówi to wprost:
+   „📊 Zwykle zjadasz ½ porcji tego dania".
+
+   Kolejność: to, co już zapisane na dziś (poprawiasz wpis) → zapamiętany
+   nawyk → cała porcja.
+
+   Dane już były — pole porcji zapisuje się przy każdym użyciu okienka.
+   Nic nowego nie jest przechowywane; to tylko odczytanie tego, co i tak
+   było zapisywane. Kto stale zjada połowę danej kolacji, nie musi już
+   mówić o tym za każdym razem.
+
+   DWIE POWŚCIĄGLIWOŚCI, obie o tym, żeby nie być męczącym: potrzebne są co
+   najmniej dwa zapisane posiłki (jedna połówka to okazja, nie nawyk), a
+   cała porcja nigdy nie jest zgłaszana jako „zwykła" — to i tak wartość
+   domyślna, więc mówienie tego na głos byłoby szumem przy każdym daniu,
+   które ktoś po prostu zjada w całości.
+
+Weryfikacja
+-----------
+Web, na żywo w Chrome:
+- FR-106: przepis o 5 składnikach zgłoszony jako kupiony DOPIERO po piątym
+  odhaczeniu; przyjęcie propozycji utworzyło 5 pozycji w spiżarni z
+  właściwymi ilościami i jednostkami; powtórne dodanie podniosło ilość
+  150 → 300 zamiast tworzyć drugi wpis.
+- FR-107: po dwóch zapisanych połówkach okienko otworzyło się na
+  „50% · 160 kcal" (połowa z 320) z podpowiedzią; nieznane danie nie
+  zwraca nic.
+
+Android: kompiluje się, cała logika obu funkcji ma testy jednostkowe
+(11 nowych), wpięcie jest lustrzane wobec zweryfikowanej wersji webowej.
+Przejścia przez UI na emulatorze NIE dokończyłem: dla FR-106 dotknięcia
+checkboxów listy zakupów nie rejestrowały się w moim narzędziu, a dla
+FR-107 wariant „z historią" wymagałby wpisów z dwóch różnych dni, czego nie
+da się wyklikać bez przestawiania daty urządzenia. To ograniczenia sposobu
+testowania, nie stwierdzone wady.
+
+Wersje: Android versionCode 89→90, versionName 0.1.88→0.1.89 (APK w
+android/dist zsynchronizowany), Web CACHE_NAME v117→v118.

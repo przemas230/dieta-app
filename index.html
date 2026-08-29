@@ -5142,6 +5142,42 @@ const PORTION_PRESETS = [
   [0.75, "¾ porcji"],
   [1, "Cała porcja"],
 ];
+// FR-107 (2026-08-29): the portion this dish is usually eaten in, read back
+// out of what the picker has been writing since FR-105 -- nothing new is
+// stored. Two restraints, both about not being annoying: it needs at least
+// two recorded meals (one half-portion is an occasion, not a habit), and a
+// WHOLE portion is never reported, because that is the default anyway and
+// saying it out loud would be noise on every dish someone simply finishes.
+// Ties go to the most recent of the tied values.
+const PORTION_MIN_OCCURRENCES = 2;
+function usualPortionFor(dishName){
+  if(!dishName) return null;
+  const seen = [];
+  Object.keys(state.eaten).sort().forEach(date=>{
+    const day = state.eaten[date] || {};
+    CATS.forEach(c=>{
+      const e = day[c.id];
+      if(e && typeof e==="object" && e.done && e.name === dishName){
+        const p = typeof e.portion === "number" ? e.portion : 1;
+        seen.push(Math.max(0, Math.min(1, p)));
+      }
+    });
+  });
+  if(seen.length < PORTION_MIN_OCCURRENCES) return null;
+  const counts = {};
+  seen.forEach(p=>{ counts[p] = (counts[p] || 0) + 1; });
+  const top = Math.max(...Object.values(counts));
+  const tied = Object.keys(counts).filter(p => counts[p] === top).map(Number);
+  let winner = null;
+  for(let i = seen.length - 1; i >= 0; i--){ if(tied.includes(seen[i])){ winner = seen[i]; break; } }
+  return (winner === null || winner >= 1) ? null : winner;
+}
+function usualPortionHint(dishName){
+  const usual = usualPortionFor(dishName);
+  if(usual === null) return null;
+  const preset = PORTION_PRESETS.find(([v])=> Math.abs(v - usual) < 0.001);
+  return `Zwykle zjadasz ${preset ? preset[1] : Math.round(usual*100) + "%"} tego dania`;
+}
 function portionLabel(p){
   const preset = PORTION_PRESETS.find(([v])=> Math.abs(v - p) < 0.001);
   if(preset) return `${preset[1]} zjedzone`;
@@ -5167,6 +5203,14 @@ function openPortionPicker(date, cat, recipe){
     overlay.addEventListener("click", (e)=>{ if(e.target===overlay) overlay.classList.remove("show"); });
   }
   const current = eatenPortion(date, cat);
+  // FR-107: open where this person usually lands for THIS dish. Priority:
+  // what is already recorded for today (they are correcting it), then their
+  // habit, then a whole portion. Opening at 100% every time makes someone who
+  // always eats half do the same two taps forever -- and the app already
+  // knows better, it just never said so.
+  const usual = recipe ? usualPortionFor(recipe.name) : null;
+  const hint = recipe ? usualPortionHint(recipe.name) : null;
+  const startPortion = current > 0 ? current : (usual !== null ? usual : 1);
   document.getElementById("portionPickerTitle").textContent = recipe ? recipe.name : "Ile zjedzone?";
   const body = document.getElementById("portionPickerBody");
   const kcalOf = p => recipe ? Math.round(recipe.kcal * p) : 0;
@@ -5180,8 +5224,9 @@ function openPortionPicker(date, cat, recipe){
   };
   body.innerHTML = `
     <div class="hint-text" style="margin:0 0 10px;">Przesuń suwak albo wybierz gotową wielkość. Licznik kalorii policzy dokładnie tyle, ile zaznaczysz.</div>
+    ${hint ? `<div style="margin:0 0 10px; font-size:12px; font-weight:700; color:var(--teal-dark);">📊 ${hint}</div>` : ""}
     <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
-      <input type="range" id="portionRange" min="0" max="100" step="5" value="${Math.round((current || 1)*100)}" style="flex:1;">
+      <input type="range" id="portionRange" min="0" max="100" step="5" value="${Math.round(startPortion*100)}" style="flex:1;">
       <span id="portionRangeLabel" style="font-weight:800; min-width:96px; text-align:right; font-size:13px;"></span>
     </div>
     <div id="portionPresetRow" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;"></div>
@@ -7297,6 +7342,70 @@ function clinicCatBadge(canonName){
   const slug = CLINIC_CAT_SLUG[cat] || "inne";
   return `<span class="shop-cat-badge" data-cat="${slug}">${cat}</span>`;
 }
+// FR-106 (2026-08-29): recipe ids whose EVERY shopping-list item is ticked.
+// "Ticked" means bought, so this is the moment the app knows the user has
+// everything for that dish. Derived from `contributions` -- which already
+// records which recipe put each item on the list -- so nothing new is stored.
+// A recipe with nothing left on the list is NOT reported: removing the last
+// item is not buying it, and offering to stock the pantry then would invent a
+// purchase that never happened.
+function fullyBoughtRecipes(){
+  const total = {}, checked = {};
+  Object.values(state.shopping).forEach(item=>{
+    Object.keys(item.contributions || {}).forEach(src=>{
+      total[src] = (total[src] || 0) + 1;
+      if(item.checked) checked[src] = (checked[src] || 0) + 1;
+    });
+  });
+  return Object.keys(total).filter(src => total[src] > 0 && checked[src] === total[src]);
+}
+// Puts a whole recipe's worth of ingredients INTO the pantry -- what "I have
+// just bought all of this" means. Deliberately NOT restoreRecipeToPantry():
+// that one only tops up entries that already exist, because it undoes a
+// subtraction. Stocking up after shopping is the opposite case -- the
+// ingredients worth adding are exactly the ones you did not have.
+function stockRecipeToPantry(r){
+  const added = [];
+  r.ingredients.forEach(ing=>{
+    const {baseQty, unitCat, name} = parseIngredient(ing);
+    if(!(baseQty > 0)) return;
+    const canon = pantryCanon(name);
+    const entry = state.pantry[canon];
+    if(!entry){
+      const info = CANON_INFO[canon] || state.customTiles[canon] || {cat:"Inne"};
+      state.pantry[canon] = {label:canon, cat:info.cat, type:"product", qty:baseQty, unitCat};
+      added.push(canon);
+    }else if(entry.type === "product" && entry.unitCat === unitCat){
+      entry.qty = Math.round((entry.qty + baseQty)*100)/100;
+      added.push(canon);
+    }
+    // A tracked entry in a different unit category is left alone rather than
+    // guessed at -- same cautious rule the rest of the pantry matching uses.
+  });
+  if(added.length) addLog("pantry_add", `Zakupy → spiżarnia (${r.name}): ${added.join(", ")}`);
+  return added.length;
+}
+// Shared by both shopping views (list rows and tiles) so the offer behaves
+// identically however the item was ticked off.
+function toggleShopChecked(key, nextChecked){
+  const before = fullyBoughtRecipes();
+  state.shopping[key].checked = nextChecked;
+  saveState();
+  renderShop();
+  const justBought = fullyBoughtRecipes().filter(id => !before.includes(id));
+  justBought.forEach(id=>{
+    const r = findRecipeById(id);
+    if(!r) return;
+    // OFFERS rather than acts: buying is not cooking, and silently filling the
+    // pantry on every tick would be both noisy and sometimes wrong (things do
+    // get put back on the shelf).
+    toast(`Masz już wszystko na „${r.name}”`, "Do spiżarni", ()=>{
+      const n = stockRecipeToPantry(r);
+      saveState(); renderPantry(); renderShop();
+      toast(n ? `Dodano do spiżarni (${n})` : "Nic nie dodano — sprawdź jednostki");
+    });
+  });
+}
 function renderShop(){
   renderShopDayStrip();
   const box = document.getElementById("shopList");
@@ -7346,8 +7455,7 @@ function renderShop(){
         : `${qtyLabel} ${displayName}${dayLabel}`;
       row.innerHTML = `<input type="checkbox" ${item.checked?'checked':''}><span class="label">${labelInner}</span>${buildPantryTag(item)}`;
       row.querySelector("input").addEventListener("change", e=>{
-        state.shopping[item.key].checked = e.target.checked;
-        saveState(); renderShop();
+        toggleShopChecked(item.key, e.target.checked);
       });
       box.appendChild(row);
     });
@@ -7395,9 +7503,7 @@ function renderShopTiles(box, ingredientDays, filteredKeys){
         : `Brakuje jeszcze ${formatQty(item.unitCat, shortage)} — stuknij, aby oznaczyć jako kupione`;
       tile.innerHTML = `<span class="pt-emoji">${emoji}</span><span class="pt-name">${displayName}</span><span class="pt-badge${covered?" pt-badge-ok":""}">${badge}</span>`;
       tile.addEventListener("click", ()=>{
-        state.shopping[item.key].checked = !state.shopping[item.key].checked;
-        saveState();
-        renderShop();
+        toggleShopChecked(item.key, !state.shopping[item.key].checked);
       });
       grid.appendChild(tile);
     });

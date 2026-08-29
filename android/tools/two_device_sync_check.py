@@ -146,6 +146,38 @@ class Device:
                 if found and found.group(1):
                     yield found.group(1), centre
 
+    @staticmethod
+    def _clickables(xml):
+        """Bounds of every node that actually handles a tap."""
+        boxes = []
+        for element in re.finditer(r"<node\b[^>]*>", xml):
+            attrs = element.group(0)
+            if 'clickable="true"' not in attrs:
+                continue
+            bounds = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', attrs)
+            if bounds:
+                boxes.append(tuple(int(bounds.group(i)) for i in range(1, 5)))
+        return boxes
+
+    @classmethod
+    def _tappable_point(cls, centre, xml):
+        """Where to actually tap for a label found at `centre`.
+
+        Compose labels are usually NOT the clickable node -- a bottom-nav item
+        renders its icon and its text as two non-clickable children of one
+        clickable parent. Tapping the label's own centre happens to work when
+        the parent covers that pixel and silently does nothing when it does
+        not, which is how the first version of this failed on the navigation
+        bar. Taking the smallest clickable box that CONTAINS the label removes
+        the guesswork: it is the element the user would be pressing.
+        """
+        x, y = centre
+        containing = [b for b in cls._clickables(xml) if b[0] <= x <= b[2] and b[1] <= y <= b[3]]
+        if not containing:
+            return centre
+        smallest = min(containing, key=lambda b: (b[2] - b[0]) * (b[3] - b[1]))
+        return ((smallest[0] + smallest[2]) // 2, (smallest[1] + smallest[3]) // 2)
+
     def find(self, needle, xml=None, exact=False):
         """Centre of the first element matching `needle`, or None.
 
@@ -175,18 +207,25 @@ class Device:
     def has(self, needle, xml=None, exact=False):
         return self.find(needle, xml, exact) is not None
 
-    def tap(self, needle, what=None, exact=False):
-        centre = self.find(needle, exact=exact)
+    def _aim(self, needle, what, exact):
+        xml = self.dump()
+        centre = self.find(needle, xml, exact)
+        if centre is None:
+            time.sleep(1.0)
+            xml = self.dump()
+            centre = self.find(needle, xml, exact)
         if centre is None:
             raise Lookup(f"[{self.label}] nie znalazlem na ekranie: {what or needle!r}")
-        self.shell(f"input tap {centre[0]} {centre[1]}")
+        return self._tappable_point(centre, xml)
+
+    def tap(self, needle, what=None, exact=False):
+        x, y = self._aim(needle, what, exact)
+        self.shell(f"input tap {x} {y}")
         time.sleep(0.6)
 
-    def long_press(self, needle, what=None):
-        centre = self.find(needle)
-        if centre is None:
-            raise Lookup(f"[{self.label}] nie znalazlem na ekranie: {what or needle!r}")
-        self.shell(f"input swipe {centre[0]} {centre[1]} {centre[0]} {centre[1]} 900")
+    def long_press(self, needle, what=None, exact=False):
+        x, y = self._aim(needle, what, exact)
+        self.shell(f"input swipe {x} {y} {x} {y} 900")
         time.sleep(0.8)
 
     def type_text(self, value):

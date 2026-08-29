@@ -99,6 +99,7 @@ import com.przemas230.dietaapp.logic.PlannerCategory
 import com.przemas230.dietaapp.logic.PlannerOperations
 import com.przemas230.dietaapp.logic.PlannerSwipe
 import com.przemas230.dietaapp.logic.WeekPlanSummary
+import com.przemas230.dietaapp.logic.PortionHistory
 import com.przemas230.dietaapp.logic.PortionText
 import com.przemas230.dietaapp.logic.ProfileCalculations
 import com.przemas230.dietaapp.logic.RecipeMatching
@@ -173,6 +174,9 @@ fun PlannerScreen(
     // itself) to match how every other cross-screen dependency reaches this
     // composable from MainActivity.
     eatenEntriesForDate: (dateKey: String) -> Map<String, EatenEntry> = { emptyMap() },
+    // FR-107: the full per-date record, so the portion picker can tell how
+    // much of THIS dish the user usually eats. Read-only here.
+    eatenDays: Map<String, com.przemas230.dietaapp.data.EatenDay> = emptyMap(),
     onSetEatenOnDate: (dateKey: String, cat: String, eaten: Boolean, portion: Double, plannedKcal: Int?, plannedName: String?) -> Unit = { _, _, _, _, _, _ -> },
     // Requested 2026-08-26: opt-in fill-with-color on the "POZOSTAŁO" tile,
     // see RemainingKcalFillViewModel/SettingsScreen's matching card.
@@ -587,9 +591,21 @@ fun PlannerScreen(
     // eaten entry has been a 0..1 number since FR-103, so this is purely the
     // missing UI; no data-model or kcal-maths change.
     portionPickerTarget?.let { target ->
+        // FR-107: open where this person usually lands for THIS dish.
+        // Priority: what is already recorded for today (they are correcting
+        // it), then their habit, then a whole portion. Opening at 100% every
+        // time makes someone who always eats half do the same two taps
+        // forever -- and the app already knows better, it just never said so.
+        val usual = remember(target) { PortionHistory.usualPortion(eatenDays, target.recipe.name) }
+        val hint = remember(target) { PortionHistory.usualPortionHint(eatenDays, target.recipe.name) }
         var percent by remember(target) {
             val current = EatenOperations.portionOf(eatenEntriesForDate(target.date.toString()), target.cat)
-            mutableStateOf((if (current > 0.0) current else 1.0).toFloat() * 100f)
+            val start = when {
+                current > 0.0 -> current
+                usual != null -> usual
+                else -> 1.0
+            }
+            mutableStateOf(start.toFloat() * 100f)
         }
         val chosen = (percent / 100f).toDouble()
         AlertDialog(
@@ -602,6 +618,15 @@ fun PlannerScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (hint != null) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            "📊 $hint",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         "${percent.roundToInt()}% · ${PortionText.kcalFor(target.scaledKcal, chosen)} kcal",

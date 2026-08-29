@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
+import com.przemas230.dietaapp.data.ShoppingItem
+import org.junit.jupiter.api.Assertions.assertTrue
 
 private fun recipeWithIngredients(vararg ingredients: String) = Recipe(
     id = "x",
@@ -153,5 +155,45 @@ class RecipePantryMatchingTest {
     @Test
     fun `uniqueIngredientNames is empty for no recipes`() {
         assertEquals(emptyList<String>(), RecipePantryMatching.uniqueIngredientNames(emptyList()))
+    }
+
+    // ---- FR-106: stocking the pantry after the shopping is done ----
+
+    private fun boughtRecipe() = Recipe(
+        id = "R1", cat = "obiady", name = "Test", time = "10 min", kcal = 400,
+        ingredients = listOf("200 g ryżu", "2 jajka"), method = "Zrób",
+        protein = null, carbs = null, fat = null, fiber = null, gi = null, gl = null,
+    )
+
+    @Test
+    fun `stocking creates entries for ingredients the pantry never had`() {
+        // The whole point: these are exactly the ones you did not have, so
+        // restoreForRecipe (which skips unknown ingredients) cannot do this.
+        val stocked = RecipePantryMatching.stockFromRecipe(emptyMap(), boughtRecipe())
+        val rice = stocked.values.filterIsInstance<PantryItem.Product>().first { it.name.contains("ry") }
+        assertEquals(200.0, rice.quantity)
+        assertEquals("g", rice.unit)
+        assertEquals(2, stocked.size)
+    }
+
+    @Test
+    fun `stocking tops up an ingredient that was already tracked`() {
+        val before = RecipePantryMatching.stockFromRecipe(emptyMap(), boughtRecipe())
+        val after = RecipePantryMatching.stockFromRecipe(before, boughtRecipe())
+        val rice = after.values.filterIsInstance<PantryItem.Product>().first { it.name.contains("ry") }
+        assertEquals(400.0, rice.quantity)
+    }
+
+    @Test
+    fun `stocking leaves an entry alone when the units cannot be reconciled`() {
+        // Pantry counts eggs in "szt.", a recipe asking for grams of the same
+        // canonical name must not be guessed at -- same rule as everywhere
+        // else in this file.
+        val eggsByPiece = RecipePantryMatching.stockFromRecipe(emptyMap(), boughtRecipe())
+            .filterValues { it is PantryItem.Product && it.unit == "szt." }
+        val name = eggsByPiece.keys.first()
+        val gramsRecipe = boughtRecipe().copy(ingredients = listOf("100 g $name"))
+        val after = RecipePantryMatching.stockFromRecipe(eggsByPiece, gramsRecipe)
+        assertEquals((eggsByPiece[name] as PantryItem.Product).quantity, (after[name] as PantryItem.Product).quantity)
     }
 }

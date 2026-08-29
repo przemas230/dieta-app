@@ -82,6 +82,17 @@ class PantryViewModel(application: Application) : AndroidViewModel(application) 
         update(RecipePantryMatching.subtractForRecipe(_items.value, recipe))
     }
 
+    /**
+     * FR-106: puts a whole recipe's ingredients into the pantry after the
+     * shopping list says they were all bought. Unlike [restoreForRecipe] this
+     * CREATES entries that were not tracked before -- see
+     * RecipePantryMatching.stockFromRecipe for why the two cannot be one
+     * function.
+     */
+    fun stockFromRecipe(recipe: Recipe) {
+        update(RecipePantryMatching.stockFromRecipe(_items.value, recipe))
+    }
+
     /** FR-15: called when a cook-history entry is deleted, to undo its subtraction. */
     fun restoreForRecipe(recipe: Recipe) {
         update(RecipePantryMatching.restoreForRecipe(_items.value, recipe))

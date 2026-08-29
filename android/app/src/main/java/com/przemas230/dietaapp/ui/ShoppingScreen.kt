@@ -125,6 +125,28 @@ fun ShoppingScreen(
     // someone with an empty list that their search found nothing, instead of
     // how to add the first ingredient. Diacritics-insensitive via
     // PolishText, same as every other search in the app.
+    // FR-106: ticking an item off means BOUGHT. When that tick was the last
+    // one a recipe was waiting on, the app now knows the user has everything
+    // for that dish -- and that is the moment to offer moving it into the
+    // pantry, which is what makes "🏺 N/M w spiżarni" and the Planer's
+    // "zrobione" swipe work afterwards.
+    //
+    // It OFFERS rather than acts: buying is not cooking, and silently filling
+    // the pantry on every tick would be both noisy and occasionally wrong
+    // (things do get put back on the shelf).
+    val onTicked: (String) -> Unit = { key ->
+        val boughtBefore = ShoppingOperations.fullyBoughtRecipes(items)
+        viewModel.toggleChecked(key)
+        val justBought = ShoppingOperations.fullyBoughtRecipes(viewModel.items.value) - boughtBefore
+        justBought.forEach { recipeId ->
+            val recipe = recipesById[recipeId]
+            if (recipe != null) {
+                onShowUndoSnackbar("Masz już wszystko na „${recipe.name}”", "Do spiżarni") {
+                    pantryViewModel.stockFromRecipe(recipe)
+                }
+            }
+        }
+    }
     val visibleItems = remember(items, searchTerm) {
         if (searchTerm.isBlank()) items
         else items.filterValues { PolishText.contains(it.name, searchTerm.trim()) }
@@ -284,7 +306,7 @@ fun ShoppingScreen(
                             item = item,
                             pantryEntry = pantryItems[item.name] as? PantryItem.Product,
                             dayLabel = ShoppingOperations.formatIngredientDays(ingredientDays[key], todayIdx),
-                            onToggle = { viewModel.toggleChecked(key) },
+                            onToggle = { onTicked(key) },
                         )
                     }
                 }
@@ -325,14 +347,14 @@ fun ShoppingScreen(
                             ShoppingRowClinic(
                                 item = item,
                                 dayLabel = ShoppingOperations.formatIngredientDays(ingredientDays[key], todayIdx),
-                                onToggle = { viewModel.toggleChecked(key) },
+                                onToggle = { onTicked(key) },
                                 onRemove = { viewModel.removeItem(key) },
                             )
                         } else {
                             ShoppingRow(
                                 item = item,
                                 dayLabel = ShoppingOperations.formatIngredientDays(ingredientDays[key], todayIdx),
-                                onToggle = { viewModel.toggleChecked(key) },
+                                onToggle = { onTicked(key) },
                                 onRemove = { viewModel.removeItem(key) },
                             )
                         }

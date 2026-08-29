@@ -117,6 +117,8 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-103 | Stopniowany gest przesuwania na kartach „Dzisiejszy Planer” | ✅ v1 (2026-08-29): `pdSwipeAction(dx)` mapuje odległość na 4 akcje (36/105/130 px), żywa pigułka z nazwą akcji + narastające tło, ściągawka pod nagłówkiem, plakietki stanu, `portion` na wpisie `state.eaten[date][cat]`, `cookedTodayIndex/undoCookedToday` (data liczona lokalnie, zgodnie z FR-101). ✅ zweryfikowane na żywo w Chrome (2026-08-29): pełny cykl nic→zrobione→zjedzone→wstecz z odczytem kcal i stanu spiżarni | ✅ v1 (2026-08-29), zweryfikowane na emulatorze wszystkie 4 akcje z odczytem liczb: 0/1480 → „🍳 Zrobione” (plakietka) → długie w prawo 345/1480 → krótkie w lewo 173/1480 + „½ Zjedzone w połowie” + „173 / 345 kcal” → długie w lewo z powrotem 0/1480 i obie plakietki znikają. `PlannerSwipe` (logic, testy jednostkowe), `EatenEntry.portion`, `RecipeViewModel.isCookedToday/undoCookedToday` |
 | FR-104 | Gest „zrobione/zjedzone” także na kartach dni tygodnia | ✅ v1 (2026-08-29): wiersze `.cdc-row` z daniem dostały ten sam gest co karta dashboardu, na dacie danego dnia bieżącego tygodnia (`dateForDayIndex`); puste sloty bez zmian. ✅ zweryfikowane na żywo w Chrome (2026-08-29) | ✅ v1 (2026-08-29), zweryfikowane na emulatorze: przesunięcie w lewo na wierszu „Śniadanie” karty Soboty cofnęło danie ze „zjedzone” do „zrobione”, a karta w „Dzisiejszym Planerze” pokazywała dokładnie ten sam stan przed i po (jedno źródło prawdy, nie dwie kopie) |
 | FR-105 | Dowolna wielkość zjedzonej porcji | ✅ v1 (2026-08-29): przytrzymanie karty otwiera suwak 0–100% + ¼/½/¾/cała, z podglądem kcal na żywo; 0% = niezjedzone. ✅ zweryfikowane na żywo w Chrome (2026-08-29) | ✅ v1 (2026-08-29), zweryfikowane na emulatorze: przytrzymanie karty → suwak 100% · 345 kcal → wybór „¼ porcji” → 86/1480 kcal, plakietka „¼ porcji zjedzone”, kafelek „86 / 345 kcal” |
+| FR-106 | Propozycja przeniesienia zakupów do spiżarni | ✅ v1 (2026-08-29): po odhaczeniu OSTATNIEJ pozycji dania — powiadomienie „Masz już wszystko na «X»” z akcją „Do spiżarni”; `fullyBoughtRecipes()` wyprowadzone z `contributions`, `stockRecipeToPantry()` tworzy pozycje, których nie było. ✅ zweryfikowane na żywo w Chrome: 5-składnikowy przepis zgłoszony dopiero po piątym odhaczeniu, przyjęcie utworzyło 5 pozycji, powtórne dodanie 150→300 | ✅ v1 (2026-08-29): `ShoppingOperations.fullyBoughtRecipes` + `RecipePantryMatching.stockFromRecipe` z testami, wpięte w oba widoki listy przez jeden wspólny `onTicked`. ⏳ przejście przez UI na emulatorze NIE dokończone — dotknięcia checkboxów listy nie rejestrowały się w narzędziu (ograniczenie testowania, nie stwierdzona wada) |
+| FR-107 | Zapamiętana wielkość porcji dla danego dania | ✅ v1 (2026-08-29): okienko porcji otwiera się na nawyku dla TEGO dania + podpowiedź „Zwykle zjadasz ½ porcji tego dania”; próg dwóch wystąpień, cała porcja nigdy nie jest zgłaszana. ✅ zweryfikowane na żywo w Chrome: po dwóch połówkach suwak startuje na „50% · 160 kcal” z podpowiedzią | ✅ v1 (2026-08-29): `PortionHistory` w `logic/` z ośmioma testami, `eatenDays` doprowadzone do `PlannerScreen`. ⏳ wariant „z historią” nie odklikany na emulatorze — wymagałby wpisów z dwóch różnych dni |
 
 ## Uwagi do częściowych wpisów
 
@@ -1374,6 +1376,53 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
   `content-desc`, bo zębatka nie ma tekstu), dokładne dopasowanie dla pełnych
   etykiet, i rozróżnianie „nasz pakiet, ale coś go zasłania” od „nie ma nas na
   wierzchu” po zawartości zrzutu.
+
+- **Punkty 3 i 4 z listy propozycji: zakupy → spiżarnia i pamięć porcji (2026-08-29)**:
+  obie funkcje na obu platformach w jednej turze.
+
+  **FR-106** zamyka dziurę, która była tu od początku: odhaczenie pozycji na
+  liście zakupów przełączało wyłącznie znacznik „kupione” i **nic nie
+  docierało do spiżarni**, mimo że aplikacja właśnie dowiadywała się, co
+  zostało kupione. A na spiżarni stoją dwie inne rzeczy — znacznik
+  „🏺 N/M w spiżarni” na kartach Planera i gest „🍳 Zrobione”, który
+  odejmuje składniki.
+
+  **Korekta własnej propozycji**: pierwotnie zapowiedziałem, że aplikacja
+  zapyta „czy je ugotowałeś”. Przy pisaniu okazało się to niepoprawne —
+  odhaczenie listy zakupów znaczy „kupiłem”, a oznaczenie „zrobione”
+  ODJĘŁOBY ze spiżarni to, co użytkownik właśnie kupił. Zaimplementowana
+  została wersja poprawna (napełnienie spiżarni), a nie zapowiedziana.
+
+  **Dlaczego propozycja, a nie automat**: kupienie to nie gotowanie, rzeczy
+  bywają odkładane na półkę, a ciche dopisywanie przy każdym odhaczeniu
+  byłoby i hałaśliwe, i czasem nieprawdziwe.
+
+  **Dlaczego nowa funkcja, a nie `restoreForRecipe`**: tamta przechodzi przez
+  `applyDelta`, który POMIJA składniki nieobecne w spiżarni (`?: return@forEach`),
+  bo istnieje po to, by cofać odejmowanie — a nie da się odjąć od czegoś,
+  czego nigdy nie było. Tutaj jest odwrotnie: warte dodania są dokładnie te
+  składniki, których użytkownik NIE miał.
+
+  **FR-107** nie dokłada żadnego nowego zapisu — czyta pole `portion`, które
+  FR-105 zapisuje od początku. Dwie powściągliwości, obie o tym, żeby nie być
+  męczącym: próg dwóch wystąpień (jedna połówka to okazja, nie nawyk) i
+  nigdy nie zgłaszanie całej porcji (to i tak domyślna wartość). Remis
+  rozstrzyga ostatnie wystąpienie.
+
+  **Zakres weryfikacji**: web — oba punkty przejście na żywo w Chrome, z
+  odczytem liczb (5-składnikowy przepis zgłoszony dopiero po piątym
+  odhaczeniu, 5 utworzonych pozycji, powtórne dodanie 150→300; suwak porcji
+  startujący na 50% · 160 kcal z podpowiedzią). Android — kompilacja + 11
+  nowych testów jednostkowych, wpięcie lustrzane; ⏳ przejścia przez UI na
+  emulatorze NIE dokończone. Dla FR-106 dotknięcia checkboxów listy zakupów
+  nie rejestrowały się w narzędziu (wiersz listy nie jest klikalny —
+  przełącza wyłącznie sam checkbox, co sprawdzono w kodzie); dla FR-107
+  wariant „z historią” wymagałby wpisów z dwóch różnych dni, czego nie da
+  się wyklikać bez przestawiania daty urządzenia. To ograniczenia sposobu
+  testowania, nie stwierdzone wady — ale też nie są dowodem, że działa.
+
+  `versionCode` 89→90, `versionName` 0.1.88→0.1.89, CACHE_NAME→v118,
+  `versions/v118/`.
 
 ## Jak to utrzymywać
 

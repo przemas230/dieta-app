@@ -17,6 +17,30 @@ import com.przemas230.dietaapp.data.ShoppingItem
 object ShoppingOperations {
     fun keyFor(canonName: String, unitCat: String): String = "$canonName|$unitCat"
 
+    /**
+     * FR-106: recipe ids whose EVERY shopping-list item is now ticked off.
+     *
+     * "Ticked off" means bought, so this is the moment the app knows the user
+     * has everything for that dish -- and the moment worth offering to move it
+     * into the pantry. Derived from `contributions`, which already records
+     * which recipe put each item on the list, so nothing new has to be stored.
+     *
+     * A recipe with no items left on the list is NOT reported: removing the
+     * last item is not the same as buying it, and offering to stock the pantry
+     * then would be inventing a purchase that never happened.
+     */
+    fun fullyBoughtRecipes(items: Map<String, ShoppingItem>): Set<String> {
+        val total = mutableMapOf<String, Int>()
+        val checked = mutableMapOf<String, Int>()
+        items.values.forEach { item ->
+            item.contributions.keys.forEach { source ->
+                total[source] = (total[source] ?: 0) + 1
+                if (item.checked) checked[source] = (checked[source] ?: 0) + 1
+            }
+        }
+        return total.filter { (source, count) -> count > 0 && checked[source] == count }.keys
+    }
+
     /** Shared by addRecipe/addSingleIngredient -- `sourceKey` is the recipe id, or a synthetic "single:<recipeId>:<canon>" key for a lone-ingredient add. */
     private fun addContribution(
         items: Map<String, ShoppingItem>,

@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import com.przemas230.dietaapp.data.ShoppingItem
+import com.przemas230.dietaapp.data.PantryItem
 
 private fun recipe(id: String, vararg ingredients: String) = Recipe(
     id = id,
@@ -266,5 +268,41 @@ class ShoppingOperationsTest {
     fun `formatIngredientDays calls out Sunday as closed`() {
         val label = ShoppingOperations.formatIngredientDays(setOf(6), todayIdx = 0)
         assertEquals(" (nie — sklepy nieczynne, kup wcześniej)", label)
+    }
+
+    // ---- FR-106: "you have bought everything for this dish" ----
+
+    private fun listItem(name: String, checked: Boolean, vararg sources: String) =
+        ShoppingItem(name, "count", 1.0, checked, sources.associateWith { 1.0 })
+
+    @Test
+    fun `a recipe counts as bought only when every one of its items is ticked`() {
+        val partly = mapOf(
+            "a|count" to listItem("jajka", true, "R1"),
+            "b|count" to listItem("mleko", false, "R1"),
+        )
+        assertTrue(ShoppingOperations.fullyBoughtRecipes(partly).isEmpty())
+
+        val done = partly + ("b|count" to listItem("mleko", true, "R1"))
+        assertEquals(setOf("R1"), ShoppingOperations.fullyBoughtRecipes(done))
+    }
+
+    @Test
+    fun `an item shared by two recipes only completes the one that is fully ticked`() {
+        // The shared-ingredient case is why this is derived from contributions
+        // rather than from a per-recipe flag: one tick can finish R1 while R2
+        // still waits on something else.
+        val items = mapOf(
+            "a|count" to listItem("jajka", true, "R1", "R2"),
+            "b|count" to listItem("mleko", false, "R2"),
+        )
+        assertEquals(setOf("R1"), ShoppingOperations.fullyBoughtRecipes(items))
+    }
+
+    @Test
+    fun `a recipe with nothing left on the list is not reported as bought`() {
+        // Removing the last item is not the same as buying it -- offering to
+        // stock the pantry then would invent a purchase that never happened.
+        assertTrue(ShoppingOperations.fullyBoughtRecipes(emptyMap()).isEmpty())
     }
 }

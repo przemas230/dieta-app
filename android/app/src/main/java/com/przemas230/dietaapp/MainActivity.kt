@@ -906,6 +906,7 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     // FR-104/FR-105: the week's day cards and the portion
                     // picker act on a specific day, not necessarily today.
                     eatenEntriesForDate = { dateKey -> eatenViewModel.entriesForDate(dateKey) },
+                    eatenDays = eatenViewModel.days.collectAsState().value,
                     onSetEatenOnDate = { dateKey, cat, eaten, portion, kcal, name ->
                         eatenViewModel.setEatenOnDate(dateKey, cat, eaten, kcal, name, portion)
                     },

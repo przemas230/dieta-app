@@ -48,12 +48,14 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-103: Stopniowany gest przesuwania na kartach „Dzisiejszy Planer”](#fr-103-stopniowany-gest-przesuwania-na-kartach-dzisiejszy-planer)
 - [FR-104: Gest „zrobione/zjedzone” także na kartach dni tygodnia](#fr-104-gest-zrobionezjedzone-także-na-kartach-dni-tygodnia)
 - [FR-105: Dowolna wielkość zjedzonej porcji](#fr-105-dowolna-wielkość-zjedzonej-porcji)
+- [FR-107: Zapamiętana wielkość porcji dla danego dania](#fr-107-zapamiętana-wielkość-porcji-dla-danego-dania)
 - [FR-100: Podsumowanie odżywcze zaplanowanego tygodnia](#fr-100-podsumowanie-odżywcze-zaplanowanego-tygodnia)
 
 ### Lista zakupów
 - [FR-25: Budowanie listy zakupów ze składników przepisów](#fr-25-budowanie-listy-zakupów-ze-składników-przepisów)
 - [FR-26: Odhaczanie, udostępnianie i czyszczenie listy zakupów](#fr-26-odhaczanie-udostępnianie-i-czyszczenie-listy-zakupów)
 - [FR-27: Dodanie składników z całego tygodnia z Planera](#fr-27-dodanie-składników-z-całego-tygodnia-z-planera)
+- [FR-106: Propozycja przeniesienia zakupów do spiżarni](#fr-106-propozycja-przeniesienia-zakupów-do-spiżarni)
 - [FR-58: Dodawanie składników z konkretnego dnia na liście zakupów](#fr-58-dodawanie-składników-z-konkretnego-dnia-na-liście-zakupów)
 - [FR-62: Mini kalendarzyk bieżącego tygodnia na liście zakupów](#fr-62-mini-kalendarzyk-bieżącego-tygodnia-na-liście-zakupów)
 - [FR-75: Widok kafelkowy listy zakupów z brakującymi ilościami](#fr-75-widok-kafelkowy-listy-zakupów-z-brakującymi-ilościami)
@@ -166,6 +168,9 @@ Przegląd wymagań pod kątem wzajemnych sprzeczności. Żadna z poniższych par
 16. **FR-103 (stopniowany gest na kartach Planera) vs FR-15 (oznaczanie dania jako ugotowane) i FR-36 (oznaczanie jako zjedzone).** Nie wykluczają się — FR-103 to wyłącznie SKRÓT do tych samych dwóch zapisów, nie osobny stan. Krótkie przesunięcie w prawo woła dokładnie ten sam kod co przycisk „✅ Zrobione dzisiaj” z karty przepisu (wpis w historii gotowania + odjęcie ze spiżarni), a długie — ten sam `setEaten` co checkbox w Postępie. Rozstrzygnięcia: (a) powtórzone „zrobione” tego samego dnia jest ignorowane, żeby skrót nie mógł odjąć składników dwa razy; (b) „zjedzone” NIE oznacza automatycznie „zrobione” — można zjeść coś, czego się nie gotowało, więc te dwa stany zostają niezależne; (c) połowa porcji jest z punktu widzenia FR-36 nadal „zjedzone” (`done:true`), tylko z polem `portion`, więc wszystkie starsze odczyty stanu (checkbox w Postępie, seria dni, podsumowania) działają bez zmian, a tylko sumowanie kcal zna ułamek.
 17. **FR-102 (trwałe usuwanie produktu ze spiżarni) vs FR-28 (kafelki wyliczane ze wszystkich przepisów).** Napięcie realne: FR-28 celowo NIE przechowuje listy kafelków, tylko wylicza ją z bazy przepisów, więc „usunięcie” kafelka nie ma czego skasować. Rozstrzygnięcie: FR-102 nie zmienia FR-28, tylko dokłada listę wykluczeń (`pantryHidden`) filtrowaną w jednym miejscu przy budowaniu listy kafelków. Skutek uboczny do zapamiętania: jeśli w przyszłości dojdzie przepis ze składnikiem, który użytkownik kiedyś ukrył, kafelek NIE pojawi się — to celowe (wybór użytkownika wygrywa z bazą przepisów), a „↩️ Przywróć usunięte produkty” jest wyjściem awaryjnym.
 18. **FR-103 (znacznik „zrobione dzisiaj” na karcie Planera) vs FR-101 (dni liczone lokalnie).** Wpisy historii gotowania zapisują pełny znacznik czasu `toISOString()`, którego część datowa to dzień UTC — a `todayStr()` od FR-101 zwraca dzień LOKALNY. Rozstrzygnięcie: `cookedTodayIndex()` NIE porównuje pierwszych 10 znaków znacznika, tylko parsuje go i formatuje lokalnie (`localDateStr`), żeby „dzisiaj” znaczyło tu to samo co we wszystkich innych kluczach dat. Bez tego plakietka „🍳 Zrobione” gasłaby i zapalała się o północy czasu UTC, czyli o 01:00/02:00 w Polsce.
+
+19. **FR-106 (propozycja przeniesienia zakupów do spiżarni) vs FR-15 (oznaczanie dania jako ugotowane).** Nie wykluczają się, ale łatwo je pomylić — i pierwotny pomysł na FR-106 mylił je wprost. Odhaczenie listy zakupów znaczy „kupiłem”, a nie „ugotowałem”: oznaczenie „zrobione” ODJĘŁOBY ze spiżarni to, co użytkownik właśnie kupił. Rozstrzygnięcie: FR-106 wyłącznie NAPEŁNIA spiżarnię, a ugotowanie zostaje tam, gdzie było — w geście z FR-103. Obie funkcje spotykają się dopiero na spiżarni: FR-106 ją wypełnia, FR-103 z niej odejmuje.
+20. **FR-107 (zapamiętana porcja) vs FR-105 (dowolna porcja).** FR-107 nie dokłada żadnego nowego zapisu — czyta pole `portion`, które FR-105 i tak zapisuje. Rozstrzygnięcie kolejności: wartość już zapisana na dziś ma pierwszeństwo przed nawykiem (użytkownik poprawia konkretny wpis, a nie pyta o statystykę), a nawyk przed całą porcją. Nawyk nie jest zgłaszany przy jednym wystąpieniu ani gdy wynosi całą porcję — inaczej podpowiedź pojawiałaby się przy każdym daniu i przestałaby cokolwiek znaczyć.
 
 ---
 
@@ -5715,3 +5720,138 @@ element, który potrafi ją wyrazić — suwak.
   liczbie. Zweryfikowane na emulatorze: przytrzymanie karty otworzyło suwak
   ustawiony na 100% · 345 kcal, wybór „¼ porcji” i zapis dał 86/1480 kcal na
   pierścieniu, plakietkę „¼ porcji zjedzone” i kafelek „86 / 345 kcal”.
+
+---
+
+# FR-106: Propozycja przeniesienia zakupów do spiżarni
+
+**Obszar:** Lista zakupów, Android + Web
+**Status:** Zaimplementowane na obu platformach
+
+## Opis
+Kiedy odhaczysz **ostatnią** pozycję potrzebną do jakiegoś dania, aplikacja
+pokazuje powiadomienie: „Masz już wszystko na «nazwa dania»" z przyciskiem
+**„Do spiżarni"**. Po jego naciśnięciu składniki tego dania trafiają do
+spiżarni w ilościach z przepisu.
+
+Do tej pory odhaczenie pozycji na liście zakupów przełączało wyłącznie
+znacznik „kupione" — nic nie docierało do spiżarni. Spiżarnię trzeba było
+wypełnić ręcznie, kafelek po kafelku, mimo że aplikacja właśnie dowiedziała
+się, co zostało kupione. To odcinało dwie funkcje, które na spiżarni stoją:
+znacznik „🏺 N/M w spiżarni" na kartach Planera i gest „🍳 Zrobione", który
+odejmuje składniki.
+
+**Dlaczego propozycja, a nie automat.** Kupienie to nie gotowanie, a rzeczy
+bywają odkładane z powrotem na półkę. Ciche dopisywanie do spiżarni przy
+każdym odhaczeniu byłoby i hałaśliwe, i czasem po prostu nieprawdziwe.
+Powiadomienie pojawia się raz na danie — dokładnie w chwili, w której
+komplet jest kompletny — i nic nie robi bez naciśnięcia.
+
+**Dlaczego „do spiżarni", a nie „zrobione".** Pierwotny pomysł brzmiał: zapytać,
+czy danie zostało ugotowane. Przy pisaniu okazał się niepoprawny: odhaczenie
+listy zakupów znaczy „kupiłem", a nie „ugotowałem", a oznaczenie „zrobione"
+ODJĘŁOBY ze spiżarni to, co użytkownik właśnie kupił. Właściwą akcją w tym
+momencie jest napełnienie spiżarni; ugotowanie zostaje tam, gdzie było — w
+geście na karcie Planera (FR-103).
+
+## Kryteria akceptacji
+- Propozycja pojawia się dokładnie wtedy, gdy odhaczenie było **ostatnim**
+  brakującym składnikiem danego dania — nie przy każdym odhaczeniu.
+- Składnik wspólny dla dwóch dań domyka tylko to danie, któremu nic już nie
+  brakuje.
+- Naciśnięcie „Do spiżarni" dodaje składniki w ilościach i jednostkach z
+  przepisu, **tworząc** pozycje, których w spiżarni nie było.
+- Powtórzone dodanie tego samego dania sumuje ilości, zamiast tworzyć
+  duplikaty.
+- Pozycja śledzona w spiżarni w innej jednostce niż przepis (spiżarnia w
+  „szt.", przepis w gramach) zostaje nietknięta, a nie zgadywana.
+- Danie, któremu nie zostało nic na liście, NIE jest zgłaszane jako kupione —
+  usunięcie ostatniej pozycji to nie to samo co jej kupienie.
+- Bez naciśnięcia przycisku nic się nie dzieje.
+
+## Uwagi
+Rozpoznanie „to danie jest kupione w całości" jest **wyprowadzone** z pola
+`contributions`, które od dawna zapisuje, który przepis wstawił daną pozycję
+na listę — nie doszedł żaden nowy zapis w stanie aplikacji.
+
+Dodawanie do spiżarni celowo NIE korzysta z istniejącego
+`restoreRecipeToPantry`/`restoreForRecipe`. Tamta funkcja tylko uzupełnia
+pozycje, które już istnieją, bo służy do cofania odejmowania — a nie da się
+odjąć od czegoś, czego nigdy nie było. Tutaj sytuacja jest odwrotna:
+składniki warte dodania to dokładnie te, których użytkownik NIE miał.
+
+## Historia rewizji
+- **v1** (2026-08-29): Pierwsza wersja, obie platformy w tej samej turze.
+  Logika wydzielona i pokryta testami (`ShoppingOperations.fullyBoughtRecipes`,
+  `RecipePantryMatching.stockFromRecipe`). Zweryfikowane na żywo w Chrome:
+  przepis o 5 składnikach zgłoszony jako kupiony dopiero po piątym odhaczeniu,
+  przyjęcie propozycji utworzyło 5 pozycji w spiżarni z właściwymi ilościami i
+  jednostkami, a powtórne dodanie podniosło ilość 150 → 300 zamiast tworzyć
+  drugi wpis. Po stronie Androida: kompiluje się, logika ma testy, wpięcie jest
+  lustrzane wobec zweryfikowanej wersji webowej — **ale przejście przez UI na
+  emulatorze nie zostało dokończone** (dotknięcia checkboxów listy nie
+  rejestrowały się w narzędziu; to ograniczenie sposobu testowania, nie
+  stwierdzona wada funkcji).
+
+---
+
+# FR-107: Zapamiętana wielkość porcji dla danego dania
+
+**Obszar:** Planer (motyw Klinika), Android + Web
+**Status:** Zaimplementowane na obu platformach
+
+## Opis
+Okienko wyboru porcji (FR-105, otwierane przytrzymaniem karty dania) otwiera
+się teraz tam, gdzie ta osoba **zwykle ląduje przy tym konkretnym daniu**, i
+mówi to wprost: „📊 Zwykle zjadasz ½ porcji tego dania".
+
+Kolejność, według której ustawia się suwak:
+
+1. to, co już jest zapisane na dziś dla tego slotu (użytkownik poprawia
+   wcześniejszy wpis),
+2. zapamiętany nawyk dla tego dania,
+3. cała porcja.
+
+Dane już były — pole `portion` zapisuje się przy każdym użyciu okienka od
+FR-105, a `name` mówi, jakiego dania dotyczył wpis. Nic nowego nie jest
+przechowywane; to wymaganie tylko **odczytuje** to, co i tak było zapisywane.
+Ktoś, kto stale zjada połowę danej kolacji, nie musi już mówić o tym za
+każdym razem.
+
+**Dwie świadome powściągliwości**, obie o tym, żeby nie być męczącym:
+
+- **Potrzebne są co najmniej dwa zapisane posiłki.** Jedna połówka to
+  okazja, nie nawyk — przedstawianie jej jako nawyku sprawiałoby wrażenie, że
+  aplikacja zgaduje.
+- **Cała porcja nigdy nie jest zgłaszana jako „zwykła".** To i tak wartość
+  domyślna, więc mówienie tego na głos byłoby czystym szumem przy każdym
+  daniu, które ktoś po prostu zjada w całości.
+
+Przy remisie (np. dwa razy połowa i dwa razy ćwiartka) wygrywa wartość
+**ostatnio** użyta — to, co ktoś zrobił poprzednim razem, jest lepszą
+podpowiedzią niż wybór arbitralny.
+
+## Kryteria akceptacji
+- Po dwóch zapisanych połówkach tego samego dania okienko otwiera się na 50%
+  i pokazuje podpowiedź.
+- Jedno wystąpienie nie wystarcza — brak podpowiedzi, suwak na 100%.
+- Danie zawsze zjadane w całości nie pokazuje podpowiedzi.
+- Wpisy innych dań nie wpływają na to danie.
+- Wpisy oznaczone jako niezjedzone są pomijane.
+- Jeśli na dziś jest już zapisana porcja, okienko otwiera się na niej —
+  poprawianie wpisu ma pierwszeństwo przed nawykiem.
+- Podpowiedź nazywa okrągłe ułamki słownie (¼, ½, ¾), a każdą inną wartość
+  procentowo.
+
+## Historia rewizji
+- **v1** (2026-08-29): Pierwsza wersja, obie platformy w tej samej turze.
+  Logika wydzielona do `PortionHistory` (moduł `logic`) z ośmioma testami
+  pokrywającymi próg dwóch wystąpień, pomijanie całej porcji, remis
+  rozstrzygany ostatnim wystąpieniem, rozdzielenie dań i pomijanie wpisów
+  niezjedzonych. Zweryfikowane na żywo w Chrome: po dwóch zapisanych
+  połówkach okienko otworzyło się na „50% · 160 kcal" (połowa z 320) z
+  podpowiedzią „Zwykle zjadasz ½ porcji tego dania"; nieznane danie nie
+  zwraca nic. Po stronie Androida kompiluje się i korzysta z tej samej
+  logiki — **wariant „z historią" nie był odklikany na emulatorze**, bo
+  wymagałby wpisów z dwóch różnych dni, czego nie da się wyklikać bez
+  przestawiania daty urządzenia.

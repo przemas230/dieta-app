@@ -82,6 +82,47 @@ object RecipePantryMatching {
     fun subtractForRecipe(items: Map<String, PantryItem>, recipe: Recipe): Map<String, PantryItem> =
         applyDelta(items, recipe, sign = -1)
 
+    /**
+     * FR-106: puts a whole recipe's worth of ingredients INTO the pantry --
+     * what "I have just bought all of this" means.
+     *
+     * Deliberately not [restoreForRecipe]. That one runs through [applyDelta],
+     * which skips any ingredient the pantry does not already track (`?:
+     * return@forEach`) because it exists to reverse a subtraction, and you
+     * cannot un-subtract from something that was never there. Stocking up
+     * after shopping is the opposite situation: the ingredients worth adding
+     * are exactly the ones you did NOT have, so they have to be created.
+     *
+     * An existing entry whose unit category disagrees with the recipe's
+     * (pantry in "szt.", recipe in grams) is left alone rather than guessed
+     * at -- same cautious rule the rest of this file applies when the two
+     * units cannot be safely reconciled.
+     */
+    fun stockFromRecipe(items: Map<String, PantryItem>, recipe: Recipe): Map<String, PantryItem> {
+        var result = items
+        recipe.ingredients.forEach { ingredient ->
+            val parsed = parseIngredient(ingredient)
+            if (parsed.baseQty <= 0.0) return@forEach
+            val existing = result[parsed.canonName] as? PantryItem.Product
+            if (existing == null) {
+                val unit = PantryTiles.unitCatToUnit(parsed.unitCat)
+                val category = PantryTiles.categoryAndEmoji(parsed.canonName).first
+                result = result + (
+                    parsed.canonName to PantryItem.Product(
+                        parsed.canonName,
+                        category,
+                        Math.round(parsed.baseQty * 100) / 100.0,
+                        unit,
+                    )
+                )
+            } else if (pantryUnitCat(existing.unit) == parsed.unitCat) {
+                val added = existing.quantity + parsed.baseQty / pantryUnitFactor(existing.unit)
+                result = result + (parsed.canonName to existing.copy(quantity = Math.round(added * 100) / 100.0))
+            }
+        }
+        return result
+    }
+
     /** Reverses subtractForRecipe, e.g. when a cook-history entry is deleted. */
     fun restoreForRecipe(items: Map<String, PantryItem>, recipe: Recipe): Map<String, PantryItem> =
         applyDelta(items, recipe, sign = 1)
