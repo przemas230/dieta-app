@@ -117,6 +117,20 @@ w folderze `android/`: `./gradlew :logic:test`. W sesji z pełnym dostępem
 do sieci (patrz uwaga na górze README) działa też `./gradlew test` dla
 całego projektu (`app` + `logic`) i `./gradlew :app:assembleDebug`.
 
+### Czego testy jednostkowe nie złapią: `android/tools/`
+
+Jest jedna klasa błędów, której `logic/` z definicji nie wykryje — taka, gdzie
+kod aplikacji jest poprawny na każdym kroku, a psuje się to, co z poprawnie
+wyglądającym zapisem robi Firestore. Dokładnie taki był FR-73/v8 (przez
+miesiące nic usuniętego nie docierało do chmury) i żaden test jednostkowy nie
+mógł go zobaczyć.
+
+`android/tools/two_device_sync_check.py` sprawdza to jedynym sposobem, jaki
+działa: dwoma prawdziwymi klientami na jednym koncie. Nie zaloguje się za
+Ciebie — resztę robi sam. Ma też tryb `--self-test`, który sprawdza na jednym
+urządzeniu, czy skrypt nadal trafia w UI (uruchom go po zmianach ekranu
+Spiżarni). Szczegóły: `android/tools/README.md`.
+
 **Czego to NIE testuje:** samych ekranów Compose (`RecipeListScreen`,
 `PantryScreen`, `ShoppingScreen`, `SettingsScreen`) ani nawigacji czy
 Firebase — to wymaga prawdziwego builda Androida (instrumentation tests albo

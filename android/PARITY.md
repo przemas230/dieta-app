@@ -1327,6 +1327,54 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
   (321+ testów, w tym nowy `BackupRoundTripTest` i rozszerzony
   `PlannerSwipeTest`).
 
+- **Test dwoch urzadzen jako narzedzie, nie jednorazowe sprawdzenie (2026-08-29)**:
+  `android/tools/two_device_sync_check.py` — skrypt, który robi na dwóch
+  urządzeniach to, czego żaden test jednostkowy zrobić nie może.
+
+  **Dlaczego akurat to**: FR-73/v8 (przez miesiące nic usuniętego nie docieralło
+  do chmury, bo `set(..., {merge:true})` nie kasuje kluczy) był błędem, w
+  którym logika aplikacji była poprawna na każdym kroku — psuło się to, co
+  Firestore robi z poprawnie wyglądającym zapisem. Taka klasa błędów jest
+  niewidoczna dla `logic/` z definicji.
+
+  Trzy kroki, w tej kolejności nie przypadkiem: **kontrola** (dodanie na A
+  widoczne na B — bez tego kroki 2–3 nie miałyby znaczenia), **usunięcie**
+  („Usuń śledzenie” na A znika na B I NIE WRACA — zmartwychwstanie z FR-73/v8
+  następowało kilka sekund później, więc sprawdzenie kończące się na „zniknęło”
+  przeszłoby przy żywym błędzie), **lista ukrytych** (obserwowana przez przycisk
+  „Przywróć usunięte produkty”, który zależy WYŁĄCZNIE od `pantryHidden` — to
+  izoluje FR-102 od mapy spiżarni sprawdzonej już w kroku 2).
+
+  **Czego nie zrobi**: nie zaloguje się za użytkownika. Sprawdza to na wejściu i
+  zatrzymuje się z instrukcją zamiast raportować fałszywą awarię synchronizacji.
+
+  **Tryb `--self-test`**: wykonuje wszystkie kroki UI na jednym urządzeniu, bez
+  konta i bez asercji synchronizacji. Odpowiada na pytanie „czy skrypt nadal
+  pasuje do ekranów?” — bo adresuje elementy po widocznym polskim tekście, więc
+  to najbardziej prawdopodobny sposób, w jaki się zepsuje. Sprawdzanie
+  synchronizacji, które po cichu klika w zły element, zgłosiłoby błąd
+  synchronizacji będący w rzeczywistości nieaktualnym selektorem.
+
+  **Zweryfikowane**: `--self-test` przechodzi komplet sześciu kroków UI na
+  emulatorze; bramka logowania w `preflight` daje poprawny, działający
+  komunikat na niezalogowanym urządzeniu. ⏳ Same asercje synchronizacji NIE
+  były uruchomione — wymagają zalogowania, którego nie zrobię za użytkownika.
+  To jest ta jedna, wciąż otwarta luka: FR-73/v8 i FR-102 mają testy
+  jednostkowe, ale prawdziwego obiegu przez Firestore nikt jeszcze nie widział.
+
+  **Trzy pułapki wbudowane w skrypt, każda odkryta na własnej skórze**:
+  (a) `uiautomator dump` zwraca TYLKO wierzchnie okno — dopóki okno dodawania
+  jest otwarte, wpisana nazwa siedzi w jego polu tekstowym, więc „widzę nazwę”
+  nie znaczy „kafelek istnieje”; (b) dopasowanie po fragmencie tekstu bywa
+  niejednoznaczne — tytuł „➕ Dodaj własny produkt” zawiera tekst własnego
+  przycisku „Dodaj”, więc kliknięcie lądowało w tytule; (c) mechanizm
+  wychodzenia z zaległego okna naciskał BACK także wtedy, gdy aplikacja jeszcze
+  się wczytywała — i wychodził z niej, po czym raportował, że „aplikacja nie
+  wstała”. Rozstrzygnięcie: żadnych sztywnych współrzędnych (czytany jest też
+  `content-desc`, bo zębatka nie ma tekstu), dokładne dopasowanie dla pełnych
+  etykiet, i rozróżnianie „nasz pakiet, ale coś go zasłania” od „nie ma nas na
+  wierzchu” po zawartości zrzutu.
+
 ## Jak to utrzymywać
 
 1. Każda nowa funkcja dodana do `index.html` (wersja web) dostaje odpowiadający wpis/aktualizację tutaj.
