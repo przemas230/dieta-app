@@ -52,7 +52,7 @@ fun LocalPersistenceCoordinator(
     val profile by profileViewModel.profile.collectAsState()
     val displayName by profileViewModel.displayName.collectAsState()
     val pantryItems by pantryViewModel.items.collectAsState()
-    // FR-98: products deleted from the Spiżarnia for good (PantryStore keeps
+    // FR-102: products deleted from the Spiżarnia for good (PantryStore keeps
     // its own copy too -- this one keeps the single local-state snapshot
     // complete, same as every other field here).
     val pantryHidden by pantryViewModel.hidden.collectAsState()

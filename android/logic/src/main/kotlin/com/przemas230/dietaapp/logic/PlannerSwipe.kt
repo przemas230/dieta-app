@@ -1,7 +1,7 @@
 package com.przemas230.dietaapp.logic
 
 /**
- * FR-99 (2026-08-29): what a horizontal swipe on a "Dzisiejszy Planer" meal
+ * FR-103 (2026-08-29): what a horizontal swipe on a "Dzisiejszy Planer" meal
  * card means, as a pure function of how far it travelled -- the exact port
  * of index.html's `pdSwipeAction(dx)`.
  *

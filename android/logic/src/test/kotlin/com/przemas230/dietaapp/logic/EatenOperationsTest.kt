@@ -62,7 +62,7 @@ class EatenOperationsTest {
         assertEquals(0, EatenOperations.snacksKcal(emptyList()))
     }
 
-    // ---- FR-99: half portions ----
+    // ---- FR-103: half portions ----
 
     @Test
     fun `an entry written without a portion still counts as a whole one`() {

@@ -262,7 +262,7 @@ fun CloudSyncCoordinator(
     val profile by profileViewModel.profile.collectAsState()
     val displayName by profileViewModel.displayName.collectAsState()
     val pantryItems by pantryViewModel.items.collectAsState()
-    // FR-98: products deleted from the Spiżarnia for good -- synced like
+    // FR-102: products deleted from the Spiżarnia for good -- synced like
     // any other field so a product removed on the phone stays removed in
     // the browser (and vice versa) instead of silently coming back.
     val pantryHidden by pantryViewModel.hidden.collectAsState()

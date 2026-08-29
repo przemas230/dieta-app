@@ -176,7 +176,7 @@ fun PlannerScreen(
 ) {
     val allRecipes by plannerViewModel.allRecipes.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
-    // FR-99 (2026-08-29): carrying out one of the four swipe actions needs
+    // FR-103 (2026-08-29): carrying out one of the four swipe actions needs
     // the cook history AND the pantry, both of which live here (this screen
     // already owns recipeViewModel/pantryViewModel for RecipePreviewDialog)
     // rather than in PlannerDashboard, which deliberately takes no
@@ -219,7 +219,7 @@ fun PlannerScreen(
     // Requested 2026-08-26 (RecipePreviewDialog's full RecipeCardBody reuse).
     val pantryItems by pantryViewModel.items.collectAsState()
     val cookedMap by recipeViewModel.cooked.collectAsState()
-    // FR-99: which dishes already carry a "zrobione" entry for today --
+    // FR-103: which dishes already carry a "zrobione" entry for today --
     // derived from the same StateFlow the cook-history modal reads, so the
     // card's chip updates the moment the swipe writes one.
     val cookedTodayIds = remember(cookedMap) {
@@ -793,13 +793,13 @@ private fun PlannerDashboard(
     onDayJump: (dayIndex: Int) -> Unit = {},
     onWaterTap: (Int) -> Unit = {},
     onWaterSetCount: (Int) -> Unit = {},
-    // FR-99 (2026-08-29, Web parity): the meal-card swipe is no longer
+    // FR-103 (2026-08-29, Web parity): the meal-card swipe is no longer
     // "right = eaten / left = not eaten" -- the DISTANCE now picks one of
     // four actions (see PlannerSwipe). The card reports which one the user
     // committed to; PlannerScreen owns the ViewModels needed to carry it
     // out (cook history + pantry live there, not here).
     onSwipeAction: (cat: String, action: PlannerSwipe.Action, recipe: Recipe, scaledKcal: Int) -> Unit = { _, _, _, _ -> },
-    /** FR-99: recipe ids already logged as cooked TODAY -- drives the "🍳 Zrobione" chip on the cards. */
+    /** FR-103: recipe ids already logged as cooked TODAY -- drives the "🍳 Zrobione" chip on the cards. */
     cookedTodayIds: Set<String> = emptySet(),
     remainingKcalFillEnabled: Boolean = false,
     // Bug fixed 2026-08-26: see PlannerScreen's matching param doc comment --
@@ -1023,7 +1023,7 @@ private fun PlannerDashboard(
         }
         Spacer(modifier = Modifier.height(10.dp))
         Text("Dzisiejszy Planer", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        // FR-99: a one-line cheat sheet for the four swipe outcomes -- the
+        // FR-103: a one-line cheat sheet for the four swipe outcomes -- the
         // gesture is only discoverable if something says it exists.
         Text(
             "← ½ połowa · ←← cofnij  |  → 🍳 zrobione · →→ 🍴 zjedzone",
@@ -1065,7 +1065,7 @@ private fun PlannerDashboard(
             } else {
                 val kcal = PlannerOperations.scaledKcal(recipe, meal.scale)
                 val eaten = EatenOperations.isEaten(eatenEntries, category.id)
-                // FR-99 (2026-08-29): the portion actually eaten, so a half
+                // FR-103 (2026-08-29): the portion actually eaten, so a half
                 // portion reads as half (chip + half the kcal) instead of
                 // being indistinguishable from a whole one.
                 val portion = EatenOperations.portionOf(eatenEntries, category.id)
@@ -1168,7 +1168,7 @@ private fun PlannerDashboard(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                                // FR-99: three independent bits of state now
+                                // FR-103: three independent bits of state now
                                 // (cooked / eaten / how much), so the card
                                 // has to show all three -- struck-through
                                 // name = eaten whole (above), these chips =
@@ -1202,7 +1202,7 @@ private fun PlannerDashboard(
                             }
                         }
                     }
-                    // FR-99: a static arrow can no longer say what will
+                    // FR-103: a static arrow can no longer say what will
                     // happen, because that depends on how far the drag has
                     // gone -- while dragging, the card names the action it
                     // would commit to right now; at rest it falls back to
@@ -1353,7 +1353,7 @@ private fun BentoMetricTile(value: String, label: String, modifier: Modifier = M
 }
 
 /**
- * FR-99: a small rounded status chip under a meal card's dish name --
+ * FR-103: a small rounded status chip under a meal card's dish name --
  * "what this card currently IS" (cooked today / eaten only half), as
  * opposed to the drag label, which says what a swipe WOULD do.
  */

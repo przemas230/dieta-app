@@ -38,14 +38,14 @@ object EatenOperations {
         return entries + (cat to entry)
     }
 
-    /** FR-99: 0 when not eaten, otherwise the recorded fraction (1.0 for anything written before portions existed). */
+    /** FR-103: 0 when not eaten, otherwise the recorded fraction (1.0 for anything written before portions existed). */
     fun portionOf(entries: Map<String, EatenEntry>, cat: String): Double {
         val entry = entries[cat] ?: return 0.0
         if (!entry.done) return 0.0
         return entry.portion.coerceIn(0.0, 1.0)
     }
 
-    /** FR-99: half a portion counts half the kcal -- matches index.html's `Math.round(e.kcal * portion)`. */
+    /** FR-103: half a portion counts half the kcal -- matches index.html's `Math.round(e.kcal * portion)`. */
     fun dailyEatenKcal(entries: Map<String, EatenEntry>): Int =
         entries.values.filter { it.done }.sumOf { Math.round((it.kcal ?: 0) * it.portion.coerceIn(0.0, 1.0)).toInt() }
 

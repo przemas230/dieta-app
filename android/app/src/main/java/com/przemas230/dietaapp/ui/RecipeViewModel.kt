@@ -143,12 +143,12 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         _cooked.value = CookHistoryOperations.removeEntry(_cooked.value, recipeId, index)
     }
 
-    /** FR-99: has this dish already been logged as cooked today? Keeps the Planer's short right-swipe idempotent. */
+    /** FR-103: has this dish already been logged as cooked today? Keeps the Planer's short right-swipe idempotent. */
     fun isCookedToday(recipeId: String): Boolean =
         CookHistoryOperations.cookedTodayIndex(_cooked.value, recipeId, System.currentTimeMillis()) >= 0
 
     /**
-     * FR-99: exact inverse of [markCookedToday] for today's entry -- the
+     * FR-103: exact inverse of [markCookedToday] for today's entry -- the
      * Planer's long left-swipe ("cofnij wszystko", the user's "pasuje też
      * móc cofnąć zrobienie bo mogło się przez przypadek kliknąć").
      * Returns false when there was nothing logged today; the pantry

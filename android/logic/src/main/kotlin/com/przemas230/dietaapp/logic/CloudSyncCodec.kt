@@ -229,7 +229,7 @@ object CloudSyncCodec {
     }
 
     /**
-     * FR-98: index.html's state.pantryHidden[canonName] = true -- canonical
+     * FR-102: index.html's state.pantryHidden[canonName] = true -- canonical
      * ingredient names the user deleted from the Spiżarnia for good. Shaped
      * as a map (not an array) on purpose: it's one of index.html's
      * MAP_MERGE_KEYS, so the web app's 3-way merge can resolve two devices
@@ -378,7 +378,7 @@ object CloudSyncCodec {
         days.mapValues { (_, day) ->
             val dayMap = LinkedHashMap<String, Any?>()
             day.entries.forEach { (cat, entry) ->
-                // FR-99: `portion` rides along on the same entry -- a
+                // FR-103: `portion` rides along on the same entry -- a
                 // device that predates it simply won't send the key, and
                 // decodeEaten below defaults it back to a whole portion.
                 dayMap[cat] = mapOf("done" to entry.done, "kcal" to entry.kcal, "name" to entry.name, "portion" to entry.portion)

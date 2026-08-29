@@ -1,0 +1,145 @@
+Wersja v115 (2026-08-29)
+========================
+
+Runda zgłoszona przez użytkownika: dwa realne błędy (jeden z nich cicho
+gubił każde usunięcie danych w wersji webowej), jedna poprawka układu,
+jedna przebudowa gestu i jedna nowa funkcja. Wszystko zrobione równolegle
+na webie i na Androidzie.
+
+1. NAPRAWA: w wersji webowej NIC nie dawało się skasować "na stałe" —
+   skasowane wracało po chwili
+   ------------------------------------------------------------------
+   Zgłoszenie: "w Web nie udawało mi się wyłączyć śledzenia produktu, po
+   chwili po skasowaniu dalej wracało do starej wartości".
+
+   Winowajcą był jeden argument w zapisie do chmury. Aplikacja zapisywała
+   dane przez Firestore'owe `set(..., {merge:true})`, a to scala mapy
+   klucz po kluczu — "brak klucza" znaczy tam "nie ruszaj", a nie
+   "skasuj". Skasowanie czegokolwiek lokalnie nigdy więc nie docierało na
+   serwer, serwer przy następnej synchronizacji odsyłał starą wartość, a
+   aplikacja — całkiem poprawnie ze swojego punktu widzenia — uznawała ją
+   za "zmianę z innego urządzenia" i przywracała.
+
+   Dotyczyło to KAŻDEGO usuwania: śledzenia produktów w spiżarni, pozycji
+   z listy zakupów, dań z planera. Po prostu w spiżarni najbardziej rzuca
+   się w oczy, że coś wróciło.
+
+   Wersja androidowa nigdy nie miała tego błędu (zawsze zapisywała
+   metodą, która podmienia całe pole).
+
+2. NOWE: usuwanie produktu ze spiżarni na stałe (FR-102)
+   ---------------------------------------------------
+   Zgłoszenie: "nie da się usunąć produktu ze spiżarni całkowicie, dodaj
+   taką opcję".
+
+   Do tej pory po przytrzymaniu kafelka najmocniejszą opcją było "Usuń
+   śledzenie (wyzeruj stan)" — kasowało stan, ale kafelek zostawał, bo
+   lista kafelków nie jest zapisywana, tylko wyliczana ze składników
+   wszystkich przepisów. Z perspektywy użytkownika wyglądało to więc tak,
+   że produktu nie da się usunąć w ogóle.
+
+   Teraz w tym samym menu jest "❌ Usuń produkt ze spiżarni na stałe":
+   kafelek naprawdę znika i nie wraca. Żeby nie był to ruch bez odwrotu,
+   na górze Spiżarni pojawia się "↩️ Przywróć usunięte produkty (N)" —
+   widoczne tylko wtedy, gdy jest co przywracać. Ręczne dodanie produktu z
+   powrotem ("Dodaj własny", "Mam to") też go odblokowuje.
+
+   Na Androidzie menu po przytrzymaniu otwiera się teraz dla każdego
+   kafelka, nie tylko dla już śledzonego — wcześniej akurat dla tych,
+   które najbardziej chce się usunąć, w ogóle nie dawało się go otworzyć.
+
+   Lista usuniętych produktów synchronizuje się między urządzeniami.
+
+3. ZMIANA: dzisiejszy dzień w liście dni tygodnia nie zajmuje już całego
+   ekranu (FR-87/v19)
+   ---------------------------------------------------------------------
+   Zgłoszenie: "niżej w dniach tygodnia nie ma potrzeby żeby dzisiejszy
+   dzień też był rozciągnięty na całą stronę, zrób go takiego jak
+   pozostałe dni".
+
+   Sekcja "Dzisiejszy Planer" na samej górze i tak jest pełnoekranowym
+   widokiem dzisiaj, więc druga pełnoekranowa karta niżej oznaczała
+   przewijanie przez ten sam dzień dwa razy. Dzisiejszy dzień jest nadal
+   wyróżniony (obwódka / plakietka "Dziś"), tylko już nie rozmiarem.
+
+4. PRZEBUDOWA: przesuwanie dań w "Dzisiejszym Planerze" (FR-103)
+   -----------------------------------------------------------
+   Zgłoszenie: "coś nie do końca łapię mi przesuwanie w prawo i w lewo
+   dań w dzisiejszym planerze" + pomysł użytkownika na to, jak powinno
+   działać.
+
+   Dotąd gest miał dwa wyniki: w prawo = zjedzone, w lewo = nie zjedzone.
+   Niósł więc jeden bit informacji, choć Planer śledzi trzy niezależne
+   rzeczy: czy danie zrobione, czy zjedzone i ile zjedzone. Stąd wrażenie,
+   że "nie łapie" — nie było jak powiedzieć "ugotowałem, ale jeszcze nie
+   zjadłem" ani poprawić przypadkowego przesunięcia.
+
+   Teraz decyduje ODLEGŁOŚĆ przesunięcia:
+     →   krótkie w prawo  = 🍳 Zrobione (wpis w historii + odjęcie ze
+                            spiżarni, dokładnie jak przycisk na karcie
+                            przepisu)
+     →→  długie w prawo   = 🍴 Zjedzone (cała porcja)
+     ←   krótkie w lewo   = ½ Zjedzone w połowie (liczy się połowa kcal)
+     ←←  długie w lewo    = ↩️ Cofnij wszystko (nie zjedzone + cofnięcie
+                            "zrobione", składniki wracają do spiżarni)
+
+   W trakcie przesuwania karta na bieżąco NAZYWA akcję, którą wykona po
+   puszczeniu palca, a tło stopniowo nasyca się jej kolorem. Pod nagłówkiem
+   "Dzisiejszy Planer" jest jednolinijkowa ściągawka z czterema wynikami.
+
+   Stan karty widać w plakietkach: "🍳 Zrobione", "½ Zjedzone w połowie"
+   (nazwa dania NIE jest wtedy przekreślona — danie nie jest skończone),
+   a przy połowie porcji kafelek kcal pokazuje np. "173 / 345 kcal".
+
+   Powtórzone "zrobione" tego samego dnia nie odejmie składników drugi
+   raz. Historia kalorii sprzed tej zmiany nie zmienia się ani o kcal —
+   wpisy bez informacji o porcji liczą się jako cała porcja.
+
+5. NAPRAWA (Android): kafelek "POZOSTAŁO" rozciągał się na cały ekran
+   -----------------------------------------------------------------
+   Zgłoszenie ze zrzutem ekranu: "jak się włączy opcje żeby kafelek
+   pozostało się kolorował to rozciąga go niepotrzebnie na całą stronę".
+
+   Pasek wypełnienia był zwykłym elementem układu proszącym o pełną
+   wysokość — a ponieważ kafelek siedzi w kolumnie rozciągniętej na cały
+   ekran, dostawał dokładnie to, o co prosił. Teraz wypełnienie jest
+   rysowane jako tło (nie bierze udziału w mierzeniu), więc kafelek ma ten
+   sam rozmiar niezależnie od tego, czy opcja jest włączona.
+
+   Wersja webowa tego błędu nie miała.
+
+Weryfikacja
+-----------
+Android: zbudowane i przetestowane (`./gradlew :logic:test
+:app:assembleDebug`), plus przeklikane na emulatorze — wszystkie cztery
+akcje gestu z odczytem realnych liczb (345/1480 → 173/1480 → 0/1480),
+usunięcie produktu ze Spiżarni wraz z przeżyciem restartu aplikacji i
+przywróceniem, kafelek "POZOSTAŁO" z włączonym wypełnianiem, karta
+"Sobota (Dziś)" tej samej wysokości co "Niedziela".
+
+Web: logika gestu i porcji sprawdzona liczbowo poza przeglądarką (te same
+progi i te same wyniki co po stronie Androida), skrypt strony przechodzi
+kontrolę składni. Poprawki 1 i 2 po stronie webu NIE były klikane na
+żywo w tej rundzie — rozszerzenie przeglądarkowe nie było podłączone.
+
+Wersje: Android versionCode 85→86, versionName 0.1.84→0.1.85 (APK w
+android/dist zsynchronizowany), Web CACHE_NAME v114→v115.
+
+Uwaga o numeracji i scaleniu
+----------------------------
+Ta runda powstawała równolegle z inną sesją, która w międzyczasie zajęła
+numery FR-98..FR-101 (kopia zapasowa danych do pliku, wyszukiwanie na
+liście zakupów, podsumowanie tygodnia, lokalne dni kalendarzowe) i wydała
+wersje v105–v114. Przy scalaniu obie nowe funkcje z tej rundy dostały więc
+numery FR-102 i FR-103, a kopia plików wylądowała w versions/v115 — żeby
+żaden numer ani żadna wersja nie oznaczały dwóch różnych rzeczy.
+
+Jedna rzecz wymagała pogodzenia obu stron: FR-101 zmieniło daty w wersji
+webowej z UTC na lokalne, a nowy znacznik "🍳 Zrobione" musi wiedzieć, czy
+danie ma wpis z DZISIAJ. Wpisy historii gotowania trzymają pełny znacznik
+czasu w UTC, więc porównywanie samego początku tekstu rozjeżdżałoby się w
+Polsce między północą a 01:00/02:00 — dokładnie ten błąd, który FR-101
+właśnie usunęło. Wersja webowa parsuje więc znacznik i porównuje datę
+lokalnie. Android został na UTC, bo tam wszystkie pozostałe klucze dat
+nadal są w UTC (FR-101 nie zostało jeszcze przeniesione) — obie platformy
+są więc spójne wewnętrznie.

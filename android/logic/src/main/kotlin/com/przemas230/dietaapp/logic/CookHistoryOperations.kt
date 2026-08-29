@@ -32,7 +32,7 @@ object CookHistoryOperations {
     }
 
     /**
-     * FR-99: index of the LAST "zrobione" entry logged for [recipeId] on
+     * FR-103: index of the LAST "zrobione" entry logged for [recipeId] on
      * the UTC day containing [nowEpochMillis], or -1. The Planer's short
      * right-swipe uses it to stay idempotent (never subtract the pantry
      * twice for the same dish on the same day) and its long left-swipe

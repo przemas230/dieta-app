@@ -52,7 +52,7 @@ class CookHistoryOperationsTest {
         assertEquals(entries, CookHistoryOperations.removeEntry(entries, "unknown", 0))
     }
 
-    // ---- FR-99: "was this cooked today" for the Planer swipe ----
+    // ---- FR-103: "was this cooked today" for the Planer swipe ----
 
     @Test
     fun `cookedTodayIndex finds only entries from the same UTC day`() {

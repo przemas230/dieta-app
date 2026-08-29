@@ -59,7 +59,7 @@ object PantryOperations {
     fun removeItem(items: Map<String, PantryItem>, name: String): Map<String, PantryItem> = items - name
 
     /**
-     * FR-98 (2026-08-29, user: "nie da się usunąć produktu ze spiżarni
+     * FR-102 (2026-08-29, user: "nie da się usunąć produktu ze spiżarni
      * całkowicie, dodaj taką opcję"): which tiles the Spiżarnia grid should
      * actually show. [removeItem] above only drops the tracked STOCK -- the
      * tile itself is derived fresh from the recipe database on every
@@ -76,10 +76,10 @@ object PantryOperations {
         hidden: Set<String>,
     ): List<String> = (recipeTileNames + trackedNames).distinct().filterNot { it in hidden }.sorted()
 
-    /** FR-98: delete for good -- drops any tracked stock AND remembers not to render the tile again. */
+    /** FR-102: delete for good -- drops any tracked stock AND remembers not to render the tile again. */
     fun hideForever(hidden: Set<String>, name: String): Set<String> = hidden + name
 
-    /** FR-98: "↩️ Przywróć usunięte produkty" -- one button, brings every hidden tile back as an untracked tile. */
+    /** FR-102: "↩️ Przywróć usunięte produkty" -- one button, brings every hidden tile back as an untracked tile. */
     fun restoreAllHidden(): Set<String> = emptySet()
 
     /** Long-press a product tile -> "🔢 Zmień skok +/-" (weight/volume only, see PantryScreen's TileActionDialog). */

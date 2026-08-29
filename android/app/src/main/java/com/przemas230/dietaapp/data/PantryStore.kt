@@ -20,7 +20,7 @@ object PantryStore {
     private const val PREFS_NAME = "dieta_app_prefs"
     private const val KEY_PANTRY = "pantry_v1"
 
-    /** FR-98: canonical names the user deleted from the Spiżarnia for good (see PantryOperations.visibleTileNames). */
+    /** FR-102: canonical names the user deleted from the Spiżarnia for good (see PantryOperations.visibleTileNames). */
     private const val KEY_HIDDEN = "pantry_hidden_v1"
 
     fun load(context: Context): Map<String, PantryItem> {
@@ -38,7 +38,7 @@ object PantryStore {
         prefs(context).edit().putString(KEY_PANTRY, serialize(items)).apply()
     }
 
-    /** FR-98: persisted separately from [load]'s stock map -- a hidden tile usually has no stock entry left to hang off. */
+    /** FR-102: persisted separately from [load]'s stock map -- a hidden tile usually has no stock entry left to hang off. */
     fun loadHidden(context: Context): Set<String> {
         val raw = prefs(context).getString(KEY_HIDDEN, null) ?: return emptySet()
         return try {

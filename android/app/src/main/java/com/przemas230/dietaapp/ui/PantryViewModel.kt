@@ -24,7 +24,7 @@ class PantryViewModel(application: Application) : AndroidViewModel(application) 
     private val _items = MutableStateFlow(PantryStore.load(application))
     val items: StateFlow<Map<String, PantryItem>> = _items.asStateFlow()
 
-    /** FR-98: canonical names deleted from the Spiżarnia for good -- see [deleteForever]. */
+    /** FR-102: canonical names deleted from the Spiżarnia for good -- see [deleteForever]. */
     private val _hidden = MutableStateFlow(PantryStore.loadHidden(application))
     val hidden: StateFlow<Set<String>> = _hidden.asStateFlow()
 
@@ -39,7 +39,7 @@ class PantryViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /**
-     * FR-98: "❌ Usuń produkt ze spiżarni na stałe". [removeItem] only
+     * FR-102: "❌ Usuń produkt ze spiżarni na stałe". [removeItem] only
      * clears the tracked stock -- the tile itself comes back on the next
      * compose because it is derived from the recipe database, which is
      * exactly what the user hit ("nie da się usunąć produktu ze spiżarni
@@ -51,12 +51,12 @@ class PantryViewModel(application: Application) : AndroidViewModel(application) 
         updateHidden(PantryOperations.hideForever(_hidden.value, name))
     }
 
-    /** FR-98: the "↩️ Przywróć usunięte produkty" button -- never a one-way door. */
+    /** FR-102: the "↩️ Przywróć usunięte produkty" button -- never a one-way door. */
     fun restoreHidden() {
         updateHidden(PantryOperations.restoreAllHidden())
     }
 
-    /** FR-98: adding a deleted product back by hand (custom tile / "Mam to") un-deletes it. */
+    /** FR-102: adding a deleted product back by hand (custom tile / "Mam to") un-deletes it. */
     fun unhide(name: String) {
         if (name in _hidden.value) updateHidden(_hidden.value - name)
     }
@@ -89,7 +89,7 @@ class PantryViewModel(application: Application) : AndroidViewModel(application) 
 
     /** FR-16: "Mam to" toggle in the per-recipe pantry-check window. */
     fun toggleHaveIngredient(name: String, category: PantryCategory, unitCat: String) {
-        // FR-98: saying "mam to" about an ingredient that was once deleted
+        // FR-102: saying "mam to" about an ingredient that was once deleted
         // for good is a clear signal it should exist again -- otherwise the
         // stock entry would be written while the tile stayed hidden in
         // Spiżarnia, which reads as a bug.

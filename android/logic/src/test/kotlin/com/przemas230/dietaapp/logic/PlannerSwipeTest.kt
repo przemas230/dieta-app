@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
 /**
- * FR-99: the four graded outcomes of a Planer meal-card swipe. These
+ * FR-103: the four graded outcomes of a Planer meal-card swipe. These
  * thresholds are the whole point of the feature (short vs long is what
  * separates "zrobione" from "zjedzone"), so they get pinned down here
  * rather than only living in a Compose gesture handler nothing can test.

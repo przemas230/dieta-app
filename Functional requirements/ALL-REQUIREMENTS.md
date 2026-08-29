@@ -45,7 +45,8 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-91: Cofnij (Undo) usunięcie dania z „Dzisiejszy Planer”](#fr-91-cofnij-undo-usunięcie-dania-z-dzisiejszy-planer)
 - [FR-92: Udostępnianie / eksport planu tygodnia](#fr-92-udostępnianie--eksport-planu-tygodnia)
 - [FR-97: Znacznik stanu spiżarni na kartach „Dzisiejszy Planer”](#fr-97-znacznik-stanu-spiżarni-na-kartach-dzisiejszy-planer)
-- [FR-99: Stopniowany gest przesuwania na kartach „Dzisiejszy Planer”](#fr-99-stopniowany-gest-przesuwania-na-kartach-dzisiejszy-planer)
+- [FR-103: Stopniowany gest przesuwania na kartach „Dzisiejszy Planer”](#fr-103-stopniowany-gest-przesuwania-na-kartach-dzisiejszy-planer)
+- [FR-100: Podsumowanie odżywcze zaplanowanego tygodnia](#fr-100-podsumowanie-odżywcze-zaplanowanego-tygodnia)
 
 ### Lista zakupów
 - [FR-25: Budowanie listy zakupów ze składników przepisów](#fr-25-budowanie-listy-zakupów-ze-składników-przepisów)
@@ -54,6 +55,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-58: Dodawanie składników z konkretnego dnia na liście zakupów](#fr-58-dodawanie-składników-z-konkretnego-dnia-na-liście-zakupów)
 - [FR-62: Mini kalendarzyk bieżącego tygodnia na liście zakupów](#fr-62-mini-kalendarzyk-bieżącego-tygodnia-na-liście-zakupów)
 - [FR-75: Widok kafelkowy listy zakupów z brakującymi ilościami](#fr-75-widok-kafelkowy-listy-zakupów-z-brakującymi-ilościami)
+- [FR-99: Wyszukiwanie na liście zakupów](#fr-99-wyszukiwanie-na-liście-zakupów)
 
 ### Spiżarnia
 - [FR-28: Śledzenie stanu spiżarni w kafelkach pogrupowanych kategoriami](#fr-28-śledzenie-stanu-spiżarni-w-kafelkach-pogrupowanych-kategoriami)
@@ -61,7 +63,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-30: Zmiana kategorii i usuwanie śledzenia kafelka spiżarni](#fr-30-zmiana-kategorii-i-usuwanie-śledzenia-kafelka-spiżarni)
 - [FR-31: Skanowanie kodu kreskowego produktu](#fr-31-skanowanie-kodu-kreskowego-produktu)
 - [FR-32: Podpowiedź „🏺 masz w spiżarni” i „Pomysł na danie z ulubionych składników”](#fr-32-podpowiedź-🏺-masz-w-spiżarni-i-pomysł-na-danie-z-ulubionych-składników)
-- [FR-98: Trwałe usuwanie produktu ze spiżarni](#fr-98-trwałe-usuwanie-produktu-ze-spiżarni)
+- [FR-102: Trwałe usuwanie produktu ze spiżarni](#fr-102-trwałe-usuwanie-produktu-ze-spiżarni)
 
 ### Szybkie dodawanie i przekąski
 - [FR-33: Globalny przycisk szybkiego dodania przekąski/dania z każdego miejsca](#fr-33-globalny-przycisk-szybkiego-dodania-przekąskidania-z-każdego-miejsca)
@@ -79,6 +81,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-60: Warunkowe wyświetlanie „Złotych zasad przy Hashimoto i insulinooporności”](#fr-60-warunkowe-wyświetlanie-złotych-zasad-przy-hashimoto-i-insulinooporności)
 - [FR-83: Edycja wcześniej wpisanej wagi i historii kalorii](#fr-83-edycja-wcześniej-wpisanej-wagi-i-historii-kalorii)
 - [FR-94: Śledzenie okna postu przerywanego (intermittent fasting)](#fr-94-śledzenie-okna-postu-przerywanego-intermittent-fasting)
+- [FR-101: Dni kalendarzowe liczone lokalnie, nie w UTC](#fr-101-dni-kalendarzowe-liczone-lokalnie-nie-w-utc)
 
 ### Nagłówek i nawigacja
 - [FR-43: Pasek filtrów i kategorii przyklejony pod nagłówkiem](#fr-43-pasek-filtrów-i-kategorii-przyklejony-pod-nagłówkiem)
@@ -117,6 +120,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-65: Własna, opcjonalna nazwa użytkownika w aplikacji](#fr-65-własna-opcjonalna-nazwa-użytkownika-w-aplikacji)
 - [FR-68: Ustawienia gospodarstwa domowego i przepisów społeczności (stan przejściowy)](#fr-68-ustawienia-gospodarstwa-domowego-i-przepisów-społeczności-stan-przejściowy)
 - [FR-69: Logowanie w chmurze (anonimowe, Google, e-mail i hasło)](#fr-69-logowanie-w-chmurze-anonimowe-google-e-mail-i-hasło)
+- [FR-98: Kopia zapasowa danych do pliku (eksport i import)](#fr-98-kopia-zapasowa-danych-do-pliku-eksport-i-import)
 
 ### Ustawienia
 - [FR-71: Zakładki w Ustawieniach — Konto, Wygląd, Przypomnienia, Ulubione](#fr-71-zakładki-w-ustawieniach--konto-wygląd-przypomnienia-ulubione)
@@ -143,17 +147,23 @@ Przegląd wymagań pod kątem wzajemnych sprzeczności. Żadna z poniższych par
 
 1. **FR-44 (auto-chowanie nagłówka na przewijanie) vs FR-45 (ręczne zwijanie ma pierwszeństwo).** Rozstrzygnięcie: ręczne działanie użytkownika zawsze wygrywa i zamraża automatykę aż do wejścia na zakładkę Przepisy od nowa albo ręcznego rozwinięcia. Zweryfikowano dodatkowo, że otwarcie i zamknięcie okienka modalnego (FR-12 i inne) nie powinno móc obejść tego zamrożenia — pierwotnie mogło (dwukrotnie, dwoma różnymi mechanizmami), naprawiono ostatecznie poprawką pomijającą zbędne przełączenie widoku przy zamykaniu modala przyciskiem „X” (patrz historia rewizji FR-45).
 2. **FR-9 (kara za wysoki IG w wyniku dopasowania) vs FR-11 (wyświetlanie plakietki „podwyższony IG” na karcie).** Nie wykluczają się — to dwie strony tego samego przełącznika: plakietka istnieje właśnie dla osób, które świadomie wyłączyły rygor niskiego IG i chcą mimo to widzieć tę informację.
-3. **FR-99 (stopniowany gest na kartach Planera) vs FR-15 (oznaczanie dania jako ugotowane) i FR-36 (oznaczanie jako zjedzone).** Nie wykluczają się — FR-99 to wyłącznie SKRÓT do tych samych dwóch zapisów, nie osobny stan. Krótkie przesunięcie w prawo woła dokładnie ten sam kod co przycisk „✅ Zrobione dzisiaj” z karty przepisu (wpis w historii gotowania + odjęcie ze spiżarni), a długie — ten sam `setEaten` co checkbox w Postępie i gest w nagłówku. Rozstrzygnięcia: (a) powtórzone „zrobione” tego samego dnia jest ignorowane, żeby skrót nie mógł odjąć składników dwa razy; (b) „zjedzone” NIE oznacza automatycznie „zrobione” — można zjeść coś, czego się nie gotowało, więc te dwa stany zostają niezależne; (c) połowa porcji (FR-99) jest z punktu widzenia FR-36 nadal „zjedzone” (`done:true`), tylko z polem `portion`, więc wszystkie starsze odczyty stanu (checkbox w Postępie, seria dni, podsumowania) działają bez zmian, a tylko sumowanie kcal zna ułamek.
-4. **FR-98 (trwałe usuwanie produktu ze spiżarni) vs FR-28 (kafelki wyliczane ze wszystkich przepisów).** Napięcie realne: FR-28 celowo NIE przechowuje listy kafelków, tylko wylicza ją z bazy przepisów, więc „usunięcie” kafelka nie ma czego skasować. Rozstrzygnięcie: FR-98 nie zmienia FR-28, tylko dokłada listę wykluczeń (`pantryHidden`) filtrowaną w jednym miejscu przy budowaniu listy kafelków. Skutek uboczny do zapamiętania: jeśli w przyszłości dojdzie przepis ze składnikiem, który użytkownik kiedyś ukrył, kafelek NIE pojawi się — to celowe (wybór użytkownika wygrywa z bazą przepisów), a „↩️ Przywróć usunięte produkty” jest wyjściem awaryjnym.
-5. **FR-3 (stuknięcie rozwija kartę) vs FR-55 (przesunięcie karty ocenia danie).** Ten sam obszar dotykowy obsługuje dwa różne gesty. Rozstrzygnięcie: blokada osi ruchu (pierwsze przekroczenie progu 10px decyduje, czy to gest poziomy-ocena czy pionowy-przewijanie), a stuknięcie bez żadnego znaczącego ruchu liczy się jako rozwinięcie karty — pod warunkiem że w międzyczasie nie przewinęła się też sama strona (patrz rewizja FR-3).
-6. **FR-8 (filtr bez glutenu/laktozy) vs kompletność FR-1..FR-3.** Filtr jest jawnie opisany w aplikacji jako orientacyjny (bazuje na oznaczeniach składników w tekście przepisu, nie na certyfikowanej analizie). To ograniczenie, nie sprzeczność — nie ma wymagania gwarantującego 100% trafność, więc nic tu się nie wyklucza.
-7. **FR-23 („Ugotuj na 2 dni”, przesunięcie +2 dni, wymaga ręcznej skali ≥2×) vs FR-24 (proaktywna podpowiedź, przesunięcie +1 dzień, automatyczna wg słów kluczowych).** To jedyny punkt oznaczony jako **świadomie zaakceptowana niespójność UX**, nie błąd: oba mechanizmy działają niezależnie i żaden nie nadpisuje danych bez jawnej akcji użytkownika, ale różne przesunięcie czasowe (2 dni vs 1 dzień) między dwoma podobnymi w założeniu funkcjami może być mylące. Do rozważenia w przyszłej rewizji: ujednolicić przesunięcie albo jasno zróżnicować nazewnictwo obu mechanizmów.
-8. **FR-42 (limit 20 wpisów historii aktywności) vs pozostałe funkcje korzystające z pełnej historii (FR-40 wykres wagi, FR-41 historia kalorii).** Nie wykluczają się — limit 20 jest wyłącznie ograniczeniem WYŚWIETLANIA jednej konkretnej listy (dziennik aktywności), nie ogranicza danych źródłowych używanych przez inne wykresy/funkcje.
-9. **FR-34 (baza 336 przekąsek) vs FR-35 (emotikonki przy rozpoznanych produktach).** Częściowe pokrycie, nie sprzeczność: nie każda z 336 pozycji bazy kalorycznej ma dziś przypisaną emotikonkę w osobnej tabeli `CANON_INFO` — brak emotikonki nie blokuje rozpoznania kalorii (FR-34 działa w pełni niezależnie od FR-35), po prostu nazwa pojawia się bez sufiksu. Możliwe rozszerzenie w przyszłości.
-10. **FR-60 (widoczność „Złotych zasad” tylko przy rygorze niskiego IG) vs FR-9 (przełącznik rygoru niskiego IG).** Nie wykluczają się — FR-60 to bezpośrednia konsekwencja FR-9: karta jest po prostu ukrywana, gdy FR-9 jest wyłączone. Jedno wymaganie steruje drugim, bez sprzeczności.
-11. **FR-61 (wybór stylu oceniania: balonowa czcionka / kolorowa karta) vs FR-48 (wybór motywu kolorystycznego).** Nie wykluczają się — to dwa niezależne ustawienia. FR-61 celowo działa tak samo w każdym z jedenastu motywów z FR-48, w tym Polaroid (FR-49) i Kafelki (FR-63).
-12. **FR-49 (kształt kart Polaroid) vs FR-63 (kształt kart motywu Kafelki).** Nie wykluczają się — oba wymagania modyfikują kształt/strukturę kart przepisów, ale są aktywne wyłącznie w ramach własnego, wzajemnie wykluczającego się wyboru motywu (FR-48 pozwala wybrać tylko jeden motyw naraz), więc nigdy nie są aktywne jednocześnie.
-13. **FR-62 (kalendarzyk tygodnia na liście zakupów) vs FR-58 (przyciski dodawania per-dzień).** Nie wykluczają się — to komplementarne, niezależne elementy tego samego widoku: FR-58 to akcja (dodawanie), FR-62 to wyłącznie odczyt/wizualizacja aktualnego stanu listy względem planu. Zmiana wywołana przez FR-58 natychmiast odświeża wskaźniki z FR-62.
+3. **FR-3 (stuknięcie rozwija kartę) vs FR-55 (przesunięcie karty ocenia danie).** Ten sam obszar dotykowy obsługuje dwa różne gesty. Rozstrzygnięcie: blokada osi ruchu (pierwsze przekroczenie progu 10px decyduje, czy to gest poziomy-ocena czy pionowy-przewijanie), a stuknięcie bez żadnego znaczącego ruchu liczy się jako rozwinięcie karty — pod warunkiem że w międzyczasie nie przewinęła się też sama strona (patrz rewizja FR-3).
+4. **FR-8 (filtr bez glutenu/laktozy) vs kompletność FR-1..FR-3.** Filtr jest jawnie opisany w aplikacji jako orientacyjny (bazuje na oznaczeniach składników w tekście przepisu, nie na certyfikowanej analizie). To ograniczenie, nie sprzeczność — nie ma wymagania gwarantującego 100% trafność, więc nic tu się nie wyklucza.
+5. **FR-23 („Ugotuj na 2 dni”, przesunięcie +2 dni, wymaga ręcznej skali ≥2×) vs FR-24 (proaktywna podpowiedź, przesunięcie +1 dzień, automatyczna wg słów kluczowych).** To jedyny punkt oznaczony jako **świadomie zaakceptowana niespójność UX**, nie błąd: oba mechanizmy działają niezależnie i żaden nie nadpisuje danych bez jawnej akcji użytkownika, ale różne przesunięcie czasowe (2 dni vs 1 dzień) między dwoma podobnymi w założeniu funkcjami może być mylące. Do rozważenia w przyszłej rewizji: ujednolicić przesunięcie albo jasno zróżnicować nazewnictwo obu mechanizmów.
+6. **FR-42 (limit 20 wpisów historii aktywności) vs pozostałe funkcje korzystające z pełnej historii (FR-40 wykres wagi, FR-41 historia kalorii).** Nie wykluczają się — limit 20 jest wyłącznie ograniczeniem WYŚWIETLANIA jednej konkretnej listy (dziennik aktywności), nie ogranicza danych źródłowych używanych przez inne wykresy/funkcje.
+7. **FR-34 (baza 336 przekąsek) vs FR-35 (emotikonki przy rozpoznanych produktach).** Częściowe pokrycie, nie sprzeczność: nie każda z 336 pozycji bazy kalorycznej ma dziś przypisaną emotikonkę w osobnej tabeli `CANON_INFO` — brak emotikonki nie blokuje rozpoznania kalorii (FR-34 działa w pełni niezależnie od FR-35), po prostu nazwa pojawia się bez sufiksu. Możliwe rozszerzenie w przyszłości.
+8. **FR-60 (widoczność „Złotych zasad” tylko przy rygorze niskiego IG) vs FR-9 (przełącznik rygoru niskiego IG).** Nie wykluczają się — FR-60 to bezpośrednia konsekwencja FR-9: karta jest po prostu ukrywana, gdy FR-9 jest wyłączone. Jedno wymaganie steruje drugim, bez sprzeczności.
+9. **FR-61 (wybór stylu oceniania: balonowa czcionka / kolorowa karta) vs FR-48 (wybór motywu kolorystycznego).** Nie wykluczają się — to dwa niezależne ustawienia. FR-61 celowo działa tak samo w każdym z jedenastu motywów z FR-48, w tym Polaroid (FR-49) i Kafelki (FR-63).
+10. **FR-49 (kształt kart Polaroid) vs FR-63 (kształt kart motywu Kafelki).** Nie wykluczają się — oba wymagania modyfikują kształt/strukturę kart przepisów, ale są aktywne wyłącznie w ramach własnego, wzajemnie wykluczającego się wyboru motywu (FR-48 pozwala wybrać tylko jeden motyw naraz), więc nigdy nie są aktywne jednocześnie.
+11. **FR-62 (kalendarzyk tygodnia na liście zakupów) vs FR-58 (przyciski dodawania per-dzień).** Nie wykluczają się — to komplementarne, niezależne elementy tego samego widoku: FR-58 to akcja (dodawanie), FR-62 to wyłącznie odczyt/wizualizacja aktualnego stanu listy względem planu. Zmiana wywołana przez FR-58 natychmiast odświeża wskaźniki z FR-62.
+12. **FR-99 (wyszukiwanie na liście zakupów) vs FR-26 (udostępnianie i czyszczenie listy).** Potencjalna pułapka: filtr zawęża to, co widać, więc akcje działające „na liście” mogłyby zacząć działać na przefiltrowanym podzbiorze bez ostrzeżenia. Rozstrzygnięcie: filtr jest wyłącznie sposobem PATRZENIA na listę i nie wpływa na żadną akcję — `buildListText()` (udostępnianie/kopiowanie) eksportuje całą listę, a „Usuń odhaczone”/„Wyczyść całą listę” działają na pełnym zbiorze, niezależnie od aktywnej frazy. Zweryfikowane testem: przy aktywnym filtrze zawężającym widok do 1 pozycji udostępnianie nadal zwraca wszystkie 5.
+13. **FR-99 (wyszukiwanie na liście zakupów) vs FR-75 (widok kafelkowy listy).** Nie wykluczają się — oba widoki renderują ten sam `state.shopping`, więc filtr jest stosowany raz, wspólnie dla obu, i przełączenie widoku przy aktywnej frazie nie gubi filtrowania.
+14. **FR-98 (kopia zapasowa do pliku) vs FR-73 (synchronizacja z chmurą) i FR-89 (reset danych konta).** Nie wykluczają się, ale świadomie się pokrywają: zakres eksportu to dokładnie `SYNCED_STATE_KEYS`, czyli ten sam zbiór, który wędruje do chmury — kopia obejmująca cokolwiek innego rozjeżdżałaby się z tym, co przenosi zalogowanie na drugim urządzeniu. Import celowo przechodzi przez to samo `refreshUiAfterSync()`, co dane przychodzące z chmury, żeby nie powstała druga, równoległa ścieżka „przeładuj wszystko po podmianie stanu”. Względem FR-89 kopia jest zabezpieczeniem: reset konta jest nieodwracalny po stronie chmury, ale plik zapisany wcześniej pozwala odtworzyć dane.
+15. **FR-101 (lokalne dni kalendarzowe) vs FR-83 (edycja wcześniejszych dni) i FR-38 (licznik wody z powiadomień).** Względem FR-83: świadomie NIE ma migracji danych zapisanych przed naprawą — wpisu źle przypisanego przez błąd UTC nie da się odróżnić od wpisu, który użytkownik celowo przypisał do wcześniejszego dnia korzystając z FR-83, więc „naprawianie” historii byłoby zgadywaniem na danych, których nie wolno ruszać. Względem FR-38: Service Worker i aplikacja MUSZĄ liczyć klucz dnia identycznie, bo licznik wody jest zapisywany w jednym miejscu, a odczytywany w drugim — obie implementacje zostały zmienione w tej samej turze i celowo mają w kodzie wzajemne odwołania, żeby nie rozjechały się przy kolejnej zmianie.
+
+16. **FR-103 (stopniowany gest na kartach Planera) vs FR-15 (oznaczanie dania jako ugotowane) i FR-36 (oznaczanie jako zjedzone).** Nie wykluczają się — FR-103 to wyłącznie SKRÓT do tych samych dwóch zapisów, nie osobny stan. Krótkie przesunięcie w prawo woła dokładnie ten sam kod co przycisk „✅ Zrobione dzisiaj” z karty przepisu (wpis w historii gotowania + odjęcie ze spiżarni), a długie — ten sam `setEaten` co checkbox w Postępie. Rozstrzygnięcia: (a) powtórzone „zrobione” tego samego dnia jest ignorowane, żeby skrót nie mógł odjąć składników dwa razy; (b) „zjedzone” NIE oznacza automatycznie „zrobione” — można zjeść coś, czego się nie gotowało, więc te dwa stany zostają niezależne; (c) połowa porcji jest z punktu widzenia FR-36 nadal „zjedzone” (`done:true`), tylko z polem `portion`, więc wszystkie starsze odczyty stanu (checkbox w Postępie, seria dni, podsumowania) działają bez zmian, a tylko sumowanie kcal zna ułamek.
+17. **FR-102 (trwałe usuwanie produktu ze spiżarni) vs FR-28 (kafelki wyliczane ze wszystkich przepisów).** Napięcie realne: FR-28 celowo NIE przechowuje listy kafelków, tylko wylicza ją z bazy przepisów, więc „usunięcie” kafelka nie ma czego skasować. Rozstrzygnięcie: FR-102 nie zmienia FR-28, tylko dokłada listę wykluczeń (`pantryHidden`) filtrowaną w jednym miejscu przy budowaniu listy kafelków. Skutek uboczny do zapamiętania: jeśli w przyszłości dojdzie przepis ze składnikiem, który użytkownik kiedyś ukrył, kafelek NIE pojawi się — to celowe (wybór użytkownika wygrywa z bazą przepisów), a „↩️ Przywróć usunięte produkty” jest wyjściem awaryjnym.
+18. **FR-103 (znacznik „zrobione dzisiaj” na karcie Planera) vs FR-101 (dni liczone lokalnie).** Wpisy historii gotowania zapisują pełny znacznik czasu `toISOString()`, którego część datowa to dzień UTC — a `todayStr()` od FR-101 zwraca dzień LOKALNY. Rozstrzygnięcie: `cookedTodayIndex()` NIE porównuje pierwszych 10 znaków znacznika, tylko parsuje go i formatuje lokalnie (`localDateStr`), żeby „dzisiaj” znaczyło tu to samo co we wszystkich innych kluczach dat. Bez tego plakietka „🍳 Zrobione” gasłaby i zapalała się o północy czasu UTC, czyli o 01:00/02:00 w Polsce.
 
 ---
 
@@ -244,6 +254,28 @@ Filtr progu oceny pokazuje wyłącznie przepisy, których ocena gwiazdkowa (⭐ 
   PREZENTACJI (nie w danych), patrz `android/PARITY.md`. `./gradlew
   :app:assembleDebug :app:testDebugUnitTest :logic:test` przechodzi. **Nie
   zweryfikowane na żywo** — wymaga sprawdzenia w Android Studio.
+- **v6** (2026-08-28, Web only): Wyszukiwanie przestało być wrażliwe na
+  polskie znaki diakrytyczne. **Realny błąd, znaleziony przypadkiem** przy
+  dodawaniu wyszukiwania na liście zakupów (FR-99): filtr przepisów
+  porównywał surowe, tylko zmniejszone do małych liter napisy, więc
+  wpisanie „roszponka” dawało ZERO wyników mimo istniejącego przepisu
+  „Omlet z awokado, pomidorkami i roszponką” — potwierdzone pomiarowo na
+  całej bazie 229 przepisów przed poprawką. To szczególnie dotkliwe na
+  telefonie, gdzie każdy ogonek wymaga przytrzymania klawisza, czyli
+  dokładnie wtedy, gdy ludzie je pomijają. Naprawione przez zastosowanie
+  istniejącej funkcji `foldDiacritics()` (używanej już wcześniej przy
+  dopasowywaniu kanonicznych nazw składników) po obu stronach porównania —
+  zarówno do nazwy przepisu, jak i do listy składników. Zweryfikowane na
+  żywo (headless Chromium) w obie strony: zapytanie bez ogonków znajduje
+  przepis z ogonkami i odwrotnie. CACHE_NAME→v110, `versions/v110/`.
+- **v7** (2026-08-28, Web only): Pole wyszukiwania przepisów dostało
+  przycisk „✕” czyszczący frazę, widoczny tylko gdy coś jest wpisane —
+  dla spójności z wyszukiwaniem na liście zakupów (FR-99), które dostało
+  go przy okazji powstania. Na telefonie opróżnienie pola inaczej oznacza
+  zaznacz-wszystko-i-usuń. Zweryfikowane na żywo: przycisk ukryty na
+  starcie, pojawia się po wpisaniu frazy (1 pasujący przepis), a
+  kliknięcie czyści pole i przywraca pełną listę (106 kart w tej
+  kategorii). CACHE_NAME→v113, `versions/v113/`.
 
 ---
 
@@ -631,43 +663,116 @@ Dla każdego zaplanowanego dania można zmienić mnożnik porcji (predefiniowane
 
 ## Kryteria akceptacji
 - Zmiana skali natychmiast aktualizuje sumę kalorii dnia i wpis w nagłówku.
+- Przeskalowana lista składników używa poprawnej polskiej odmiany przy
+  liczbie całkowitej (2 jajka → 3× → „6 jajek”, a nie „6 jajka”).
+- Składniki podane w jednostkach (gramy, mililitry, łyżeczki, kromki)
+  zmieniają wyłącznie liczbę — ich treść pozostaje nietknięta.
+- Wynik ułamkowy zostawia oryginalne brzmienie składnika z przepisu.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-28, Web only): Przeskalowana lista składników odmienia
+  teraz nazwę zgodnie z nową liczbą. Wcześniej skalowanie podmieniało
+  wyłącznie LICZBĘ, więc „2 jajka” przy 3× czytało się „6 jajka”, a przy
+  0,5× „1 jajka” — obie formy niepoprawne po polsku i widoczne na każdej
+  przeskalowanej karcie przepisu. Aplikacja miała już pełną tabelę odmian
+  (używaną przez spiżarnię i listę zakupów), tylko skalowanie z niej nie
+  korzystało. Dopasowanie następuje po CAŁYM tekście po liczbie i wyłącznie
+  względem tej tabeli — dzięki temu „jajka” i „tortilla” są odmieniane, a
+  „g piersi z kurczaka” czy „łyżeczka oliwy” zostają nietknięte.
+  **Świadomie tylko dla liczb całkowitych**: liczebnik ułamkowy wymaga po
+  polsku dopełniacza liczby pojedynczej („0,5 jajka”, „1,5 banana”), formy
+  której ta tabela nie zawiera — pierwsza wersja poprawki, odmieniająca
+  także ułamki regułą jeden/kilka/wiele, produkowała „0,5 jajko” i
+  „1,5 banany”, czyli zamieniała jeden błąd na inny; przy ułamku zostaje
+  więc oryginalne brzmienie z przepisu, które było już poprawne.
+  Zweryfikowane na żywo (headless Chromium) na dziewięciu wzorcach
+  składników × pięciu skalach: poprawnie „1 jajko”/„6 jajek”/„12 jajek”,
+  „6 tortilli”, „6 bananów”/„9 bananów”, przy nietkniętych wierszach
+  jednostkowych. CACHE_NAME→v113, `versions/v113/`.
 
 ---
 
 # FR-21: Losowe generowanie planu — cały tydzień lub pojedynczy dzień
 
 **Obszar:** Planer tygodniowy  
-**Status:** Zaimplementowane
+**Status:** Zaimplementowane (cofanie — v2 — na razie Web-only, patrz Uwagi)
 
 ## Opis
 Przycisk „🎲 Wygeneruj losowo cały tydzień” losuje dania dla wszystkich 7 dni × 5 kategorii z puli pasujących do profilu. Dodatkowo każda karta dnia ma własny przycisk „🎲 Losuj ten dzień”, generujący losowy plan tylko dla tego jednego dnia, bez naruszania pozostałych dni.
 
+Na webie (v2) obie akcje można cofnąć — po wygenerowaniu pojawia się powiadomienie z przyciskiem „Cofnij”, przywracającym dokładnie poprzedni plan (dania, skale porcji, flagi resztek). Losowanie pojedynczego dnia wykonuje się od razu, bez okienka potwierdzenia; losowanie całego tygodnia nadal pyta o potwierdzenie przed wykonaniem, a cofnięcie jest tam dodatkowym zabezpieczeniem.
+
 ## Kryteria akceptacji
-- Losowanie całego tygodnia i losowanie pojedynczego dnia wymagają potwierdzenia (nadpisują istniejący plan odpowiednio całego tygodnia albo tylko tego dnia).
 - Pula losowania uwzględnia dopasowanie do profilu (ta sama logika co FR-11).
+- Web (v2): losowanie POJEDYNCZEGO dnia wykonuje się natychmiast, bez okienka `confirm()`, i pokazuje powiadomienie z „Cofnij”.
+- Web (v2): losowanie CAŁEGO tygodnia nadal wymaga potwierdzenia przed wykonaniem, a po wykonaniu również pokazuje „Cofnij”.
+- Web (v2): kliknięcie „Cofnij” przywraca dokładnie ten sam plan (razem ze skalami porcji i flagami resztek), jaki był przed losowaniem — odpowiednio dla jednego dnia albo dla całego tygodnia.
+- Web (v2): zignorowanie powiadomienia pozostawia wylosowany plan.
+
+## Uwagi
+Web: `structuredClone()` na trzech równoległych mapach PRZED nadpisaniem
+(dla jednego dnia — tylko jego wpisy; dla całego tygodnia — całe
+`state.planner`/`plannerScale`/`plannerLeftover`), przekazane jako
+domknięcie do `toast(msg, undoLabel, onUndo)` (mechanizm z FR-91).
+
+Decyzja projektowa (2026-08-28): `confirm()` zostaje TYLKO dla akcji o
+zasięgu całego tygodnia (35 slotów naraz) — tam przerwanie użytkownika jest
+uzasadnione, a cofnięcie chroni przed zbyt szybkim kliknięciem „OK”. Dla
+akcji o zasięgu jednego dnia samo cofnięcie jest lepsze niż pytanie:
+nie przerywa pracy, a chroni też po fakcie. Ta sama zasada zastosowana w
+FR-22.
+
+**v2 świadomie Web-only na razie** — ta sesja pracuje w środowisku bez
+dostępu do `api.foojay.io` (toolchain JDK dla Gradle, błąd 403 przy
+`:app:compileDebugKotlin`), więc port do Compose nie może tu zostać ani
+skompilowany, ani przetestowany; odłożone do sesji z realnym dostępem do
+Gradle/emulatora, odnotowane w `android/PARITY.md`.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-28, Web only): Dodane cofanie dla obu wariantów losowania; `confirm()` usunięty z wariantu jednodniowego, zachowany dla całotygodniowego. Zmiana z własnej rekomendacji, razem z FR-22 (patrz tam pełne uzasadnienie niespójności, którą to naprawia). Zweryfikowane na żywo (headless Chromium): wylosowanie pustego dnia wypełniło 5 kategorii, „Cofnij” przywróciło go do pustego; wylosowanie całego tygodnia wypełniło dzień 0 i dzień 5, „Cofnij” przywróciło dzień 0 do pierwotnego `{"sniadania":"S1"}` i dzień 5 do pustego — czyli cofnięcie działa na całej strukturze, nie tylko na dniu, który akurat był widoczny. CACHE_NAME→v106, `versions/v106/`.
 
 ---
 
 # FR-22: Czyszczenie planu — cały tydzień lub pojedynczy dzień
 
 **Obszar:** Planer tygodniowy  
-**Status:** Zaimplementowane
+**Status:** Zaimplementowane (cofanie zamiast potwierdzenia — v2 — na razie Web-only, patrz Uwagi)
 
 ## Opis
-Oprócz generowania, każda karta dnia ma przycisk „🗑️ Wyczyść ten dzień”, kasujący zaplanowane dania tylko dla tego jednego dnia (z potwierdzeniem), niezależnie od pozostałych dni tygodnia.
+Oprócz generowania, każda karta dnia ma przycisk „🗑️ Wyczyść ten dzień”, kasujący zaplanowane dania tylko dla tego jednego dnia, niezależnie od pozostałych dni tygodnia.
+
+Na webie (v2) operacja wykonuje się od razu, bez blokującego okienka potwierdzenia — zamiast tego pokazuje powiadomienie z przyciskiem „Cofnij”, przywracającym dokładnie poprzedni stan tego dnia (dania, skale porcji i flagi resztek). To ten sam wzorzec, co przy usuwaniu pojedynczego dania z „Dzisiejszego Planera” (FR-91).
 
 ## Kryteria akceptacji
 - Czyszczenie jednego dnia nie wpływa na pozostałe dni.
-- Operacja wymaga potwierdzenia (nieodwracalna bez ponownego zaplanowania).
+- Web (v2): operacja wykonuje się natychmiast, bez okienka `confirm()`.
+- Web (v2): po wyczyszczeniu pojawia się powiadomienie z przyciskiem „Cofnij”; kliknięcie go przywraca dokładnie ten sam plan dnia, jaki był przed wyczyszczeniem (razem ze skalami porcji i flagami resztek).
+- Web (v2): zignorowanie powiadomienia pozostawia dzień wyczyszczony.
+
+## Uwagi
+Web: `structuredClone()` na trzech równoległych mapach tego dnia
+(`state.planner[di]`/`plannerScale[di]`/`plannerLeftover[di]`) PRZED
+skasowaniem, przekazane jako domknięcie do `toast(msg, undoLabel, onUndo)`
+(mechanizm dodany w FR-91). Zero nowej infrastruktury.
+
+Decyzja projektowa (2026-08-28): `confirm()` zamieniony na cofnięcie tylko
+dla akcji o zasięgu JEDNEGO dnia. Czyszczenie/generowanie CAŁEGO tygodnia
+(FR-21) zachowuje potwierdzenie ORAZ dostaje cofnięcie — przy 35 slotach
+naraz przerwanie użytkownika jest uzasadnione, a cofnięcie jest tam
+zabezpieczeniem przed zbyt szybkim kliknięciem „OK”, nie zamiennikiem
+pytania.
+
+**v2 świadomie Web-only na razie** — ta sesja pracuje w środowisku bez
+dostępu do `api.foojay.io` (toolchain JDK dla Gradle, błąd 403 przy
+`:app:compileDebugKotlin`), więc port do Compose nie może tu zostać ani
+skompilowany, ani przetestowany; odłożone do sesji z realnym dostępem do
+Gradle/emulatora, odnotowane w `android/PARITY.md`.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-28, Web only): Blokujące `confirm()` zamienione na natychmiastową akcję + „Cofnij” w powiadomieniu. Zmiana z własnej rekomendacji (użytkownik: „dodawaj swoje rekomendowane zmiany jak i refactoringi”): mechanizm cofania istniał od FR-91, ale był podpięty tylko pod JEDNĄ akcję, mimo że dwie inne, znacznie bardziej destrukcyjne (czyszczenie i losowanie całego dnia), wciąż używały natywnego okienka — niespójność UX i słabsze zabezpieczenie, bo `confirm()` chroni przed pomyłką tylko zanim ją popełnisz, a nie po. Zweryfikowane na żywo (headless Chromium): wyczyszczenie dnia z zaplanowanym śniadaniem, potwierdzone `state.planner[0] === {}`, kliknięcie „Cofnij” przywróciło `{"sniadania":"S1"}`. CACHE_NAME→v106, `versions/v106/`.
 
 ---
 
@@ -813,17 +918,40 @@ Zrewidowane 2026-08-03: pierwotnie nazwa produktu na liście zakupów była wyś
 # FR-26: Odhaczanie, udostępnianie i czyszczenie listy zakupów
 
 **Obszar:** Lista zakupów  
-**Status:** Zaimplementowane
+**Status:** Zaimplementowane (cofanie kasowania — v2 — na razie Web-only, patrz Uwagi)
 
 ## Opis
-Pozycje na liście można odhaczyć jako kupione. Listę można udostępnić przez SMS/WhatsApp/skopiowanie do schowka, usunąć same odhaczone pozycje albo wyczyścić całą listę.
+Pozycje na liście można odhaczyć jako kupione. Listę można udostępnić przez systemowy arkusz udostępniania / SMS / WhatsApp / skopiowanie do schowka, usunąć same odhaczone pozycje albo wyczyścić całą listę.
+
+Na webie (v2) obie akcje kasujące można cofnąć — po wykonaniu pojawia się powiadomienie z przyciskiem „Cofnij”, przywracającym usunięte pozycje. „Usuń odhaczone” działa od razu (bez pytania), „Wyczyść całą listę” nadal pyta o potwierdzenie, a cofnięcie jest tam dodatkowym zabezpieczeniem.
 
 ## Kryteria akceptacji
 - Odhaczenie pozycji nie usuwa jej z listy, tylko oznacza wizualnie.
 - „Usuń odhaczone” i „Wyczyść całą listę” to dwie osobne, jednoznacznie opisane akcje.
+- Web (v2): „Usuń odhaczone” pokazuje powiadomienie z liczbą usuniętych pozycji i przyciskiem „Cofnij”; cofnięcie przywraca dokładnie te pozycje (razem z ilościami i powiązaniami z przepisami).
+- Web (v2): „Usuń odhaczone” przy braku odhaczonych pozycji pokazuje komunikat i nie robi nic więcej (nie oferuje cofania niczego).
+- Web (v2): „Wyczyść całą listę” nadal wymaga potwierdzenia, a po wykonaniu oferuje „Cofnij”, które przywraca zarówno listę zakupów, jak i oznaczenia „dodane z przepisu” (`recipeAdded`, sterujące etykietą „✓ Na liście zakupów” na kartach przepisów).
+
+## Uwagi
+Web: `structuredClone()` na `state.shopping` (i dodatkowo `state.recipeAdded`
+przy czyszczeniu całej listy) PRZED skasowaniem, przekazany jako domknięcie
+do `toast(msg, undoLabel, onUndo)` — mechanizm dodany w FR-91, tu użyty
+ponownie bez nowej infrastruktury.
+
+Decyzja projektowa (2026-08-28), ta sama zasada co w FR-21/FR-22:
+akcja cząstkowa, wykonywana w toku pracy („Usuń odhaczone”), nie przerywa
+pytaniem, tylko oferuje cofnięcie; akcja o zasięgu całej listy zachowuje
+potwierdzenie ORAZ dostaje cofnięcie.
+
+**v2 świadomie Web-only na razie** — ta sesja pracuje w środowisku bez
+dostępu do `api.foojay.io` (toolchain JDK dla Gradle, błąd 403 przy
+`:app:compileDebugKotlin`), więc port do Compose nie może tu zostać ani
+skompilowany, ani przetestowany; odłożone do sesji z realnym dostępem do
+Gradle/emulatora, odnotowane w `android/PARITY.md`.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-28, Web only): Dodane cofanie obu akcji kasujących. Zmiana z własnej rekomendacji, znaleziona przy przeglądzie kodu pod kątem spójności z FR-21/v2 i FR-22/v2: **„Usuń odhaczone” był najgorszym przypadkiem w całej aplikacji** — nieodwracalne kasowanie BEZ potwierdzenia I BEZ cofania, więc jedno przypadkowe stuknięcie na długiej liście (realnie zgłaszane były listy po 87 pozycji) po cichu niszczyło pracę bez żadnej drogi powrotu. Przy okazji dodany brakujący przypadek brzegowy: przy zerowej liczbie odhaczonych pozycji przycisk pokazuje teraz komunikat zamiast udawać, że coś zrobił. Zweryfikowane na żywo (headless Chromium), cztery przypadki osobno: usunięcie 2 z 3 pozycji (nieodhaczona nietknięta), cofnięcie przywracające komplet, przypadek „nic nie odhaczone” (lista nietknięta, komunikat pokazany, cofanie nieoferowane) oraz wyczyszczenie całej listy z cofnięciem przywracającym też `recipeAdded`. CACHE_NAME→v107, `versions/v107/`.
 
 ---
 
@@ -864,7 +992,7 @@ Jeśli TO SAMO danie jest zaplanowane więcej niż raz w tym samym tygodniu (np.
 # FR-28: Śledzenie stanu spiżarni w kafelkach pogrupowanych kategoriami
 
 **Obszar:** Spiżarnia  
-**Status:** Zaimplementowane
+**Status:** Zaimplementowane (cofanie wyczyszczenia — v2 — na razie Web-only, patrz Historia rewizji)
 
 ## Opis
 Zakładka Spiżarnia pokazuje kafelki produktów pogrupowane w kategorie (Nabiał, Warzywa, Owoce, Mięso/ryby/jajka, Strączki i orzechy, Pieczywo i zboża, Przyprawy, Inne). Górna połowa kafelka dodaje jednostkę, dolna odejmuje. Przyprawy śledzone są poziomem (Mało/Wystarczy/Dużo), nie liczbą sztuk. Kafelki w każdej kategorii układają się w siatkę rozciągającą się na pełną dostępną szerokość ekranu (równa liczba kolumn dopasowana do szerokości, kafelki równo rozciągnięte), a nie w luźno zawijany rząd o stałej szerokości kafelka z nierówną przerwą na końcu.
@@ -886,21 +1014,20 @@ Zgłoszony 2026-08-11: użytkownik zgłosił, że aplikacja "zacina się" po dod
 - **v3** (2026-08-11): Naprawiono realny błąd wydajności powodujący zacinanie się aplikacji przy kilku szybkich dotknięciach kafelków z rzędu — patrz sekcja "Uwagi" powyżej. Brak zmiany zachowania funkcjonalnego, wyłącznie poprawka wydajności.
 - **v4** (2026-08-11): Dodano przycisk „🗑️ Wyczyść całą spiżarnię” na obu platformach (web i Android, w tej samej turze), na wyraźną prośbę użytkownika ("dodaj opcji czyszczenia całej spiżarni w obydwu wersjach kotlin i html").
 - **v5** (2026-08-23, Web + Android): Na wyraźną prośbę użytkownika ("dla artykułów liczonych w ml zmniejsz skok z 100 do 50 ml, a najlepiej dodaj opcje zmieniania skoku po przytrzymaniu kafelka") -- `tileStep("volume")` zmienione ze 100 na 50 (waga zostaje przy 100). Dodana per-produktowa nadpisywana wartość skoku, ustawiana z listy gotowych opcji w tym samym oknie długiego przytrzymania co zmiana kategorii. Web: nowa mapa `state.pantryStepOverride` (ten sam wzorzec co `pantryUnitOverride`/`pantryCategoryOverride`, dopisana do `SYNCED_STATE_KEYS`/`MAP_MERGE_KEYS`), `effectiveStep()` sprawdza override przed `tileStep()`. Android: świadomie prostsze -- pole `stepOverride` bezpośrednio na `PantryItem.Product` zamiast osobnej trwałej mapy (ginie po pełnym usunięciu śledzenia + ponownym dodaniu, tak jak już wcześniej brak portu zmiany jednostki przez długie przytrzymanie, patrz `android/PARITY.md`). `./gradlew :logic:test :app:compileDebugKotlin` przechodzi (test `PantryTilesTest` zaktualizowany na nową wartość domyślną). Zweryfikowane na żywo na obu platformach: nowo śledzony produkt w ml startuje na 50 ml, okno długiego przytrzymania pokazuje siatkę gotowych wartości z aktualną zaznaczoną, wybór innej trwale zmienia skok +/- tego kafelka.
-
-# FR-29: Odmiana gramatyczna nazw produktów w spiżarni
-
-**Obszar:** Spiżarnia  
-**Status:** Zaimplementowane
-
-## Opis
-Nazwy produktów liczonych sztukowo (np. jajka, bułki) odmieniają się poprawnie po polsku w zależności od aktualnej liczby (np. „jajko” / „jajka” / „jajek”), wg standardowych reguł liczebnikowych polskiej odmiany (1 → mianownik l.poj.; końcówka 2–4 z wyjątkiem 12–14 → forma „kilka”; pozostałe → dopełniacz l.mn.). Nazwy składników z przepisów są dodatkowo sprowadzane do formy kanonicznej (np. „300g dżemu” w przepisie → produkt „dżem” w spiżarni), a nie zapisywane w przypadkowym przypadku gramatycznym z tekstu przepisu.
-
-## Kryteria akceptacji
-- Tabela form (`one`/`few`/`many`) pokrywa produkty faktycznie liczone sztukowo, nie przyprawy śledzone poziomem.
-- Zmiana ilości kafelka natychmiast przelicza wyświetlaną formę gramatyczną.
-
-## Historia rewizji
-- **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-28, Web only): „🗑️ Wyczyść całą spiżarnię” zachowuje
+  potwierdzenie (akcja o zasięgu całej spiżarni), ale dodatkowo pokazuje
+  powiadomienie z przyciskiem „Cofnij”, przywracającym wszystkie usunięte
+  pozycje. Domknięcie audytu akcji destrukcyjnych rozpoczętego w FR-21/v2,
+  FR-22/v2 i FR-26/v2 — ta sama zasada: pełny zakres → potwierdzenie ORAZ
+  cofnięcie. Cofnięcie dopisuje też własny wpis do historii aktywności
+  (FR-42), żeby log odzwierciedlał, co się faktycznie stało, zamiast
+  zostawiać samo „Wyczyszczono całą spiżarnię”. Przywracane jest wyłącznie
+  `state.pantry` — mapy `pantryUnitOverride`/`pantryCategoryOverride`/
+  `pantryStepOverride` i `customTiles` nie są przez ten przycisk kasowane,
+  więc są na miejscu i stosują się do przywróconych pozycji. Zweryfikowane
+  na żywo (headless Chromium): 2 pozycje + ustawiony override jednostki →
+  wyczyszczenie (0 pozycji, override nietknięty) → „Cofnij” → obie pozycje
+  z powrotem, override nadal ten sam. CACHE_NAME→v109, `versions/v109/`.
 
 ---
 
@@ -942,9 +1069,8 @@ Przytrzymanie kafelka otwiera wyśrodkowane okienko z opcjami: zmiana jednostki,
   poprawnie). `./gradlew :app:assembleDebug :app:testDebugUnitTest
   :logic:test` przechodzi.
 
-
 - **v4** (2026-08-29): Menu po przytrzymaniu kafelka dostało pozycję
-  „❌ Usuń produkt ze spiżarni na stałe” — patrz FR-98, gdzie opisana jest
+  „❌ Usuń produkt ze spiżarni na stałe” — patrz FR-102, gdzie opisana jest
   cała ta funkcja. Dwie zmiany dotykające bezpośrednio TEGO wymagania:
   (a) na Androidzie menu otwiera się teraz dla KAŻDEGO kafelka, nie tylko
   śledzonego (`onLongPress = { actionTarget = ... }` bez warunku
@@ -1047,6 +1173,15 @@ osobnej turze.
   żywo** — wymaga sprawdzenia w Android Studio (dodać kilka ulubionych
   składników z różnych kategorii, dotknąć 💡, wybrać posiłek, potwierdzić
   że otwiera się przeglądarka z sensownym zapytaniem).
+- **v2** (2026-08-28, Web only): Filtr listy ulubionych składników
+  (Ustawienia → Ulubione) przestał być wrażliwy na polskie znaki
+  diakrytyczne — ten sam błąd i ta sama naprawa co w FR-2/v6 i FR-34/v3,
+  znalezione podczas przeglądu wszystkich miejsc porównujących surowe
+  napisy. Przed poprawką wpisanie „platki owsiane”, „salata” czy „chleb
+  zytni” nie znajdowało niczego, mimo że wszystkie trzy są na liście.
+  Zweryfikowane na żywo (headless Chromium): każde z tych zapytań zwraca
+  teraz właściwy kafelek, tak samo jak wersja z ogonkami.
+  CACHE_NAME→v111, `versions/v111/`.
 
 ---
 
@@ -1092,6 +1227,23 @@ Podczas wpisywania nazwy (od 2. wpisanego znaku) pod polem pojawia się lista po
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
 - **v2** (2026-08-08): Dodano listę podpowiedzi podczas wpisywania, na życzenie użytkownika ("jak użytkownik zaczyna pisać to niech system podpowiada co można wpisać i nie czeka na całą nazwę i enter").
+- **v3** (2026-08-28, Web only): Podpowiedzi przestały być wrażliwe na
+  polskie znaki diakrytyczne. **Realny błąd**, znaleziony przy okazji
+  naprawy tego samego problemu w wyszukiwarce przepisów (FR-2/v6) —
+  szukanie kolejnych miejsc porównujących surowe napisy ujawniło, że
+  **89 z 336 nazw w bazie zawiera ogonek**, a lista podpowiedzi
+  porównywała `n.startsWith(q)`/`n.includes(q)` bez normalizacji: wpisanie
+  „jablko” dawało ZERO podpowiedzi, mimo że „jabłko” jest w bazie
+  (potwierdzone pomiarowo na próbce: „jablko”, „chleb zytni”, „bulka
+  pszenna”, „ogorek”, „borowki / jagody”, „twarog bez laktozy” — każde
+  zwracało 0 trafień przed poprawką). Dotkliwe zwłaszcza tutaj, bo cała ta
+  funkcja istnieje po to, żeby NIE trzeba było wpisywać pełnej,
+  dokładnej nazwy. Naprawione istniejącą funkcją `foldDiacritics()` po obu
+  stronach porównania, z zachowaniem dotychczasowej kolejności wyników
+  (najpierw dopasowania od początku nazwy, potem zawierające frazę w
+  środku). Zweryfikowane na żywo (headless Chromium) przez realny przepływ
+  UI: „jablko” zwraca teraz „🍎 jabłko / jabłko suszone / 🧃 sok jabłkowy”,
+  identycznie jak „jabłko”. CACHE_NAME→v111, `versions/v111/`.
 
 ---
 
@@ -1213,7 +1365,7 @@ Wykres historii dziennego spożycia kalorii wraz z podsumowaniem bilansu tygodni
 # FR-42: Serie (streaks) i historia aktywności
 
 **Obszar:** Śledzenie postępów  
-**Status:** Zaimplementowane
+**Status:** Zaimplementowane (cofanie wyczyszczenia historii — v2 — na razie Web-only, patrz Historia rewizji)
 
 ## Opis
 Aplikacja liczy serie kolejnych dni spełniających kryteria (np. pełne nawodnienie, spożycie w granicach celu) oraz prowadzi dziennik aktywności (dodania/usunięcia z listy zakupów i spiżarni). Domyślnie pokazywanych jest 20 najnowszych wpisów historii z przyciskiem „Pokaż całą historię (N)”; działa też filtr po zakresie dat, który ignoruje limit 20 i pokazuje wszystkie pasujące wpisy.
@@ -1224,6 +1376,13 @@ Aplikacja liczy serie kolejnych dni spełniających kryteria (np. pełne nawodni
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
+- **v2** (2026-08-28, Web only): „Wyczyść całą historię aktywności”
+  zachowuje potwierdzenie, ale dodatkowo pokazuje powiadomienie z
+  przyciskiem „Cofnij”, przywracającym wszystkie wpisy. Domknięcie audytu
+  akcji destrukcyjnych rozpoczętego w FR-21/v2, FR-22/v2 i FR-26/v2 — ta
+  sama zasada dla akcji o pełnym zakresie. Zweryfikowane na żywo (headless
+  Chromium): wyczyszczenie historii (0 wpisów) → „Cofnij” → wszystkie wpisy
+  z powrotem, w tej samej kolejności. CACHE_NAME→v109, `versions/v109/`.
 
 ---
 
@@ -1725,10 +1884,19 @@ Spisane 2026-08-07: pierwszy, samodzielnie już działający element szerszej pr
 # FR-66: Dodawanie własnych przepisów przez użytkownika
 
 **Obszar:** Przepisy i przeglądanie  
-**Status:** Zaimplementowane
+**Status:** Zaimplementowane (edycja własnego przepisu — v7 — na razie Web-only, patrz Uwagi)
 
 ## Opis
 Przycisk „➕ Dodaj swój przepis” w zakładce Przepisy otwiera formularz (nazwa, kategoria, czas przygotowania, składniki — jeden na linię, sposób przygotowania, kalorie, opcjonalnie białko/węglowodany/tłuszcz). Zapisany przepis trafia do `state.myRecipes` i od razu jest pełnoprawnym przepisem: pojawia się na liście przepisów swojej kategorii oznaczony plakietką „✍️ Twój przepis”, można go zaplanować (Planer), dodać do listy zakupów, sprawdzić jego składniki względem spiżarni, oznaczyć jako zrobiony (z historią i oceną) oraz ocenić gwiazdkowo (FR-67) — dokładnie tak samo jak którykolwiek z 229 wbudowanych przepisów.
+
+Własny przepis można też EDYTOWAĆ (v7): przycisk „✏️ Edytuj” obok „🗑️ Usuń”
+na karcie otwiera ten sam formularz, wypełniony obecnymi wartościami, i
+zapisuje zmiany **zachowując identyfikator przepisu**. To istotne, bo
+wszystko, co odwołuje się do przepisu, jest kluczowane po ID: jego ocena
+gwiazdkowa i komentarz, historia gotowania oraz sloty w Planerze. Wcześniej
+jedynym sposobem na poprawienie literówki, złej liczby kalorii czy
+brakującego składnika było usunięcie i dodanie od nowa — co nadawało nowy
+identyfikator i po cichu odłączało wszystkie te powiązania.
 
 Pola makroskładników są opcjonalne i wypełniają się automatycznie w miarę wpisywania składników: formularz na bieżąco parsuje każdą linię składnika (rozpoznając ilość i gramaturę tak samo jak reszta aplikacji przy dodawaniu do spiżarni/listy zakupów) i sumuje wartości z osobnej bazy odżywczej (~90 najpopularniejszych składników). Pod polem widać, ile składników zostało rozpoznane. Ręczne wpisanie wartości w pole kalorii/białka/węgli/tłuszczu ma pierwszeństwo — od tego momentu auto-obliczanie przestaje nadpisywać akurat to pole, więc użytkownik zawsze może poprawić wynik, a nie tylko go zaakceptować.
 
@@ -1739,8 +1907,29 @@ Pola makroskładników są opcjonalne i wypełniają się automatycznie w miarę
 - Własny przepis można usunąć bezpośrednio z karty (przycisk „🗑️ Usuń”, z potwierdzeniem) — usunięcie nie wpływa na wcześniej dodane wpisy historii gotowania czy pozycje na liście zakupów pochodzące z tego przepisu.
 - Wpisanie składnika z rozpoznawalną ilością/gramaturą (np. „150 g piersi z kurczaka”) automatycznie dolicza jego kalorie i makroskładniki do sumy przepisu; nierozpoznane składniki (rzadkie/nietypowe nazwy) są pomijane w sumie, a formularz jasno informuje ile z wpisanych linii zostało rozpoznanych.
 - Ręczna edycja pola kalorii/białka/węglowodanów/tłuszczu zatrzymuje automatyczne nadpisywanie TEGO konkretnego pola do końca sesji formularza (nowe otwarcie formularza resetuje ten stan).
+- Web (v7): karta własnego przepisu ma przycisk „✏️ Edytuj” obok „🗑️ Usuń”.
+- Web (v7): formularz otwarty do edycji jest wypełniony obecnymi wartościami przepisu (nazwa, kategoria, czas, składniki, sposób przygotowania, źródło inspiracji, kalorie i makro), ma tytuł „✏️ Edytuj swój przepis” i przycisk „Zapisz zmiany”.
+- Web (v7): zapisanie zmian NIE tworzy drugiego przepisu i NIE zmienia identyfikatora — ocena, komentarz, historia gotowania i zaplanowane sloty pozostają powiązane z przepisem.
+- Web (v7): po zapisaniu zmian Planer i lista zakupów natychmiast pokazują nową nazwę i kalorie, bez potrzeby odświeżania.
+- Web (v7): otwarcie formularza przyciskiem „➕ Dodaj swój przepis” po wcześniejszej edycji działa jak dodawanie nowego (puste pola, nowy identyfikator), a nie jak kolejna edycja.
 
 ## Uwagi
+Edycja (v7) świadomie oznacza pola makro jako „ustawione ręcznie” przy
+otwarciu formularza — zapisane wartości SĄ własnymi liczbami użytkownika,
+więc auto-kalkulator nie powinien ich nadpisywać tylko dlatego, że
+formularz został ponownie otwarty.
+
+Edytowany przepis jest ponownie publikowany w społeczności (`pushCommunityRecipe`)
+— dokument jest kluczowany po ID przepisu, więc edycja nadpisuje go w
+miejscu zamiast tworzyć duplikat. Wraca przy tym do `status:"pending"`,
+świadomie: moderator zatwierdził poprzednią treść, a nie tę po zmianie.
+
+**v7 (edycja) świadomie Web-only na razie** — ta sesja pracuje w środowisku
+bez dostępu do `api.foojay.io` (toolchain JDK dla Gradle, błąd 403 przy
+`:app:compileDebugKotlin`), więc port do Compose nie może tu zostać ani
+skompilowany, ani przetestowany; odłożone do sesji z realnym dostępem do
+Gradle/emulatora, odnotowane w `android/PARITY.md`.
+
 Spisane 2026-08-07: pierwszy, w pełni lokalny element szerszej prośby o możliwość dodawania przepisów przez użytkowników z myślą o przyszłej społeczności — reszta (przepisy widoczne dla INNYCH użytkowników, moderacja) wymaga chmury i jest opisana w `docs/FIREBASE_MIGRATION_PLAN.md` jako `source: "community"` z polem `status`. Ten sam przepis, dodany dziś lokalnie jako `source: "custom"`, jest strukturalnie gotowy stać się przepisem społecznościowym po podłączeniu Firebase, bez zmiany kształtu danych.
 
 Technicznie: wprowadzono `allRecipes()` (łączy 229 wbudowanych przepisów z `state.myRecipes`) i `findRecipeById(id)`, zastępując bezpośrednie odwołania do stałej tablicy `RECIPES` we wszystkich miejscach, gdzie przepis jest wyszukiwany po ID lub filtrowany po kategorii.
@@ -1785,6 +1974,22 @@ Zrewidowane 2026-08-08: dodano automatyczne obliczanie kalorii/makroskładników
   web) otwierające wyszukiwarkę/YouTube przez `Intent(ACTION_VIEW)`.
   `./gradlew :app:assembleDebug :logic:test` przeszły; wizualna weryfikacja
   w Android Studio/na urządzeniu jeszcze ⏳ (patrz `android/PARITY.md`).
+- **v7** (2026-08-28, Web only): Dodana EDYCJA własnego przepisu. Zmiana z
+  własnej rekomendacji, po przeglądzie funkcji pod kątem luk: aplikacja
+  pozwalała własny przepis dodać i usunąć, ale nie poprawić — a
+  delete-and-re-add nadaje nowy identyfikator, więc po cichu osierocał
+  ocenę gwiazdkową, komentarz, historię gotowania i sloty w Planerze
+  wskazujące na stary przepis. Ten sam modal obsługuje teraz oba tryby
+  (`editingRecipeId`), przycisk „✏️ Edytuj” dołożony obok „🗑️ Usuń” na
+  karcie własnego przepisu. Zweryfikowane na żywo (headless Chromium):
+  przepis z oceną 5★+komentarzem, wpisem historii gotowania i zaplanowanym
+  slotem został wyedytowany (zmiana nazwy, kalorii i listy składników) —
+  identyfikator, ocena, komentarz, historia i slot w Planerze pozostały
+  nietknięte, liczba przepisów nie wzrosła, a Planer natychmiast pokazał
+  nową nazwę i „444 kcal”; osobno sprawdzone, że kolejne otwarcie
+  formularza przyciskiem „➕ Dodaj” działa jak czyste dodawanie (puste
+  pola, nowy identyfikator, 2 przepisy w sumie). CACHE_NAME→v109,
+  `versions/v109/`.
 
 ---
 
@@ -2289,7 +2494,6 @@ takim odświeżeniu. Usunięty całkowicie (patrz Historia rewizji v7).
   przez IndexedDB — to specyficzny koszt web'owej implementacji w
   przeglądarce, świadomie udokumentowana rozbieżność w `android/PARITY.md`.
 
-
 - **v8** (2026-08-29, Web only — REALNY BUG UTRATY ZMIAN): usuwanie
   czegokolwiek w wersji webowej nigdy nie docierało do chmury, więc po
   chwili wracało. Zgłoszenie: „w Web nie udawało mi się wyłączyć śledzenia
@@ -2312,7 +2516,7 @@ takim odświeżeniu. Usunięty całkowicie (patrz Historia rewizji v7).
   spoza listy pozostają nietknięte — czyli ściśle bezpieczniej niż
   `{merge:true}`. Android był od początku odporny (`CloudSyncCoordinator`
   zawsze używał `SetOptions.mergeFields`), stąd bug wyłącznie webowy.
-  Przy okazji do synchronizowanych pól dołączył `pantryHidden` (FR-98).
+  Przy okazji do synchronizowanych pól dołączył `pantryHidden` (FR-102).
 
 ---
 
@@ -3946,8 +4150,7 @@ przepisów.
   `FloatingBottomNav`; `startDestination` w `MainActivity.kt` zmieniony
   na `Screen.Planner.route`.
 
-
-- **v18** (2026-08-29): Karta dzisiejszego dnia na LIŚCIE dni tygodnia
+- **v19** (2026-08-29): Karta dzisiejszego dnia na LIŚCIE dni tygodnia
   przestała być pełnoekranowa — jest teraz dokładnie takiej wielkości jak
   pozostałe sześć. Zgłoszenie: „na stronie głównej planer na samej górze
   dzisiejszy dzień ładnie pokazuje się na całym ekranie a niżej w dniach
@@ -3964,7 +4167,7 @@ przepisów.
   emulatorze (karta „Sobota” z plakietką „Dziś” tej samej wysokości co
   „Niedziela”, obie widoczne na jednym ekranie).
 
-- **v19** (2026-08-29, Android only — REALNY BUG UKŁADU): włączenie opcji
+- **v20** (2026-08-29, Android only — REALNY BUG UKŁADU): włączenie opcji
   „Wypełniaj kolorem w miarę zjadania posiłków” (FR-88) rozciągało kafelek
   „POZOSTAŁO” na całą wysokość ekranu, spychając z niego całą listę
   posiłków. Zgłoszenie ze zrzutem ekranu: „w Android jak się włączy opcje
@@ -4083,15 +4286,22 @@ dokładnie tymi samymi domyślnymi kształtami co świeży stan web'a
 # FR-90: Kopiowanie planu jednego dnia na inny dzień
 
 **Obszar:** Planer, Android + Web
-**Status:** Zaimplementowane na obu platformach
+**Status:** Zaimplementowane na obu platformach (kierunek „na inne dni” — v2 — na razie Web-only, patrz Uwagi)
 
 ## Opis
 Na każdej karcie dnia w Planerze (obok istniejących „🎲 Losuj ten dzień” /
-„🗑️ Wyczyść ten dzień”) jest nowy przycisk „📋 Kopiuj plan z innego dnia”.
+„🗑️ Wyczyść ten dzień”) jest przycisk „📋 Kopiuj plan z innego dnia”.
 Otwiera picker z listą pozostałych 6 dni tygodnia — dni bez żadnego
 zaplanowanego posiłku są wyszarzone/nieklikalne. Wybranie dnia źródłowego
 NADPISUJE cały plan dnia docelowego (wszystkie 5 kategorii posiłków,
 razem ze skalą porcji i flagą „resztki”) planem z wybranego dnia.
+
+Web dostał też (v2) przeciwny kierunek: „📤 Kopiuj ten dzień na inne dni” —
+stojąc na dniu, którego plan już Ci odpowiada, zaznaczasz checkboxami
+dowolną liczbę innych dni i kopiujesz go na wszystkie naraz, jednym
+potwierdzeniem, zamiast osobno otwierać picker dla każdego dnia
+docelowego. To dokładniej odpowiada oryginalnej motywacji tej funkcji
+(patrz niżej) niż sam v1.
 
 Dodane po badaniu, czego najczęściej brakuje w aplikacjach dietetycznych —
 powtarzalny tygodniowy plan (np. te same śniadania w pon-pt) to częsta
@@ -4107,6 +4317,13 @@ skarga na ręczne, powtarzalne klikanie tych samych dań.
   tam wcześniej było.
 - Operacja jest natychmiastowa (bez osobnego potwierdzenia — to samo
   zachowanie co „🎲 Losuj ten dzień” dla pojedynczego dnia).
+- Web (v2): przycisk „📤 Kopiuj ten dzień na inne dni” wyłączony/wyszarzony,
+  gdy dzień, na którym stoisz, jest pusty (nie ma czego kopiować).
+- Web (v2): modal pozwala zaznaczyć dowolną liczbę pozostałych 6 dni
+  (checkboxy); potwierdzenie kopiuje plan źródłowego dnia na WSZYSTKIE
+  zaznaczone dni naraz, z podsumowującym toastem wymieniającym nazwy dni.
+- Web (v2): próba potwierdzenia bez zaznaczonego żadnego dnia pokazuje
+  komunikat „Zaznacz co najmniej jeden dzień” i nie zamyka modala.
 - `./gradlew :logic:test :app:compileDebugKotlin` przechodzi.
 
 ## Uwagi
@@ -4116,7 +4333,18 @@ recipeId+scale+isLeftover w jedną wartość na slot. Web: `openCopyDayModal()`
 używa `structuredClone()` do skopiowania TRZECH równoległych map
 (`state.planner`/`plannerScale`/`plannerLeftover`) na raz, bo web (w
 odróżnieniu od Androida) trzyma te trzy pola osobno zamiast w jednym
-obiekcie.
+obiekcie. `openCopySpreadModal()` (v2) robi to samo w pętli po zaznaczonych
+dniach.
+
+**v2 (kierunek „na inne dni”) świadomie Web-only na razie** — port do
+Androida wymagałby nietrywialnej zmiany UI w Compose (stan multi-select
+zamiast serii prostych `onClick`), a ta sesja pracuje w środowisku bez
+dostępu do `api.foojay.io` (toolchain JDK dla Gradle, potwierdzone błędem
+403 przy `:app:compileDebugKotlin` — patrz FR-95/v2's ten sam problem),
+więc nie da się jej tu skompilować ani przetestować jednostkowo. Zamiast
+piętrzyć kolejny niezweryfikowany krok w Kotlinie bez szansy na sprawdzenie
+w tej samej turze (zasada z CLAUDE.md), odłożone do sesji z realnym
+dostępem do Gradle/emulatora — odnotowane w `android/PARITY.md`.
 
 ## Historia rewizji
 - **v1** (2026-08-26): Pierwsza wersja, część większej nocnej rundy „co
@@ -4125,6 +4353,17 @@ obiekcie.
   jednostkowymi (`:logic:test`, `:app:compileDebugKotlin`) oraz składniowo
   na webie (`node --check` na wyekstrahowanym JS) — **nie zweryfikowane
   wizualnie/interaktywnie w przeglądarce ani na emulatorze w tej turze**.
+- **v2** (2026-08-28, Web only): Dodany przeciwny kierunek kopiowania —
+  „📤 Kopiuj ten dzień na inne dni” — na wyraźną prośbę użytkownika o
+  dalszą rozbudowę funkcji Plannera. Nowy modal `copySpreadOverlay` z
+  checkboxami (zamiast pojedynczych przycisków-do-natychmiastowego-kopiowania
+  jak w v1, bo tu trzeba jawnie potwierdzić wybór wielu celów naraz).
+  Zweryfikowane na żywo (headless Chromium, w pełni offline): przycisk
+  poprawnie wyłączony dla pustego dnia źródłowego, kopiowanie na 2
+  zaznaczone dni potwierdzone przez odczyt `state.planner` po operacji
+  (trzeci, niezaznaczony dzień pozostał nietknięty), pusty wybór poprawnie
+  blokowany komunikatem zamiast cichego no-opa. CACHE_NAME→v105,
+  `versions/v105/`. Android: bez zmian w tej turze, patrz Uwagi.
 
 ---
 
@@ -4189,8 +4428,11 @@ tygodnia jako zwykły tekst (dzień → kategoria → nazwa dania, ze skalą
 porcji jeśli inna niż 1×) — na wzór już istniejącego udostępniania listy
 zakupów (FR-26).
 
-Web: dwa przyciski, „🟢 WhatsApp” (otwiera `wa.me` z gotowym tekstem) i
-„📋 Kopiuj plan tygodnia” (schowek).
+Web: trzy przyciski — „📤 Udostępnij plan tygodnia” (natywny arkusz
+udostępniania systemu przez `navigator.share`, czyli Messenger/Signal/
+SMS/e-mail/cokolwiek użytkownik ma na telefonie; na desktopie i wszędzie
+tam, gdzie API nie jest dostępne, kopiuje do schowka), „🟢 WhatsApp”
+(otwiera `wa.me` z gotowym tekstem) i „📋 Kopiuj plan tygodnia” (schowek).
 
 Android: „📤 Udostępnij plan” (natywny arkusz udostępniania,
 `Intent.ACTION_SEND`, ten sam wzorzec co istniejący przycisk „Udostępnij”
@@ -4207,6 +4449,12 @@ potrzeba, dotąd niemożliwa bez ręcznego przepisywania.
   posiłkiem, z ikoną kategorii, nazwą dania i skalą porcji (jeśli ≠ 1×).
 - Dni bez żadnego zaplanowanego posiłku są pomijane w wygenerowanym tekście.
 - Kopiowanie do schowka pokazuje potwierdzenie (toast/Toast).
+- Web (v2): „📤 Udostępnij plan tygodnia” otwiera natywny arkusz
+  udostępniania, jeśli przeglądarka wspiera `navigator.share`.
+- Web (v2): jeśli `navigator.share` nie jest dostępne, ten sam przycisk
+  kopiuje plan do schowka i pokazuje potwierdzenie — nigdy nie jest martwy.
+- Web (v2): anulowanie arkusza udostępniania przez użytkownika nie pokazuje
+  żadnego błędu.
 - `./gradlew :logic:test :app:compileDebugKotlin` przechodzi.
 
 ## Historia rewizji
@@ -4216,6 +4464,21 @@ potrzeba, dotąd niemożliwa bez ręcznego przepisywania.
   kształt tekstu. Zweryfikowane kompilacją i testami jednostkowymi oraz
   składniowo na webie. **Nie zweryfikowane wizualnie/interaktywnie**
   (w tym rzeczywiste otwarcie WhatsApp/arkusza udostępniania) w tej turze.
+- **v2** (2026-08-28, Web only): Web dostał natywny arkusz udostępniania
+  (`navigator.share`), którego Android miał od v1 (`Intent.ACTION_SEND`) —
+  czyli **zamknięcie realnej luki w parytecie, przeoczonej przy v1**:
+  webowa wersja oferowała tylko WhatsApp i schowek, więc wysłanie planu
+  przez Messenger, Signal, SMS czy e-mail wymagało ręcznego wklejania,
+  mimo że przeglądarki na telefonach udostępniają dokładnie ten sam
+  systemowy arkusz co Android natywnie. Przy okazji refaktoring: logika
+  „udostępnij natywnie albo skopiuj do schowka” wyjęta z handlera przycisku
+  listy zakupów (jedyne miejsce, gdzie na webie istniała) do współdzielonej
+  `shareOrCopyText(title, text, fallbackMsg)`, używanej teraz przez oba
+  ekrany — zamiast kopiować ten sam `if(navigator.share)` po raz drugi.
+  Zweryfikowane na żywo (headless Chromium) OBIE ścieżki osobno: z
+  podstawionym `navigator.share` (arkusz dostaje poprawny tytuł i tekst,
+  schowek nietknięty) i z usuniętym `navigator.share` (fallback kopiuje do
+  schowka i pokazuje potwierdzenie). CACHE_NAME→v107, `versions/v107/`.
 
 ---
 
@@ -4285,9 +4548,28 @@ wymienianych, brakujących funkcji.
 - Godzina początku ≥ godzina końca traktowana jako okno zawijające się
   przez północ (np. 20-4 = je się 20:00-04:00).
 - Zmiana godzin w Ustawieniach natychmiast aktualizuje status na „Dziś”.
+- Web (v5): osobny, domyślnie WYŁĄCZONY przełącznik „Powiadamiaj o otwarciu
+  i zamknięciu okna jedzenia” — włączenie śledzenia samo w sobie nie
+  zaczyna niczego wysyłać.
+- Web (v5): włączenie przełącznika bez zgody na powiadomienia prosi o nią,
+  a przy odmowie cofa przełącznik i mówi wprost, że opcja nie zadziała.
+- Web (v5): dokładnie dwa powiadomienia na dobę — jedno przy otwarciu, jedno
+  przy zamknięciu okna; ta sama granica nigdy nie jest ogłaszana dwa razy.
+- Web (v5): powiadomienie wysyłane jest tylko w ciągu 10 minut od granicy;
+  później (telefon był wyłączony, karta spała) jest pomijane, zamiast
+  ogłaszać z opóźnieniem zdarzenie sprzed godzin.
+- Web (v5): zmiana godzin okna kasuje pamięć „już ogłoszone dzisiaj”, więc
+  nowa granica może zostać ogłoszona tego samego dnia.
 - `./gradlew :logic:test :app:compileDebugKotlin` przechodzi.
 
 ## Uwagi
+Web: status renderuje się w dwóch miejscach zależnie od motywu — dla 11
+„zwykłych” motywów do `#fastingStatus` (wewnątrz nagłówka, `renderFastingStatus()`),
+dla Klinika/Klinika (noc) do własnego dashboardu (`renderPlannerDashboard()`,
+pod „Cześć, {imię}!”) — patrz **v3** niżej, dlaczego to rozdzielenie jest
+konieczne. Obie ścieżki liczą status tą samą funkcją `computeFastingStatus()`,
+żeby nie utrzymywać dwóch kopii tej samej logiki zawijania przez północ.
+
 Świadoma decyzja o zakresie: na Androidzie to ustawienie jest
 LOKALNE-TYLKO (`FastingViewModel` + `LocalPersistenceCoordinator`, NIE
 `CloudSyncCoordinator`) — ten sam wzorzec co `RemainingKcalFillViewModel`
@@ -4321,6 +4603,83 @@ duplikat.
   jedzenie od 12:00” faktycznie widoczny na ekranie Planer po włączeniu
   ustawienia. `./gradlew :logic:test :app:assembleDebug` przechodzą.
   `versionCode` 84→85, `versionName` 0.1.83→0.1.84.
+- **v3** (2026-08-28): Naprawiony ten sam, dokładnie analogiczny błąd na
+  Webie — nigdy nie odkryty wcześniej, bo v1 zweryfikowano tylko kompilacją
+  i składniowo, nie interaktywnie. Znaleziony podczas sesji uruchamiającej
+  `index.html` na żywo (headless Chromium, w pełni offline) w celu
+  sprawdzenia 8 funkcji z nocnej rundy FR-90–97: status renderował się
+  poprawnie do `#fastingStatus`, ale ten element leży wewnątrz
+  `.header-collapsible`, którą CSS Klinika/Klinika (noc) chowa całkowicie
+  (`display:none`) — a Klinika jest domyślnym motywem webowej aplikacji od
+  FR-87/v8, więc status nigdy nie był widoczny w praktyce na domyślnych
+  ustawieniach, tak samo jak wcześniej na Androidzie przed v2. Naprawione
+  tym samym wzorcem: logika wydzielona do współdzielonej
+  `computeFastingStatus()`, wywołanej też w `renderPlannerDashboard()`
+  (Klinika), status renderowany pod „Cześć, {imię}!” — plus nowy,
+  osobny styl `.pd-fasting-status` (żeby kolory pasowały do jasnej karty
+  Klinika i jej wariantów Ocean/Terakota, zamiast reużywać biało-na-
+  -przezroczystym `.fasting-status` dobrane pod ciemny nagłówek pozostałych
+  11 motywów). Oba listenery zmiany ustawień (`setFastingEnabled`,
+  `setFastingStart`/`setFastingEnd`) dostały dodatkowe wywołanie
+  `renderPlannerDashboard()` obok istniejącego `renderFastingStatus()`, tak
+  by zmiana natychmiast aktualizowała status też w Klinice. Zweryfikowane
+  na żywo (nie tylko składniowo): oba stany (okno jedzenia/okno postu)
+  sprawdzone zrzutem ekranu na domyślnym motywie Klinika, regresja
+  sprawdzona na motywie nie-Klinika (status nadal w starym miejscu, bez
+  zmian). `node -e "new Function(...)"` na obu blokach `<script>` przechodzi.
+  CACHE_NAME→v104, `versions/v104/`. Android: bez zmian (już naprawione w v2).
+- **v4** (2026-08-28, Web only): Status odświeża się teraz sam z upływem
+  czasu. Wcześniej był przeliczany wyłącznie przy okazji jakiegoś innego
+  renderowania, więc aplikacja zostawiona otwarta potrafiła długo po
+  zamknięciu okna jedzenia dalej twierdzić „🍽️ Okno jedzenia” — czyli
+  funkcja, której cała wartość polega na pokazywaniu AKTUALNEGO stanu,
+  pokazywała stan nieaktualny. Dodany wspólny „tik zegara” (co 60 s), który
+  aktualizuje tekst i styl statusu **w miejscu**, bez przebudowywania
+  dashboardu — świadomie, bo pełne renderowanie co minutę przerywałoby gest
+  przesuwania karty i resetowało pozycję przewijania. Ten sam tik wykrywa
+  też zmianę doby (patrz FR-101) i dopiero wtedy robi pełne odświeżenie.
+  Zweryfikowane na żywo (headless Chromium) z podstawionym zegarem:
+  przejście 22:00 → 14:00 → 22:00 poprawnie przełącza tekst i klasę
+  „post/jedzenie”, wyłączenie opcji usuwa element, ponowne włączenie
+  przywraca go. CACHE_NAME→v112, `versions/v112/`.
+- **v5** (2026-08-28, Web only): Dodane powiadomienia o granicach okna
+  jedzenia — ostatnia pozycja z listy rekomendacji zaproponowanej
+  użytkownikowi. Sam status na ekranie wymaga, żeby na niego spojrzeć, a
+  cała wartość okna czasowego polega na tym, żeby wiedzieć, KIEDY się
+  zmienia. Opcja jest osobnym, domyślnie wyłączonym przełącznikiem obok
+  godzin (włączenie samego śledzenia nie zaczyna niczego wysyłać) i
+  korzysta z tego samego tiku zegara co v4 — bez nowego mechanizmu
+  harmonogramowania.
+
+  Decyzje warte odnotowania: (1) logika „czy teraz wypada powiadomić”
+  została wydzielona do czystej funkcji `fastingNotificationDue(fasting,
+  nowDate, todayKey)`, przyjmującej czas jako argument — bo ścieżka
+  `showNotification()` wymaga Service Workera i zgody, których nie da się
+  odtworzyć w headlessowej weryfikacji używanej w tym projekcie, natomiast
+  wszystkie reguły decydujące o wysyłce dają się przetestować i to w nich
+  mieszkałyby błędy; (2) 10-minutowe okno tolerancji — powiadomienie
+  „okno jedzenia właśnie się otworzyło” wysłane trzy godziny po fakcie
+  jest gorsze niż brak powiadomienia; (3) `lastNotified` zapisywane jest
+  PRZED próbą wysłania — gdy wysyłka zawiedzie (cofnięta zgoda, brak SW),
+  użytkownik po prostu nic nie dostaje, zamiast dostawać ponawianą próbę
+  co minutę przez całe okno tolerancji.
+
+  Uwaga o synchronizacji: `fasting` należy do `SYNCED_STATE_KEYS`, więc
+  `lastNotified` wędruje między urządzeniami — w praktyce oznacza to, że
+  daną granicę ogłosi jedno urządzenie, a nie każde z osobna. Uznane za
+  zachowanie pożądane (brak podwójnych powiadomień na telefonie i
+  laptopie), nie za efekt uboczny.
+
+  Zweryfikowane na żywo (headless Chromium): 14 przypadków logiki
+  decyzyjnej — dokładna godzina granicy, wnętrze i koniec okna tolerancji,
+  minuta przed, druga granica tego samego dnia, powtórka tego samego dnia
+  (pomijana), ta sama granica następnego dnia (wysyłana), wyłączony
+  przełącznik, wyłączony tracker, okno 24-godzinne (start==koniec),
+  okno zawijające się przez północ, brak obiektu konfiguracji; plus pełna
+  ścieżka przełącznika w Ustawieniach: odmowa zgody cofa przełącznik i
+  pokazuje komunikat, zgoda go akceptuje i zeruje pamięć ogłoszeń,
+  wyłączenie działa, a formularz odtwarza zapisany stan.
+  CACHE_NAME→v114, `versions/v114/`.
 
 ---
 
@@ -4332,9 +4691,10 @@ duplikat.
 ## Opis
 Karta przepisu (zwinięta lub rozwinięta, wszędzie gdzie się pojawia —
 Przepisy, podgląd z Planera) ma teraz trzeci przycisk akcji, „✨ Gemini”,
-obok istniejących Google/YouTube. Otwiera Gemini z gotowym promptem
-proszącym o szczegółowy, krok-po-kroku przepis na dokładnie to danie (z
-jego nazwą).
+obok istniejących Google/YouTube. Otwiera od razu gotową odpowiedź AI
+(Google Search „AI Mode”, `udm=50`) z promptem proszącym o szczegółowy,
+krok-po-kroku przepis na dokładnie to danie (z jego nazwą) — patrz **v2**
+niżej, dlaczego to Google Search zamiast bezpośrednio gemini.google.com.
 
 Jednocześnie: kliknięcie w SAM TYTUŁ przepisu (które otwiera wyszukiwanie
 Google) jest teraz aktywne WYŁĄCZNIE gdy karta jest rozwinięta — na
@@ -4344,8 +4704,9 @@ nie otwiera już wyszukiwania w tle.
 ## Kryteria akceptacji
 - Przycisk „✨ Gemini” widoczny obok Google/YouTube na każdej karcie
   przepisu, niezależnie od stanu zwinięcia.
-- Kliknięcie „✨ Gemini” otwiera Gemini z promptem zawierającym nazwę
-  dania i prośbę o szczegółowy przepis krok po kroku.
+- Kliknięcie „✨ Gemini” od razu pokazuje odpowiedź AI (bez dodatkowego
+  ręcznego wysłania/potwierdzenia) z promptem zawierającym nazwę dania i
+  prośbę o szczegółowy przepis krok po kroku.
 - Kliknięcie tytułu na ZWINIĘTEJ karcie: nie otwiera wyszukiwania Google
   (tylko normalne rozwinięcie karty).
 - Kliknięcie tytułu na ROZWINIĘTEJ karcie: otwiera wyszukiwanie Google
@@ -4357,6 +4718,28 @@ nie otwiera już wyszukiwania w tle.
   poprosił o nie w tym samym zdaniu, ta sama część UI karty). Zweryfikowane
   kompilacją i testami jednostkowymi oraz składniowo na webie. **Nie
   zweryfikowane wizualnie/interaktywnie** w tej turze.
+- **v2** (2026-08-28): Użytkownik zgłosił, że przycisk „✨ Gemini” w
+  praktyce „otwiera tylko stronę do wpisania tekstu” — `gemini.google.com/
+  app?q=` faktycznie tylko WYPEŁNIA pole czatu Gemini, nigdy go nie
+  wysyła, więc każde kliknięcie i tak wymagało ręcznego wysłania
+  wiadomości, ciche unieważnienie sensu przycisku „jedno kliknięcie,
+  gotowy przepis”. Brak udokumentowanego parametru auto-wysyłki dla
+  czatowego UI Gemini (i nie da się wstrzyknąć skryptu do strony w innej
+  domenie z poziomu `window.open`/`Intent.ACTION_VIEW`) — zamiast tego
+  przełączone na Google Search „AI Mode” (`udm=50`): ten sam model
+  (Gemini) pod spodem, ale strona wyników wyszukiwania odpowiada od razu
+  po wczytaniu jak każde inne wyszukiwanie, bez niczego do kliknięcia.
+  Etykieta przycisku bez zmian („✨ Gemini”) — to wciąż odpowiedź Gemini,
+  tylko inny kształt URL-a. Web: `data-search-gemini` handler w
+  `index.html`. Android: `RecipeListScreen.kt`'s analogiczny `OutlinedButton`
+  — **niezweryfikowane kompilacją w tej sesji** (środowisko zdalne bez
+  dostępu do `api.foojay.io`/toolchainów Gradle, potwierdzone błędem 403
+  przy `:app:compileDebugKotlin`; zmiana jest jednoliniowa i mechaniczna,
+  ale czeka na potwierdzenie kompilacją/wizualnie w prawdziwym Android
+  Studio lub lokalnej sesji z pełnym dostępem do sieci). Web zweryfikowany
+  na żywo (headless Chromium, przechwycone `window.open`): przycisk
+  konstruuje `https://www.google.com/search?q=...&udm=50` z poprawnym,
+  zakodowanym promptem.
 
 ---
 
@@ -4404,12 +4787,20 @@ warte trójstronnego scalania między urządzeniami. Na webie jest częścią
 # FR-97: Znacznik stanu spiżarni na kartach „Dzisiejszy Planer”
 
 **Obszar:** Planer (motyw Klinika), Android + Web
-**Status:** Zaimplementowane na obu platformach
+**Status:** Zaimplementowane na obu platformach (klikalność znacznika — v2 — na razie Web-only, patrz Uwagi)
 
 ## Opis
 Na kartach dań w sekcji „Dzisiejszy Planer” (dużo wolnego miejsca na
 karcie) dodany mały znacznik: ile z potrzebnych składników danego dania
 jest już w spiżarni, a ile trzeba dokupić (np. „🏺 4/6 w spiżarni”).
+
+Na webie (v2) znacznik jest dodatkowo klikalny — stuknięcie otwiera od razu
+okno „sprawdź co masz” (FR-16) dla tego dania, czyli szczegółową listę
+składników z informacją, których brakuje, podpowiedziami zamienników
+(FR-93) i przyciskami „🛒”/„+ Mam to”. Dotąd znacznik pokazywał tylko
+liczbę, a żeby zobaczyć KTÓRYCH składników brakuje, trzeba było
+stuknąć kartę, otworzyć podgląd przepisu i dopiero stamtąd wejść w stan
+spiżarni.
 
 ## Kryteria akceptacji
 - Każda karta dania w „Dzisiejszy Planer” pokazuje znacznik „🏺 N/M w
@@ -4418,7 +4809,26 @@ jest już w spiżarni, a ile trzeba dokupić (np. „🏺 4/6 w spiżarni”).
 - Znacznik aktualizuje się na żywo po zmianie zawartości spiżarni, bez
   konieczności odświeżenia ekranu.
 - Puste sloty (bez zaplanowanego dania) nie pokazują znacznika.
+- Web (v2): stuknięcie znacznika otwiera okno „sprawdź co masz” dla tego
+  dania (a NIE podgląd przepisu, który otwiera stuknięcie reszty karty).
+- Web (v2): stuknięcie dowolnego innego miejsca karty nadal otwiera podgląd
+  przepisu, bez zmian względem v1.
 - `./gradlew :logic:test :app:compileDebugKotlin` przechodzi.
+
+## Uwagi
+Web: znacznik zmieniony ze `<span>` na `<button>` z pełnym resetem stylu
+(bez tła/obramowania), żeby wyglądał identycznie jak wcześniej, plus
+kropkowane podkreślenie — ta sama konwencja „ten tekst coś otwiera”, co
+istniejące `.recipe-title`. Handler wywołuje istniejące `openPantryModal(r)`
+(FR-16), zero nowej logiki. Nadrzędny handler karty (podgląd przepisu)
+dostał `closest("[data-pd-pantry-check]")` do listy wyjątków, obok już
+istniejącego wyjątku dla przycisku usuwania.
+
+**v2 (klikalność) świadomie Web-only na razie** — ta sesja pracuje w
+środowisku bez dostępu do `api.foojay.io` (toolchain JDK dla Gradle,
+błąd 403 przy `:app:compileDebugKotlin`), więc port do Compose nie może tu
+zostać ani skompilowany, ani przetestowany; odłożone do sesji z realnym
+dostępem do Gradle/emulatora, odnotowane w `android/PARITY.md`.
 
 ## Historia rewizji
 - **v1** (2026-08-26): Pierwsza wersja. Wykorzystuje istniejące
@@ -4426,10 +4836,386 @@ jest już w spiżarni, a ile trzeba dokupić (np. „🏺 4/6 w spiżarni”).
   zero nowej logiki kategoryzacji. Zweryfikowane kompilacją i testami
   jednostkowymi oraz składniowo na webie. **Nie zweryfikowane
   wizualnie/interaktywnie** w tej turze.
+- **v2** (2026-08-28, Web only): Znacznik zrobiony klikalnym — na wyraźną
+  prośbę użytkownika („zrób punkt 1, klikalny znacznik spiżarni”), z
+  wcześniejszej listy rekomendacji: sam licznik „4/6” mówi ILE brakuje, ale
+  nie CZEGO, a droga do tej informacji wiodła przez dwa dodatkowe
+  stuknięcia mimo że dane były już policzone w tym samym miejscu.
+  Zweryfikowane na żywo (headless Chromium): stuknięcie znacznika otwiera
+  `pantryModalOverlay` z 6 wierszami składników (a nie podgląd przepisu),
+  stuknięcie nazwy dania nadal otwiera podgląd przepisu (a nie spiżarnię) —
+  oba kierunki potwierdzone osobno, żeby wykluczyć przechwycenie zdarzenia
+  przez nadrzędny handler karty. CACHE_NAME→v106, `versions/v106/`.
 
 ---
 
-# FR-98: Trwałe usuwanie produktu ze spiżarni
+# FR-98: Kopia zapasowa danych do pliku (eksport i import)
+
+**Obszar:** Ustawienia → Konto, Web
+**Status:** Zaimplementowane na webie (Android — nieprzeniesione, patrz Uwagi)
+
+## Opis
+W Ustawieniach → Konto jest karta „💾 Kopia zapasowa danych” z dwoma
+przyciskami:
+
+- **„⬇️ Zapisz kopię zapasową do pliku”** — zapisuje wszystkie dane
+  użytkownika (profil, spiżarnia, lista zakupów, planer, ulubione, własne
+  przepisy, oceny, historia wagi i kalorii, ustawienia) do jednego pliku
+  JSON na urządzeniu, o nazwie `dieta-app-kopia-RRRR-MM-DD.json`.
+- **„⬆️ Wczytaj kopię zapasową z pliku”** — wczytuje wcześniej zapisany
+  plik i ZASTĘPUJE nim obecne dane w aplikacji, po pokazaniu daty, z
+  której pochodzi kopia, i poproszeniu o potwierdzenie.
+
+Działa niezależnie od logowania i od synchronizacji z chmurą — to jedyna
+ścieżka odzyskania danych, która nie zależy od tego, czy chmura działa.
+
+Powód dodania (2026-08-28): aplikacja nie miała ŻADNEGO sposobu na
+wydostanie danych z siebie. Wszystko żyje w `localStorage` i opcjonalnie w
+Firestore, a historia tego projektu pokazuje, dlaczego to za mało: FR-73
+przeszedł kilka rund realnych awarii synchronizacji, FR-89 dodał przycisk
+kasujący wszystkie dane na koncie, a zalogowanie się na drugim urządzeniu
+ZASTĘPUJE dane lokalne zamiast je scalać (opisane wprost w karcie „Konto w
+chmurze”). W każdym z tych scenariuszy plik, który użytkownik trzyma u
+siebie, jest ostatnią linią obrony.
+
+## Kryteria akceptacji
+- Eksport zapisuje plik JSON o nazwie zawierającej datę eksportu.
+- Wyeksportowany plik zawiera znacznik formatu (`format`, `version`),
+  datę eksportu (`exportedAt`) i wszystkie dane użytkownika.
+- Import z poprawnego pliku odtwarza dane dokładnie w stanie z momentu
+  eksportu (sprawdzone m.in. na profilu, spiżarni, planerze, ulubionych i
+  historii wagi).
+- Import prosi o potwierdzenie i pokazuje datę, z której pochodzi kopia,
+  ZANIM cokolwiek nadpisze.
+- Import pliku, który nie jest kopią zapasową Dieta App, pokazuje
+  komunikat i NIE zmienia obecnych danych.
+- Import pliku z uszkodzonym JSON-em pokazuje komunikat i NIE zmienia
+  obecnych danych.
+- Import pliku z nowszą wersją formatu niż obsługiwana pokazuje komunikat
+  i NIE zmienia obecnych danych.
+- Wybranie tego samego pliku dwa razy pod rząd działa za drugim razem tak
+  samo jak za pierwszym.
+
+## Uwagi
+Zakres eksportu to dokładnie `SYNCED_STATE_KEYS` — ta sama lista, którą
+aplikacja synchronizuje z chmurą. Świadoma decyzja: kopia obejmująca
+cokolwiek innego niż ten zbiór z definicji rozjeżdżałaby się z tym, co
+przenosi zalogowanie się na drugim urządzeniu. Celowo NIE jest to zrzut
+całego obiektu `state`, który trzyma też pola pochodne i sesyjne, mające
+sens tylko na tym urządzeniu.
+
+Import stosuje wyłącznie klucze, które aplikacja zna (`SYNCED_STATE_KEYS`):
+starsza kopia zostawia nowsze pola w obecnym stanie zamiast kasować je do
+`undefined`, a nieznany klucz z ręcznie zmodyfikowanego pliku jest
+ignorowany, zamiast wstrzykiwać się do `state`.
+
+Po imporcie interfejs odświeża się przez istniejące `refreshUiAfterSync()`
+(mechanizm z FR-73) — ta sama ścieżka, którą aplikacja i tak stosuje po
+otrzymaniu danych z chmury, więc nie powstaje drugi, równoległy sposób
+„przeładuj wszystko po podmianie stanu”.
+
+`URL.revokeObjectURL` jest wywoływane z opóźnieniem, a nie natychmiast —
+część przeglądarek mobilnych przekazuje blob do menedżera pobierania
+asynchronicznie i unieważnienie w tym samym cyklu potrafi anulować
+pobieranie, zanim się zacznie.
+
+**Android: nieprzeniesione.** Ta sesja pracuje w środowisku bez dostępu do
+`api.foojay.io` (toolchain JDK dla Gradle, błąd 403 przy
+`:app:compileDebugKotlin`), więc kodu w Kotlinie nie da się tu
+skompilować ani przetestować. Port będzie wymagał `ACTION_CREATE_DOCUMENT`
+/ `ACTION_OPEN_DOCUMENT` (Storage Access Framework) zamiast blobu i linku
+`download` — czyli nie jest to przepisanie 1:1, tylko osobny kawałek pracy.
+Odnotowane w `android/PARITY.md`.
+
+## Historia rewizji
+- **v1** (2026-08-28, Web only): Pierwsza wersja. Zmiana z własnej
+  rekomendacji, po przeglądzie funkcji pod kątem luk (użytkownik: „dodawaj
+  swoje rekomendowane zmiany”). Zweryfikowane na żywo (headless Chromium,
+  z przechwyceniem realnego pobierania pliku): eksport → wyczyszczenie
+  danych w aplikacji → import tego samego pliku → wszystkie sprawdzane pola
+  (nazwa użytkownika, spiżarnia, planer, ulubione, historia wagi) wróciły
+  identyczne; osobno sprawdzone trzy ścieżki odrzucenia (plik niebędący
+  kopią, uszkodzony JSON, nowsza wersja formatu) — każda pokazała właściwy
+  komunikat i zostawiła dane nietknięte. CACHE_NAME→v108, `versions/v108/`.
+
+---
+
+# FR-99: Wyszukiwanie na liście zakupów
+
+**Obszar:** Lista zakupów, Web
+**Status:** Zaimplementowane na webie (Android — nieprzeniesione, patrz Uwagi)
+
+## Opis
+Nad listą zakupów jest pole „Szukaj na liście zakupów…”, filtrujące
+pozycje po nazwie w miarę pisania. Filtr działa tak samo w obu widokach
+listy (klasycznym „📃 Lista” i kafelkowym „🏺 Kafelki”), bo oba renderują
+te same dane.
+
+Wyszukiwanie ignoruje polskie znaki diakrytyczne — „zolty” znajduje
+„żółty ser”. (Uwaga historyczna: przy dodawaniu tej funkcji okazało się, że
+wyszukiwanie PRZEPISÓW takiej odporności NIE miało — zostało to naprawione
+osobno, patrz FR-2/v6.)
+
+Licznik pozycji nad listą pokazuje przy aktywnym filtrze „N z M pozycji”,
+żeby nigdy nie przeczył temu, co widać na ekranie, ale jednocześnie było
+widać, że reszta listy nadal istnieje. Obok pola jest przycisk „✕”
+czyszczący filtr (widoczny tylko, gdy filtr jest aktywny).
+
+Powód dodania (2026-08-28): realne listy zakupów w tej aplikacji bywają
+długie — lista 87-pozycyjna została odnotowana przy okazji debugowania
+FR-87/v9 — a pozycje są pogrupowane po kategoriach, czyli w kolejności
+przydatnej w sklepie, ale nie do szukania konkretnej rzeczy. Odpowiedź na
+pytanie „czy dodałem już mleko?” wymagała przewinięcia całej listy.
+
+## Kryteria akceptacji
+- Wpisanie tekstu filtruje listę do pozycji, których nazwa zawiera ten
+  tekst.
+- Filtrowanie ignoruje polskie znaki diakrytyczne w obie strony.
+- Licznik pozycji pokazuje „N z M pozycji” przy aktywnym filtrze i samo
+  „M pozycji”, gdy filtr jest pusty.
+- Brak dopasowań pokazuje czytelny komunikat z wpisaną frazą, a nie pustą
+  listę.
+- Widok kafelkowy respektuje ten sam filtr co widok listy.
+- Przycisk „✕” czyści filtr i przywraca pełną listę; jest widoczny tylko
+  przy aktywnym filtrze.
+- Pusta lista zakupów (bez żadnej pozycji) nadal pokazuje swój dotychczasowy
+  komunikat zachęcający do dodania składników — a nie komunikat o braku
+  wyników wyszukiwania.
+- Udostępnianie i kopiowanie listy (FR-26) eksportuje CAŁĄ listę, nie
+  przefiltrowany widok.
+
+## Uwagi
+Fraza wyszukiwania celowo NIE jest zapisywana w `state` (a więc nie trafia
+do `SYNCED_STATE_KEYS` ani do chmury): to przejściowy sposób patrzenia na
+listę, a nie jej część — synchronizowanie go oznaczałoby, że jedno
+urządzenie może zostawić listę na drugim w tajemniczo przefiltrowanym
+stanie.
+
+Rozdzielenie `allKeys` (pełna lista) od `keys` (przefiltrowana) w
+`renderShop()` jest celowe: komunikat „lista jest pusta” musi zależeć od
+tej pierwszej, a komunikat „nic nie pasuje” od drugiej — inaczej pusta
+lista pokazywałaby użytkownikowi, że jego wyszukiwanie nic nie znalazło,
+zamiast podpowiedzieć, jak w ogóle dodać pierwsze składniki.
+
+`buildListText()` (udostępnianie/kopiowanie) świadomie pomija filtr —
+filtr służy do znalezienia czegoś na ekranie, a nie do wybrania, co wysłać
+osobie robiącej zakupy.
+
+**Android: nieprzeniesione.** Ta sesja pracuje w środowisku bez dostępu do
+`api.foojay.io` (toolchain JDK dla Gradle, błąd 403 przy
+`:app:compileDebugKotlin`), więc kodu w Kotlinie nie da się tu
+skompilować ani przetestować. Odnotowane w `android/PARITY.md`.
+
+## Historia rewizji
+- **v1** (2026-08-28, Web only): Pierwsza wersja. Zmiana z własnej
+  rekomendacji. Zweryfikowane na żywo (headless Chromium), siedem
+  przypadków osobno: brak filtra (5 pozycji, „✕” ukryty), filtr „mle”
+  (1 z 5, właściwa pozycja), filtr „zolty” znajdujący „żółty ser”
+  (niewrażliwość na diakrytyki), brak dopasowań (komunikat z frazą),
+  widok kafelkowy respektujący filtr (1 kafelek), wyczyszczenie filtra
+  przywracające pełną listę i puste pole, oraz `buildListText()` przy
+  aktywnym filtrze zwracający wszystkie 5 pozycji. CACHE_NAME→v108,
+  `versions/v108/`.
+
+---
+
+# FR-100: Podsumowanie odżywcze zaplanowanego tygodnia
+
+**Obszar:** Planer tygodniowy, Web
+**Status:** Zaimplementowane na webie (Android — nieprzeniesione, patrz Uwagi)
+
+## Opis
+Pod przyciskami udostępniania, nad listą dni, Planer pokazuje kartę
+„📊 Zaplanowany tydzień” z podsumowaniem całego zaplanowanego tygodnia:
+
+- średnia liczba kalorii na dzień (duża liczba),
+- plakietka porównująca tę średnią z dziennym celem: „w celu (X kcal)”
+  przy odchyleniu do ±50 kcal, w przeciwnym razie „+N / −N kcal vs cel X”,
+- z ilu zaplanowanych dni i ilu dań liczona jest ta średnia,
+- średnie dzienne makroskładniki (białko / węglowodany / tłuszcz).
+
+Karta nie pojawia się wcale, dopóki w tygodniu nie ma ani jednego
+zaplanowanego dania.
+
+Powód dodania (2026-08-28): Planer pokazywał sumy kaloryczne dla
+pojedynczych dni, ale nic o tygodniu jako całości — więc odpowiedź na
+pytanie „czy tydzień, który właśnie ułożyłem, trzyma się mojego celu?”
+wymagała ręcznego sumowania siedmiu kart dni.
+
+## Kryteria akceptacji
+- Pusty tydzień (bez ani jednego zaplanowanego dania): karta nie jest
+  renderowana w ogóle (nie pusta ramka, nie zera).
+- Średnia dzienna liczona jest po dniach ZAPLANOWANYCH, nie po siedmiu.
+- Podsumowanie uwzględnia skalę porcji (2× danie liczy się podwójnie).
+- Plakietka pokazuje „w celu”, gdy średnia mieści się w ±50 kcal od celu
+  dziennego; w przeciwnym razie pokazuje kierunek i wielkość odchylenia.
+- Karta podaje, z ilu dni i ilu dań policzono średnią.
+- Jeśli część zaplanowanych dań nie ma podanych makroskładników, karta
+  mówi wprost, z ilu dań policzono makro; jeśli żadne ich nie ma —
+  informuje o tym zamiast pokazywać zera.
+- Karta aktualizuje się przy każdej zmianie planu (dodanie/usunięcie dania,
+  zmiana skali porcji, losowanie, czyszczenie, kopiowanie dnia).
+
+## Uwagi
+Uśrednianie po dniach zaplanowanych, a nie po siedmiu, jest świadomą
+decyzją: tydzień zaplanowany w połowie pokazywałby średnią dwukrotnie
+zaniżoną i wyglądałby jak głodówka, choć jest po prostu nieskończonym
+planem. Z tego samego powodu karta zawsze podaje, z ilu dni liczy.
+
+Makro sumowane są wyłącznie z dań, które je mają (własne przepisy
+użytkownika mogą ich nie mieć — FR-66 traktuje je jako opcjonalne), a
+liczba takich dań jest pokazywana obok — żeby częściowy wynik nigdy nie
+udawał pełnego.
+
+Karta jest celowo umieszczona POZA `#plannerTodayWrap` — ten kontener to
+starannie wymierzona, pełnoekranowa sekcja „dziś” (FR-87/v16), więc
+cokolwiek dodanego w środku zmieniłoby tamten układ. Style używają
+wyłącznie zmiennych motywu (`--text`/`--muted`/`--line`/`--teal-pale`
+itd.), więc karta dziedziczy wszystkie 13 motywów bez własnych reguł
+per-motyw.
+
+**Android: nieprzeniesione.** Ta sesja pracuje w środowisku bez dostępu do
+`api.foojay.io` (toolchain JDK dla Gradle, błąd 403 przy
+`:app:compileDebugKotlin`), więc kodu w Kotlinie nie da się tu
+skompilować ani przetestować. Odnotowane w `android/PARITY.md`.
+
+## Historia rewizji
+- **v1** (2026-08-28, Web only): Pierwsza wersja. Zmiana z własnej
+  rekomendacji. Zweryfikowane na żywo (headless Chromium): pusty tydzień nie
+  renderuje nic; 3 zaplanowane dni po 2 dania dają średnią liczoną po
+  dniach zaplanowanych (710 kcal), a nie po siedmiu (co dałoby mylące
+  304 kcal) — obie wartości policzone i porównane w teście; zwiększenie
+  skali porcji jednego dania podniosło sumę tygodnia (2130→2520 kcal);
+  plakietka odchylenia dostała właściwą klasę (`wps-under` przy średniej
+  poniżej celu). Sprawdzone też wizualnie zrzutem ekranu na pełnym,
+  5-dniowym planie w domyślnym motywie Klinika. CACHE_NAME→v110,
+  `versions/v110/`.
+
+---
+
+# FR-101: Dni kalendarzowe liczone lokalnie, nie w UTC
+
+**Obszar:** Śledzenie postępów / cała aplikacja (przekrojowe), Web + Android
+**Status:** Zaimplementowane na webie; **na Androidzie POTWIERDZONE JAKO NIENAPRAWIONE** — patrz Uwagi
+
+## Opis
+Wszystkie klucze dat w aplikacji (`RRRR-MM-DD`) oznaczają **lokalny dzień
+kalendarzowy użytkownika**, a nie dzień w strefie UTC. Dotyczy to każdego
+miejsca, w którym aplikacja pyta „który dziś jest dzień?”: licznika wody,
+zjedzonych posiłków, historii kalorii, serii (streaks), nawigacji po
+wcześniejszych dniach w zakładce Postęp oraz licznika wody obsługiwanego
+przez Service Worker w powiadomieniach.
+
+To wymaganie spisane zostało przy okazji naprawy błędu (2026-08-28) —
+wcześniej daty były wyliczane z `toISOString()`, czyli w UTC. Polska jest
+UTC+1 (zima) / UTC+2 (lato), więc:
+
+- **`todayStr()` zwracało WCZORAJ** między lokalną północą a 01:00/02:00.
+  Szklanka wody albo posiłek zapisane o 00:30 trafiały do poprzedniego dnia,
+  a doba nie „przeskakiwała” o północy tylko z opóźnieniem.
+- **`addDaysToDateStr()` było przesunięte o dzień ZAWSZE**, niezależnie od
+  pory — budowało lokalną północ i odczytywało z niej datę UTC, która na
+  wschód od Greenwich jest wciąż dniem poprzednim. W praktyce, zmierzone w
+  przeglądarce ustawionej na Europe/Warsaw: strzałka „poprzedni dzień” w
+  zakładce Postęp przeskakiwała z 28.08 na **26.08** (pomijając 27.08), a
+  strzałka „następny dzień” **nie działała w ogóle** — użytkownik cofnięty
+  w przeszłość nie mógł wrócić do dziś bez przeładowania aplikacji.
+
+Te same funkcje zachowywały się poprawnie w strefie UTC i w strefach
+zachodnich (potwierdzone testem w Europe/Warsaw, UTC, America/New_York) —
+dlatego błąd mógł tu przetrwać niezauważony, mimo że dotyczył całej
+polskojęzycznej grupy użytkowników tej aplikacji.
+
+## Kryteria akceptacji
+- Klucz dnia zwracany przez aplikację odpowiada dacie z lokalnego
+  kalendarza użytkownika o każdej porze doby, w tym tuż po północy.
+- Przejście o N dni w tył/przód daje dokładnie N dni różnicy, w każdej
+  strefie czasowej.
+- Przechodzenie po dniach działa poprawnie przez granice miesiąca i roku
+  (31.08 → 01.09, 31.12.2026 → 01.01.2027 i z powrotem).
+- Strzałki „poprzedni/następny dzień” w zakładce Postęp przesuwają się o
+  dokładnie jeden dzień i pozwalają wrócić do dnia dzisiejszego; przycisk
+  „następny” jest nieaktywny, gdy pokazywany jest dzień dzisiejszy.
+- Service Worker (licznik wody z powiadomień) używa DOKŁADNIE tego samego
+  klucza dnia co aplikacja — inaczej jedna doba rozjeżdżałaby się na dwa
+  osobne wpisy.
+
+## Uwagi
+Naprawione przez odczyt lokalnych składowych daty (`getFullYear()`/
+`getMonth()`/`getDate()`) zamiast konwersji przez UTC. Nie ma tu „poprawnego
+przesunięcia UTC”, które można by zamiast tego zastosować — kluczowana jest
+własna doba kalendarzowa użytkownika, więc każda konwersja stref jest
+z definicji błędem.
+
+Dane zapisane PRZED tą poprawką pozostają tam, gdzie były: wpis zrobiony
+o 00:30 jest nadal przypisany do poprzedniego dnia. Świadomie nie ma
+migracji — nie da się odróżnić wpisu źle przypisanego przez ten błąd od
+wpisu, który użytkownik celowo przypisał do wcześniejszego dnia (FR-83
+pozwala edytować przeszłe dni), więc „naprawianie” historii byłoby
+zgadywaniem na danych, których nie wolno ruszać.
+
+**Android: ten sam błąd WYSTĘPUJE i jest nienaprawiony.** Pierwotnie
+zapisałem tu przypuszczenie, że Kotlin jest bezpieczny, bo `LocalDate.now()`
+jest z definicji lokalne — **przypuszczenie okazało się błędne po
+sprawdzeniu kodu**. Android nie używa domyślnego `LocalDate.now()`, tylko
+JAWNIE wymusza UTC (`LocalDate.now(ZoneOffset.UTC)`) w ośmiu miejscach:
+
+| Plik | Linia | Co trzyma |
+|---|---|---|
+| `ui/WaterViewModel.kt` | 40 | data licznika wody |
+| `ui/WeightViewModel.kt` | 19 | data wpisu wagi |
+| `ui/EatenViewModel.kt` | 116 | `todayUtc()` — data zjedzonych posiłków i przekąsek |
+| `ui/PostepScreen.kt` | 94 | „dziś” na ekranie Postęp |
+| `ui/PostepScreen.kt` | 450 | godzina wpisu w historii aktywności |
+| `data/WaterNotificationStore.kt` | 86, 92 | data licznika wody z powiadomień |
+| `logic/ActivityLogOperations.kt` | 16 | filtrowanie historii po dacie |
+| `logic/CloudSyncCodec.kt` | 569 | `todayUtcDateString()` |
+
+**Na Androidzie jest to nawet gorsze niż było na webie**, bo prowadzi do
+wewnętrznej NIESPÓJNOŚCI w obrębie jednego ekranu: `PlannerScreen.kt`
+(linie 214 i 761) używa poprawnego, lokalnego `LocalDate.now()` do
+wyznaczenia dzisiejszego dnia tygodnia i daty w nagłówku — podczas gdy
+`EatenViewModel`/`WaterViewModel` liczą „dziś” w UTC. Między lokalną
+północą a 01:00/02:00 Planer pokazuje więc JUŻ nowy dzień, a licznik
+zjedzonych kalorii i wody wciąż zapisuje do poprzedniego.
+
+Naprawa jest mechaniczna (zamiana `ZoneOffset.UTC` na
+`ZoneId.systemDefault()` w tych ośmiu miejscach, plus przemianowanie
+`todayUtc()`/`todayUtcDateString()`, żeby nazwa nie kłamała), ale
+**świadomie NIE została wykonana w tej sesji**: środowisko nie ma dostępu
+do `api.foojay.io` (toolchain JDK dla Gradle, błąd 403 przy
+`:app:compileDebugKotlin`), więc nie dałoby się jej ani skompilować, ani
+przetestować, a zasada z `CLAUDE.md` mówi wprost, żeby nie piętrzyć
+niezweryfikowanych zmian w Kotlinie. Uwaga przy naprawie: `CloudSyncCodec`
+bierze udział w synchronizacji między urządzeniami, więc zmiana klucza dnia
+tam wymaga rozważenia, czy dane już zsynchronizowane pod kluczem UTC nie
+powinny zostać potraktowane osobno. Odnotowane w `android/PARITY.md`.
+
+## Historia rewizji
+- **v1** (2026-08-28, Web only): Pierwsza wersja — spisana razem z naprawą
+  błędu opisanego wyżej. Naprawione trzy funkcje w `index.html`
+  (`todayStr`, `dateStrDaysAgo`, `addDaysToDateStr`, przez wspólne
+  `localDateStr`) i jedna w `sw.js` (`todayStr`). Zweryfikowane na żywo
+  (headless Chromium) w PIĘCIU strefach czasowych — Europe/Warsaw, UTC,
+  America/New_York, Asia/Tokyo, Pacific/Auckland — z identycznymi wynikami,
+  w tym na granicach miesiąca i roku; osobno, z zamrożonym zegarem na
+  00:30 czasu warszawskiego, potwierdzone że `todayStr()` zwraca już
+  właściwy (nowy) dzień; oraz przez realny przepływ UI: sześć kliknięć
+  strzałek w zakładce Postęp przechodzi 29→28→27→26→27→28→29 i poprawnie
+  wyłącza przycisk „następny” na dniu dzisiejszym.
+  CACHE_NAME→v112, `versions/v112/`.
+- **v2** (2026-08-28): Uzupełniona sekcja o Androidzie — **skorygowane
+  błędne przypuszczenie z v1**. v1 zakładało, że Kotlin jest odporny na ten
+  błąd, bo `LocalDate.now()` jest lokalne; przegląd kodu (bez kompilacji,
+  która w tym środowisku jest niemożliwa) wykazał, że Android w ośmiu
+  miejscach JAWNIE wymusza `ZoneOffset.UTC`, a w dodatku robi to
+  niespójnie — `PlannerScreen` używa czasu lokalnego, więc tuż po północy
+  Planer i licznik kalorii pokazują różne dni. Dokładne lokalizacje i
+  planowana naprawa wypisane w Uwagach wyżej.
+
+---
+
+# FR-102: Trwałe usuwanie produktu ze spiżarni
 
 **Obszar:** Spiżarnia, Android + Web
 **Status:** Zaimplementowane na obu platformach
@@ -4490,7 +5276,7 @@ różne produkty scalają się per pozycja, a nie „całą listą”).
 
 ---
 
-# FR-99: Stopniowany gest przesuwania na kartach „Dzisiejszy Planer”
+# FR-103: Stopniowany gest przesuwania na kartach „Dzisiejszy Planer”
 
 **Obszar:** Planer (motyw Klinika), Android + Web
 **Status:** Zaimplementowane na obu platformach

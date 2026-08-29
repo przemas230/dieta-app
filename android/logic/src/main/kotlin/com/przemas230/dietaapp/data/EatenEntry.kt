@@ -13,7 +13,7 @@ data class EatenEntry(
     val kcal: Int? = null,
     val name: String? = null,
     /**
-     * FR-99 (2026-08-29): how much of the dish was actually eaten, 0..1 --
+     * FR-103 (2026-08-29): how much of the dish was actually eaten, 0..1 --
      * a left swipe on the Planer card records half a portion instead of
      * the all-or-nothing flag [done] alone could express. Defaults to a
      * whole portion, so every entry written before this existed (and every

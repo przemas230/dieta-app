@@ -136,7 +136,7 @@ class PantryOperationsTest {
         assertTrue(PantryOperations.toggleHaveIngredient(withSpice, "sól", PantryCategory.PRZYPRAWY, "count").isEmpty())
     }
 
-    // ---- FR-98: deleting a product from the pantry for good ----
+    // ---- FR-102: deleting a product from the pantry for good ----
 
     @Test
     fun `visibleTileNames merges recipe-derived and tracked names, minus hidden ones`() {

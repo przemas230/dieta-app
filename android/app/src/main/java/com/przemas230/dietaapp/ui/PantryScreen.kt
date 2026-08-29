@@ -79,7 +79,7 @@ import kotlin.math.roundToInt
 @Composable
 fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityLogViewModel: ActivityLogViewModel) {
     val items by viewModel.items.collectAsState()
-    // FR-98: canonical names the user deleted for good -- see
+    // FR-102: canonical names the user deleted for good -- see
     // PantryOperations.visibleTileNames for why a separate set is needed
     // at all (the tiles themselves are derived, not stored).
     val hidden by viewModel.hidden.collectAsState()
@@ -122,7 +122,7 @@ fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityL
         ) {
             Text("🗑️ Wyczyść całą spiżarnię")
         }
-        // FR-98: only shown when there is actually something to bring back,
+        // FR-102: only shown when there is actually something to bring back,
         // so "usuń na stałe" never becomes an irreversible mistake the user
         // can neither see nor undo.
         if (hidden.isNotEmpty()) {
@@ -203,7 +203,7 @@ fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityL
                                     viewModel.tileTapDelta(name, category, unitCat, dir)
                                     activityLogViewModel.log("pantry_add", "Spiżarnia: $name (${if (dir > 0) "+" else "-"}1)")
                                 },
-                                // FR-98: the menu used to open only for
+                                // FR-102: the menu used to open only for
                                 // TRACKED tiles, which made "usuń produkt na
                                 // stałe" unreachable for exactly the tiles
                                 // most worth removing -- recipe-derived ones
@@ -225,7 +225,7 @@ fun PantryScreen(viewModel: PantryViewModel, allRecipes: List<Recipe>, activityL
         AddCustomTileDialog(
             category = category,
             onAdd = { name ->
-                // FR-98: adding a product back by hand un-deletes it.
+                // FR-102: adding a product back by hand un-deletes it.
                 viewModel.unhide(name)
                 viewModel.tileTapDelta(name, category, unitCats[name] ?: "count", dir = 1)
                 activityLogViewModel.log("pantry_add", "Dodano własny produkt: $name (${category.label})")
@@ -488,7 +488,7 @@ private fun TileActionDialog(
     onChangeCategory: (PantryCategory) -> Unit,
     onChangeStep: (Double) -> Unit,
     onRemoveTracking: () -> Unit,
-    /** FR-98: "❌ Usuń produkt ze spiżarni na stałe" -- the caller confirms before actually doing it. */
+    /** FR-102: "❌ Usuń produkt ze spiżarni na stałe" -- the caller confirms before actually doing it. */
     onDeleteForever: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -550,7 +550,7 @@ private fun TileActionDialog(
                     onRemoveTracking()
                     onDismiss()
                 }) { Text("🗑️ Usuń śledzenie (wyzeruj stan)") }
-                // FR-98: the row above only zeroes the stock and leaves the
+                // FR-102: the row above only zeroes the stock and leaves the
                 // tile in the grid, which read as "nie da się usunąć
                 // produktu ze spiżarni całkowicie". This one removes the
                 // tile itself.

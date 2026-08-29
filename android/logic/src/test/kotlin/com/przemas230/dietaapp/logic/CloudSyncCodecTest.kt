@@ -284,7 +284,7 @@ class CloudSyncCodecTest {
             data.keys,
         )
         assertEquals("Przemek", data["displayName"])
-        // FR-98: the hidden set travels as index.html's {name: true} map shape.
+        // FR-102: the hidden set travels as index.html's {name: true} map shape.
         assertEquals(mapOf("chleb" to true), data["pantryHidden"])
         assertEquals("metro", data["theme"])
         assertEquals(1.1, data["uiScale"])
@@ -302,7 +302,7 @@ class CloudSyncCodecTest {
     }
 
     @Test
-    fun `FR-99 eaten portions round-trip, and an entry without one decodes as a whole portion`() {
+    fun `FR-103 eaten portions round-trip, and an entry without one decodes as a whole portion`() {
         val days = mapOf(
             "2026-08-29" to com.przemas230.dietaapp.data.EatenDay(
                 entries = mapOf("obiad" to com.przemas230.dietaapp.data.EatenEntry(true, 600, "Zupa", 0.5)),
