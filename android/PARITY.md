@@ -54,7 +54,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-39 | Cykliczne przypomnienie o piciu wody | ✅ | ✅ zaimplementowane 2026-08-11, zweryfikowane na emulatorze (patrz uwagi niżej) |
 | FR-40 | Śledzenie wagi z wykresem | ✅ | ✅ zaimplementowane 2026-08-10, zweryfikowane na emulatorze (patrz uwagi niżej) |
 | FR-41 | Historia kalorii z bilansem tygodniowym | ✅ | ⏳ wykres + bilans zaimplementowane 2026-08-10, historia dopiero zaczyna się gromadzić od tej daty (patrz uwagi niżej) |
-| FR-42 | Serie (streaks) i historia aktywności | ✅ v2 (2026-08-28): „Wyczyść całą historię aktywności” zachowuje `confirm()` i dodatkowo dostaje „Cofnij”. Po tej rundzie żadna akcja kasująca dane w webowej wersji nie jest już nieodwracalna. Zweryfikowane na żywo | ✅ serie i surowy log aktywności zaimplementowane i zweryfikowane na żywo 2026-08-10 (patrz uwagi niżej) |
+| FR-42 | Serie (streaks) i historia aktywności | ✅ v2 (2026-08-28): „Wyczyść całą historię aktywności” zachowuje `confirm()` i dodatkowo dostaje „Cofnij”. Po tej rundzie żadna akcja kasująca dane w webowej wersji nie jest już nieodwracalna. Zweryfikowane na żywo | ✅ v3 (2026-08-29): „Wyczyść” przy historii aktywności ma teraz „Cofnij”, z migawką sprzed wyczyszczenia. Zamyka audyt akcji destrukcyjnych po stronie Androida. Zweryfikowane na emulatorze — patrz uwaga metodologiczna w FR-42.md o mierzeniu powiadomień z akcją
 | FR-43 | Pasek filtrów i kategorii przyklejony pod nagłówkiem | ✅ (v3, 2026-08-11: chowa się razem z nagłówkiem) | ✅ port "chowa się razem z nagłówkiem" dokończony 2026-08-11 tego samego dnia (`RecipeListScreen`'s nowy parametr `headerExpanded`, patrz uwagi) |
 | FR-44 | Automatyczne chowanie/pokazywanie nagłówka na przewijanie (tylko Przepisy) | ✅ (v2, 2026-08-11: tylko blisko góry) | ✅ port "tylko blisko góry" dokończony 2026-08-11 tego samego dnia (`HeaderScrollBehavior.isNearTop`, `scrolledDown`/`scrolledUp` usunięte jako martwy kod) |
 | FR-45 | Ręczne zwijanie/rozwijanie nagłówka ma pierwszeństwo nad automatyką | ✅ (v4, 2026-08-11: też rozwinięcie) | ✅ port "też rozwinięcie zamraża automatykę" dokończony 2026-08-11 tego samego dnia |
@@ -113,10 +113,10 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-98 | Kopia zapasowa danych do pliku (eksport i import) | ✅ v1 (2026-08-28): Ustawienia → Konto, eksport wszystkich danych (`SYNCED_STATE_KEYS`) do pliku JSON z datą w nazwie + import zastępujący dane po potwierdzeniu; odrzuca plik obcy/uszkodzony/z nowszej wersji formatu bez ruszania danych. Zweryfikowane na żywo (realne pobranie pliku → wyczyszczenie → import → porównanie pól) | ✅ v2 (2026-08-29): przeniesione. **Nie 1:1** — Storage Access Framework (`ACTION_CREATE_DOCUMENT`/`ACTION_OPEN_DOCUMENT`) zamiast pobierania bloba, ale IDENTYCZNY format pliku (`BackupFile`), więc kopia z telefonu wczytuje się w przeglądarce i odwrotnie. Import idzie tą samą ścieżką co zwykły start aplikacji (`applyLocalSnapshot`, wydzielone z `LocalPersistenceCoordinator`). Zweryfikowane na emulatorze: zapis pliku 6,3 kB do Downloads i jego ponowny odczyt z potwierdzeniem daty
 | FR-99 | Wyszukiwanie na liście zakupów | ✅ v1 (2026-08-28): pole filtrujące nad listą, niewrażliwe na polskie znaki („zolty” → „żółty ser”), wspólne dla widoku listy i kafelków; licznik „N z M pozycji”, przycisk „✕”; filtr NIE wpływa na udostępnianie ani kasowanie. Zweryfikowane na żywo, 7 przypadków | ✅ v2 (2026-08-29): przeniesione — pole nad listą, licznik „N z M pozycji”, „✕” tylko przy aktywnym filtrze, odporność na ogonki przez `PolishText`. Fraza nie jest zapisywana ani synchronizowana, tak jak na webie. Zweryfikowane na emulatorze: przy 13 pozycjach „jajk” dało „Lista zakupów (1 z 13)”
 | FR-100 | Podsumowanie odżywcze zaplanowanego tygodnia | ✅ v1 (2026-08-28): karta „📊 Zaplanowany tydzień” nad listą dni — średnia kcal/dzień (po dniach ZAPLANOWANYCH, nie po 7), porównanie z celem, liczba dni i dań, średnie makro; nie renderuje się przy pustym tygodniu. Zweryfikowane na żywo + zrzut ekranu | ✅ v2 (2026-08-29): przeniesione — karta nad listą dni, liczenie w `WeekPlanSummary` (moduł logic) z testami na obie decyzje, na których stoi wiarygodność liczby: średnia po dniach ZAPLANOWANYCH i makra tylko z dań, które je mają. Zweryfikowane na emulatorze: „489 kcal · −991 kcal vs cel 1480 · z 3 zaplanowanych dni (5 dań)”
-| FR-102 | Trwałe usuwanie produktu ze spiżarni | ✅ v1 (2026-08-29): „❌ Usuń produkt ze spiżarni na stałe” w menu po przytrzymaniu KAŻDEGO kafelka (wcześniej tylko dla `state.customTiles`), nowy klucz `pantryHidden` w `SYNCED_STATE_KEYS`+`MAP_MERGE_KEYS`, filtr w `buildPantryTileList()`, przycisk „↩️ Przywróć usunięte produkty (N)” na górze Spiżarni, ponowne dodanie ręczne odblokowuje. ⏳ nie klikane na żywo w przeglądarce w tej rundzie | ✅ v1 (2026-08-29), zweryfikowane na emulatorze: menu otwiera się teraz też dla kafelków NIEŚLEDZONYCH (`onLongPress` bez `entry != null`), usunięcie „feta / ser bez laktozy” zdjęło kafelek i zmieniło licznik Nabiał 9→8, przeżyło `am force-stop`+restart, „↩️ Przywróć usunięte produkty (1)” przywróciło kafelek i samo zniknęło. `PantryStore.loadHidden/saveHidden`, `PantryOperations.visibleTileNames/hideForever`, sync przez `CloudSyncCodec.encode/decodePantryHidden` |
-| FR-103 | Stopniowany gest przesuwania na kartach „Dzisiejszy Planer” | ✅ v1 (2026-08-29): `pdSwipeAction(dx)` mapuje odległość na 4 akcje (36/105/130 px), żywa pigułka z nazwą akcji + narastające tło, ściągawka pod nagłówkiem, plakietki stanu, `portion` na wpisie `state.eaten[date][cat]`, `cookedTodayIndex/undoCookedToday` (data liczona lokalnie, zgodnie z FR-101). ⏳ nie klikane na żywo w przeglądarce (logika sprawdzona liczbowo w Node — te same 11 wartości dx co test Kotlina) | ✅ v1 (2026-08-29), zweryfikowane na emulatorze wszystkie 4 akcje z odczytem liczb: 0/1480 → „🍳 Zrobione” (plakietka) → długie w prawo 345/1480 → krótkie w lewo 173/1480 + „½ Zjedzone w połowie” + „173 / 345 kcal” → długie w lewo z powrotem 0/1480 i obie plakietki znikają. `PlannerSwipe` (logic, testy jednostkowe), `EatenEntry.portion`, `RecipeViewModel.isCookedToday/undoCookedToday` |
-| FR-104 | Gest „zrobione/zjedzone” także na kartach dni tygodnia | ✅ v1 (2026-08-29): wiersze `.cdc-row` z daniem dostały ten sam gest co karta dashboardu, na dacie danego dnia bieżącego tygodnia (`dateForDayIndex`); puste sloty bez zmian. ⏳ nie klikane na żywo w przeglądarce | ✅ v1 (2026-08-29), zweryfikowane na emulatorze: przesunięcie w lewo na wierszu „Śniadanie” karty Soboty cofnęło danie ze „zjedzone” do „zrobione”, a karta w „Dzisiejszym Planerze” pokazywała dokładnie ten sam stan przed i po (jedno źródło prawdy, nie dwie kopie) |
-| FR-105 | Dowolna wielkość zjedzonej porcji | ✅ v1 (2026-08-29): przytrzymanie karty otwiera suwak 0–100% + ¼/½/¾/cała, z podglądem kcal na żywo; 0% = niezjedzone. ⏳ nie klikane na żywo w przeglądarce | ✅ v1 (2026-08-29), zweryfikowane na emulatorze: przytrzymanie karty → suwak 100% · 345 kcal → wybór „¼ porcji” → 86/1480 kcal, plakietka „¼ porcji zjedzone”, kafelek „86 / 345 kcal” |
+| FR-102 | Trwałe usuwanie produktu ze spiżarni | ✅ v1 (2026-08-29): „❌ Usuń produkt ze spiżarni na stałe” w menu po przytrzymaniu KAŻDEGO kafelka (wcześniej tylko dla `state.customTiles`), nowy klucz `pantryHidden` w `SYNCED_STATE_KEYS`+`MAP_MERGE_KEYS`, filtr w `buildPantryTileList()`, przycisk „↩️ Przywróć usunięte produkty (N)” na górze Spiżarni, ponowne dodanie ręczne odblokowuje. ✅ zweryfikowane też na żywo w Chrome (2026-08-29) | ✅ v1 (2026-08-29), zweryfikowane na emulatorze: menu otwiera się teraz też dla kafelków NIEŚLEDZONYCH (`onLongPress` bez `entry != null`), usunięcie „feta / ser bez laktozy” zdjęło kafelek i zmieniło licznik Nabiał 9→8, przeżyło `am force-stop`+restart, „↩️ Przywróć usunięte produkty (1)” przywróciło kafelek i samo zniknęło. `PantryStore.loadHidden/saveHidden`, `PantryOperations.visibleTileNames/hideForever`, sync przez `CloudSyncCodec.encode/decodePantryHidden` |
+| FR-103 | Stopniowany gest przesuwania na kartach „Dzisiejszy Planer” | ✅ v1 (2026-08-29): `pdSwipeAction(dx)` mapuje odległość na 4 akcje (36/105/130 px), żywa pigułka z nazwą akcji + narastające tło, ściągawka pod nagłówkiem, plakietki stanu, `portion` na wpisie `state.eaten[date][cat]`, `cookedTodayIndex/undoCookedToday` (data liczona lokalnie, zgodnie z FR-101). ✅ zweryfikowane na żywo w Chrome (2026-08-29): pełny cykl nic→zrobione→zjedzone→wstecz z odczytem kcal i stanu spiżarni | ✅ v1 (2026-08-29), zweryfikowane na emulatorze wszystkie 4 akcje z odczytem liczb: 0/1480 → „🍳 Zrobione” (plakietka) → długie w prawo 345/1480 → krótkie w lewo 173/1480 + „½ Zjedzone w połowie” + „173 / 345 kcal” → długie w lewo z powrotem 0/1480 i obie plakietki znikają. `PlannerSwipe` (logic, testy jednostkowe), `EatenEntry.portion`, `RecipeViewModel.isCookedToday/undoCookedToday` |
+| FR-104 | Gest „zrobione/zjedzone” także na kartach dni tygodnia | ✅ v1 (2026-08-29): wiersze `.cdc-row` z daniem dostały ten sam gest co karta dashboardu, na dacie danego dnia bieżącego tygodnia (`dateForDayIndex`); puste sloty bez zmian. ✅ zweryfikowane na żywo w Chrome (2026-08-29) | ✅ v1 (2026-08-29), zweryfikowane na emulatorze: przesunięcie w lewo na wierszu „Śniadanie” karty Soboty cofnęło danie ze „zjedzone” do „zrobione”, a karta w „Dzisiejszym Planerze” pokazywała dokładnie ten sam stan przed i po (jedno źródło prawdy, nie dwie kopie) |
+| FR-105 | Dowolna wielkość zjedzonej porcji | ✅ v1 (2026-08-29): przytrzymanie karty otwiera suwak 0–100% + ¼/½/¾/cała, z podglądem kcal na żywo; 0% = niezjedzone. ✅ zweryfikowane na żywo w Chrome (2026-08-29) | ✅ v1 (2026-08-29), zweryfikowane na emulatorze: przytrzymanie karty → suwak 100% · 345 kcal → wybór „¼ porcji” → 86/1480 kcal, plakietka „¼ porcji zjedzone”, kafelek „86 / 345 kcal” |
 
 ## Uwagi do częściowych wpisów
 
@@ -1228,6 +1228,58 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
   `CookHistoryOperationsTest`/`EatenOperationsTest`/`PlannerOperationsTest`),
   `versionCode` 86→87, `versionName` 0.1.85→0.1.86, `android/dist/`
   zsynchronizowane. CACHE_NAME→v116 na Web, `versions/v116/`.
+
+- **Domknięcie rundy: weryfikacja webowa na żywo + FR-42 na Androida (2026-08-29, trzecia tego dnia)**:
+  rozszerzenie przeglądarkowe było wreszcie podłączone, więc webowa strona
+  poprzedniej rundy przestała być „sprawdzona tylko logiką”. Aplikacja
+  serwowana lokalnie (`node`, `localhost:8765`), sterowana realnymi
+  zdarzeniami wskaźnika — nie wywołaniami funkcji, bo weryfikacji wymagało
+  właśnie WPIĘCIE gestu, nie sama logika:
+
+  - **FR-103**: pełny cykl `nic → zrobione → zjedzone → wstecz → wstecz` z
+    odczytem liczb po każdym kroku — pierścień kcal 0 → 320 → 0, „jajka” w
+    spiżarni 8 → 6 przy „zrobione” i z powrotem 8 po cofnięciu, przekreślenie
+    nazwy pojawiające się i znikające razem ze stanem „zjedzone”. Trzecie
+    przesunięcie w prawo na daniu już zjedzonym nie zmieniło niczego.
+  - **Trafianie w gest**: przeciągnięcie zaczynane CELOWO na znaczniku
+    spiżarni (ten `<button>` w środku karty, który wcześniej połykał gest)
+    działa. To była właśnie przyczyna „muszę od krawędzi złapać”.
+  - **Przesuwający się dolny pasek**: mierzone
+    `scrollWidth - clientWidth` dokumentu na KAŻDEJ klatce przeciągania —
+    stale 0, czyli strona nie dostaje już poziomego przewijania i nie ma
+    czego przesuwać razem z palcem. To pomiar dokładnie tej przyczyny, a nie
+    „wygląda dobrze na zrzucie”.
+  - **FR-104**: gest na wierszu PONIEDZIAŁKU (nie dzisiaj) zapisał
+    „zrobione” pod datą poniedziałku (`isCookedToday(id, "2026-08-24")`
+    prawda, `isCookedToday(id, dzisiaj)` fałsz), a licznik kalorii dzisiaj
+    się nie ruszył — czyli most tydzień→kalendarz działa w obie strony.
+  - **FR-105**: przytrzymanie otworzyło okienko z nazwą dania i „100% · 320
+    kcal”; wybór „¼ porcji” dał 80 kcal w pierścieniu, plakietkę
+    „¼ porcji zjedzone” i „80 / 320 kcal” na karcie.
+
+  **FR-42/v3 na Androida**: to była jedyna rzecz z poprzedniej rundy
+  świadomie zostawiona jako niezrobiona — i przy okazji korekta mojego
+  własnego, błędnego stwierdzenia z tamtego podsumowania: przycisk
+  czyszczenia historii NA ANDROIDZIE ISTNIAŁ (`ActivityHistoryCard`,
+  `onClear = activityLogViewModel::clear`), brakowało wyłącznie cofania.
+  Poprzednio szukałem go po wywołaniach `.clear()` w `MainActivity` i
+  trafiłem tylko na te z resetu konta — referencja metody przekazana jako
+  parametr nie wpadła w to wyszukiwanie. Dodane cofanie z migawką.
+
+  **Pułapka pomiarowa warta zapamiętania**: przy pierwszych próbach cofanie
+  wyglądało na całkowicie niedziałające — i to zarówno nowe, jak i istniejące
+  od wcześniej FR-91. Przyczyną było narzędzie, nie aplikacja: między
+  `uiautomator dump` (kilka sekund) a dotknięciem przycisku powiadomienie
+  zdążyło zniknąć, a dotknięcie trafiało w pole daty POD nim — widać to
+  wprost w logcacie, bo otwierała się klawiatura. Po wykonaniu pokazania i
+  dotknięcia w JEDNYM `adb shell` z krótkim `sleep` cofnięcie zadziałało za
+  pierwszym razem. Wniosek na przyszłość: powiadomienia z akcją mierzy się
+  jednym wywołaniem, inaczej mierzy się czas własnego narzędzia.
+
+  `versionCode` 87→88, `versionName` 0.1.86→0.1.87. `index.html`/`sw.js` w
+  tej rundzie NIE były zmieniane, więc nie powstał nowy folder w
+  `versions/` ani nie zmienił się `CACHE_NAME` — zmiany są wyłącznie po
+  stronie Androida i dokumentacji.
 
 ## Jak to utrzymywać
 

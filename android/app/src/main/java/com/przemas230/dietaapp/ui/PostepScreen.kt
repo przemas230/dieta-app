@@ -82,6 +82,10 @@ fun PostepScreen(
     eatenViewModel: EatenViewModel,
     activityLogViewModel: ActivityLogViewModel,
     plannerViewModel: PlannerViewModel,
+    // FR-42/v2 (ported to Android 2026-08-29): clearing the whole activity
+    // history offers a Cofnij, like every other destructive action since the
+    // 2026-08-28 audit. MainActivity owns the SnackbarHostState.
+    onShowUndoSnackbar: (message: String, actionLabel: String, onUndo: () -> Unit) -> Unit = { _, _, _ -> },
 ) {
     val profile by profileViewModel.profile.collectAsState()
     val waterCount by waterViewModel.count.collectAsState()
@@ -218,7 +222,21 @@ fun PostepScreen(
         KcalHistoryCard(kcalHistory = kcalHistory, dailyTarget = dailyTarget, today = today)
         Spacer(modifier = Modifier.height(12.dp))
 
-        ActivityHistoryCard(entries = activityLog, onClear = activityLogViewModel::clear)
+        ActivityHistoryCard(
+            entries = activityLog,
+            onClear = {
+                // FR-42/v2: snapshot BEFORE clearing so "Cofnij" restores every
+                // entry in its original order, not an approximation rebuilt
+                // from whatever happened since.
+                val before = activityLog
+                activityLogViewModel.clear()
+                if (before.isNotEmpty()) {
+                    onShowUndoSnackbar("Wyczyszczono historię aktywności (${before.size})", "Cofnij") {
+                        activityLogViewModel.replaceAll(before)
+                    }
+                }
+            },
+        )
     }
 }
 

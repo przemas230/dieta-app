@@ -939,6 +939,16 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     eatenViewModel = eatenViewModel,
                     activityLogViewModel = activityLogViewModel,
                     plannerViewModel = plannerViewModel,
+                    onShowUndoSnackbar = { message, actionLabel, onUndo ->
+                        snackbarScope.launch {
+                            val result = snackbarHostState.showSnackbar(
+                                message = message,
+                                actionLabel = actionLabel,
+                                duration = SnackbarDuration.Long,
+                            )
+                            if (result == SnackbarResult.ActionPerformed) onUndo()
+                        }
+                    },
                 )
             }
             composable(Screen.Pantry.route) {
