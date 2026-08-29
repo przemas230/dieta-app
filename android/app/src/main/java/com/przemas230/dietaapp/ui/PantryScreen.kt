@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -56,10 +57,12 @@ import com.przemas230.dietaapp.data.PantryItem
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.logic.AppThemes
 import com.przemas230.dietaapp.logic.PantryOperations
+import com.przemas230.dietaapp.logic.PantryShortage
 import com.przemas230.dietaapp.logic.PantryDisplay
 import com.przemas230.dietaapp.logic.PantryTiles
 import com.przemas230.dietaapp.logic.RecipePantryMatching
 import com.przemas230.dietaapp.logic.ShoppingDisplay
+import com.przemas230.dietaapp.logic.WeekPlan
 import com.przemas230.dietaapp.ui.theme.LocalDietaThemeId
 import kotlin.math.roundToInt
 
@@ -86,6 +89,14 @@ fun PantryScreen(
     // since 2026-08-28. MainActivity owns the SnackbarHostState (same
     // hoisting pattern PlannerScreen already uses), this just asks for one.
     onShowUndoSnackbar: (message: String, actionLabel: String, onUndo: () -> Unit) -> Unit = { _, _, _ -> },
+    // FR-108: everything needed to answer "will this run out before the week
+    // does". Passed in rather than collected here so this screen keeps
+    // depending on exactly one ViewModel of its own -- MainActivity already
+    // holds the Planer's week and the cook history for its other screens.
+    weekPlan: WeekPlan = emptyMap(),
+    recipesById: Map<String, Recipe> = emptyMap(),
+    todayDayIndex: Int = 0,
+    isCookedOnDay: (recipeId: String, dayIndex: Int) -> Boolean = { _, _ -> false },
 ) {
     val items by viewModel.items.collectAsState()
     // FR-102: canonical names the user deleted for good -- see
@@ -109,6 +120,14 @@ fun PantryScreen(
     val grouped = remember(tileNames, items) {
         tileNames.groupBy { name -> items[name]?.category ?: PantryTiles.categoryAndEmoji(name).first }
     }
+    // FR-108. Recomputed whenever the pantry itself changes, so subtracting a
+    // tile down past what the week needs makes the warning appear on the very
+    // next tap rather than on the next visit to this screen.
+    val shortages = remember(weekPlan, recipesById, items, todayDayIndex) {
+        PantryShortage.compute(weekPlan, recipesById, items, todayDayIndex, isCookedOnDay)
+    }
+    val shortageByName = remember(shortages) { shortages.associateBy { it.canonName } }
+    var shortagesExpanded by remember { mutableStateOf(false) }
     // FR-87: motyw "Klinika" -- kategorie jako akordeon (stukniecie w
     // naglowek zwija/rozwija). Domyslnie wszystkie rozwiniete, wiec nic sie
     // nie zmienia wizualnie dopoki uzytkownik czegos nie zwinie. PantryTile/
@@ -125,6 +144,13 @@ fun PantryScreen(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             style = MaterialTheme.typography.bodySmall,
         )
+        if (shortages.isNotEmpty()) {
+            PantryShortageCard(
+                shortages = shortages,
+                expanded = shortagesExpanded,
+                onToggle = { shortagesExpanded = !shortagesExpanded },
+            )
+        }
         TextButton(
             onClick = { showClearAllConfirm = true },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
@@ -208,6 +234,11 @@ fun PantryScreen(
                                 name = name,
                                 emoji = emoji,
                                 entry = entry,
+                                // FR-108: the tile itself says it, not just
+                                // the card at the top -- the card is scrolled
+                                // away by the time the user is looking at the
+                                // product it is talking about.
+                                shortage = shortageByName[name],
                                 onTap = { dir ->
                                     viewModel.tileTapDelta(name, category, unitCat, dir)
                                     activityLogViewModel.log("pantry_add", "Spiżarnia: $name (${if (dir > 0) "+" else "-"}1)")
@@ -333,6 +364,7 @@ private fun PantryTile(
     name: String,
     emoji: String,
     entry: PantryItem?,
+    shortage: PantryShortage.Shortage? = null,
     onTap: (dir: Int) -> Unit,
     onLongPress: () -> Unit,
 ) {
@@ -404,10 +436,13 @@ private fun PantryTile(
                 .clip(shape)
                 .background(background, shape)
                 .then(
-                    if (!metro) {
-                        Modifier.border(1.5.dp, if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, shape)
-                    } else {
-                        Modifier
+                    when {
+                        // FR-108: drawn even in "metro", which otherwise has
+                        // no tile border at all -- a warning that only some
+                        // themes show is a warning that gets missed.
+                        shortage != null -> Modifier.border(2.dp, MaterialTheme.colorScheme.error, shape)
+                        !metro -> Modifier.border(1.5.dp, if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, shape)
+                        else -> Modifier
                     },
                 ),
         )
@@ -431,10 +466,74 @@ private fun PantryTile(
                     .align(Alignment.TopEnd)
                     .offset(x = 6.dp, y = (-6).dp)
                     .shadow(2.dp, RoundedCornerShape(50), clip = false)
-                    .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(50))
+                    .background(
+                        if (shortage != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary,
+                        RoundedCornerShape(50),
+                    )
                     .padding(horizontal = 6.dp, vertical = 2.dp),
             ) {
-                Text(badgeText, fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondary)
+                Text(
+                    if (shortage != null) "⚠ $badgeText" else badgeText,
+                    fontSize = 9.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (shortage != null) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onSecondary,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * FR-108: the one place that says outright "this will not be enough", with
+ * the numbers behind it. Collapsed to the three worst by default -- the
+ * point is a nudge before shopping, not an inventory report; the rest is one
+ * tap away.
+ */
+@Composable
+private fun PantryShortageCard(
+    shortages: List<PantryShortage.Shortage>,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+) {
+    val shown = if (expanded) shortages else shortages.take(3)
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .clickable(enabled = shortages.size > 3) { onToggle() },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                "⚠️ Nie starczy na zaplanowane dania (${shortages.size})",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            shown.forEach { shortage ->
+                val have = ShoppingDisplay.formatQty(shortage.unitCat, shortage.haveBase)
+                val needed = ShoppingDisplay.formatQty(shortage.unitCat, shortage.neededBase)
+                Column {
+                    Text(
+                        "${PantryDisplay.displayName(shortage.canonName, null)} — masz $have, trzeba $needed",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                    Text(
+                        "${PantryShortage.dishCountLabel(shortage.dishes.size)}: ${shortage.dishes.joinToString(", ")}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                }
+            }
+            if (shortages.size > 3) {
+                Text(
+                    if (expanded) "Zwiń" else "…i jeszcze ${shortages.size - 3} — stuknij, by pokazać",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                )
             }
         }
     }

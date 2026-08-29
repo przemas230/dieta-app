@@ -1,0 +1,68 @@
+Wersja v119 (2026-08-30)
+========================
+
+OSTRZEŻENIE, ŻE PRODUKTU NIE STARCZY NA ZAPLANOWANE DANIA (FR-108)
+-------------------------------------------------------------------
+Spiżarnia mówi teraz wprost, czego zabraknie. Na górze ekranu pojawia się
+czerwona karta:
+
+    ⚠️ Nie starczy na zaplanowane dania (1)
+    jajko — masz 1, trzeba 2
+    na 1 danie: Kanapki z jajkiem i szynką z indyka na pieczywie pszennym
+
+a kafelek takiego produktu dostaje czerwoną obwódkę i znacznik „⚠" przy
+ilości — bo zanim wzrok dojdzie do samego produktu, karta z góry zdąży
+zniknąć za krawędzią ekranu.
+
+DLACZEGO TO BYŁO POTRZEBNE
+Do tej pory brak wychodził na jaw dopiero przy gotowaniu. Znacznik
+„🏺 N/M w spiżarni" na kartach Planera odpowiada na pytanie o OBECNOŚĆ
+składnika („czy jest jakikolwiek ryż"), nigdy o ILOŚĆ — więc 20 g ryżu i
+2 kg ryżu wyglądają identycznie aż do chwili, w której danie zostaje
+oznaczone jako zrobione, a odejmowanie przycina stan do zera.
+
+TRZY ŚWIADOME OGRANICZENIA, każde o tym, żeby nie krzyczeć na wyrost:
+1. Liczą się tylko produkty ŚLEDZONE. Składnik bez wpisu w spiżarni to nie
+   brak, tylko coś, czego nie śledzisz — a takich kafelków jest około
+   dwustu. Zgłaszanie ich przykryłoby tę garstkę, którą naprawdę
+   prowadzisz, i powtarzałoby to, co i tak robi lista zakupów.
+2. Liczą się tylko posiłki JESZCZE PRZED TOBĄ. Dni sprzed dzisiaj są
+   zamknięte, a danie oznaczone już jako „🍳 zrobione" w swoim dniu MA JUŻ
+   odjęte składniki — policzenie go drugi raz wymyśliłoby brak z kolacji,
+   która jest zjedzona.
+3. Niezgodne jednostki są pomijane, nie zgadywane. Produkt śledzony w
+   „szt." nie da się porównać z przepisem liczonym w gramach.
+
+Przyprawy są wykluczone z definicji: Mało/Wystarczy/Dużo nie jest ilością,
+więc nie ma od czego odejmować.
+
+Kolejność: największy WZGLĘDNY brak najpierw — „nie ma nic, a potrzebują
+tego trzy dania" waży więcej niż „jest 9 z 10 jajek". Karta pokazuje trzy
+najgorsze pozycje, reszta jest o jedno stuknięcie dalej: to ma być zachęta
+przed zakupami, a nie raport magazynowy.
+
+Weryfikacja
+-----------
+Logika ma 14 testów jednostkowych w module `logic` (wszystkie trzy
+ograniczenia, przeliczanie kg/l na gramy/mililitry, skala porcji, sumowanie
+dwóch dań, sortowanie, polska odmiana „na 1 danie / 2 dania / 5 dań").
+
+Web, na żywo w Chrome, na prawdziwych danych: przy 38 g skyru i przepisie
+na 150 g karta pokazała „masz 38 g, trzeba 150 g", kafelek dostał obwódkę i
+znacznik „⚠ 38 g". Uzupełnienie do 500 g, usunięcie śledzenia, zmiana
+jednostki na „szt." oraz oznaczenie dania jako zrobione — każde z osobna
+wyciszało ostrzeżenie (po ugotowaniu stan spadł do 0, a mimo to nie
+zgłoszono braku, bo danie jest już zjedzone), a cofnięcie „zrobione"
+przywróciło i stan 38 g, i ostrzeżenie. Skala 2× podniosła potrzebę ze
+150 g na 300 g.
+
+Android, na żywo na emulatorze: przy jednym jajku w spiżarni i śniadaniu
+wymagającym dwóch karta pokazała „jajko — masz 1, trzeba 2 / na 1 danie:
+Kanapki z jajkiem...", a kafelek jajka dostał czerwoną obwódkę i znacznik
+„⚠ 1". Zanim to nastąpiło, funkcja poprawnie MILCZAŁA, bo danie było już
+oznaczone jako zjedzone — dopiero cofnięcie tego (i zmniejszenie stanu z 3
+do 1) wywołało ostrzeżenie. To dokładnie ograniczenie nr 2 działające na
+prawdziwych danych, a nie w teście.
+
+Wersje: Android versionCode 90→91, versionName 0.1.89→0.1.90 (APK w
+android/dist zsynchronizowany), Web CACHE_NAME v118→v119.

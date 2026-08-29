@@ -119,6 +119,7 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 | FR-105 | Dowolna wielkość zjedzonej porcji | ✅ v1 (2026-08-29): przytrzymanie karty otwiera suwak 0–100% + ¼/½/¾/cała, z podglądem kcal na żywo; 0% = niezjedzone. ✅ zweryfikowane na żywo w Chrome (2026-08-29) | ✅ v1 (2026-08-29), zweryfikowane na emulatorze: przytrzymanie karty → suwak 100% · 345 kcal → wybór „¼ porcji” → 86/1480 kcal, plakietka „¼ porcji zjedzone”, kafelek „86 / 345 kcal” |
 | FR-106 | Propozycja przeniesienia zakupów do spiżarni | ✅ v1 (2026-08-29): po odhaczeniu OSTATNIEJ pozycji dania — powiadomienie „Masz już wszystko na «X»” z akcją „Do spiżarni”; `fullyBoughtRecipes()` wyprowadzone z `contributions`, `stockRecipeToPantry()` tworzy pozycje, których nie było. ✅ zweryfikowane na żywo w Chrome: 5-składnikowy przepis zgłoszony dopiero po piątym odhaczeniu, przyjęcie utworzyło 5 pozycji, powtórne dodanie 150→300 | ✅ v1 (2026-08-29): `ShoppingOperations.fullyBoughtRecipes` + `RecipePantryMatching.stockFromRecipe` z testami, wpięte w oba widoki listy przez jeden wspólny `onTicked`. ⏳ przejście przez UI na emulatorze NIE dokończone — dotknięcia checkboxów listy nie rejestrowały się w narzędziu (ograniczenie testowania, nie stwierdzona wada) |
 | FR-107 | Zapamiętana wielkość porcji dla danego dania | ✅ v1 (2026-08-29): okienko porcji otwiera się na nawyku dla TEGO dania + podpowiedź „Zwykle zjadasz ½ porcji tego dania”; próg dwóch wystąpień, cała porcja nigdy nie jest zgłaszana. ✅ zweryfikowane na żywo w Chrome: po dwóch połówkach suwak startuje na „50% · 160 kcal” z podpowiedzią | ✅ v1 (2026-08-29): `PortionHistory` w `logic/` z ośmioma testami, `eatenDays` doprowadzone do `PlannerScreen`. ⏳ wariant „z historią” nie odklikany na emulatorze — wymagałby wpisów z dwóch różnych dni |
+| FR-108 | Ostrzeżenie, że produktu nie starczy na zaplanowane dania | ✅ v1 (2026-08-30): czerwona karta na górze Spiżarni + obwódka i znacznik „⚠” na kafelku; tylko produkty śledzone, tylko posiłki jeszcze przed nami, niezgodne jednostki pomijane. ✅ zweryfikowane na żywo w Chrome (38 g skyru vs 150 g w przepisie; uzupełnienie, brak śledzenia, zmiana jednostki i „zrobione” wyciszają ostrzeżenie, cofnięcie je przywraca) | ✅ v1 (2026-08-30): `PantryShortage` w `logic/` z 14 testami, dane z Planera i historii gotowania podane z MainActivity. ✅ zweryfikowane na żywo na emulatorze: 1 jajko vs śniadanie na 2 — karta „jajko — masz 1, trzeba 2” i kafelek z czerwoną obwódką i znacznikiem „⚠ 1”; wcześniej funkcja poprawnie milczała, bo danie było już zjedzone |
 
 ## Uwagi do częściowych wpisów
 
@@ -1423,6 +1424,34 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
 
   `versionCode` 89→90, `versionName` 0.1.88→0.1.89, CACHE_NAME→v118,
   `versions/v118/`.
+
+- **Ostrzeżenie o kończącym się produkcie (2026-08-30)**: FR-108, obie
+  platformy w jednej turze, z pełnym przejściem przez UI po obu stronach.
+
+  Zamyka lukę między dwiema funkcjami, które już tu były: znacznik
+  „🏺 N/M w spiżarni” (FR-16) mówi o OBECNOŚCI składnika, a odejmowanie po
+  „🍳 Zrobione” (FR-15/FR-103) o ILOŚCI — ale dopiero w chwili gotowania.
+  Między nimi nie było niczego, co powiedziałoby wcześniej „tego nie
+  starczy”.
+
+  **Trzy ograniczenia są tu ważniejsze niż sama funkcja** — fałszywe
+  „kończy ci się ryż” jest gorsze niż brak ostrzeżenia: liczone są tylko
+  produkty śledzone (ok. 200 kafelków istnieje, większość nieprowadzona),
+  tylko posiłki jeszcze przed nami (danie już „zrobione” MA JUŻ odjęte
+  składniki — policzone drugi raz wymyśliłoby brak z kolacji, która jest
+  zjedzona) i tylko zgodne kategorie jednostek.
+
+  **Wartościowy przypadek z emulatora**: pierwsze podejście „nie działało”
+  — przy jednym jajku i śniadaniu na dwa nie było żadnej karty. Logi
+  pokazały `cooked=true`: danie było oznaczone jako zjedzone jeszcze z
+  wcześniejszej sesji testowej, więc ograniczenie nr 2 zadziałało dokładnie
+  jak miało. Dopiero cofnięcie oznaczenia (co przywróciło 2 jajka do
+  spiżarni) i zmniejszenie stanu z 3 do 1 pokazało kartę. To najlepsze
+  potwierdzenie tej zasady, jakie dało się dostać — na prawdziwych danych,
+  nie w teście.
+
+  `versionCode` 90→91, `versionName` 0.1.89→0.1.90, CACHE_NAME→v119,
+  `versions/v119/`.
 
 ## Jak to utrzymywać
 

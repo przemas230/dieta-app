@@ -109,6 +109,7 @@ import com.przemas230.dietaapp.data.EatenEntry
 import com.przemas230.dietaapp.data.PlannedMeal
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.data.Snack
+import com.przemas230.dietaapp.logic.AppDates
 import com.przemas230.dietaapp.logic.AppThemes
 import com.przemas230.dietaapp.logic.DailyCalorieTargets
 import com.przemas230.dietaapp.logic.EatenOperations
@@ -957,6 +958,19 @@ private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Dou
                     viewModel = pantryViewModel,
                     allRecipes = allRecipes,
                     activityLogViewModel = activityLogViewModel,
+                    // FR-108: the Planer's week and the cook history live
+                    // here already (the dashboard above reads the same two),
+                    // so Spiżarnia can warn about running out without
+                    // growing a second copy of either.
+                    weekPlan = weekPlan,
+                    recipesById = recipesById,
+                    todayDayIndex = todayIdx,
+                    isCookedOnDay = { recipeId, dayIndex ->
+                        recipeViewModel.isCookedOn(
+                            recipeId,
+                            AppDates.today().plusDays((dayIndex - todayIdx).toLong()).toString(),
+                        )
+                    },
                     onShowUndoSnackbar = { message, actionLabel, onUndo ->
                         snackbarScope.launch {
                             val result = snackbarHostState.showSnackbar(

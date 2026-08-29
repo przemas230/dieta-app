@@ -1453,6 +1453,21 @@
     box-shadow:0 1px 3px rgba(0,0,0,.2); white-space:nowrap;
   }
   .pt-badge-ok{background:var(--teal);}
+  /* FR-108: a tracked product that won't cover what's still planned this
+     week. Deliberately louder than the "active" teal outline it overrides --
+     it's the one tile state that asks the user to do something. */
+  .pantry-tile.short{border-color:var(--danger); border-width:2px;}
+  .pantry-tile.short .pt-badge{background:var(--danger);}
+  .pantry-shortage{
+    background:var(--danger-pale); border:1.5px solid var(--danger); border-radius:14px;
+    padding:10px 12px; margin-bottom:12px; cursor:default;
+  }
+  .pantry-shortage.expandable{cursor:pointer;}
+  .pantry-shortage .ps-head{font-weight:800; font-size:13px; color:var(--danger); margin-bottom:6px;}
+  .pantry-shortage .ps-row{margin-bottom:6px;}
+  .pantry-shortage .ps-name{font-size:12px; font-weight:700; color:var(--text);}
+  .pantry-shortage .ps-dishes{font-size:11px; color:var(--muted); line-height:1.35;}
+  .pantry-shortage .ps-more{font-size:11px; font-weight:700; color:var(--danger);}
   .shop-tile-checked{opacity:.5;}
   .shop-tile-checked .pt-name{text-decoration:line-through;}
   .pantry-item .pi-name{font-size:14px; font-weight:600;}
@@ -2854,6 +2869,79 @@ function buildPantryTileList(){
 }
 /** FR-102: true if this canonical name was permanently deleted by the user. */
 function isPantryHidden(canonName){ return !!state.pantryHidden[canonName]; }
+
+// ---------- FR-108: "tego ci nie starczy" ----------
+// Which TRACKED pantry products fall short of what the dishes still planned
+// for this week need. Until now a shortage only surfaced at the stove: the
+// Planer card's "🏺 N/M w spiżarni" badge answers *presence* ("is there any
+// rice at all"), never *amount*, so 20 g and 2 kg of rice look identical
+// right up to the moment the dish is cooked and the subtraction floors at 0.
+//
+// Three deliberate limits, each about not crying wolf:
+//   1. Only TRACKED products count. An ingredient with no pantry entry isn't
+//      a shortage, it's something the user doesn't track -- and there are
+//      ~200 such tiles; flagging them would bury the handful that matter.
+//   2. Only meals still ahead. Days already behind us are done with, and a
+//      dish already marked "🍳 zrobione" on its day has ALREADY had its
+//      ingredients subtracted -- counting it again invents a shortage out of
+//      a dinner that is finished and eaten.
+//   3. Mismatched unit categories are skipped, never guessed -- same cautious
+//      rule missingAfterPantry() and the FR-16 badge already follow.
+// Spices are excluded outright: Mało/Wystarczy/Dużo is not a quantity.
+function computePantryShortages(){
+  const now = new Date();
+  const jsDay = now.getDay();
+  const todayIdx = jsDay === 0 ? 6 : jsDay - 1;
+  const byId = {};
+  allRecipes().forEach(r=> byId[r.id] = r);
+  const needs = new Map();
+  for(let di = todayIdx; di <= 6; di++){
+    const dayPlan = state.planner[di] || {};
+    const dayDate = dateForDayIndex(di);
+    CATS.forEach(c=>{
+      const r = byId[dayPlan[c.id]];
+      if(!r) return;
+      if(isCookedToday(r.id, dayDate)) return;
+      const scale = getPlannerScale(di, c.id);
+      r.ingredients.forEach(ing=>{
+        const {baseQty, unitCat, name} = parseIngredient(ing);
+        if(!(baseQty > 0)) return;
+        const canon = pantryCanon(name);
+        let need = needs.get(canon);
+        if(!need){ need = {qty:0, unitCat, dishes:[]}; needs.set(canon, need); }
+        // Two recipes wording the same ingredient in different units (one
+        // "2 szt. cytryny", one "50 ml soku") can't be added up; the first
+        // wording wins and the other is left out rather than silently summed
+        // into a wrong total.
+        if(need.unitCat !== unitCat) return;
+        need.qty += baseQty * scale;
+        if(!need.dishes.includes(r.name)) need.dishes.push(r.name);
+      });
+    });
+  }
+  const out = [];
+  needs.forEach((need, canon)=>{
+    const entry = state.pantry[canon];
+    if(!entry || entry.type !== "product") return;
+    if(entry.unitCat !== need.unitCat) return;
+    const have = entry.qty || 0;
+    // A hair of tolerance so an exactly sufficient stock never reports a
+    // shortage of 0.0000001 g.
+    if(have + 0.0001 >= need.qty) return;
+    out.push({name:canon, unitCat:need.unitCat, have, needed:need.qty, missing:need.qty - have, dishes:need.dishes});
+  });
+  // Worst RELATIVE shortfall first: "nothing left and three dishes need it"
+  // matters more than "9 of the 10 eggs are there".
+  out.sort((a,b)=> (b.missing/b.needed) - (a.missing/a.needed) || (b.missing - a.missing) || a.name.localeCompare(b.name,'pl'));
+  return out;
+}
+/** "na 3 dania" / "na 1 danie" -- Polish counts, so it can't be a flat "na N dań". */
+function dishCountLabel(n){
+  if(n === 1) return "na 1 danie";
+  const last = n % 10, teens = n % 100;
+  if(last >= 2 && last <= 4 && !(teens >= 12 && teens <= 14)) return `na ${n} dania`;
+  return `na ${n} dań`;
+}
 
 
 // ---------- RECIPE THUMBNAILS ----------
@@ -8213,6 +8301,10 @@ document.getElementById("tileActionOverlay").addEventListener("click", (e)=>{
 });
 
 const clinicCollapsedPantryCats = new Set();
+// FR-108: collapsed to the three worst by default -- the card is a nudge
+// before shopping, not an inventory report. Module-level (not a local) so it
+// survives the re-render its own click triggers.
+let pantryShortagesExpanded = false;
 function renderPantry(){
   const box = document.getElementById("pantryTiles");
   box.innerHTML = "";
@@ -8238,6 +8330,25 @@ function renderPantry(){
       toast("Przywrócono produkty");
     });
     box.appendChild(restore);
+  }
+  // FR-108: shown only when something actually falls short, so an ordinary
+  // week adds no clutter at all to this screen.
+  const shortages = computePantryShortages();
+  const shortNames = new Set(shortages.map(x=>x.name));
+  if(shortages.length){
+    const card = document.createElement("div");
+    card.className = "pantry-shortage" + (shortages.length > 3 ? " expandable" : "");
+    const shown = pantryShortagesExpanded ? shortages : shortages.slice(0,3);
+    card.innerHTML = `<div class="ps-head">⚠️ Nie starczy na zaplanowane dania (${shortages.length})</div>` +
+      shown.map(x=>`<div class="ps-row"><div class="ps-name">${pantryDisplayName(x.name)} — masz ${formatQty(x.unitCat, x.have)}, trzeba ${formatQty(x.unitCat, x.needed)}</div>` +
+        `<div class="ps-dishes">${dishCountLabel(x.dishes.length)}: ${x.dishes.join(", ")}</div></div>`).join("") +
+      (shortages.length > 3
+        ? `<div class="ps-more">${pantryShortagesExpanded ? "Zwiń" : `…i jeszcze ${shortages.length-3} — stuknij, by pokazać`}</div>`
+        : "");
+    if(shortages.length > 3){
+      card.addEventListener("click", ()=>{ pantryShortagesExpanded = !pantryShortagesExpanded; renderPantry(); });
+    }
+    box.appendChild(card);
   }
   const byCat = {};
   tileNames.forEach(name=>{
@@ -8268,8 +8379,11 @@ function renderPantry(){
     items.sort((a,b)=>a.name.localeCompare(b.name,'pl')).forEach(it=>{
       const entry = state.pantry[it.name];
       const tile = document.createElement("button");
-      tile.className = "pantry-tile" + (entry ? " active":"");
-      const badge = entry ? (entry.type==="spice" ? entry.level : formatQty(entry.unitCat, entry.qty)) : "";
+      // FR-108: the tile says it too, not just the card at the top -- by the
+      // time the user is looking at the product, the card has scrolled away.
+      tile.className = "pantry-tile" + (entry ? " active":"") + (shortNames.has(it.name) ? " short":"");
+      let badge = entry ? (entry.type==="spice" ? entry.level : formatQty(entry.unitCat, entry.qty)) : "";
+      if(badge && shortNames.has(it.name)) badge = "⚠ " + badge;
       const displayName = pantryDisplayName(it.name, (entry && entry.type==="product" && entry.unitCat==="count") ? entry.qty : undefined);
       tile.innerHTML = `<span class="pt-emoji">${it.emoji}</span><span class="pt-name">${displayName}</span>${entry?`<span class="pt-badge">${badge}</span>`:""}`;
       let pressTimer=null, longFired=false;

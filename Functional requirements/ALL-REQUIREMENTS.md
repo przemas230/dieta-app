@@ -68,6 +68,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-31: Skanowanie kodu kreskowego produktu](#fr-31-skanowanie-kodu-kreskowego-produktu)
 - [FR-32: Podpowiedź „🏺 masz w spiżarni” i „Pomysł na danie z ulubionych składników”](#fr-32-podpowiedź-🏺-masz-w-spiżarni-i-pomysł-na-danie-z-ulubionych-składników)
 - [FR-102: Trwałe usuwanie produktu ze spiżarni](#fr-102-trwałe-usuwanie-produktu-ze-spiżarni)
+- [FR-108: Ostrzeżenie, że produktu nie starczy na zaplanowane dania](#fr-108-ostrzeżenie-że-produktu-nie-starczy-na-zaplanowane-dania)
 
 ### Szybkie dodawanie i przekąski
 - [FR-33: Globalny przycisk szybkiego dodania przekąski/dania z każdego miejsca](#fr-33-globalny-przycisk-szybkiego-dodania-przekąskidania-z-każdego-miejsca)
@@ -171,6 +172,10 @@ Przegląd wymagań pod kątem wzajemnych sprzeczności. Żadna z poniższych par
 
 19. **FR-106 (propozycja przeniesienia zakupów do spiżarni) vs FR-15 (oznaczanie dania jako ugotowane).** Nie wykluczają się, ale łatwo je pomylić — i pierwotny pomysł na FR-106 mylił je wprost. Odhaczenie listy zakupów znaczy „kupiłem”, a nie „ugotowałem”: oznaczenie „zrobione” ODJĘŁOBY ze spiżarni to, co użytkownik właśnie kupił. Rozstrzygnięcie: FR-106 wyłącznie NAPEŁNIA spiżarnię, a ugotowanie zostaje tam, gdzie było — w geście z FR-103. Obie funkcje spotykają się dopiero na spiżarni: FR-106 ją wypełnia, FR-103 z niej odejmuje.
 20. **FR-107 (zapamiętana porcja) vs FR-105 (dowolna porcja).** FR-107 nie dokłada żadnego nowego zapisu — czyta pole `portion`, które FR-105 i tak zapisuje. Rozstrzygnięcie kolejności: wartość już zapisana na dziś ma pierwszeństwo przed nawykiem (użytkownik poprawia konkretny wpis, a nie pyta o statystykę), a nawyk przed całą porcją. Nawyk nie jest zgłaszany przy jednym wystąpieniu ani gdy wynosi całą porcję — inaczej podpowiedź pojawiałaby się przy każdym daniu i przestałaby cokolwiek znaczyć.
+
+21. **FR-108 (ostrzeżenie o braku) vs FR-16 (znacznik „🏺 N/M w spiżarni”).** Odpowiadają na dwa różne pytania i dlatego nie zastępują się nawzajem: FR-16 mówi o OBECNOŚCI składnika („czy jest jakikolwiek ryż”), FR-108 o ILOŚCI („czy starczy go na to, co zaplanowane”). Produkt może być policzony przez FR-16 jako „mam” i jednocześnie zgłoszony przez FR-108 jako niewystarczający — to nie sprzeczność, tylko dwa poziomy szczegółowości tej samej informacji.
+22. **FR-108 vs FR-15/FR-103 (odejmowanie ze spiżarni po ugotowaniu).** Muszą być czytane razem, inaczej ostrzeżenie kłamie. Danie oznaczone jako zrobione JUŻ odjęło swoje składniki, więc policzenie go nadal jako „potrzebne” pokazałoby brak dokładnie po zjedzeniu obiadu. Rozstrzygnięcie: FR-108 pomija posiłki zrobione w swoim dniu, a cofnięcie oznaczenia (FR-103) przywraca i stan spiżarni, i ostrzeżenie.
+23. **FR-108 vs FR-106 (propozycja przeniesienia zakupów do spiżarni).** Domykają tę samą pętlę z dwóch stron: FR-106 wypełnia spiżarnię tym, co kupione, a FR-108 mówi, kiedy tego przestaje wystarczać. Zaakceptowanie propozycji FR-106 potrafi więc wyciszyć ostrzeżenie FR-108 bez żadnego dodatkowego kroku — i tak ma być.
 
 ---
 
@@ -5855,3 +5860,83 @@ podpowiedzią niż wybór arbitralny.
   logiki — **wariant „z historią" nie był odklikany na emulatorze**, bo
   wymagałby wpisów z dwóch różnych dni, czego nie da się wyklikać bez
   przestawiania daty urządzenia.
+
+---
+
+# FR-108: Ostrzeżenie, że produktu nie starczy na zaplanowane dania
+
+**Obszar:** Spiżarnia, Android + Web
+**Status:** Zaimplementowane na obu platformach
+
+## Opis
+Spiżarnia mówi teraz wprost, czego **nie starczy** na dania zaplanowane do
+końca tygodnia. Na górze ekranu pojawia się czerwona karta:
+
+> ⚠️ Nie starczy na zaplanowane dania (1)
+> skyr bez laktozy — masz 38 g, trzeba 150 g
+> na 1 danie: Nocna owsianka białkowa z borówkami i migdałami
+
+a sam kafelek takiego produktu dostaje czerwoną obwódkę i znacznik „⚠” przy
+ilości — bo zanim użytkownik dojdzie wzrokiem do produktu, karta z góry
+zdąży zniknąć za krawędzią ekranu.
+
+Do tej pory brak wychodził na jaw dopiero przy gotowaniu. Znacznik
+„🏺 N/M w spiżarni” na kartach Planera (FR-16) odpowiada na pytanie o
+**obecność** („czy jest jakikolwiek ryż”), nigdy o **ilość** — więc 20 g ryżu
+i 2 kg ryżu wyglądają identycznie aż do chwili, w której danie zostaje
+oznaczone jako zrobione, a odejmowanie z FR-15 przycina stan do zera.
+
+**Trzy świadome ograniczenia**, każde o tym, żeby nie krzyczeć na wyrost:
+
+1. **Liczą się tylko produkty śledzone.** Składnik bez wpisu w spiżarni to
+   nie brak, tylko coś, czego użytkownik nie śledzi — a takich kafelków jest
+   około dwustu. Zgłaszanie ich przykryłoby tę garstkę, którą ktoś naprawdę
+   prowadzi, i powtarzałoby to, co i tak robi lista zakupów.
+2. **Liczą się tylko posiłki jeszcze przed nami.** Dni sprzed dzisiaj są
+   zamknięte, a danie oznaczone już jako „🍳 zrobione” w swoim dniu **ma już
+   odjęte** składniki (FR-15/FR-103) — policzenie go drugi raz wymyśliłoby
+   brak z kolacji, która jest zjedzona.
+3. **Niezgodne jednostki są pomijane, nie zgadywane.** Produkt śledzony w
+   „szt." nie da się porównać z przepisem liczonym w gramach — ta sama
+   ostrożna zasada, którą stosuje już `missingAfterPantry()` i znacznik z
+   FR-16.
+
+Przyprawy są wykluczone z definicji: Mało/Wystarczy/Dużo nie jest ilością,
+więc nie ma od czego odejmować.
+
+Kolejność na liście: **największy względny brak najpierw** — „nie ma nic, a
+potrzebują tego trzy dania” waży więcej niż „jest 9 z 10 jajek”. Karta
+domyślnie pokazuje trzy najgorsze pozycje; reszta jest o jedno stuknięcie
+dalej, bo to ma być zachęta przed zakupami, a nie raport magazynowy.
+
+## Kryteria akceptacji
+- Produkt śledzony w ilości mniejszej niż suma potrzebna na dania
+  zaplanowane od dziś do niedzieli pojawia się na karcie i ma oznaczony
+  kafelek.
+- Dokładnie wystarczająca ilość nie jest brakiem.
+- Kilogramy i litry w spiżarni są porównywane z gramami/mililitrami przepisu
+  (1 kg pokrywa 200 g).
+- Skala porcji (1×–2×) zwiększa potrzebę proporcjonalnie.
+- Ten sam składnik z dwóch dań sumuje się i wymienia oba dania; to samo
+  danie zaplanowane dwa razy liczy się podwójnie, ale jest wymienione raz.
+- Składnik bez wpisu w spiżarni nie jest zgłaszany.
+- Przyprawa (poziom zamiast ilości) nie jest zgłaszana.
+- Wpis w „szt." nie jest porównywany z gramami.
+- Dni sprzed dzisiaj nie są liczone.
+- Danie już oznaczone jako zrobione w swoim dniu nie jest liczone; cofnięcie
+  tego oznaczenia przywraca zarówno stan spiżarni, jak i ostrzeżenie.
+- Liczba dań jest odmieniona po polsku („na 1 danie”, „na 2 dania”,
+  „na 5 dań”, „na 12 dań”, „na 22 dania”).
+
+## Historia rewizji
+- **v1** (2026-08-30): Pierwsza wersja, obie platformy w tej samej turze.
+  Logika wydzielona do `PantryShortage` (moduł `logic`) z czternastoma
+  testami pokrywającymi wszystkie trzy ograniczenia, przeliczanie kg/l,
+  skalę porcji, sumowanie i sortowanie. Zweryfikowane na żywo w Chrome na
+  prawdziwych danych: przy 38 g skyru i przepisie na 150 g karta pokazała
+  „masz 38 g, trzeba 150 g”, kafelek dostał obwódkę i znacznik „⚠ 38 g”;
+  uzupełnienie do 500 g, usunięcie śledzenia, zmiana jednostki na „szt."
+  oraz oznaczenie dania jako zrobione — każde z osobna wyciszało ostrzeżenie
+  (po ugotowaniu stan spadł do 0, a mimo to nie zgłoszono braku), a
+  cofnięcie „zrobione” przywróciło i stan 38 g, i ostrzeżenie. Skala 2×
+  podniosła potrzebę ze 150 g na 300 g.
