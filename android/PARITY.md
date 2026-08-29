@@ -1281,6 +1281,52 @@ jeszcze sprawdzić w Android Studio), popraw status na ⏳ do potwierdzenia.
   `versions/` ani nie zmienił się `CACHE_NAME` — zmiany są wyłącznie po
   stronie Androida i dokumentacji.
 
+- **Dwa zabezpieczenia zamiast nowych funkcji (2026-08-29, czwarta runda tego dnia)**:
+  użytkownik wybrał dwa punkty z listy propozycji — oba o tym, żeby to, co
+  już działa, nie zepsuło się po cichu.
+
+  **FR-103/v3 — stuknięcie vs gest.** Prawdziwy palec przesuwa się o 20–40 px
+  przy zwykłym stuknięciu, a obie karty mają własną akcję na stuknięcie, więc
+  niechlujne stuknięcie mogło przesunąć danie o krok — czyli odjąć składniki
+  ze spiżarni bez pytania. Rozstrzygnięcie: ani sam dystans (nałożenie wypada
+  w paśmie 30–60 dp), ani sam czas (zdecydowany flick trwa 80–100 ms, więc
+  „krótkie = stuknięcie” połykałoby główny gest), tylko oba naraz — patrz
+  tabela w FR-103/v3. Jedna funkcja (`PlannerSwipe.commitDirection` /
+  `pdCommitDirection`) obsługuje żywą etykietę i puszczenie palca, więc karta
+  nie może obiecać kroku, którego potem odmówi.
+
+  **FR-98/v3 — test obiegu kopii zapasowej.** Kopia gubiąca po cichu jedno
+  pole jest gorsza niż jej brak, bo wygląda na udaną. Żeby dało się to
+  testować w module bez Androida, koperta i cała walidacja przeniosły się z
+  `app` do `BackupEnvelope` w `logic/`; w `BackupFile` zostało wyłącznie to,
+  czego przenieść się nie da (`org.json`, Storage Access Framework).
+  `BackupRoundTripTest` składa ładunek dokładnie tak jak aplikacja, pakuje,
+  odczytuje i dekoduje pole po polu — w tym `pantryHidden` i ułamkową porcję.
+
+  Kroku „Mapa → JSON → Mapa” test nie powtarza (wymaga Androida), więc
+  zamiast tego sprawdza, że ładunek jest JSON-BEZPIECZNY — to jedyne miejsce,
+  gdzie ten krok może zgubić dane. Sam wykrywacz też dostał test: asercja,
+  która nigdy nie może paść, jest gorsza niż jej brak.
+
+  **Weryfikacja**: po trzy przypadki gestu na każdej platformie, z odczytem
+  realnych liczb — 105 px w 90 ms → nic, te same 105 px w 350 ms →
+  „Zrobione”, 260 px w 60 ms → „Zjedzone”. Android na emulatorze, web w
+  Chrome (aplikacja serwowana lokalnie).
+
+  **Druga pułapka pomiarowa tego samego dnia**: pierwsza próba na webie
+  pokazała, że zabezpieczenie „nie działa” — i znowu winne było narzędzie.
+  Nieaktywna karta przeglądarki ogranicza `setTimeout` do ~1 s, więc gest
+  rozpisany na „80 ms” trwał w rzeczywistości kilka sekund i słusznie został
+  uznany za świadomy. Po wysłaniu zdarzeń synchronicznie (czas ~0 ms)
+  zachowanie było poprawne za pierwszym razem. Wniosek ten sam co przy
+  powiadomieniach na Androidzie: sprawdzając coś zależnego od CZASU, upewnij
+  się najpierw, że mierzysz aplikację, a nie własne narzędzie.
+
+  `versionCode` 88→89, `versionName` 0.1.87→0.1.88, CACHE_NAME→v117,
+  `versions/v117/`. `./gradlew :logic:test :app:assembleDebug` przechodzą
+  (321+ testów, w tym nowy `BackupRoundTripTest` i rozszerzony
+  `PlannerSwipeTest`).
+
 ## Jak to utrzymywać
 
 1. Każda nowa funkcja dodana do `index.html` (wersja web) dostaje odpowiadający wpis/aktualizację tutaj.

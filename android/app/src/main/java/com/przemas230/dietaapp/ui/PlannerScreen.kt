@@ -1238,7 +1238,18 @@ private fun PlannerDashboard(
                 val density = LocalDensity.current
                 val swipeMaxPx = with(density) { PlannerSwipe.MAX_DP.dp.toPx() }
                 val swipeCommitPx = with(density) { PlannerSwipe.COMMIT_DP.dp.toPx() }
-                val liveDirection = PlannerSwipe.directionFor(offsetX.value, swipeCommitPx)
+                val swipeDefinitePx = with(density) { PlannerSwipe.DEFINITE_DP.dp.toPx() }
+                // When the finger went down, so a short drag can be told
+                // apart from a tap that drifted -- see PlannerSwipe.commitDirection.
+                // Held in a plain holder rather than state: it must not
+                // trigger recomposition, it is only read when deciding.
+                val dragStartedAt = remember(category.id) { longArrayOf(0L) }
+                val liveDirection = PlannerSwipe.commitDirection(
+                    offsetX.value,
+                    if (dragStartedAt[0] == 0L) Long.MAX_VALUE else System.currentTimeMillis() - dragStartedAt[0],
+                    swipeCommitPx,
+                    swipeDefinitePx,
+                )
                 val liveTarget = if (liveDirection == 0) null else PlannerSwipe.nextStage(stage, liveDirection)
                 val dragTint = if (liveDirection == 0) {
                     Color.Transparent
@@ -1281,14 +1292,24 @@ private fun PlannerDashboard(
                             .offset { IntOffset(offsetX.value.roundToInt(), 0) }
                             .pointerInput(category.id) {
                                 detectHorizontalDragGestures(
+                                    onDragStart = { dragStartedAt[0] = System.currentTimeMillis() },
                                     onDragEnd = {
-                                        val committed = PlannerSwipe.directionFor(offsetX.value, swipeCommitPx)
+                                        val committed = PlannerSwipe.commitDirection(
+                                            offsetX.value,
+                                            System.currentTimeMillis() - dragStartedAt[0],
+                                            swipeCommitPx,
+                                            swipeDefinitePx,
+                                        )
+                                        dragStartedAt[0] = 0L
                                         swipeScope.launch {
                                             if (committed != 0) onSwipeStep(category.id, committed, recipe, kcal, today)
                                             offsetX.animateTo(0f)
                                         }
                                     },
-                                    onDragCancel = { swipeScope.launch { offsetX.animateTo(0f) } },
+                                    onDragCancel = {
+                                        dragStartedAt[0] = 0L
+                                        swipeScope.launch { offsetX.animateTo(0f) }
+                                    },
                                 ) { change, dragAmount ->
                                     change.consume()
                                     swipeScope.launch {
@@ -1712,7 +1733,18 @@ private fun DayCardClinic(
                 val rowDensity = LocalDensity.current
                 val rowMaxPx = with(rowDensity) { PlannerSwipe.MAX_DP.dp.toPx() }
                 val rowCommitPx = with(rowDensity) { PlannerSwipe.COMMIT_DP.dp.toPx() }
-                val rowDirection = PlannerSwipe.directionFor(rowOffset.value, rowCommitPx)
+                val rowDefinitePx = with(rowDensity) { PlannerSwipe.DEFINITE_DP.dp.toPx() }
+                // Same tap-vs-drag guard as the dashboard card. It matters
+                // more here, if anything: this row's tap opens the dish
+                // picker, so a misread tap would both skip the picker AND
+                // subtract the pantry.
+                val rowDragStartedAt = remember(category.id, dateKey) { longArrayOf(0L) }
+                val rowDirection = PlannerSwipe.commitDirection(
+                    rowOffset.value,
+                    if (rowDragStartedAt[0] == 0L) Long.MAX_VALUE else System.currentTimeMillis() - rowDragStartedAt[0],
+                    rowCommitPx,
+                    rowDefinitePx,
+                )
                 val rowTarget = if (rowDirection == 0) null else PlannerSwipe.nextStage(rowStage, rowDirection)
                 val rowBase = when (rowStage) {
                     PlannerSwipe.Stage.COOKED -> MaterialTheme.colorScheme.primaryContainer
@@ -1742,14 +1774,24 @@ private fun DayCardClinic(
                             if (recipe != null && meal != null) {
                                 Modifier.pointerInput(category.id, dateKey) {
                                     detectHorizontalDragGestures(
+                                        onDragStart = { rowDragStartedAt[0] = System.currentTimeMillis() },
                                         onDragEnd = {
-                                            val committed = PlannerSwipe.directionFor(rowOffset.value, rowCommitPx)
+                                            val committed = PlannerSwipe.commitDirection(
+                                                rowOffset.value,
+                                                System.currentTimeMillis() - rowDragStartedAt[0],
+                                                rowCommitPx,
+                                                rowDefinitePx,
+                                            )
+                                            rowDragStartedAt[0] = 0L
                                             rowScope.launch {
                                                 if (committed != 0) onSwipeStep(category.id, committed, recipe, rowKcal, date)
                                                 rowOffset.animateTo(0f)
                                             }
                                         },
-                                        onDragCancel = { rowScope.launch { rowOffset.animateTo(0f) } },
+                                        onDragCancel = {
+                                            rowDragStartedAt[0] = 0L
+                                            rowScope.launch { rowOffset.animateTo(0f) }
+                                        },
                                     ) { change, dragAmount ->
                                         change.consume()
                                         rowScope.launch {

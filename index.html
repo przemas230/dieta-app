@@ -5210,6 +5210,29 @@ function openPortionPicker(date, cat, recipe){
   overlay.classList.add("show");
 }
 const PD_COMMIT = 30, PD_SWIPE_MAX = 96;
+// FR-103/v3 (2026-08-29): a real finger never taps perfectly still -- on a
+// phone held in one hand it routinely slides 20-40px -- and these cards
+// carry a tap action of their own (recipe preview / dish picker). Without a
+// guard, a sloppy tap could step the meal's stage instead, which is the one
+// misfire that costs the user something real: a pantry subtraction they
+// never asked for.
+//
+// Distance alone can't separate the two (the overlap is exactly the 30-60px
+// band), and time alone can't either: a decisive flick is over in 80-100ms,
+// so "short press = tap" would swallow the very gesture people make once
+// they trust it. So both, in three bands:
+//   < PD_COMMIT ................. nothing
+//   PD_COMMIT..PD_DEFINITE ...... a step only if the press lasted >= PD_TAP_MS
+//   >= PD_DEFINITE .............. always a step, however quick
+const PD_DEFINITE = 60, PD_TAP_MS = 150;
+// Used for BOTH the live label and the release, so the card can never
+// promise a step it will then refuse to take.
+function pdCommitDirection(dx, elapsedMs){
+  const dir = Math.abs(dx) >= PD_COMMIT ? (dx > 0 ? 1 : -1) : 0;
+  if(!dir) return 0;
+  const looksLikeATap = Math.abs(dx) < PD_DEFINITE && elapsedMs < PD_TAP_MS;
+  return looksLikeATap ? 0 : dir;
+}
 // The three states a planned meal can be in. Derived, never stored: "cooked"
 // is a cook-history entry for today, "eaten" is state.eaten -- both already
 // existed and are still written by every other part of the app (the recipe
@@ -5233,7 +5256,7 @@ function pdNextStage(stage, dir){
 function attachPdMealCardSwipe(box, date){
   const AXIS_LOCK = 10;
   box.querySelectorAll(".pd-meal-card:not(.pd-meal-card-empty), .cdc-swipe-row").forEach(card=>{
-    let startX=null, startY=null, dx=0, axis=null;
+    let startX=null, startY=null, dx=0, axis=null, startedAt=0;
     const labelEl = card.querySelector(".pd-swipe-action");
     const clearDragStyle = ()=>{
       card.style.backgroundColor = "";
@@ -5254,6 +5277,7 @@ function attachPdMealCardSwipe(box, date){
       // a tap never crosses AXIS_LOCK and so never sets pdSwiped.
       if(e.target.closest("[data-pd-remove-cat]")) return;
       startX = e.clientX; startY = e.clientY; dx = 0; axis = null;
+      startedAt = Date.now();
       card.style.transition = "none";
       // FR-105: long-press opens the portion picker. Cancelled the moment
       // the finger moves enough to be a swipe (see pointermove below), so
@@ -5280,22 +5304,23 @@ function attachPdMealCardSwipe(box, date){
         if(e.cancelable) e.preventDefault();
         dx = Math.max(-PD_SWIPE_MAX, Math.min(PD_SWIPE_MAX, ddx));
         card.style.transform = `translateX(${dx}px)`;
-        const target = Math.abs(dx) >= PD_COMMIT ? pdNextStage(stageNow(), dx > 0 ? 1 : -1) : null;
+        const liveDir = pdCommitDirection(dx, Date.now() - startedAt);
+        const target = liveDir ? pdNextStage(stageNow(), liveDir) : null;
         if(target === null){
           clearDragStyle();
           // Already at the end of the line in this direction -- say so
           // instead of letting the card slide with no feedback at all.
-          if(Math.abs(dx) >= PD_COMMIT && labelEl){
+          if(liveDir && labelEl){
             labelEl.className = `pd-swipe-action show muted ${dx > 0 ? "at-right" : "at-left"}`;
             labelEl.textContent = dx > 0 ? "✓ już zjedzone" : "— nic do cofnięcia";
           }
         }else{
           const intensity = Math.min(1, (Math.abs(dx) - PD_COMMIT) / (PD_SWIPE_MAX - PD_COMMIT));
-          const tint = dx > 0 ? [60,170,110] : [190,120,60];
+          const tint = liveDir > 0 ? [60,170,110] : [190,120,60];
           card.style.backgroundColor = `rgba(${tint[0]},${tint[1]},${tint[2]},${(0.12 + 0.18*intensity).toFixed(2)})`;
           if(labelEl){
-            labelEl.className = `pd-swipe-action show ${dx > 0 ? "good at-right" : "warn at-left"}`;
-            labelEl.textContent = target === "none" ? "↩️ Cofnij zrobienie" : (dx > 0 ? PD_STAGE_LABEL[target] : `↩️ Cofnij — ${PD_STAGE_LABEL[target].toLowerCase()}`);
+            labelEl.className = `pd-swipe-action show ${liveDir > 0 ? "good at-right" : "warn at-left"}`;
+            labelEl.textContent = target === "none" ? "↩️ Cofnij zrobienie" : (liveDir > 0 ? PD_STAGE_LABEL[target] : `↩️ Cofnij — ${PD_STAGE_LABEL[target].toLowerCase()}`);
           }
         }
       }
@@ -5305,13 +5330,13 @@ function attachPdMealCardSwipe(box, date){
       if(startX===null) return;
       card.style.transition = "transform .15s ease, background-color .2s ease";
       card.style.transform = "translateX(0)";
-      const committed = axis==="x" && Math.abs(dx) >= PD_COMMIT ? (dx > 0 ? 1 : -1) : 0;
+      const committed = axis==="x" ? pdCommitDirection(dx, Date.now() - startedAt) : 0;
       clearDragStyle();
       if(committed){
         card.dataset.pdSwiped = "1";
         applyPdStageStep(card.dataset.pdToggleCat, card.dataset.pdRecipeId, cardDate, committed);
       }
-      startX=null; startY=null; dx=0; axis=null;
+      startX=null; startY=null; dx=0; axis=null; startedAt=0;
     };
     card.addEventListener("pointerup", finish);
     card.addEventListener("pointercancel", finish);

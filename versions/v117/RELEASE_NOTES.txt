@@ -1,0 +1,71 @@
+Wersja v117 (2026-08-29)
+========================
+
+Dwie rzeczy z listy proponowanych ulepszeń — obie o zabezpieczaniu tego, co
+już działa, a nie o nowych funkcjach.
+
+1. STUKNIĘCIE PRZESTAŁO SIĘ MYLIĆ Z GESTEM
+   ----------------------------------------
+   Prawdziwy palec nigdy nie stuka idealnie nieruchomo — na telefonie
+   trzymanym w jednej ręce rutynowo przesuwa się o 20–40 px. A karty w
+   Planerze mają własną akcję na stuknięcie (podgląd przepisu na górze,
+   wybór dania w kartach dni). Bez zabezpieczenia niechlujne stuknięcie
+   mogło przesunąć danie o krok — a to jedyny rodzaj pomyłki, który realnie
+   kosztuje: odjęcie składników ze spiżarni, o które nie prosiłeś.
+
+   Sam dystans tego nie rozdziela, bo nałożenie wypada dokładnie w paśmie
+   30–60 px. Sam czas też nie: zdecydowany „flick" kończy się w 80–100 ms,
+   więc reguła „krótkie naciśnięcie = stuknięcie" połykałaby dokładnie ten
+   gest, który robi się odruchowo, gdy się już funkcji ufa.
+
+   Dlatego oba naraz, w trzech pasmach:
+
+     poniżej 30 dp                    →  nic (jak dotąd)
+     30–60 dp, palec krócej niż 0,15s →  stuknięcie, gest zignorowany
+     30–60 dp, palec dłużej           →  krok
+     powyżej 60 dp                    →  krok, choćby najszybszy
+
+   Ta sama funkcja decyduje o żywej etykiecie na karcie I o tym, co się
+   stanie po puszczeniu palca — karta nie może obiecać kroku, którego potem
+   odmówi.
+
+2. KOPIA ZAPASOWA MA WRESZCIE TEST OBIEGU
+   ---------------------------------------
+   Kopia, która po cichu gubi jedno pole, jest gorsza niż jej brak, bo
+   wygląda na udaną — dowiadujesz się dopiero wtedy, gdy jej potrzebujesz.
+   Do tej pory sprawdzałem to raz, ręcznie.
+
+   Teraz przy każdym budowaniu aplikacji uruchamia się test „eksport →
+   import → wszystko wróciło": składa dane dokładnie tak, jak składa je
+   aplikacja, pakuje do koperty pliku, odczytuje i sprawdza pole po polu —
+   w tym produkty usunięte ze spiżarni na stałe i ułamkową porcję, która
+   musi wrócić jako ta sama ćwiartka, a nie jako całość.
+
+   Żeby dało się to w ogóle testować bez Androida, decyzje (czy to nasz
+   plik, czy nie jest z nowszej wersji aplikacji) zostały wyprowadzone do
+   osobnego, czystego modułu. W części androidowej zostało tylko to, czego
+   nie da się przenieść: obsługa JSON-a i systemowy wybór pliku.
+
+   Jeden krok — zamiana danych na tekst JSON i z powrotem — z natury wymaga
+   Androida, więc test go nie powtarza. Zamiast tego sprawdza, że dane są
+   „JSON-bezpieczne", bo to jedyne miejsce, w którym ten krok może coś
+   zgubić: przyszłe pole trzymające coś, czego JSON nie zna, zakodowałoby
+   się „pomyślnie" i wróciło bezużyteczne. Sam wykrywacz też ma własny test
+   — asercja, która nigdy nie może paść, jest gorsza niż jej brak.
+
+Weryfikacja
+-----------
+Po trzy przypadki gestu na każdej platformie, z odczytem realnych liczb:
+105 px w 90 ms → nic; te same 105 px w 350 ms → „Zrobione"; 260 px w 60 ms
+→ „Zjedzone". Na Androidzie na emulatorze, na webie w Chrome.
+
+Uwaga metodologiczna: pierwsza próba na webie pokazała, że zabezpieczenie
+„nie działa" — i znowu winne było narzędzie, nie aplikacja. Nieaktywna karta
+przeglądarki ogranicza timery do ~1 sekundy, więc mój „gest w 80 ms" trwał
+w rzeczywistości kilka sekund i słusznie został uznany za świadomy. Po
+wysłaniu zdarzeń synchronicznie (czas ~0 ms) zachowanie było poprawne za
+pierwszym razem. To ten sam rodzaj pułapki co poprzednio z powiadomieniami
+na Androidzie: łatwo zmierzyć własne narzędzie zamiast aplikacji.
+
+Wersje: Android versionCode 88→89, versionName 0.1.87→0.1.88 (APK w
+android/dist zsynchronizowany), Web CACHE_NAME v116→v117.

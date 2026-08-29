@@ -45,6 +45,28 @@ object PlannerSwipe {
     /** How far the card is allowed to travel visually before it stops following the finger. */
     const val MAX_DP = 96f
 
+    /**
+     * Past this distance the movement is a swipe no matter how quick it was.
+     *
+     * Needed because [TAP_MAX_MS] alone would break fast flicks: a decisive
+     * flick can be over in 80-100 ms, and treating everything that brief as
+     * a tap would swallow exactly the gesture people make once they trust it.
+     */
+    const val DEFINITE_DP = 60f
+
+    /**
+     * A press shorter than this, that also stayed under [DEFINITE_DP], is
+     * read as a TAP that drifted rather than a deliberate short drag.
+     *
+     * A real finger never taps perfectly still -- on a phone in one hand it
+     * routinely slides 20-40 px -- and both the dashboard card and the day
+     * rows carry a tap action of their own (recipe preview / dish picker).
+     * Without this, a sloppy tap could step the meal's stage instead, which
+     * is the one kind of misfire that costs the user data (a pantry
+     * subtraction they never asked for).
+     */
+    const val TAP_MAX_MS = 150L
+
     enum class Stage(val label: String) {
         NONE(""),
         COOKED("🍳 Zrobione"),
@@ -72,11 +94,38 @@ object PlannerSwipe {
         else -> Stage.NONE
     }
 
-    /** Whether a drag of [dx] px commits a step, and in which direction (0 = not far enough). */
+    /** Whether a drag of [dx] px is far enough to commit a step, and in which direction (0 = not far enough). */
     fun directionFor(dx: Float, commitThreshold: Float): Int = when {
         dx >= commitThreshold -> 1
         dx <= -commitThreshold -> -1
         else -> 0
+    }
+
+    /**
+     * The same decision, but also refusing movements that look like a tap
+     * that drifted -- short in distance AND short in time.
+     *
+     * Three bands, and the middle one is the whole point:
+     *  - under [commitThreshold]: nothing, as before.
+     *  - between [commitThreshold] and [definiteThreshold]: a step only if
+     *    the finger was down at least [TAP_MAX_MS]. A deliberate short drag
+     *    takes longer than that; a tap that slid does not.
+     *  - past [definiteThreshold]: always a step, however fast -- otherwise
+     *    fast flicks would stop working.
+     *
+     * Used for BOTH the live label and the release, so the card never
+     * promises a step it will then refuse to take.
+     */
+    fun commitDirection(
+        dx: Float,
+        durationMs: Long,
+        commitThreshold: Float,
+        definiteThreshold: Float,
+    ): Int {
+        val direction = directionFor(dx, commitThreshold)
+        if (direction == 0) return 0
+        val looksLikeATap = kotlin.math.abs(dx) < definiteThreshold && durationMs < TAP_MAX_MS
+        return if (looksLikeATap) 0 else direction
     }
 
     /**

@@ -79,4 +79,47 @@ class PlannerSwipeTest {
         assertEquals(1f, PlannerSwipe.intensityFor(-9999f, commit, max))
         assertEquals(0f, PlannerSwipe.intensityFor(commit - 5f, commit, max))
     }
+
+    // ---- FR-103/v3: a tap that drifted must not step the stage ----
+
+    private val commit = PlannerSwipe.COMMIT_DP
+    private val definite = PlannerSwipe.DEFINITE_DP
+
+    @Test
+    fun `a quick short movement is treated as a tap, not a step`() {
+        // 40 dp in 90 ms -- a finger sliding during an ordinary tap.
+        assertEquals(0, PlannerSwipe.commitDirection(40f, 90L, commit, definite))
+        assertEquals(0, PlannerSwipe.commitDirection(-40f, 90L, commit, definite))
+    }
+
+    @Test
+    fun `the same short distance IS a step when the finger lingered`() {
+        // Deliberate short drag: same 40 dp, but 300 ms on screen.
+        assertEquals(1, PlannerSwipe.commitDirection(40f, 300L, commit, definite))
+        assertEquals(-1, PlannerSwipe.commitDirection(-40f, 300L, commit, definite))
+    }
+
+    @Test
+    fun `a fast flick still works, however brief`() {
+        // This is why time alone cannot be the rule: a decisive flick is over
+        // in under 100 ms, and swallowing it would break the main gesture.
+        assertEquals(1, PlannerSwipe.commitDirection(120f, 60L, commit, definite))
+        assertEquals(-1, PlannerSwipe.commitDirection(-120f, 60L, commit, definite))
+    }
+
+    @Test
+    fun `below the commit threshold nothing happens, however long the press`() {
+        assertEquals(0, PlannerSwipe.commitDirection(10f, 5_000L, commit, definite))
+    }
+
+    @Test
+    fun `the tap guard only narrows -- it never commits where distance alone would not`() {
+        for (dx in listOf(-200f, -61f, -31f, -5f, 0f, 5f, 31f, 61f, 200f)) {
+            for (ms in listOf(0L, 100L, 149L, 150L, 1_000L)) {
+                val guarded = PlannerSwipe.commitDirection(dx, ms, commit, definite)
+                val plain = PlannerSwipe.directionFor(dx, commit)
+                if (guarded != 0) assertEquals(plain, guarded)
+            }
+        }
+    }
 }

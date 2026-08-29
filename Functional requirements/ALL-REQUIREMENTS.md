@@ -5034,6 +5034,37 @@ Odnotowane w `android/PARITY.md`.
   tego samego pliku — okienko potwierdzenia pokazało datę „29.08.2026,
   09:49”, a po wczytaniu plan i podsumowanie tygodnia były nietknięte.
 
+
+- **v3** (2026-08-29): kopia zapasowa dostała test obiegu „eksport → import
+  → wszystko wróciło”, uruchamiany przy każdym budowaniu zamiast raz, ręcznie.
+
+  To było zabezpieczenie, którego tej funkcji brakowało. Kopia, która po
+  cichu gubi pole, jest gorsza niż jej brak, bo wygląda na udaną —
+  dowiadujesz się dopiero wtedy, gdy jej potrzebujesz.
+
+  Żeby dawało się to testować bez Androida, decyzje wyprowadzone zostały z
+  modułu `app` do `BackupEnvelope` w `logic/`: kształt koperty i cała
+  walidacja (czy to nasz plik, czy nie jest z nowszej wersji). W `BackupFile`
+  zostało wyłącznie to, czego nie da się przenieść — `org.json` i Storage
+  Access Framework.
+
+  `BackupRoundTripTest` składa ładunek DOKŁADNIE tak, jak składa go aplikacja
+  (`CloudSyncCodec.encodeAll` plus te same pola dodatkowe, które dokłada
+  `LocalPersistenceCoordinator`), pakuje, odczytuje i dekoduje pole po polu —
+  w tym `pantryHidden` (FR-102) i ułamkową porcję (FR-105), która musi wrócić
+  jako ta sama ćwiartka, a nie całość.
+
+  Kroku „Mapa → tekst JSON → Mapa” test nie powtarza (wymagałby `org.json`,
+  czyli Androida) — zamiast tego sprawdza, że ładunek jest JSON-BEZPIECZNY, bo
+  to jedyne miejsce, w którym ten krok może zgubić dane: przyszłe pole
+  trzymające enum, klasę danych albo `Set` zakodowałoby się „pomyślnie” i
+  wróciło bezużyteczne. Sam wykrywacz też ma test — asercja, która nigdy nie
+  może paść, jest gorsza niż jej brak.
+
+  Pokryte są też trzy ścieżki odrzucenia (nie nasz plik / wersja z
+  przyszłości / brak `data`) oraz zgodność wstecz: starsza kopia bez nowszych
+  pól wczytuje to, co ma, zamiast kasować resztę.
+
 ---
 
 # FR-99: Wyszukiwanie na liście zakupów
@@ -5538,6 +5569,38 @@ sprzed tej zmiany nie zmienia się ani o kcal.
   Zweryfikowane na emulatorze: cztery kolejne przesunięcia dały 0/1480 →
   zielona karta „🍳 Zrobione” → 345/1480 z przekreśleniem i wyszarzeniem →
   z powrotem, a dolny pasek nie drgnął.
+
+
+- **v3** (2026-08-29): gest odróżnia teraz stuknięcie, które się
+  „poślizgnęło”, od świadomego krótkiego przeciągnięcia. Prawdziwy palec
+  nigdy nie stuka idealnie nieruchomo — na telefonie trzymanym w jednej ręce
+  rutynowo przesuwa się o 20–40 px — a obie te karty mają własną akcję na
+  stuknięcie (podgląd przepisu / wybór dania). Bez zabezpieczenia niechlujne
+  stuknięcie mogło przesunąć danie o krok, a to jedyny rodzaj pomyłki, który
+  realnie kosztuje użytkownika: odjęcie składników ze spiżarni, o które nie
+  prosił.
+
+  Sam dystans tego nie rozdziela (nałożenie wypada dokładnie w paśmie
+  30–60 px), a sam czas też nie: zdecydowany „flick” kończy się w 80–100 ms,
+  więc reguła „krótkie naciśnięcie = stuknięcie” połykałaby dokładnie ten gest,
+  który robi się odruchowo, gdy się już funkcji ufa. Stąd trzy pasma:
+
+  | dystans | czas | wynik |
+  |---|---|---|
+  | < 30 dp | dowolny | nic |
+  | 30–60 dp | < 150 ms | stuknięcie (gest zignorowany) |
+  | 30–60 dp | ≥ 150 ms | krok |
+  | ≥ 60 dp | dowolny | krok |
+
+  Ta sama funkcja (`PlannerSwipe.commitDirection` / `pdCommitDirection`)
+  decyduje o żywej etykiecie I o puszczeniu palca, więc karta nie może
+  obiecać kroku, którego potem odmówi.
+
+  Zweryfikowane na emulatorze i w Chrome, po trzy przypadki na platformę:
+  105 px w 90 ms → nic; te same 105 px w 350 ms → „Zrobione”; 260 px w 60 ms
+  → „Zjedzone”. Testy jednostkowe (`PlannerSwipeTest`) pokrywają wszystkie
+  trzy pasma plus własność, że zabezpieczenie tylko ZAWĘŻA — nigdy nie
+  zatwierdza tam, gdzie sam dystans by nie zatwierdził.
 
 ---
 
