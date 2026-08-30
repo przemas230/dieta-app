@@ -1,0 +1,29 @@
+Wersja v132 (2026-08-30, 22:14)
+================================
+
+Numery wersji dostają teraz też datę i godzinę (na wyraźną prośbę
+użytkownika) + kolejna partia zdjęć przepisów z Unsplash.
+
+CO SIĘ ZMIENIŁO
+---------------
+Sam kolejny numer wersji nie mówił, KIEDY dokładnie dana wersja została
+wypuszczona — przy kilku wydaniach dziennie (typowe w tej sesji) trudno
+było się w tym połapać bez zaglądania do historii gita. Od teraz:
+
+- Web: CACHE_NAME w sw.js dostaje sufiks daty i godziny, np.
+  "dieta-app-v132-20260830-2214".
+- Android: versionName dostaje ten sam sufiks (kropka zamiast myślnika
+  przed godziną), np. "0.1.104-20260830.2214". versionCode zostaje
+  czystą liczbą całkowitą bez zmian (wymóg formatu Android) — to on
+  nadal decyduje o wykryciu aktualizacji, versionName jest tylko do
+  wyświetlenia.
+- Nagłówek RELEASE_NOTES.txt każdej wersji dostaje też godzinę, nie
+  tylko datę.
+
+Zasada spisana w CLAUDE.md, żeby obowiązywała automatycznie od tej pory.
+
+Plus kolejne zdjęcia przepisów z Unsplash (FR-114, 122/229) zebrane
+tuż przed tą zmianą.
+
+Wersje: Web CACHE_NAME v131->v132. Android versionCode 104->105
+(0.1.103->0.1.104-20260830.2214).

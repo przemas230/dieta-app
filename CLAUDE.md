@@ -26,6 +26,23 @@ Numeracja wersji jest ciągła i rośnie z każdą znaczącą zmianą (nie z ka�
 drobnym commitem technicznym typu literówka), o ile użytkownik nie zdecyduje
 inaczej.
 
+**Data i godzina w numerze wersji** (od 2026-08-30, na wyraźną prośbę
+użytkownika): sam kolejny numer nie mówi, KIEDY dokładnie dana wersja
+została wypuszczona, co ma znaczenie przy kilku wydaniach w ciągu jednego
+dnia (typowe w tej sesji). Dlatego oprócz numeru:
+- Web: `sw.js`'s `CACHE_NAME` dostaje sufiks `-<RRRRMMDD-GGmm>`, np.
+  `"dieta-app-v132-20260830-2214"`.
+- Android: `app/build.gradle.kts`'s `versionName` dostaje ten sam sufiks
+  (kropka zamiast myślnika przed godziną, żeby nie kolidować z myślnikiem
+  numeru), np. `"0.1.104-20260830.2214"`. `versionCode` zostaje CZYSTĄ
+  liczbą całkowitą bez sufiksu (wymóg formatu Android/Play Store — musi
+  dać się porównywać jako liczba).
+- `versions/v<N>/RELEASE_NOTES.txt`'s nagłówek dostaje też godzinę, nie
+  tylko datę: `Wersja v132 (2026-08-30, 22:14)`.
+
+Godzina lokalna maszyny, w formacie 24h, bez strefy czasowej (jak reszta
+znaczników czasu już używanych w tym repozytorium).
+
 ## Wymagania funkcjonalne (`Functional requirements/`)
 
 Folder `Functional requirements/` zawiera pełny, ponumerowany (FR-1, FR-2, …)
