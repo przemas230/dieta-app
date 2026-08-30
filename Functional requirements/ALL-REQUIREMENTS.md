@@ -5803,6 +5803,15 @@ składniki warte dodania to dokładnie te, których użytkownik NIE miał.
   emulatorze nie zostało dokończone** (dotknięcia checkboxów listy nie
   rejestrowały się w narzędziu; to ograniczenie sposobu testowania, nie
   stwierdzona wada funkcji).
+- **2026-08-30**: dokończona weryfikacja UI na emulatorze (przerwana
+  poprzednio). Przepis o 6 składnikach ("Szybki omlet kokosowy z cynamonem i
+  borówkami") dodany do listy zakupów, odhaczony do końca — powiadomienie
+  „Masz już wszystko na ...” pojawiło się dokładnie po ostatnim składniku, a
+  „Do spiżarni” utworzyło/zaktualizowało wszystkie 6 pozycji z poprawnymi
+  ilościami: borówki 1, jajka 1→3 (zsumowane z istniejącym wpisem, nie
+  zdublowane), mąka 1, cynamon 0,5, olej kokosowy 1, wiórki kokosowe 1.
+  Zachowanie identyczne z wersją webową. Bez zmian w kodzie — to była czysto
+  domknięta weryfikacja.
 
 ---
 
