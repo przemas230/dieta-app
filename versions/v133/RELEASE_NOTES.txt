@@ -1,0 +1,36 @@
+Wersja v133 (2026-08-30, 23:01)
+================================
+
+Nowa funkcja: skróty z ikony aplikacji (długie przytrzymanie / prawy
+klik) — "Zakupy", "Spiżarnia", "Postęp".
+
+CO SIĘ ZMIENIŁO
+---------------
+Samodzielnie zaproponowana funkcja, wzorowana na najlepszych aplikacjach
+(Spotify, Todoist, Google Maps): długie przytrzymanie ikony aplikacji na
+Androidzie (albo prawy klik na ikonie zainstalowanej wersji webowej)
+pokazuje trzy skróty prowadzące od razu do konkretnej zakładki, bez
+przechodzenia najpierw przez Planer — "Zakupy" (będąc akurat w sklepie),
+"Spiżarnia" (szybkie sprawdzenie zapasu), "Postęp" (szybki wpis wagi).
+
+Web: nowe pole "shortcuts" w manifest.json, otwarcie z parametrem
+np. ?view=shop w URL-u od razu pokazuje tę zakładkę.
+
+Android: trzy statyczne skróty (res/xml/shortcuts.xml), obsługiwane
+zarówno przy zimnym starcie, jak i gdy aplikacja już działa w tle.
+
+Plus kolejne zdjęcia przepisów z Unsplash (FR-114, 144/229).
+
+Weryfikacja
+-----------
+Web: zweryfikowane na żywo w Chrome — wszystkie 3 adresy (?view=shop/
+pantry/progress) otwierają właściwą zakładkę, brak parametru nadal
+otwiera domyślny Planer.
+Android: ./gradlew :logic:test :app:assembleDebug przechodzi. NIE
+zweryfikowane na emulatorze — długie przytrzymanie ikony aplikacji
+wymaga fizycznego/emulowanego launchera, więc to jedna z niewielu
+rzeczy w tej sesji, której nie dało się sprawdzić nawet częściowo bez
+niego.
+
+Wersje: Web CACHE_NAME v132->v133. Android versionCode 105->106
+(0.1.104->0.1.105).

@@ -11,5 +11,25 @@
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Lista zakupów",
+      "short_name": "Zakupy",
+      "url": "./index.html?view=shop",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Spiżarnia",
+      "short_name": "Spiżarnia",
+      "url": "./index.html?view=pantry",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Postęp",
+      "short_name": "Postęp",
+      "url": "./index.html?view=progress",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
   ]
 }

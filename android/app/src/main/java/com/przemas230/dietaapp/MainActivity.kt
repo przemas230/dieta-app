@@ -1,5 +1,6 @@
 package com.przemas230.dietaapp
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -174,8 +175,20 @@ import com.przemas230.dietaapp.logic.PolishText
 import com.przemas230.dietaapp.ui.applyLocalSnapshot
 
 class MainActivity : ComponentActivity() {
+    // Requested 2026-08-30 ("propozycje jak w najnowszych aplikacjach na
+    // świecie" -- long-press app-icon shortcuts, same pattern as the web
+    // manifest's own "shortcuts" field added the same turn): which tab a
+    // static shortcut (res/xml/shortcuts.xml) asked to open, consumed once
+    // DietaAppRoot's own LaunchedEffect navigates there. android:launchMode
+    // "singleTask" below means a shortcut tap while the app is already
+    // running reuses this same Activity via onNewIntent rather than
+    // stacking a second instance, so this needs to update on BOTH entry
+    // points, not just onCreate.
+    private var pendingShortcutRoute by mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pendingShortcutRoute = intent?.getStringExtra(EXTRA_SHORTCUT_ROUTE)
         enableEdgeToEdge()
         setContent {
             // FR-14: Compose has no CSS-zoom equivalent, so the whole app's
@@ -229,10 +242,22 @@ class MainActivity : ComponentActivity() {
                         uiScaleViewModel = uiScaleViewModel,
                         effectiveScale = effectiveScale,
                         themeViewModel = themeViewModel,
+                        initialRoute = pendingShortcutRoute,
+                        onInitialRouteConsumed = { pendingShortcutRoute = null },
                     )
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pendingShortcutRoute = intent.getStringExtra(EXTRA_SHORTCUT_ROUTE)
+    }
+
+    companion object {
+        const val EXTRA_SHORTCUT_ROUTE = "shortcut_route"
     }
 }
 
@@ -245,11 +270,30 @@ class MainActivity : ComponentActivity() {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DietaAppRoot(uiScaleViewModel: UiScaleViewModel, effectiveScale: Double, themeViewModel: ThemeViewModel) {
+private fun DietaAppRoot(
+    uiScaleViewModel: UiScaleViewModel,
+    effectiveScale: Double,
+    themeViewModel: ThemeViewModel,
+    // Requested 2026-08-30: app-icon shortcut target (see MainActivity's
+    // own doc comment on pendingShortcutRoute for why this needs both an
+    // initial value and a "consumed" callback rather than a plain param).
+    initialRoute: String? = null,
+    onInitialRouteConsumed: () -> Unit = {},
+) {
     val context = LocalContext.current
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+    LaunchedEffect(initialRoute) {
+        if (initialRoute != null && BOTTOM_NAV_SCREENS.any { it.route == initialRoute }) {
+            navController.navigate(initialRoute) {
+                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+            onInitialRouteConsumed()
+        }
+    }
     // FR-71 bugfix (2026-08-11): tapping a bottom-nav tab while a text field
     // on Ustawienia still has focus/keyboard open silently ate that tap --
     // Android's default behavior lets the first outside-tap merely dismiss

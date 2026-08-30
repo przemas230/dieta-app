@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">Dieta App</string>
+    <!-- Requested 2026-08-30 ("propozycje jak w najnowszych aplikacjach na
+         świecie", long-press app-icon shortcuts): res/xml/shortcuts.xml. -->
+    <string name="shortcut_shopping_short">Zakupy</string>
+    <string name="shortcut_shopping_long">Lista zakupów</string>
+    <string name="shortcut_pantry_short">Spiżarnia</string>
+    <string name="shortcut_pantry_long">Spiżarnia</string>
+    <string name="shortcut_progress_short">Postęp</string>
+    <string name="shortcut_progress_long">Postęp</string>
 </resources>

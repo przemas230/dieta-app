@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Requested 2026-08-30 ("propozycje jak w najnowszych aplikacjach na
+     świecie", ported alongside the web PWA manifest's own "shortcuts"
+     field the same turn): long-press-app-icon quick jumps to the three
+     tabs most useful to open without going through Planer first (the
+     app's default landing tab): Zakupy while actually at the sklep,
+     Spiżarnia to check stock, Postęp to log a weight. Reuses the launcher
+     icon for all three rather than commissioning three new vector icons
+     for v1, since labels are the differentiator here, not artwork; see
+     MainActivity.kt's EXTRA_SHORTCUT_ROUTE for how the tap is handled. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="shortcut_shopping"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_shopping_short"
+        android:shortcutLongLabel="@string/shortcut_shopping_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.przemas230.dietaapp"
+            android:targetClass="com.przemas230.dietaapp.MainActivity">
+            <extra android:name="shortcut_route" android:value="shopping" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="shortcut_pantry"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_pantry_short"
+        android:shortcutLongLabel="@string/shortcut_pantry_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.przemas230.dietaapp"
+            android:targetClass="com.przemas230.dietaapp.MainActivity">
+            <extra android:name="shortcut_route" android:value="pantry" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="shortcut_progress"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_progress_short"
+        android:shortcutLongLabel="@string/shortcut_progress_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.przemas230.dietaapp"
+            android:targetClass="com.przemas230.dietaapp.MainActivity">
+            <extra android:name="shortcut_route" android:value="progress" />
+        </intent>
+    </shortcut>
+</shortcuts>
