@@ -48,6 +48,7 @@ import androidx.compose.ui.window.Dialog
 import com.przemas230.dietaapp.data.ActivityLogEntry
 import com.przemas230.dietaapp.data.WeightEntry
 import com.przemas230.dietaapp.logic.ActivityLogOperations
+import com.przemas230.dietaapp.logic.AdaptiveTdee
 import com.przemas230.dietaapp.logic.AppThemes
 import com.przemas230.dietaapp.logic.HistoryOperations
 import com.przemas230.dietaapp.logic.ProfileCalculations
@@ -211,6 +212,9 @@ fun PostepScreen(
             onAddWeight = weightViewModel::addWeight,
             onEditWeight = weightViewModel::editWeight,
             onRemoveWeight = weightViewModel::removeWeight,
+            kcalHistory = kcalHistory,
+            formulaDailyTarget = dailyTarget,
+            today = today,
         )
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -614,6 +618,11 @@ private fun WeightCard(
     onAddWeight: (Double) -> Boolean,
     onEditWeight: (String, Double) -> Boolean,
     onRemoveWeight: (String) -> Unit,
+    // Self-initiated 2026-08-30 ("propozycje jak w najnowszych aplikacjach
+    // na świecie"): AdaptiveTdeeCard below, ported from web the same turn.
+    kcalHistory: Map<String, Int> = emptyMap(),
+    formulaDailyTarget: Int = 0,
+    today: LocalDate = LocalDate.now(),
 ) {
     var input by remember { mutableStateOf("") }
     var error by remember { mutableStateOf(false) }
@@ -708,12 +717,78 @@ private fun WeightCard(
                 }
                 Text(info, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(10.dp))
+                AdaptiveTdeeCard(entries, kcalHistory, formulaDailyTarget, today)
+                Spacer(modifier = Modifier.height(10.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     sorted.asReversed().take(15).forEach { entry ->
                         WeightEntryRow(entry, onEditWeight, onRemoveWeight)
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Self-initiated 2026-08-30 (user: "propozycje jak w najnowszych
+ * aplikacjach tego typu na świecie" -- ported from web the same turn, see
+ * AdaptiveTdee's own doc comment for why this exists). Advisory-only --
+ * shown right under the weight chart/target countdown, same place both
+ * are about the same trend line, and doesn't touch the profile's own
+ * formula-based target anywhere else in the app.
+ */
+@Composable
+private fun AdaptiveTdeeCard(entries: List<WeightEntry>, kcalHistory: Map<String, Int>, formulaDailyTarget: Int, today: LocalDate) {
+    val result = remember(entries, kcalHistory, today) { AdaptiveTdee.compute(entries, kcalHistory, today) }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            if (result == null) {
+                Text("📈 Adaptacyjne tempo", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                Text(
+                    "Zbieramy dane — potrzeba przynajmniej ${AdaptiveTdee.MIN_SPAN_DAYS} dni rozpiętości między wpisami wagi i ${AdaptiveTdee.MIN_LOGGED_DAYS} zapisanych dni posiłków w tym okresie.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                return@Column
+            }
+            val diff = result.estimatedTdee - formulaDailyTarget
+            val diffLabel = if (kotlin.math.abs(diff) < 15) {
+                "zgodne z celem w aplikacji"
+            } else {
+                "${if (diff > 0) "+" else ""}$diff kcal względem celu w aplikacji ($formulaDailyTarget)"
+            }
+            val trendLabel = if (kotlin.math.abs(result.weeklyKgChange) < 0.05) {
+                "waga stabilna"
+            } else {
+                "${if (result.weeklyKgChange > 0) "+" else ""}${"%.2f".format(result.weeklyKgChange)} kg/tydzień"
+            }
+            Text(
+                "📈 Adaptacyjne tempo (z ${result.loggedDays} zapisanych dni z ostatnich ${result.spanDays})",
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelLarge,
+            )
+            Text(
+                "~${result.estimatedTdee} kcal/dzień",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+            Text(
+                "$trendLabel · średnio ${result.avgKcal} kcal/dzień · $diffLabel",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                "To realne tempo wyliczone z Twojej wagi i tego, co faktycznie jesz — nie zmienia celu w aplikacji, tylko pokazuje, co mówią dane.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp),
+            )
         }
     }
 }

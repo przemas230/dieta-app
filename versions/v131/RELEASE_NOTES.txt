@@ -1,0 +1,40 @@
+Wersja v131 (2026-08-30)
+========================
+
+Nowa funkcja: "📈 Adaptacyjne tempo" — szacowane realne zapotrzebowanie
+kaloryczne wyliczone z danych, nie tylko ze wzoru.
+
+CO SIĘ ZMIENIŁO
+---------------
+Pod wykresem wagi (obok licznika "Zostało X kg do celu") pojawia się
+nowa karta, inspirowana najbardziej cenioną cechą obecnie najlepszej
+aplikacji w tej kategorii (MacroFactor): zamiast ufać wyłącznie
+statycznemu wzorowi (Mifflin-St Jeor), aplikacja liczy realne tempo
+zmiany wagi (regresja liniowa po wpisach z ostatnich 28 dni) i zestawia
+je ze średnią faktycznie zjedzonych kalorii w tym samym okresie —
+wynikiem jest szacowane realne dzienne zapotrzebowanie.
+
+Świadomie na razie tylko doradcze: karta NIE zmienia celu kalorycznego
+używanego gdziekolwiek indziej w aplikacji (Planer, pierścień kcal w
+nagłówku), tylko pokazuje, co mówią dane, obok istniejącego celu z
+formuły. Pokazuje się dopiero, gdy jest wystarczająco danych (co
+najmniej 10 dni rozpiętości między wpisami wagi i 6 dni z zapisanymi
+posiłkami) — wcześniej widać krótki komunikat "zbieramy dane".
+
+Dzień bez ŻADNEGO zapisanego posiłku jest pomijany przy liczeniu
+średniej, a nie liczony jako 0 kcal — inaczej wynik byłby zaniżony dla
+każdego, kto nie loguje jedzenia codziennie.
+
+Android: przeniesione w tej samej turze (AdaptiveTdee w logic/, testy
+JUnit, nowa karta w ekranie Postępu).
+
+Weryfikacja
+-----------
+Web: zweryfikowane w Chrome (dane syntetyczne — 14 dni, spadek wagi
+80,0 -> 79,0 kg, 2000 kcal/dzień) — matematyka spójna, oba stany karty
+(dane wystarczające / za mało danych) renderują się poprawnie.
+Android: ./gradlew :logic:test :app:assembleDebug przechodzi (5 nowych
+testów), NIE zweryfikowane wizualnie na emulatorze w tej sesji.
+
+Wersje: Web CACHE_NAME v130->v131. Android versionCode 103->104
+(0.1.102->0.1.103).
