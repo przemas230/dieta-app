@@ -36,10 +36,12 @@ Weryfikacja
 -----------
 Logika ma testy jednostkowe w module `logic` (4 nowe, `cookForTwoDays`).
 
-Web: NIE zweryfikowane na żywo w Chrome w tej turze — rozszerzenie
-przeglądarki nie było podłączone w tej sesji (przerwana sesja wznowiona
-z braku połączenia); logika jest tym samym `planLeftover`, który mają już
-FR-23/FR-24, więc ryzyko niskie, ale wymaga potwierdzenia w kolejnej turze.
+Web, na żywo w Chrome (lokalny serwer, po podłączeniu rozszerzenia w tej
+samej turze): dodanie resztek na pusty dzień działa (oryginalny wpis
+nietknięty, brak nowej pozycji na liście zakupów — `state.shopping`/
+`recipeAdded` bez zmian po akcji); zajęty dzień pokazany jako „— zajęte: X”
+i faktycznie `disabled` (kliknięcie nic nie robi, potwierdzone też przez
+UI); toast „Zaplanowano resztki…” z „Cofnij” poprawnie usuwa dodany wpis.
 Android: `./gradlew :logic:test :app:assembleDebug` przechodzi (4 nowe
 testy `cookForTwoDays`), NIE zweryfikowane wizualnie na emulatorze.
 
