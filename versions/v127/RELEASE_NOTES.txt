@@ -1,0 +1,32 @@
+Wersja v127 (2026-08-30)
+========================
+
+Pierwsza partia prawdziwych zdjęć dań (FR-114) — 24 z 229 przepisów.
+
+CO SIĘ ZMIENIŁO
+---------------
+Infrastruktura pod prawdziwe zdjęcia (FR-114, wersja v126) zaczyna się
+wypełniać: 24 przepisy z bazy śniadaniowej dostały teraz prawdziwe zdjęcia
+z Unsplash zamiast emotikonki na miniaturce karty, z pełnym przypisaniem
+autora w rozwiniętym widoku.
+
+Zdjęcia pobierane są wsadowo, poza aplikacją (skrypt
+scripts/fetch-recipe-images.mjs) — darmowe konto Unsplash ma limit
+zapytań na godzinę, więc pełne przejście przez wszystkie 229 przepisów
+wymaga kilku oddzielnych przebiegów. Kolejne partie będą dochodzić w
+następnych wersjach, aż wszystkie przepisy (które da się sensownie
+dopasować) dostaną zdjęcie.
+
+Przy okazji naprawiony błąd w skrypcie: "pomidorki koktajlowe" (cherry
+tomatoes) źle dopasowywały się do zapytania o smoothie przez zbieżność
+rdzenia słowa — jeden przepis (omlet z awokado) miał przez to błędne
+zdjęcie, poprawione przed tą wersją.
+
+Weryfikacja
+-----------
+Android: zawartość zbudowanego APK zweryfikowana bezpośrednio (unzip +
+sprawdzenie recipes.json) — 24/229 przepisów ma pole image, zgodnie z
+oczekiwaniem. ./gradlew :logic:test :app:assembleDebug przechodzi.
+
+Wersje: Android versionCode 99->100, versionName 0.1.98->0.1.99 (APK w
+android/dist zsynchronizowany), Web CACHE_NAME v126->v127.
