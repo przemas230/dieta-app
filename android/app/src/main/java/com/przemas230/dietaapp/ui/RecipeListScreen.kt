@@ -101,6 +101,7 @@ import com.przemas230.dietaapp.R
 import com.przemas230.dietaapp.data.CookEntry
 import com.przemas230.dietaapp.data.PantryCategory
 import com.przemas230.dietaapp.data.PantryItem
+import com.przemas230.dietaapp.data.Profile
 import com.przemas230.dietaapp.data.ShoppingItem
 import com.przemas230.dietaapp.data.Recipe
 import com.przemas230.dietaapp.data.RecipeReview
@@ -108,6 +109,7 @@ import com.przemas230.dietaapp.logic.AppThemes
 import com.przemas230.dietaapp.logic.CATEGORIES
 import com.przemas230.dietaapp.logic.CustomRecipeOperations
 import com.przemas230.dietaapp.logic.DailyCalorieTargets
+import com.przemas230.dietaapp.logic.GeminiPrompt
 import com.przemas230.dietaapp.logic.IngredientCanon
 import com.przemas230.dietaapp.logic.IngredientMacroEstimation
 import com.przemas230.dietaapp.logic.Micronutrients
@@ -469,6 +471,7 @@ fun RecipeListScreen(
                 weekPlan,
                 shoppingItems,
                 kcalTargets,
+                profile,
                 viewModel,
                 pantryViewModel,
                 shoppingViewModel,
@@ -777,6 +780,7 @@ private fun RecipeListWithScrollToTop(
     weekPlan: WeekPlan,
     shoppingItems: Map<String, ShoppingItem>,
     kcalTargets: DailyCalorieTargets,
+    profile: Profile,
     viewModel: RecipeViewModel,
     pantryViewModel: PantryViewModel,
     shoppingViewModel: ShoppingViewModel,
@@ -840,6 +844,7 @@ private fun RecipeListWithScrollToTop(
                 RecipeCard(
                     index = index,
                     recipe = recipe,
+                    profile = profile,
                     matchScore = matchScores[recipe.id],
                     cookEntries = cookedMap[recipe.id].orEmpty(),
                     pantryItems = pantryItems,
@@ -963,6 +968,7 @@ private fun centerOrTopAlignScrollDelta(itemInfo: LazyListItemInfo, viewportHeig
 private fun RecipeCard(
     index: Int,
     recipe: Recipe,
+    profile: Profile,
     matchScore: Int?,
     cookEntries: List<CookEntry>,
     pantryItems: Map<String, PantryItem>,
@@ -1115,6 +1121,7 @@ private fun RecipeCard(
                         recipe,
                         matchScore,
                         expanded,
+                        profile = profile,
                         onInfoClick = { showInfoDialog = true },
                         onPantryCheckClick = { showPantryCheck = true },
                         pantryItems = pantryItems,
@@ -1337,6 +1344,7 @@ internal fun RecipeCardBody(
     recipe: Recipe,
     matchScore: Int?,
     expanded: Boolean,
+    profile: Profile,
     onInfoClick: () -> Unit,
     onPantryCheckClick: () -> Unit,
     pantryItems: Map<String, PantryItem>,
@@ -1560,10 +1568,14 @@ internal fun RecipeCardBody(
                 // Search's AI Mode (`udm=50`) instead, same underlying
                 // model, but a search-results GET request answers
                 // immediately on load like any other search.
+                // FR-95/v3 (2026-08-30): prompt now built by GeminiPrompt.build()
+                // -- personalized to profile/macroTarget instead of a generic
+                // one-liner, see that object for why.
                 OutlinedButton(
                     onClick = {
-                        val prompt = "Rozpisz szczegółowo, krok po kroku, jak przygotować danie: ${recipe.name}. " +
-                            "Podaj dokładne czasy, temperatury, ilości składników i wskazówki przydatne dla początkujących."
+                        val kcalTarget = ProfileCalculations.calcTargets(profile).forCategory(recipe.cat)
+                        val macroTarget = ProfileCalculations.calcMacroTargets(profile).forCategory(recipe.cat)
+                        val prompt = GeminiPrompt.build(recipe, profile, kcalTarget, macroTarget)
                         val uri = Uri.parse("https://www.google.com/search?q=" + Uri.encode(prompt) + "&udm=50")
                         context.startActivity(Intent(Intent.ACTION_VIEW, uri))
                     },

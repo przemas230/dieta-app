@@ -1,0 +1,41 @@
+Wersja v123 (2026-08-30)
+========================
+
+Rozbudowany, spersonalizowany prompt dla przycisku "✨ Gemini" (FR-95/v3).
+
+CO SIĘ ZMIENIŁO
+---------------
+Przycisk "✨ Gemini" na karcie przepisu wysyłał dotąd jedno uniwersalne
+zdanie z nazwą dania. Teraz prompt jest w pełni dopasowany do profilu
+osoby:
+
+- płeć, wiek, wzrost, waga obecna i docelowa, poziom aktywności, cel diety
+- ograniczenia dietetyczne (bez glutenu / bez laktozy / niski indeks
+  glikemiczny) albo jawna informacja "brak ograniczeń"
+- orientacyjne zapotrzebowanie kaloryczne i makroskładnikowe NA TEN
+  KONKRETNY posiłek (ta sama logika, co plakietka 🎯 dopasowania)
+
+Prompt wprost żąda:
+1. Dokładnej gramatury składników w gramach/mililitrach (nie "szklanek"
+   ani "garści"), dobranej pod wyliczone zapotrzebowanie.
+2. Kroków przygotowania z dokładnymi czasami i temperaturami.
+3. Zamienników, jeśli standardowy składnik koliduje z ograniczeniami.
+4. Informacji, z jakiej kuchni/tradycji kulinarnej pochodzi przepis —
+   ta informacja trafia do użytkownika, bo jest częścią strony wyników,
+   którą i tak otwiera po kliknięciu (to zwykłe wyszukiwanie AI Mode, nie
+   wywołanie API z odpowiedzią do wyświetlenia w samej aplikacji).
+
+Weryfikacja
+-----------
+Web, na żywo w Chrome (lokalny serwer, przechwycone window.open): profil
+testowy (mężczyzna, 30 lat, 180 cm, 80/75 kg, bardzo aktywny, budowanie
+masy, bez glutenu) dał kompletny prompt z poprawnie wyliczonym celem
+posiłku (800 kcal, B 50 g / T 22 g / W 100 g); otwierany URL poprawnie
+zakodowany.
+
+Android: ./gradlew :logic:test :app:assembleDebug przechodzi (nowy
+GeminiPrompt + 3 testy jednostkowe). NIE zweryfikowane wizualnie na
+emulatorze w tej sesji (brak uruchomionego emulatora).
+
+Wersje: Android versionCode 95->96, versionName 0.1.94->0.1.95 (APK w
+android/dist zsynchronizowany), Web CACHE_NAME v122->v123.

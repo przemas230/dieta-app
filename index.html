@@ -4877,6 +4877,52 @@ function calcMacroTargets(p){
     deser: gramsFor(t.deser)
   };
 }
+const GEMINI_ACTIVITY_LABELS = {
+  "1.2": "siedzący tryb życia",
+  "1.375": "lekko aktywny (spacery, 1-2x trening/tydz.)",
+  "1.55": "umiarkowanie aktywny (3-5x trening/tydz.)",
+  "1.725": "bardzo aktywny",
+};
+const GEMINI_GOAL_LABELS = { loss: "redukcja masy ciała", maintain: "utrzymanie wagi", gain: "budowanie masy" };
+// FR-95/v3 (2026-08-30, requested: "prompt bardziej rozbudowany, dokładna
+// gramatura, dopasowanie do diety/wagi/płci, informacja o inspiracji"):
+// the text sent to Google AI Mode for "✨ Gemini" -- personalized with the
+// user's full nutritional profile and this specific meal-slot's kcal/macro
+// target, and explicitly asking for exact gram amounts and the recipe's
+// culinary inspiration/source. The source info is deliberately asked for
+// IN the prompt rather than parsed back into the app: the AI Mode answer
+// page is a plain external search result (no API response to parse), so
+// "the user also gets that info" means it has to already be part of what
+// the page answers, not something rendered separately in-app.
+function buildGeminiPrompt(r, profile, macroTarget){
+  const sexLabel = profile.sex === "m" ? "mężczyzna" : "kobieta";
+  const activityLabel = GEMINI_ACTIVITY_LABELS[String(profile.activity)] || "nieokreślony";
+  const goalLabel = GEMINI_GOAL_LABELS[profile.goal] || "nieokreślony";
+  const restrictions = [];
+  if(profile.glutenFree) restrictions.push("bez glutenu");
+  if(profile.lactoseFree) restrictions.push("bez laktozy");
+  if(profile.strictLowGI) restrictions.push("niski indeks glikemiczny");
+  const restrictionsText = restrictions.length ? restrictions.join(", ") : "brak specjalnych ograniczeń";
+  const kcalTarget = calcTargets(profile)[r.cat];
+  const macroText = (macroTarget && kcalTarget)
+    ? `ok. ${kcalTarget} kcal (białko ${macroTarget.protein} g / tłuszcz ${macroTarget.fat} g / węglowodany ${macroTarget.carbs} g)`
+    : "brak wyliczonego celu (uzupełnij profil w Ustawieniach)";
+  return `Jesteś doświadczonym dietetykiem klinicznym. Przygotuj szczegółowy, profesjonalny przepis krok po kroku na danie: „${r.name}", dopasowany do poniższego profilu żywieniowego.
+
+PROFIL OSOBY:
+- płeć: ${sexLabel}, wiek: ${profile.age} lat, wzrost: ${profile.height} cm
+- waga obecna: ${profile.weight} kg, waga docelowa: ${profile.targetWeight} kg
+- poziom aktywności: ${activityLabel}
+- cel: ${goalLabel}
+- ograniczenia dietetyczne: ${restrictionsText}
+- orientacyjne zapotrzebowanie na TEN posiłek: ${macroText}
+
+WYMAGANIA:
+1. Podaj DOKŁADNĄ listę składników z gramaturą w gramach/mililitrach (nie w "szklankach" ani "garściach"), tak dobraną, żeby całe danie mieściło się w podanym wyżej zapotrzebowaniu kalorycznym i makroskładnikowym.
+2. Rozpisz przygotowanie krok po kroku: dokładne czasy, temperatury i kolejność czynności, ze wskazówkami przydatnymi dla początkujących.
+3. Jeśli standardowy składnik koliduje z ograniczeniami dietetycznymi powyżej, od razu zaproponuj konkretny zamiennik.
+4. Na końcu odpowiedzi napisz, z jakiej kuchni, tradycji kulinarnej lub typu źródeł pochodzi ten przepis (np. "klasyczna kuchnia śródziemnomorska", "polska kuchnia domowa"), żebym mógł poszukać więcej podobnych inspiracji.`;
+}
 // Score 0-100: how well a recipe's macros fit the meal-slot target, penalized for high glycemic load.
 // The GL penalty is relaxed for "budowanie masy" — a higher glycemic load around a bulking-sized,
 // carb-heavy meal (e.g. post-trening) is an accepted tradeoff, unlike during redukcja/utrzymanie
@@ -6699,9 +6745,12 @@ function recipeCard(r, onChange, opts={}){
   // other search, with nothing left to tap. Button label kept as "✨
   // Gemini" since that's what it delivers, just via a URL shape that
   // actually returns an answer instead of a blank compose box.
+  // FR-95/v3 (2026-08-30): prompt now built by buildGeminiPrompt() --
+  // personalized to profile/macroTarget instead of a generic one-liner,
+  // see that function for why.
   card.querySelector("[data-search-gemini]").addEventListener("click", (e)=>{
     e.stopPropagation();
-    const prompt = `Rozpisz szczegółowo, krok po kroku, jak przygotować danie: ${r.name}. Podaj dokładne czasy, temperatury, ilości składników i wskazówki przydatne dla początkujących.`;
+    const prompt = buildGeminiPrompt(r, state.profile, macroTarget);
     window.open("https://www.google.com/search?q=" + encodeURIComponent(prompt) + "&udm=50", "_blank");
   });
   const macroInfoBtn = card.querySelector("[data-macro-info]");

@@ -4801,6 +4801,17 @@ obok istniejących Google/YouTube. Otwiera od razu gotową odpowiedź AI
 krok-po-kroku przepis na dokładnie to danie (z jego nazwą) — patrz **v2**
 niżej, dlaczego to Google Search zamiast bezpośrednio gemini.google.com.
 
+Prompt (v3, patrz niżej) jest teraz spersonalizowany pod profil osoby:
+płeć, wiek, wzrost, waga obecna/docelowa, poziom aktywności, cel diety,
+ograniczenia (bez glutenu/laktozy, niski IG) i orientacyjne zapotrzebowanie
+kaloryczno-makroskładnikowe NA TEN KONKRETNY posiłek (z tej samej logiki co
+🎯 dopasowanie na karcie). Prompt wprost żąda dokładnej gramatury
+składników (nie „szklanek”/„garści”) i informacji, z jakiej kuchni/tradycji
+kulinarnej pochodzi przepis — ta informacja trafia do użytkownika przez to,
+że jest częścią odpowiedzi na stronie wyników, którą użytkownik i tak
+otwiera (nie ma osobnego wyświetlania w samej aplikacji, bo to zwykłe
+wyszukiwanie, nie wywołanie API z odpowiedzią JSON do sparsowania).
+
 Jednocześnie: kliknięcie w SAM TYTUŁ przepisu (które otwiera wyszukiwanie
 Google) jest teraz aktywne WYŁĄCZNIE gdy karta jest rozwinięta — na
 zwiniętej karcie kliknięcie tytułu tylko rozwija kartę (jak reszta karty),
@@ -4816,6 +4827,11 @@ nie otwiera już wyszukiwania w tle.
   (tylko normalne rozwinięcie karty).
 - Kliknięcie tytułu na ROZWINIĘTEJ karcie: otwiera wyszukiwanie Google
   dla nazwy dania, jak dotychczas.
+- Prompt zawiera: nazwę dania, płeć/wiek/wzrost/wagę/wagę docelową/poziom
+  aktywności/cel diety z profilu, ograniczenia dietetyczne (albo jawne
+  „brak”), orientacyjny cel kcal+makro na ten posiłek (albo jawną
+  informację, że profil nie jest uzupełniony), żądanie DOKŁADNEJ gramatury
+  składników i żądanie wskazania źródła/inspiracji kulinarnej przepisu.
 - `./gradlew :logic:test :app:compileDebugKotlin` przechodzi.
 
 ## Historia rewizji
@@ -4845,6 +4861,45 @@ nie otwiera już wyszukiwania w tle.
   na żywo (headless Chromium, przechwycone `window.open`): przycisk
   konstruuje `https://www.google.com/search?q=...&udm=50` z poprawnym,
   zakodowanym promptem.
+
+- **v3** (2026-08-30, ROZBUDOWANY PROMPT): zgłoszenie użytkownika — prompt
+  miał być „bardziej rozbudowany”, z dokładną gramaturą składników,
+  dopasowaniem do „diety, wagi, płci i innych składowych, które
+  determinują dietę użytkownika”, i informacją o inspiracji/źródłach
+  przepisu widoczną też dla użytkownika. Poprzedni prompt (v2) był
+  jednym uniwersalnym zdaniem bez żadnej personalizacji.
+
+  Web: `buildGeminiPrompt(r, profile, macroTarget)` (nowa funkcja) —
+  czyta `state.profile` (płeć/wiek/wzrost/waga/waga docelowa/aktywność/
+  cel/ograniczenia) i `calcMacroTargets`/`calcTargets` dla kategorii tego
+  dania (już liczone w tym samym miejscu dla plakietki 🎯), składa
+  wieloliniowy prompt z sekcją PROFIL OSOBY i czterema jawnymi
+  wymaganiami (gramatura, kroki z czasami/temperaturami, zamienniki przy
+  kolizji z ograniczeniami, źródło inspiracji na końcu).
+
+  Android: `GeminiPrompt.build()` (nowy obiekt w `logic/`, testowany
+  jednostkowo — `GeminiPromptTest`, 3 testy) mirroruje web 1:1.
+  `profile: Profile` doprowadzony do `RecipeCardBody` (wcześniej go nie
+  miała) przez oba miejsca, które ją wywołują — listę przepisów
+  (`RecipeCard`/`RecipeListWithScrollToTop`) i podgląd z Planera
+  (`RecipePreviewDialog`, już miał `profile` jako parametr, tylko go nie
+  przekazywał dalej).
+
+  Informacja o inspiracji NIE trafia do osobnego miejsca w UI aplikacji —
+  jest częścią strony wyników AI Mode, którą użytkownik i tak otwiera po
+  stuknięciu „✨ Gemini” (to zwykłe wyszukiwanie, nie wywołanie API z
+  odpowiedzią do wyrenderowania w aplikacji), więc żądanie jej w promptcie
+  wystarcza, żeby użytkownik ją zobaczył.
+
+  Zweryfikowane: web na żywo w Chrome (lokalny serwer, przechwycone
+  `window.open`) — profil testowy (mężczyzna, 30 lat, 180 cm, 80/75 kg,
+  bardzo aktywny, budowanie masy, bez glutenu) dał prompt zawierający
+  wszystkie te dane oraz poprawnie wyliczony cel posiłku (800 kcal, B 50 g
+  / T 22 g / W 100 g); otwierany URL zaczyna się od
+  `google.com/search?q=`, ma `udm=50` i poprawnie zakodowaną treść
+  (~1260 znaków po dekodowaniu). Android: `./gradlew :logic:test
+  :app:assembleDebug` przechodzi, NIE zweryfikowane wizualnie na
+  emulatorze (brak uruchomionego emulatora w tej sesji).
 
 ---
 

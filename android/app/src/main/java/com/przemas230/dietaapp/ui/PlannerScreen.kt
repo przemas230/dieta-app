@@ -2299,6 +2299,7 @@ private fun RecipePreviewDialog(
                             recipe = scaledRecipe,
                             matchScore = matchScore,
                             expanded = true,
+                            profile = profile,
                             onInfoClick = { showInfoDialog = true },
                             onPantryCheckClick = { showPantryCheck = true },
                             pantryItems = pantryItems,
