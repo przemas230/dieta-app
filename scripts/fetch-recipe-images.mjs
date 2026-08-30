@@ -78,15 +78,44 @@ const CAT_FALLBACK = {
   kolacje: "dinner plate", deser: "dessert",
 };
 
+// Requested fix (2026-08-30, found on the FIRST live run before it could
+// waste more rate-limited requests): "pomidorki koktajlowe" (cherry
+// tomatoes) matched S2 to a "smoothie" photo, because the original
+// haystack.includes() substring check found "koktajl" INSIDE
+// "koktajlowe" -- an ADJECTIVE meaning "cherry-sized", sharing a stem
+// with but otherwise unrelated to "koktajl" the smoothie noun. Same class
+// of bug would also strike "ser" (cheese) matching inside "deser"
+// (dessert). Fixed by tokenizing and matching against whole tokens
+// (token.startsWith(key), not haystack.includes(key)) -- still allows the
+// prefix matches the dictionary relies on for Polish inflection
+// (kurczak/kurczaka/kurczakiem all still hit "kurczak"), just no longer
+// matches mid-word. koktajl itself gets an extra, explicit allow-list of
+// its own noun forms on top of that, since "koktajlowy/-a/-e/-ych" would
+// still token.startsWith("koktajl") otherwise.
+function tokenize(text) {
+  return text.toLowerCase().match(/\p{L}+/gu) || [];
+}
+const KOKTAJL_NOUN_FORMS = new Set(["koktajl", "koktajlu", "koktajlem", "koktajle", "koktajli", "koktajlom", "koktajlach", "koktajlami"]);
+
+// Manual overrides for recipe IDs where the heuristic query is known to be
+// wrong -- add an entry here (and re-run) after spot-checking results,
+// rather than fighting the general dictionary for one-off cases.
+const OVERRIDES = {};
+
 function buildQuery(recipe) {
-  const haystack = (recipe.name + " " + recipe.ingredients.join(" ")).toLowerCase();
-  const words = Object.keys(TRANSLATIONS).sort((a, b) => b.length - a.length);
+  if (OVERRIDES[recipe.id]) return OVERRIDES[recipe.id];
+  const tokens = tokenize(recipe.name + " " + recipe.ingredients.join(" "));
+  const keys = Object.keys(TRANSLATIONS).sort((a, b) => b.length - a.length);
   const hits = [];
-  for (const pl of words) {
-    if (haystack.includes(pl) && !hits.includes(TRANSLATIONS[pl])) {
-      hits.push(TRANSLATIONS[pl]);
-      if (hits.length >= 2) break;
+  for (const token of tokens) {
+    for (const key of keys) {
+      const matches = key === "koktajl" ? KOKTAJL_NOUN_FORMS.has(token) : token.startsWith(key);
+      if (matches && !hits.includes(TRANSLATIONS[key])) {
+        hits.push(TRANSLATIONS[key]);
+        break;
+      }
     }
+    if (hits.length >= 2) break;
   }
   if (hits.length === 0) hits.push(CAT_FALLBACK[recipe.cat] || "food");
   return hits.join(" ") + " food";
