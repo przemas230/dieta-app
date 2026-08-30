@@ -1,0 +1,20 @@
+Wersja v128 (2026-08-30)
+========================
+
+Druga partia prawdziwych zdjęć dań (FR-114) — 53 z 229 przepisów.
+
+Kontynuacja v127: kolejne 29 przepisów (głównie przekąski i obiady)
+dostało prawdziwe zdjęcia z Unsplash zamiast emotikonki na miniaturce
+karty. Łącznie 53/229 przepisów ma już zdjęcie.
+
+Zdjęcia nadal pobierane wsadowo w kolejnych turach ze względu na limit
+zapytań darmowego konta Unsplash — pozostałe 176 przepisów dojdzie w
+następnych wersjach.
+
+Weryfikacja
+-----------
+Android: zawartość zbudowanego APK zweryfikowana bezpośrednio — 53/229
+przepisów ma pole image.
+
+Wersje: Android versionCode 100->101, versionName 0.1.99->0.1.100 (APK w
+android/dist zsynchronizowany), Web CACHE_NAME v127->v128.
