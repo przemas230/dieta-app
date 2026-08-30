@@ -157,6 +157,25 @@ fun PantryScreen(
         ) {
             Text("🗑️ Wyczyść całą spiżarnię")
         }
+        // Requested 2026-08-30 ("dodaj przycisk który dodaje po 1 kg każdego
+        // składnika, żeby przetestować czy się odejmuje"): a debug/testing
+        // tool, not a real feature -- gives every tracked product enough
+        // headroom (+1 kg / +1 L / +20 szt.) to observe subtraction (cooking
+        // a recipe, "Do spiżarni" from the shopping list) without manually
+        // topping up items one at a time first. Labelled "Testowo" so it
+        // doesn't read as a real inventory action.
+        TextButton(
+            onClick = {
+                val before = items
+                viewModel.addTestQuantityToAll()
+                onShowUndoSnackbar("Testowo: dodano zapas do wszystkich produktów", "Cofnij") {
+                    viewModel.replaceAll(before)
+                }
+            },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        ) {
+            Text("🧪 Testowo: +1 kg / +1 L do każdego produktu")
+        }
         // FR-102: only shown when there is actually something to bring back,
         // so "usuń na stałe" never becomes an irreversible mistake the user
         // can neither see nor undo.

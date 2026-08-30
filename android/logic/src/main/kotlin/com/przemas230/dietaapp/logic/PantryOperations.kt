@@ -101,6 +101,32 @@ object PantryOperations {
     fun categoryForCanon(label: String): PantryCategory = PantryCategory.byLabel(label)
 
     /**
+     * Requested 2026-08-30 ("dodaj do spiżarni przycisk, który dodaje po
+     * 1 kg każdego składnika, żeby przetestować czy się odejmuje"): bumps
+     * EVERY tracked product by a large round amount in its own unit --
+     * +1000 (g/ml, i.e. +1 kg or +1 L) for weight/volume, +20 for anything
+     * else (szt.) -- so cooking a recipe or "Do spiżarni" from the
+     * shopping list has enough headroom to actually be observed subtracting
+     * without manually topping up items one at a time first. A testing
+     * tool, not a real feature -- spices are left untouched, since they
+     * track a coarse Mało/Wystarczy/Dużo level, not a quantity, and
+     * "+1 kg" has no meaning there.
+     */
+    fun addTestQuantityToAll(items: Map<String, PantryItem>): Map<String, PantryItem> =
+        items.mapValues { (_, item) ->
+            when (item) {
+                is PantryItem.Product -> {
+                    val bump = when (item.unit) {
+                        "g", "ml" -> 1000.0
+                        else -> 20.0
+                    }
+                    item.copy(quantity = item.quantity + bump)
+                }
+                is PantryItem.Spice -> item
+            }
+        }
+
+    /**
      * FR-16: "Mam to" toggle in the per-recipe pantry-check window -- port of
      * index.html's haveBtn handler in openPantryModal. Removes the entry if
      * present; otherwise adds a spice at "Wystarczy" (for Przyprawy) or a

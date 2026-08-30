@@ -162,4 +162,31 @@ class PantryOperationsTest {
         val visible = PantryOperations.visibleTileNames(listOf("chleb", "mleko"), emptyList(), PantryOperations.restoreAllHidden())
         assertEquals(listOf("chleb", "mleko"), visible)
     }
+
+    // ---- addTestQuantityToAll: testing helper requested 2026-08-30 ----
+
+    @Test
+    fun `addTestQuantityToAll bumps weight and volume products by 1000`() {
+        val items = mapOf(
+            "Mąka" to PantryItem.Product("Mąka", PantryCategory.ZBOZOWE, quantity = 250.0, unit = "g"),
+            "Mleko" to PantryItem.Product("Mleko", PantryCategory.NABIAL, quantity = 100.0, unit = "ml"),
+        )
+        val result = PantryOperations.addTestQuantityToAll(items)
+        assertEquals(1250.0, (result["Mąka"] as PantryItem.Product).quantity)
+        assertEquals(1100.0, (result["Mleko"] as PantryItem.Product).quantity)
+    }
+
+    @Test
+    fun `addTestQuantityToAll bumps count-based products by 20`() {
+        val items = mapOf("Jajka" to PantryItem.Product("Jajka", PantryCategory.NABIAL, quantity = 2.0, unit = "szt."))
+        val result = PantryOperations.addTestQuantityToAll(items)
+        assertEquals(22.0, (result["Jajka"] as PantryItem.Product).quantity)
+    }
+
+    @Test
+    fun `addTestQuantityToAll leaves spices untouched`() {
+        val items = mapOf("Sól" to PantryItem.Spice("Sól", PantryCategory.PRZYPRAWY, SpiceLevel.WYSTARCZY))
+        val result = PantryOperations.addTestQuantityToAll(items)
+        assertEquals(SpiceLevel.WYSTARCZY, (result["Sól"] as PantryItem.Spice).level)
+    }
 }

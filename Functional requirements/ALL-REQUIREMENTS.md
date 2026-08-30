@@ -72,6 +72,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-32: Podpowiedź „🏺 masz w spiżarni” i „Pomysł na danie z ulubionych składników”](#fr-32-podpowiedź-🏺-masz-w-spiżarni-i-pomysł-na-danie-z-ulubionych-składników)
 - [FR-102: Trwałe usuwanie produktu ze spiżarni](#fr-102-trwałe-usuwanie-produktu-ze-spiżarni)
 - [FR-108: Ostrzeżenie, że produktu nie starczy na zaplanowane dania](#fr-108-ostrzeżenie-że-produktu-nie-starczy-na-zaplanowane-dania)
+- [FR-112: Przycisk testowy „+1 kg / +1 L do każdego produktu” w Spiżarni](#fr-112-przycisk-testowy-1-kg--1-l-do-każdego-produktu-w-spiżarni)
 
 ### Szybkie dodawanie i przekąski
 - [FR-33: Globalny przycisk szybkiego dodania przekąski/dania z każdego miejsca](#fr-33-globalny-przycisk-szybkiego-dodania-przekąskidania-z-każdego-miejsca)
@@ -6257,3 +6258,55 @@ gotowanie, tylko podwojona partia).
   JUnit) i `cookForTwoDays`/`openCookForTwoDaysModal` (web) — oba
   reużywają istniejący `planLeftover`/plannerLeftover-pisanie zamiast
   duplikować logikę FR-23.
+
+---
+
+# FR-112: Przycisk testowy „+1 kg / +1 L do każdego produktu” w Spiżarni
+
+**Obszar:** Spiżarnia, Android + Web
+**Status:** Zaimplementowane na obu platformach
+
+## Opis
+W Spiżarni, obok „🗑️ Wyczyść całą spiżarnię”, jest przycisk
+„🧪 Testowo: +1 kg / +1 L do każdego produktu”. To narzędzie testowe (nie
+prawdziwa funkcja użytkowa) — bez niego sprawdzenie, czy odejmowanie
+składników po ugotowaniu dania albo po „Do spiżarni” z listy zakupów
+faktycznie działa, wymagało ręcznego dobijania zapasu produkt po
+produkcie.
+
+Kliknięcie dodaje jednorazowo do KAŻDEGO śledzonego produktu duży,
+okrągły zapas we właściwej dla niego jednostce: +1000 (czyli +1 kg albo
++1 L) dla produktów wagowych/objętościowych, +20 dla wszystkich
+pozostałych (sztuki, łyżki, opakowania itp.). Przyprawy są pomijane — mają
+tylko zgrubny poziom Mało/Wystarczy/Dużo, więc „+1 kg” nie ma dla nich
+znaczenia.
+
+## Kryteria akceptacji
+- Przycisk widoczny w Spiżarni, obok istniejącego „Wyczyść całą
+  spiżarnię”.
+- Kliknięcie dodaje +1000 do KAŻDEGO śledzonego produktu wagowego
+  (jednostka bazowa: gramy) i objętościowego (mililitry).
+- Kliknięcie dodaje +20 do każdego pozostałego śledzonego produktu
+  (sztuki i inne jednostki liczone pojedynczo).
+- Przyprawy (poziom Mało/Wystarczy/Dużo) nie są dotykane.
+- Działa od razu, bez okienka potwierdzenia, i pokazuje powiadomienie z
+  „Cofnij”, które przywraca dokładnie poprzedni stan spiżarni.
+- `./gradlew :logic:test :app:assembleDebug` przechodzi.
+
+## Uwagi
+Web: `Object.values(state.pantry)`, pomija wpisy `type!=="product"`,
+migawka `structuredClone(state.pantry)` przed zmianą przekazana do
+`toast(msg, "Cofnij", onUndo)` (mechanizm z FR-91). Android:
+`PantryOperations.addTestQuantityToAll()` w `logic/` (4 nowe testy
+jednostkowe), `PantryViewModel.addTestQuantityToAll()`,
+`onShowUndoSnackbar` z migawką `items` przed zmianą — ten sam wzorzec co
+reszta destrukcyjnych/zbiorczych akcji w aplikacji.
+
+## Historia rewizji
+- **v1** (2026-08-30): Pierwsza wersja, obie platformy w tej samej turze.
+  Zweryfikowane na żywo w Chrome (lokalny serwer): produkt wagowy
+  250→1250, objętościowy 100→1100, sztukowy 2→22, przyprawa nietknięta;
+  „Cofnij” przywrócił dokładnie poprzedni stan wszystkich czterech
+  wpisów. Android: `./gradlew :logic:test :app:assembleDebug` przechodzi
+  (21 testów w `PantryOperationsTest`, w tym 3 nowe), NIE zweryfikowane
+  wizualnie na emulatorze w tej sesji (brak uruchomionego emulatora).

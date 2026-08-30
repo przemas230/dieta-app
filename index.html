@@ -1978,6 +1978,11 @@
          ponownego włączenia w przyszłości. -->
     <button class="btn ghost" id="openBarcodeScanBtn" style="width:100%; margin-bottom:14px; display:none;">📷 Skanuj kod kreskowy produktu</button>
     <button class="btn ghost" id="clearPantryBtn" style="width:100%; color:var(--danger); border-color:var(--danger); margin-bottom:14px;">🗑️ Wyczyść całą spiżarnię</button>
+    <!-- Requested 2026-08-30 ("dodaj przycisk który dodaje po 1 kg każdego
+         składnika, żeby przetestować czy się odejmuje"): a debug/testing
+         tool, not a real feature -- see testPantryAddBtn's handler for why
+         it's labelled "Testowo". -->
+    <button class="btn ghost" id="testPantryAddBtn" style="width:100%; margin-bottom:14px;">🧪 Testowo: +1 kg / +1 L do każdego produktu</button>
     <div id="pantryTiles"></div>
   </section>
 
@@ -8365,6 +8370,32 @@ document.getElementById("clearPantryBtn").addEventListener("click", ()=>{
   toast("Wyczyszczono spiżarnię", "Cofnij", ()=>{
     state.pantry = prevPantry;
     addLog("pantry_add", "Cofnięto wyczyszczenie spiżarni");
+    saveState();
+    renderPantry();
+    if(document.getElementById("view-shop").classList.contains("active")) renderShop();
+  });
+});
+// Requested 2026-08-30 ("dodaj przycisk który dodaje po 1 kg każdego
+// składnika, żeby przetestować czy się odejmuje"): a debug/testing tool,
+// not a real feature -- bumps EVERY tracked product by a large round
+// amount in its own unit (+1000 for weight/volume, i.e. +1 kg or +1 L;
+// +20 for anything else -- łyżki/szklanki/sztuki/opakowania/etc.) so
+// cooking a recipe or "Do spiżarni" from the shopping list has enough
+// headroom to actually be observed subtracting. Spices are untouched --
+// they track a coarse Mało/Wystarczy/Dużo level, not a quantity, so
+// "+1 kg" has no meaning there.
+document.getElementById("testPantryAddBtn").addEventListener("click", ()=>{
+  const prevPantry = structuredClone(state.pantry);
+  Object.values(state.pantry).forEach(item=>{
+    if(item.type !== "product") return;
+    const bump = (item.unitCat === "weight" || item.unitCat === "volume") ? 1000 : 20;
+    item.qty += bump;
+  });
+  saveState();
+  renderPantry();
+  if(document.getElementById("view-shop").classList.contains("active")) renderShop();
+  toast("Testowo: dodano zapas do wszystkich produktów", "Cofnij", ()=>{
+    state.pantry = prevPantry;
     saveState();
     renderPantry();
     if(document.getElementById("view-shop").classList.contains("active")) renderShop();

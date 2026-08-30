@@ -122,4 +122,9 @@ class PantryViewModel(application: Application) : AndroidViewModel(application) 
     fun replaceAll(items: Map<String, PantryItem>) {
         update(items)
     }
+
+    /** Testing helper requested 2026-08-30 -- see PantryOperations.addTestQuantityToAll. */
+    fun addTestQuantityToAll() {
+        update(PantryOperations.addTestQuantityToAll(_items.value))
+    }
 }

@@ -1,0 +1,31 @@
+Wersja v124 (2026-08-30)
+========================
+
+Nowe narzędzie testowe w Spiżarni (FR-112).
+
+CO SIĘ ZMIENIŁO
+---------------
+Obok "🗑️ Wyczyść całą spiżarnię" dochodzi przycisk
+"🧪 Testowo: +1 kg / +1 L do każdego produktu". To narzędzie testowe, nie
+prawdziwa funkcja użytkowa — pozwala szybko sprawdzić, czy odejmowanie
+składników po ugotowaniu dania albo po "Do spiżarni" z listy zakupów
+faktycznie działa, bez ręcznego dobijania zapasu produkt po produkcie.
+
+Kliknięcie dodaje jednorazowo do KAŻDEGO śledzonego produktu duży, okrągły
+zapas we właściwej dla niego jednostce: +1 kg / +1 L dla produktów
+wagowych/objętościowych, +20 dla wszystkich pozostałych (sztuki, łyżki,
+opakowania itp.). Przyprawy (Mało/Wystarczy/Dużo) są pomijane. Działa od
+razu, z powiadomieniem "Cofnij".
+
+Weryfikacja
+-----------
+Web, na żywo w Chrome (lokalny serwer): produkt wagowy 250→1250 g,
+objętościowy 100→1100 ml, sztukowy 2→22 szt., przyprawa nietknięta;
+"Cofnij" przywrócił dokładnie poprzedni stan wszystkich czterech wpisów.
+
+Android: ./gradlew :logic:test :app:assembleDebug przechodzi (3 nowe
+testy jednostkowe, 21 razem w PantryOperationsTest). NIE zweryfikowane
+wizualnie na emulatorze w tej sesji (brak uruchomionego emulatora).
+
+Wersje: Android versionCode 96->97, versionName 0.1.95->0.1.96 (APK w
+android/dist zsynchronizowany), Web CACHE_NAME v123->v124.
