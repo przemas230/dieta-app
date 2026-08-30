@@ -294,6 +294,24 @@ fun PlannerScreen(
     // not the recipe's base 1x amounts.
     var previewRecipe by remember { mutableStateOf<Pair<Recipe, Double>?>(null) }
 
+    // FR-21/v3 (ported to Android 2026-08-30): "🎲 Wygeneruj losowo cały
+    // tydzień" kept its confirm() (35 slots at once justifies the
+    // interruption, same reasoning as the per-day buttons' comment below)
+    // but was still missing the undo half that randomizeDay/clearDay
+    // already got on 2026-08-29 -- snapshot the WHOLE plan, not just one
+    // day, since this overwrites all 7.
+    val randomizeWeek: () -> Unit = {
+        pendingConfirm = PendingConfirm(
+            "To nadpisze wszystkie dania zaplanowane w całym tygodniu. Na pewno chcesz wygenerować nowy plan?",
+        ) {
+            val before = weekPlan
+            plannerViewModel.randomizeWeek(profile)
+            onShowUndoSnackbar("Wygenerowano plan na cały tydzień", "Cofnij") {
+                plannerViewModel.replaceAll(before)
+            }
+        }
+    }
+
     // FR-87: motyw "Klinika" dostaje bento-uklad -- nagrodkowy pasek celu
     // kcal/makro (z danych juz wyliczonych wyzej, zero nowych wywolan
     // ViewModel/logiki) i przeprojektowane karty dni. Reszta motywow ma
@@ -378,11 +396,7 @@ fun PlannerScreen(
         // day-card list instead of above it -- Klinika/Klinika (noc) only,
         // the other 11 themes keep it exactly where it always was.
         if (!isClinic) {
-            item { AutoPlanWeekButton(onClick = {
-                pendingConfirm = PendingConfirm(
-                    "To nadpisze wszystkie dania zaplanowane w całym tygodniu. Na pewno chcesz wygenerować nowy plan?",
-                ) { plannerViewModel.randomizeWeek(profile) }
-            }) }
+            item { AutoPlanWeekButton(onClick = randomizeWeek) }
             item { SharePlanButtons(weekPlan = weekPlan, recipesById = recipesById) }
         }
         // FR-100 (ported to Android 2026-08-29): "📊 Zaplanowany tydzień"
@@ -517,11 +531,7 @@ fun PlannerScreen(
             }
         }
         if (isClinic) {
-            item { AutoPlanWeekButton(onClick = {
-                pendingConfirm = PendingConfirm(
-                    "To nadpisze wszystkie dania zaplanowane w całym tygodniu. Na pewno chcesz wygenerować nowy plan?",
-                ) { plannerViewModel.randomizeWeek(profile) }
-            }) }
+            item { AutoPlanWeekButton(onClick = randomizeWeek) }
             item { SharePlanButtons(weekPlan = weekPlan, recipesById = recipesById) }
         }
     }

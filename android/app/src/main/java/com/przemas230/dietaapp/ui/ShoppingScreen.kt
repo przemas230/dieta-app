@@ -171,7 +171,27 @@ fun ShoppingScreen(
                 },
                 style = MaterialTheme.typography.titleMedium,
             )
-            TextButton(onClick = { viewModel.clearChecked() }) { Text("Usuń kupione") }
+            TextButton(onClick = {
+                // FR-26/v2 (ported to Android 2026-08-30): this was the
+                // worst offender in the app on web too before that fix --
+                // irreversible delete with neither a confirm nor an undo, so
+                // one mistap on a long list (an 87-item one was a real
+                // reported case) silently destroyed work. Stays instant
+                // (asking would be wrong for an in-flow tidy-up action) but
+                // now snapshots first and offers "Cofnij"; a no-op tap with
+                // nothing checked says so instead of pretending to have done
+                // something.
+                val checkedKeys = items.filterValues { it.checked }.keys
+                if (checkedKeys.isEmpty()) {
+                    Toast.makeText(context, "Nie ma odhaczonych pozycji do usunięcia", Toast.LENGTH_SHORT).show()
+                } else {
+                    val before = items
+                    viewModel.clearChecked()
+                    onShowUndoSnackbar("Usunięto ${checkedKeys.size} odhaczonych pozycji", "Cofnij") {
+                        viewModel.replaceAll(before)
+                    }
+                }
+            }) { Text("Usuń kupione") }
         }
 
         // FR-99: real shopping lists here get long (an 87-item one was

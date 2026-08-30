@@ -742,19 +742,19 @@ Dla każdego zaplanowanego dania można zmienić mnożnik porcji (predefiniowane
 # FR-21: Losowe generowanie planu — cały tydzień lub pojedynczy dzień
 
 **Obszar:** Planer tygodniowy  
-**Status:** Zaimplementowane (cofanie — v2 — na razie Web-only, patrz Uwagi)
+**Status:** Zaimplementowane na obu platformach (cofanie dla obu wariantów — dnia i całego tygodnia — patrz Historia rewizji v3/v4)
 
 ## Opis
 Przycisk „🎲 Wygeneruj losowo cały tydzień” losuje dania dla wszystkich 7 dni × 5 kategorii z puli pasujących do profilu. Dodatkowo każda karta dnia ma własny przycisk „🎲 Losuj ten dzień”, generujący losowy plan tylko dla tego jednego dnia, bez naruszania pozostałych dni.
 
-Na webie (v2) obie akcje można cofnąć — po wygenerowaniu pojawia się powiadomienie z przyciskiem „Cofnij”, przywracającym dokładnie poprzedni plan (dania, skale porcji, flagi resztek). Losowanie pojedynczego dnia wykonuje się od razu, bez okienka potwierdzenia; losowanie całego tygodnia nadal pyta o potwierdzenie przed wykonaniem, a cofnięcie jest tam dodatkowym zabezpieczeniem.
+Obie akcje można cofnąć — po wygenerowaniu pojawia się powiadomienie z przyciskiem „Cofnij”, przywracającym dokładnie poprzedni plan (dania, skale porcji, flagi resztek). Losowanie pojedynczego dnia wykonuje się od razu, bez okienka potwierdzenia; losowanie całego tygodnia nadal pyta o potwierdzenie przed wykonaniem, a cofnięcie jest tam dodatkowym zabezpieczeniem.
 
 ## Kryteria akceptacji
 - Pula losowania uwzględnia dopasowanie do profilu (ta sama logika co FR-11).
-- Web (v2): losowanie POJEDYNCZEGO dnia wykonuje się natychmiast, bez okienka `confirm()`, i pokazuje powiadomienie z „Cofnij”.
-- Web (v2): losowanie CAŁEGO tygodnia nadal wymaga potwierdzenia przed wykonaniem, a po wykonaniu również pokazuje „Cofnij”.
-- Web (v2): kliknięcie „Cofnij” przywraca dokładnie ten sam plan (razem ze skalami porcji i flagami resztek), jaki był przed losowaniem — odpowiednio dla jednego dnia albo dla całego tygodnia.
-- Web (v2): zignorowanie powiadomienia pozostawia wylosowany plan.
+- Losowanie POJEDYNCZEGO dnia wykonuje się natychmiast, bez okienka potwierdzenia, i pokazuje powiadomienie z „Cofnij”.
+- Losowanie CAŁEGO tygodnia nadal wymaga potwierdzenia przed wykonaniem, a po wykonaniu również pokazuje „Cofnij”.
+- Kliknięcie „Cofnij” przywraca dokładnie ten sam plan (razem ze skalami porcji i flagami resztek), jaki był przed losowaniem — odpowiednio dla jednego dnia albo dla całego tygodnia.
+- Zignorowanie powiadomienia pozostawia wylosowany plan.
 
 ## Uwagi
 Web: `structuredClone()` na trzech równoległych mapach PRZED nadpisaniem
@@ -769,11 +769,10 @@ akcji o zasięgu jednego dnia samo cofnięcie jest lepsze niż pytanie:
 nie przerywa pracy, a chroni też po fakcie. Ta sama zasada zastosowana w
 FR-22.
 
-**v2 świadomie Web-only na razie** — ta sesja pracuje w środowisku bez
-dostępu do `api.foojay.io` (toolchain JDK dla Gradle, błąd 403 przy
-`:app:compileDebugKotlin`), więc port do Compose nie może tu zostać ani
-skompilowany, ani przetestowany; odłożone do sesji z realnym dostępem do
-Gradle/emulatora, odnotowane w `android/PARITY.md`.
+Android: `PlannerViewModel.replaceDay`/`replaceAll` przyjmują migawkę
+wziętą PRZED nadpisaniem (per dzień albo cały `WeekPlan`), przekazaną jako
+domknięcie do `onShowUndoSnackbar(msg, label, onUndo)` — ten sam mechanizm,
+którego Planer używa od FR-91/FR-109/FR-111, zero nowej infrastruktury.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
@@ -786,6 +785,14 @@ Gradle/emulatora, odnotowane w `android/PARITY.md`.
   otwartym okienku potwierdzenia też przywraca się poprawnie. Przywracany
   jest cały dzień naraz (`PlannerViewModel.replaceDay`), więc wracają też
   skala porcji i znaczniki resztek, a nie same identyfikatory przepisów.
+
+- **v4** (2026-08-30, DOKOŃCZENIE PORTU): v3 przeniósł tylko wariant
+  jednodniowy — „🎲 Wygeneruj losowo cały tydzień” nadal cichcem nadpisywał
+  wszystkie 35 slotów bez żadnej drogi powrotu, mimo że web ma tam cofnięcie
+  od v2. Naprawione tym samym wzorcem co v3, tylko na całym `WeekPlan`
+  (`PlannerViewModel.replaceAll`) zamiast jednego dnia. `./gradlew
+  :logic:test :app:assembleDebug` przechodzi, NIE zweryfikowane wizualnie na
+  emulatorze.
 
 ---
 
@@ -978,19 +985,19 @@ Zrewidowane 2026-08-03: pierwotnie nazwa produktu na liście zakupów była wyś
 # FR-26: Odhaczanie, udostępnianie i czyszczenie listy zakupów
 
 **Obszar:** Lista zakupów  
-**Status:** Zaimplementowane (cofanie kasowania — v2 — na razie Web-only, patrz Uwagi)
+**Status:** Zaimplementowane na obu platformach (cofanie dla obu akcji kasujących — patrz Historia rewizji v3/v4)
 
 ## Opis
 Pozycje na liście można odhaczyć jako kupione. Listę można udostępnić przez systemowy arkusz udostępniania / SMS / WhatsApp / skopiowanie do schowka, usunąć same odhaczone pozycje albo wyczyścić całą listę.
 
-Na webie (v2) obie akcje kasujące można cofnąć — po wykonaniu pojawia się powiadomienie z przyciskiem „Cofnij”, przywracającym usunięte pozycje. „Usuń odhaczone” działa od razu (bez pytania), „Wyczyść całą listę” nadal pyta o potwierdzenie, a cofnięcie jest tam dodatkowym zabezpieczeniem.
+Obie akcje kasujące można cofnąć — po wykonaniu pojawia się powiadomienie z przyciskiem „Cofnij”, przywracającym usunięte pozycje. „Usuń odhaczone” działa od razu (bez pytania), „Wyczyść całą listę” nadal pyta o potwierdzenie, a cofnięcie jest tam dodatkowym zabezpieczeniem.
 
 ## Kryteria akceptacji
 - Odhaczenie pozycji nie usuwa jej z listy, tylko oznacza wizualnie.
 - „Usuń odhaczone” i „Wyczyść całą listę” to dwie osobne, jednoznacznie opisane akcje.
-- Web (v2): „Usuń odhaczone” pokazuje powiadomienie z liczbą usuniętych pozycji i przyciskiem „Cofnij”; cofnięcie przywraca dokładnie te pozycje (razem z ilościami i powiązaniami z przepisami).
-- Web (v2): „Usuń odhaczone” przy braku odhaczonych pozycji pokazuje komunikat i nie robi nic więcej (nie oferuje cofania niczego).
-- Web (v2): „Wyczyść całą listę” nadal wymaga potwierdzenia, a po wykonaniu oferuje „Cofnij”, które przywraca zarówno listę zakupów, jak i oznaczenia „dodane z przepisu” (`recipeAdded`, sterujące etykietą „✓ Na liście zakupów” na kartach przepisów).
+- „Usuń odhaczone” pokazuje powiadomienie z liczbą usuniętych pozycji i przyciskiem „Cofnij”; cofnięcie przywraca dokładnie te pozycje (razem z ilościami i powiązaniami z przepisami).
+- „Usuń odhaczone” przy braku odhaczonych pozycji pokazuje komunikat i nie robi nic więcej (nie oferuje cofania niczego).
+- „Wyczyść całą listę” nadal wymaga potwierdzenia, a po wykonaniu oferuje „Cofnij”, które przywraca zarówno listę zakupów, jak i oznaczenia „dodane z przepisu” (`recipeAdded` na webie / pochodne od `items` na Androidzie, sterujące etykietą „✓ Na liście zakupów” na kartach przepisów).
 
 ## Uwagi
 Web: `structuredClone()` na `state.shopping` (i dodatkowo `state.recipeAdded`
@@ -1003,11 +1010,9 @@ akcja cząstkowa, wykonywana w toku pracy („Usuń odhaczone”), nie przerywa
 pytaniem, tylko oferuje cofnięcie; akcja o zasięgu całej listy zachowuje
 potwierdzenie ORAZ dostaje cofnięcie.
 
-**v2 świadomie Web-only na razie** — ta sesja pracuje w środowisku bez
-dostępu do `api.foojay.io` (toolchain JDK dla Gradle, błąd 403 przy
-`:app:compileDebugKotlin`), więc port do Compose nie może tu zostać ani
-skompilowany, ani przetestowany; odłożone do sesji z realnym dostępem do
-Gradle/emulatora, odnotowane w `android/PARITY.md`.
+Android: ten sam wzorzec migawki, przekazanej jako domknięcie do
+`onShowUndoSnackbar(msg, label, onUndo)` (mechanizm od FR-91/FR-109/FR-111),
+zero nowej infrastruktury.
 
 ## Historia rewizji
 - **v1** (2026-08-03): Pierwsza wersja wymagania, spisana retrospektywnie na podstawie poleceń użytkownika i release notes z dotychczasowych rund prac.
@@ -1018,6 +1023,15 @@ Gradle/emulatora, odnotowane w `android/PARITY.md`.
   „Cofnij” także w aplikacji natywnej. Migawka robiona przed czyszczeniem
   przywraca prawdziwą listę — ilości, odhaczenia i powiązania z przepisami,
   które decydują o tym, czy przepis „jest na liście” — a nie same nazwy.
+
+- **v4** (2026-08-30, DOKOŃCZENIE PORTU): v3 przeniósł tylko „Wyczyść całą
+  listę” — „Usuń kupione” (odpowiednik web'owego „Usuń odhaczone”) wciąż
+  kasował natychmiast i bez żadnej drogi powrotu, czyli dokładnie ten sam
+  najgorszy przypadek, który v2 naprawił na webie. Naprawione tym samym
+  wzorcem: migawka przed kasowaniem, „Cofnij” w Snackbarze, a przy zerowej
+  liczbie odhaczonych pozycji — Toast zamiast udawanej akcji. `./gradlew
+  :logic:test :app:assembleDebug` przechodzi, NIE zweryfikowane wizualnie na
+  emulatorze.
 
 ---
 
