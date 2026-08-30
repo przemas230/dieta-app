@@ -197,6 +197,7 @@ fun PlannerScreen(
 ) {
     val allRecipes by plannerViewModel.allRecipes.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
+    val weekTemplate by plannerViewModel.weekTemplate.collectAsState()
     // FR-105: which meal the portion picker is open for (null = closed).
     // Held here, next to the other dialogs this screen owns, so the row
     // composables stay free of dialog state.
@@ -312,6 +313,30 @@ fun PlannerScreen(
         }
     }
 
+    // FR-115 (ported to Android 2026-08-30): save/load one whole-week
+    // snapshot as a reusable template. Saving is non-destructive (just
+    // copies weekPlan into weekTemplate), so no confirm; loading overwrites
+    // all 7 days, so it reuses the exact same confirm+undo shape as
+    // randomizeWeek above.
+    val saveWeekTemplate: () -> Unit = {
+        val previousTemplate = weekTemplate
+        plannerViewModel.saveWeekAsTemplate()
+        onShowUndoSnackbar("Zapisano ten tydzień jako szablon", "Cofnij") {
+            plannerViewModel.replaceWeekTemplate(previousTemplate)
+        }
+    }
+    val loadWeekTemplate: () -> Unit = {
+        pendingConfirm = PendingConfirm(
+            "Wczytać zapisany szablon? To nadpisze wszystkie dania zaplanowane w całym tygodniu.",
+        ) {
+            val before = weekPlan
+            plannerViewModel.loadWeekTemplate()
+            onShowUndoSnackbar("Wczytano szablon tygodnia", "Cofnij") {
+                plannerViewModel.replaceAll(before)
+            }
+        }
+    }
+
     // FR-87: motyw "Klinika" dostaje bento-uklad -- nagrodkowy pasek celu
     // kcal/makro (z danych juz wyliczonych wyzej, zero nowych wywolan
     // ViewModel/logiki) i przeprojektowane karty dni. Reszta motywow ma
@@ -398,6 +423,13 @@ fun PlannerScreen(
         if (!isClinic) {
             item { AutoPlanWeekButton(onClick = randomizeWeek) }
             item { SharePlanButtons(weekPlan = weekPlan, recipesById = recipesById) }
+            item {
+                WeekTemplateButtons(
+                    hasTemplate = weekTemplate != null,
+                    onSave = saveWeekTemplate,
+                    onLoad = loadWeekTemplate,
+                )
+            }
         }
         // FR-100 (ported to Android 2026-08-29): "📊 Zaplanowany tydzień"
         // above the day list -- average kcal per PLANNED day (not per 7, see
@@ -533,6 +565,13 @@ fun PlannerScreen(
         if (isClinic) {
             item { AutoPlanWeekButton(onClick = randomizeWeek) }
             item { SharePlanButtons(weekPlan = weekPlan, recipesById = recipesById) }
+            item {
+                WeekTemplateButtons(
+                    hasTemplate = weekTemplate != null,
+                    onSave = saveWeekTemplate,
+                    onLoad = loadWeekTemplate,
+                )
+            }
         }
     }
 
@@ -912,6 +951,29 @@ private fun CopyDayPickerDialog(targetDay: Int, weekPlan: WeekPlan, onPick: (fro
 private fun AutoPlanWeekButton(onClick: () -> Unit) {
     Button(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Text("🎲 Wygeneruj losowo cały tydzień")
+    }
+}
+
+/**
+ * FR-115 (ported to Android 2026-08-30, web-first 2026-08-30/v129): save the
+ * current week as a single reusable template, or load it back overwriting
+ * the whole week. "Load" only shows once something has actually been saved
+ * -- matches web's #loadWeekTemplateBtn display:none guard.
+ */
+@Composable
+private fun WeekTemplateButtons(hasTemplate: Boolean, onSave: () -> Unit, onLoad: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedButton(onClick = onSave, modifier = Modifier.weight(1f)) {
+            Text("💾 Zapisz jako szablon")
+        }
+        if (hasTemplate) {
+            OutlinedButton(onClick = onLoad, modifier = Modifier.weight(1f)) {
+                Text("📂 Wczytaj szablon")
+            }
+        }
     }
 }
 

@@ -33,6 +33,14 @@ class PlannerViewModel(application: Application) : AndroidViewModel(application)
     private val _weekPlan = MutableStateFlow<WeekPlan>(emptyMap())
     val weekPlan: StateFlow<WeekPlan> = _weekPlan.asStateFlow()
 
+    // FR-115 (2026-08-30): one saved snapshot of a whole week -- null if
+    // nothing saved yet. Single-slot by design (not a named list), same
+    // simplification as the web version. PlannedMeal already bundles
+    // scale+isLeftover, so unlike web's three parallel maps this is just
+    // one WeekPlan, not three.
+    private val _weekTemplate = MutableStateFlow<WeekPlan?>(null)
+    val weekTemplate: StateFlow<WeekPlan?> = _weekTemplate.asStateFlow()
+
     init {
         viewModelScope.launch {
             _allRecipes.value = withContext(Dispatchers.IO) { RecipeRepository.loadRecipes(application) }
@@ -127,5 +135,20 @@ class PlannerViewModel(application: Application) : AndroidViewModel(application)
     /** FR-73: applies an incoming cloud snapshot wholesale (last-cloud-write-wins), replacing local state. */
     fun replaceAll(plan: WeekPlan) {
         _weekPlan.value = plan
+    }
+
+    /** FR-115: "💾 Zapisz ten tydzień jako szablon" -- overwrites whatever was saved before. */
+    fun saveWeekAsTemplate() {
+        _weekTemplate.value = _weekPlan.value
+    }
+
+    /** FR-115: "📂 Wczytaj szablon" -- overwrites the whole current week; caller owns confirm/undo. */
+    fun loadWeekTemplate() {
+        _weekTemplate.value?.let { _weekPlan.value = it }
+    }
+
+    /** FR-115: local-persistence restore on app start (LocalPersistenceCoordinator). */
+    fun replaceWeekTemplate(plan: WeekPlan?) {
+        _weekTemplate.value = plan
     }
 }

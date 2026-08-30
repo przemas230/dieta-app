@@ -68,6 +68,7 @@ fun LocalPersistenceCoordinator(
     val communityRecipesEnabled by recipeViewModel.communityRecipesEnabled.collectAsState()
     val shoppingItems by shoppingViewModel.items.collectAsState()
     val weekPlan by plannerViewModel.weekPlan.collectAsState()
+    val weekTemplate by plannerViewModel.weekTemplate.collectAsState()
     val eatenDays by eatenViewModel.days.collectAsState()
     val waterCount by waterViewModel.count.collectAsState()
     val weightEntries by weightViewModel.entries.collectAsState()
@@ -111,7 +112,7 @@ fun LocalPersistenceCoordinator(
     LaunchedEffect(
         initialLoadDone, profile, displayName, pantryItems, pantryHidden, themeId, uiScale, swipeStyle,
         favIngredients, cooked, ratings, reviews, myRecipes, favoriteRecipes, shoppingItems, weekPlan,
-        eatenDays, waterCount, weightEntries, waterHistory, activityLogEntries,
+        weekTemplate, eatenDays, waterCount, weightEntries, waterHistory, activityLogEntries,
         communityRecipesEnabled, remainingKcalFillEnabled,
         fastingEnabled, fastingWindowStart, fastingWindowEnd,
     ) {
@@ -148,7 +149,13 @@ fun LocalPersistenceCoordinator(
             "fastingEnabled" to fastingEnabled,
             "fastingWindowStart" to fastingWindowStart,
             "fastingWindowEnd" to fastingWindowEnd,
-        )
+        ) + (weekTemplate?.let { template ->
+            mapOf(
+                "weekTemplatePlanner" to CloudSyncCodec.encodePlanner(template),
+                "weekTemplatePlannerScale" to CloudSyncCodec.encodePlannerScale(template),
+                "weekTemplatePlannerLeftover" to CloudSyncCodec.encodePlannerLeftover(template),
+            )
+        } ?: emptyMap())
         withContext(Dispatchers.IO) { LocalStateStore.save(context, data) }
     }
 }
@@ -207,6 +214,15 @@ internal fun applyLocalSnapshot(
                 data["plannerScale"] as? Map<*, *>,
                 data["plannerLeftover"] as? Map<*, *>,
             )?.let { plannerViewModel.replaceAll(it) }
+            // FR-115: single saved week-template slot, null if never saved --
+            // reuses the same planner codec functions under different keys.
+            plannerViewModel.replaceWeekTemplate(
+                CloudSyncCodec.decodeWeekPlan(
+                    data["weekTemplatePlanner"] as? Map<*, *>,
+                    data["weekTemplatePlannerScale"] as? Map<*, *>,
+                    data["weekTemplatePlannerLeftover"] as? Map<*, *>,
+                )
+            )
             CloudSyncCodec.decodeDateIntMap(data["waterHistory"] as? Map<*, *>)?.let { waterViewModel.replaceHistory(it) }
             // FR-83: eatenViewModel now derives kcalHistory straight from the
             // full per-date map it restores here, so there's no separate
