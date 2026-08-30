@@ -91,6 +91,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-83: Edycja wcześniej wpisanej wagi i historii kalorii](#fr-83-edycja-wcześniej-wpisanej-wagi-i-historii-kalorii)
 - [FR-94: Śledzenie okna postu przerywanego (intermittent fasting)](#fr-94-śledzenie-okna-postu-przerywanego-intermittent-fasting)
 - [FR-101: Dni kalendarzowe liczone lokalnie, nie w UTC](#fr-101-dni-kalendarzowe-liczone-lokalnie-nie-w-utc)
+- [FR-113: Zmiana zapisanego dania w historii „co zjadłam/zjadłem”](#fr-113-zmiana-zapisanego-dania-w-historii-co-zjadłamzjadłem)
 
 ### Nagłówek i nawigacja
 - [FR-43: Pasek filtrów i kategorii przyklejony pod nagłówkiem](#fr-43-pasek-filtrów-i-kategorii-przyklejony-pod-nagłówkiem)
@@ -3364,6 +3365,8 @@ Do tej pory zarówno wpisy wagi (FR-40), jak i dziennik zjedzonych posiłków (F
 
 **Historia kalorii (web)**: karta „📆 Dzisiaj — co zjadłam” dostała nawigację dat (◀ / pole daty / ▶, zablokowane na przyszłość) — wybranie wcześniejszego dnia pokazuje DOKŁADNIE ten sam formularz (checkboxy zaplanowanych posiłków + lista przekąsek z możliwością dodania/usunięcia), tylko dla wybranej daty zamiast dzisiejszej. Wykres „📈 Historia kalorii” poniżej odzwierciedla zmiany natychmiast, bo oba czytają z tego samego `state.eaten[data]`.
 
+Nagłówek tej karty odmienia się teraz przez rodzaj gramatyczny zgodnie z płcią w profilu — „co zjadłam” dla kobiety, „co zjadłem” dla mężczyzny (v3, patrz Historia rewizji).
+
 ## Kryteria akceptacji
 - Zmiana wartości istniejącego wpisu wagi na inny dzień nie tworzy duplikatu ani nie usuwa pozostałych wpisów.
 - Usunięcie wpisu wagi wymaga potwierdzenia.
@@ -3417,6 +3420,17 @@ odzwierciedliły nowy wpis.
   nowa karta z nawigacją dat w Postęp. `./gradlew :logic:test` i
   `:app:assembleDebug` przechodzą; zweryfikowane bezpośrednio na emulatorze
   (patrz Uwagi).
+- **v3** (2026-08-30, NAPRAWIONY REALNY BŁĄD): nagłówek karty był
+  zahardkodowany na formę żeńską „co zjadłam” niezależnie od płci w
+  profilu — dla mężczyzny czytało się źle. Web: `zjadl = state.profile.sex
+  === "m" ? "zjadłem" : "zjadłam"` w `renderTodayTracker`. Android:
+  analogiczny warunek w `EatenHistoryCard` (`PostepScreen.kt`), `profile`
+  doprowadzony jako nowy parametr. Zweryfikowane na żywo w Chrome: profil
+  testowy (płeć „m”) dał tytuł „📆 Dzisiaj — co zjadłem”. Android:
+  `./gradlew :app:compileDebugKotlin` przechodzi, NIE zweryfikowane
+  wizualnie na emulatorze w tej sesji (brak uruchomionego emulatora). Patrz
+  też FR-113 (dodane w tej samej turze) — możliwość zmiany SAMEGO dania
+  zapisanego w tej karcie, nie tylko odmiany nagłówka.
 
 ---
 
@@ -6309,4 +6323,90 @@ reszta destrukcyjnych/zbiorczych akcji w aplikacji.
   „Cofnij” przywrócił dokładnie poprzedni stan wszystkich czterech
   wpisów. Android: `./gradlew :logic:test :app:assembleDebug` przechodzi
   (21 testów w `PantryOperationsTest`, w tym 3 nowe), NIE zweryfikowane
+  wizualnie na emulatorze w tej sesji (brak uruchomionego emulatora).
+
+---
+
+# FR-113: Zmiana zapisanego dania w historii „co zjadłam/zjadłem”
+
+**Obszar:** Postęp (karta „co zjadłam”/„co zjadłem”), Android + Web
+**Status:** Zaimplementowane na obu platformach
+
+## Opis
+Karta „📆 [Dzisiaj / data] — co zjadłam/zjadłem” (FR-83) do tej pory
+pozwalała TYLKO zaznaczyć/odznaczyć, czy zaplanowane w Planerze danie
+zostało zjedzone — nie dało się zmienić, JAKIE danie było faktycznie
+zjedzone danego dnia. Zgłoszenie: „w tym samym miejscu w historii daj
+możliwość zmieniania dania w historii bo teraz da się zaznaczyć tylko czy
+zjedzone a nie da się zmienić w razie czego dania z poprzedniego dnia”.
+
+Każdy wiersz slotu dostaje przycisk „✏️” obok checkboxa. Otwiera listę
+przepisów z TEJ SAMEJ kategorii posiłku (z wyszukiwarką), a wybranie
+jednego zapisuje je jako zjedzone danego dnia w tym slocie — niezależnie
+od tego, co jest aktualnie zaplanowane w cotygodniowym szablonie Planera
+na ten dzień tygodnia. Działa też dla slotu, w którym nic nie było
+zaplanowane („— nie zaplanowano w Planerze —”) — pozwala uzupełnić wpis z
+przeszłości od zera, nie tylko poprawić istniejący.
+
+**Dlaczego to nie dotyka Planera.** Planer to POWTARZALNY szablon
+tygodniowy (ten sam wtorek co tydzień), a nie zapis konkretnej daty —
+zmiana „co było zaplanowane na wtorek” zmieniłaby WSZYSTKIE wtorki,
+przeszłe i przyszłe, nie tylko ten jeden dzień, który akurat się
+poprawia. Zamiast tego zapis „co zjadłam” już od dawna trzyma własne
+`kcal`/`name` per data (patrz FR-83/FR-36), niezależne od szablonu — ta
+funkcja tylko wystawia sposób, żeby to pole ustawić na cokolwiek, a nie
+tylko na to, co aktualnie akurat wisi w Planerze na ten dzień tygodnia.
+
+**Naprawiony przy okazji realny błąd.** Zaznaczenie/odznaczenie checkboxa
+po edycji dania ZAWSZE na nowo pobierało nazwę/kcal z AKTUALNEGO planu na
+ten dzień tygodnia — więc odznaczenie i ponowne zaznaczenie po korekcie
+cichcem kasowało tę korektę i wracało do tego, co akurat jest zaplanowane.
+Naprawione: zaznaczenie preferuje to, co już jest zapisane w danym wpisie
+(w tym poprawki z „✏️ Zmień danie”), a dopiero gdy nic tam jeszcze nie ma
+— sięga do planu.
+
+## Kryteria akceptacji
+- Każdy wiersz slotu w karcie „co zjadłam/zjadłem” ma przycisk „✏️”.
+- Kliknięcie otwiera listę przepisów z TEJ SAMEJ kategorii co slot (z
+  wyszukiwarką odporną na ogonki), niezależnie od tego, czy slot ma coś
+  zaplanowane.
+- Wybranie przepisu zapisuje go jako zjedzony w tym slocie tego dnia
+  (pełna porcja), bez tworzenia nowej pozycji na liście zakupów i bez
+  dotykania szablonu Planera.
+- Wiersz od razu pokazuje NOWO wybrane danie (nazwa + kcal), nie to, co
+  jest aktualnie zaplanowane w Planerze na ten dzień tygodnia.
+- Odznaczenie i ponowne zaznaczenie checkboxa PO edycji zachowuje
+  poprawkę — nie wraca do dania z aktualnego planu.
+- Historia kalorii (wykres poniżej) przelicza się natychmiast po edycji,
+  tak samo jak po zwykłym zaznaczeniu/odznaczeniu.
+- `./gradlew :logic:test :app:assembleDebug` przechodzi.
+
+## Uwagi
+Web: `setEatenRecipe(date, cat, recipe)` (nowa funkcja) zapisuje
+`{done:true, kcal, name, portion:1}` wprost z wybranego przepisu.
+`setEaten()` naprawiony, żeby przy `done=true` najpierw sprawdzić, czy
+istniejący wpis ma już `name` (czyli był edytowany) i wtedy zachować jego
+`kcal`/`name` zamiast na nowo liczyć z `plannedRecipeFor()`. Nowy modal
+`#eatenEditOverlay` (ten sam wzorzec co FR-111's `cookTwoDaysOverlay`) z
+wyszukiwarką filtrującą przez `foldDiacritics`.
+
+Android: `EatenHistoryCard` w `PostepScreen.kt` liczy `displayName`/
+`displayKcal` jako `entry?.name ?: plannedRecipe?.name` (i analogicznie
+dla kcal) zamiast zawsze z aktualnego planu; przekazuje te wartości do
+`toggleForDate` zamiast surowych wartości z planu, żeby toggle nie kasował
+korekty. Nowy `EatenRecipeEditDialog` (prosty picker z wyszukiwarką,
+uproszczona wersja `PlannerSlotDialog` bez skalowania porcji/resztek — to
+narzędzie korygujące jeden zapis, nie planujące szablon). Wywołuje
+istniejące `EatenViewModel.setEatenOnDate(date, cat, done=true, kcal,
+name)` — żadna nowa logika w `:logic` nie była potrzebna, bo ta funkcja
+już przyjmowała `kcal`/`name` jako jawne argumenty zamiast wyprowadzać je
+sama.
+
+## Historia rewizji
+- **v1** (2026-08-30): Pierwsza wersja, obie platformy w tej samej turze.
+  Zweryfikowane na żywo w Chrome (lokalny serwer): edycja pustego slotu
+  „II Śniadanie” na „Bułka z serem i szynką z indyka” (270 kcal) zapisała
+  się poprawnie w `state.eaten`; odznaczenie i ponowne zaznaczenie
+  zachowało tę samą nazwę/kcal zamiast wracać do braku planu. Android:
+  `./gradlew :logic:test :app:assembleDebug` przechodzi, NIE zweryfikowane
   wizualnie na emulatorze w tej sesji (brak uruchomionego emulatora).

@@ -1,0 +1,44 @@
+Wersja v125 (2026-08-30)
+========================
+
+Dwie poprawki w karcie "co zjadłam" na zakładce Postęp.
+
+1. RODZAJ GRAMATYCZNY (FR-83/v3)
+   ------------------------------
+   Nagłówek karty był zahardkodowany na formę żeńską "co zjadłam"
+   niezależnie od płci wpisanej w profilu. Teraz odmienia się poprawnie:
+   "co zjadłam" dla kobiety, "co zjadłem" dla mężczyzny.
+
+2. ZMIANA ZAPISANEGO DANIA W HISTORII (FR-113)
+   --------------------------------------------
+   Do tej pory karta pozwalała TYLKO zaznaczyć/odznaczyć, czy zaplanowane
+   danie zostało zjedzone — nie dało się zmienić, JAKIE danie było
+   faktycznie zjedzone. Każdy wiersz dostaje teraz przycisk "✏️", który
+   otwiera listę przepisów z tej samej kategorii (z wyszukiwarką) — wybór
+   zapisuje je jako zjedzone w tym slocie/dniu, niezależnie od tego, co
+   akurat wisi w cotygodniowym szablonie Planera. Działa też dla pustego
+   slotu, żeby uzupełnić zapomniany wpis z przeszłości.
+
+   DLACZEGO TO NIE DOTYKA PLANERA: Planer to powtarzalny szablon
+   tygodniowy (ten sam wtorek co tydzień), a zmiana "co było zaplanowane
+   na wtorek" zmieniłaby wszystkie wtorki, nie tylko ten jeden dzień.
+   Zapis "co zjadłam" ma własne pole na nazwę/kalorie per data, niezależne
+   od szablonu — ta funkcja tylko pozwala je ustawić na cokolwiek.
+
+   PRZY OKAZJI NAPRAWIONY REALNY BŁĄD: odznaczenie i ponowne zaznaczenie
+   checkboxa po edycji dania cichcem kasowało poprawkę i wracało do tego,
+   co akurat jest zaplanowane. Teraz zaznaczenie zachowuje to, co już
+   zapisane, zamiast na nowo pobierać z planu.
+
+Weryfikacja
+-----------
+Web, na żywo w Chrome (lokalny serwer): profil testowy (płeć "m") dał
+tytuł "co zjadłem"; edycja pustego slotu na konkretny przepis zapisała
+się poprawnie; odznaczenie+ponowne zaznaczenie zachowało poprawkę.
+
+Android: ./gradlew :logic:test :app:assembleDebug przechodzi. NIE
+zweryfikowane wizualnie na emulatorze w tej sesji (brak uruchomionego
+emulatora).
+
+Wersje: Android versionCode 97->98, versionName 0.1.96->0.1.97 (APK w
+android/dist zsynchronizowany), Web CACHE_NAME v124->v125.

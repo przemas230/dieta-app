@@ -2238,6 +2238,21 @@
       <div id="todayTracker"></div>
     </div>
 
+    <!-- FR-113 (2026-08-30): "✏️ Zmień danie" -- see openEatenRecipeEditModal.
+         Correction tool for one date's eaten record, independent of
+         PlannerSlotDialog's own picker overlay (that one plans the
+         recurring weekly template, this one only edits history). -->
+    <div class="modal-overlay center" id="eatenEditOverlay">
+      <div class="modal-sheet center-sheet">
+        <div class="modal-head">
+          <h3 id="eatenEditTitle">✏️ Zmień danie</h3>
+          <button id="eatenEditClose">✕</button>
+        </div>
+        <input type="text" id="eatenEditSearch" placeholder="Szukaj przepisu…" style="width:100%; border:1px solid var(--line); border-radius:9px; padding:8px 10px; font-size:13px; margin-bottom:10px;">
+        <div id="eatenEditBody"></div>
+      </div>
+    </div>
+
     <div class="card">
       <h3 style="margin:0 0 6px; font-size:14.5px;">📈 Historia kalorii</h3>
       <div style="position:relative; height:160px; margin-top:8px;">
@@ -10212,14 +10227,26 @@ function plannedRecipeFor(date, cat){
 }
 function setEaten(date, cat, done, portion){
   state.eaten[date] = state.eaten[date] || {};
+  const prev = eatenEntry(date, cat);
   if(done){
     const r = plannedRecipeFor(date, cat);
     const p = typeof portion === "number" ? Math.max(0, Math.min(1, portion)) : 1;
-    state.eaten[date][cat] = {done:true, kcal: r ? r.kcal : 0, name: r ? r.name : null, portion: p};
+    // FR-113 (2026-08-30): prefer whatever name/kcal is ALREADY recorded
+    // (e.g. corrected via "✏️ Zmień danie") over re-deriving from the
+    // current plan -- otherwise ticking the box off-and-on after an edit
+    // would silently discard the correction and revert to whatever the
+    // weekly template happens to have in that slot right now.
+    const kcal = prev && prev.name != null ? prev.kcal : (r ? r.kcal : 0);
+    const name = prev && prev.name != null ? prev.name : (r ? r.name : null);
+    state.eaten[date][cat] = {done:true, kcal, name, portion: p};
   }else{
-    const prev = eatenEntry(date, cat);
     state.eaten[date][cat] = {done:false, kcal: prev ? prev.kcal : null, name: prev ? prev.name : null, portion: 0};
   }
+}
+/** FR-113: "✏️ Zmień danie" -- records a SPECIFIC recipe as eaten for this date+slot, independent of what's currently planned there. */
+function setEatenRecipe(date, cat, recipe){
+  state.eaten[date] = state.eaten[date] || {};
+  state.eaten[date][cat] = {done:true, kcal: recipe.kcal, name: recipe.name, portion: 1};
 }
 function addSnack(date, name, kcal){
   state.eaten[date] = state.eaten[date] || {};
@@ -10411,7 +10438,11 @@ function renderTodayTracker(){
   const isToday = viewDate === today;
   if(titleEl){
     const label = new Date(viewDate+"T00:00:00").toLocaleDateString('pl-PL', {day:'2-digit', month:'2-digit', year:'numeric'});
-    titleEl.textContent = isToday ? "📆 Dzisiaj — co zjadłam" : `📆 ${label} — co zjadłam`;
+    // Requested 2026-08-30: "co zjadłam" was hardcoded feminine regardless
+    // of the profile's płeć -- reads wrong for a man ("co zjadłem" is the
+    // correct masculine form of the same verb, past-tense 1st person).
+    const zjadl = state.profile.sex === "m" ? "zjadłem" : "zjadłam";
+    titleEl.textContent = isToday ? `📆 Dzisiaj — co ${zjadl}` : `📆 ${label} — co ${zjadl}`;
   }
   if(hintEl) hintEl.textContent = isToday ? "" : "Edytujesz wcześniejszy dzień — zmiany od razu przeliczają historię kalorii poniżej.";
   const polIndex = polIndexForDate(viewDate);
@@ -10420,7 +10451,14 @@ function renderTodayTracker(){
   box.innerHTML = "";
   const t = calcTargets(state.profile);
   CATS.forEach(c=>{
+    const entry = eatenEntry(viewDate, c.id);
     const r = plannedRecipeFor(viewDate, c.id);
+    // FR-113 (2026-08-30): an entry's own name/kcal (once set -- by
+    // ticking the box OR by "✏️ Zmień danie") takes priority over the
+    // currently PLANNED dish, so a correction survives even if the weekly
+    // template changes later.
+    const displayName = entry && entry.name != null ? entry.name : (r ? r.name : null);
+    const displayKcal = entry && entry.name != null ? entry.kcal : (r ? r.kcal : null);
     const checked = isEaten(viewDate, c.id);
     // FR-103: a half portion (set by swiping left on the Planer card) is
     // still "checked" here -- this checkbox only knows eaten/not eaten --
@@ -10428,17 +10466,28 @@ function renderTodayTracker(){
     // Planer. Ticking the box afterwards promotes it back to a whole one.
     const portion = eatenPortion(viewDate, c.id);
     const halfSuffix = checked && portion > 0 && portion < 1 ? " · ½ porcji" : "";
-    const row = document.createElement("label");
-    row.className = "toggle-row";
-    row.style.marginBottom = "10px";
-    row.innerHTML = `<input type="checkbox" ${checked?'checked':''} ${r?'':'disabled'}>
-      <span>${c.icon} ${c.label}: ${r ? r.name + " (" + r.kcal + " kcal)" + halfSuffix : "— nie zaplanowano w Planerze —"}</span>`;
-    if(r){
-      row.querySelector("input").addEventListener("change", e=>{
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex; align-items:center; gap:6px; margin-bottom:10px;";
+    const label = document.createElement("label");
+    label.className = "toggle-row";
+    label.style.cssText = "flex:1; min-width:0; margin:0;";
+    label.innerHTML = `<input type="checkbox" ${checked?'checked':''} ${displayName?'':'disabled'}>
+      <span>${c.icon} ${c.label}: ${displayName ? displayName + " (" + displayKcal + " kcal)" + halfSuffix : "— nie zaplanowano w Planerze —"}</span>`;
+    if(displayName){
+      label.querySelector("input").addEventListener("change", e=>{
         setEaten(viewDate, c.id, e.target.checked);
         saveState(); renderTodayTracker(); renderHeader();
       });
     }
+    row.appendChild(label);
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "btn ghost";
+    editBtn.style.cssText = "flex:0 0 auto; padding:4px 8px; font-size:13px;";
+    editBtn.title = "Zmień danie";
+    editBtn.textContent = "✏️";
+    editBtn.addEventListener("click", ()=> openEatenRecipeEditModal(viewDate, c));
+    row.appendChild(editBtn);
     box.appendChild(row);
   });
 
@@ -10467,6 +10516,44 @@ function renderTodayTracker(){
   info.textContent = `${isToday ? "Zjedzono dziś" : "Zjedzono tego dnia"}: ${eatenKcal} / ${t.daily} kcal (${pct}%).`;
   box.appendChild(info);
 }
+// FR-113 (2026-08-30, requested: "da możliwość zmieniania dania w
+// historii, bo teraz da się zaznaczyć tylko czy zjedzone, a nie da się
+// zmienić w razie czego dania z poprzedniego dnia"): search-then-tap-a-row
+// picker scoped to ONE category's recipes, same shape as the rest of the
+// app's pickers but simpler (no leftovers/scale -- this corrects one
+// date's record, it doesn't touch the recurring weekly plan).
+function openEatenRecipeEditModal(date, cat){
+  document.getElementById("eatenEditTitle").textContent = `✏️ Zmień danie — ${cat.icon} ${cat.label}`;
+  const searchInput = document.getElementById("eatenEditSearch");
+  searchInput.value = "";
+  const body = document.getElementById("eatenEditBody");
+  const renderList = ()=>{
+    const term = searchInput.value.trim();
+    const pool = allRecipes().filter(r=>r.cat===cat.id);
+    const filtered = (term ? pool.filter(r=>foldDiacritics(r.name).includes(foldDiacritics(term))) : pool)
+      .sort((a,b)=>a.name.localeCompare(b.name, 'pl'));
+    body.innerHTML = filtered.length ? "" : `<div class="hint-text" style="margin:12px 0;">Brak przepisów pasujących do wyszukiwania.</div>`;
+    filtered.forEach(r=>{
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 0; border-bottom:1px solid var(--line); cursor:pointer;";
+      row.innerHTML = `<span>${r.name}</span><span style="color:var(--muted); font-size:12.5px;">${r.kcal} kcal</span>`;
+      row.addEventListener("click", ()=>{
+        setEatenRecipe(date, cat.id, r);
+        saveState();
+        document.getElementById("eatenEditOverlay").classList.remove("show");
+        renderTodayTracker(); renderHeader();
+      });
+      body.appendChild(row);
+    });
+  };
+  searchInput.oninput = renderList;
+  renderList();
+  document.getElementById("eatenEditOverlay").classList.add("show");
+}
+document.getElementById("eatenEditClose").addEventListener("click", ()=> document.getElementById("eatenEditOverlay").classList.remove("show"));
+document.getElementById("eatenEditOverlay").addEventListener("click", (e)=>{
+  if(e.target===document.getElementById("eatenEditOverlay")) e.target.classList.remove("show");
+});
 document.getElementById("trackerDayInput").addEventListener("change", e=>{
   const val = e.target.value;
   if(!val) return;

@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -40,7 +42,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.window.Dialog
 import com.przemas230.dietaapp.data.ActivityLogEntry
 import com.przemas230.dietaapp.data.WeightEntry
 import com.przemas230.dietaapp.logic.ActivityLogOperations
@@ -214,8 +218,10 @@ fun PostepScreen(
             eatenViewModel = eatenViewModel,
             weekPlan = weekPlan,
             recipesById = recipesById,
+            allRecipes = allRecipes,
             dailyTarget = dailyTarget,
             today = today,
+            profile = profile,
         )
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -264,14 +270,20 @@ private fun EatenHistoryCard(
     eatenViewModel: EatenViewModel,
     weekPlan: com.przemas230.dietaapp.logic.WeekPlan,
     recipesById: Map<String, com.przemas230.dietaapp.data.Recipe>,
+    allRecipes: List<com.przemas230.dietaapp.data.Recipe>,
     dailyTarget: Int,
     today: LocalDate,
+    profile: com.przemas230.dietaapp.data.Profile,
 ) {
     val selectedDate by eatenViewModel.selectedDate.collectAsState()
     val days by eatenViewModel.days.collectAsState()
     val day = days[selectedDate.toString()] ?: com.przemas230.dietaapp.data.EatenDay()
     val isToday = selectedDate == today
     val dayMeals = remember(weekPlan, selectedDate) { weekPlan[selectedDate.dayOfWeek.value - 1].orEmpty() }
+    // Requested 2026-08-30: "co zjadłam" was hardcoded feminine regardless
+    // of the profile's płeć -- reads wrong for a man ("co zjadłem" is the
+    // correct masculine form of the same verb, past-tense 1st person).
+    val zjadl = if (profile.sex == com.przemas230.dietaapp.data.Sex.MEZCZYZNA) "zjadłem" else "zjadłam"
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -282,7 +294,7 @@ private fun EatenHistoryCard(
             ) {
                 val label = remember(selectedDate) { selectedDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")) }
                 Text(
-                    if (isToday) "📆 Dzisiaj — co zjadłam" else "📆 $label — co zjadłam",
+                    if (isToday) "📆 Dzisiaj — co $zjadl" else "📆 $label — co $zjadl",
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.weight(1f),
@@ -299,24 +311,38 @@ private fun EatenHistoryCard(
                 )
             }
             Spacer(modifier = Modifier.height(6.dp))
+            // Requested 2026-08-30 ("da możliwość zmieniania dania w
+            // historii, bo teraz da się zaznaczyć tylko czy zjedzone, a
+            // nie da się zmienić w razie czego dania z poprzedniego
+            // dnia"): which category's "✏️ Zmień danie" picker is open.
+            var editTarget by remember { mutableStateOf<String?>(null) }
             com.przemas230.dietaapp.logic.PlannerOperations.PLANNER_CATEGORIES.forEach { category ->
                 val meal = dayMeals[category.id]
-                val recipe = meal?.let { recipesById[it.recipeId] }
-                val plannedKcal = if (recipe != null && meal != null) {
-                    com.przemas230.dietaapp.logic.PlannerOperations.scaledKcal(recipe, meal.scale)
+                val plannedRecipe = meal?.let { recipesById[it.recipeId] }
+                val plannedKcal = if (plannedRecipe != null && meal != null) {
+                    com.przemas230.dietaapp.logic.PlannerOperations.scaledKcal(plannedRecipe, meal.scale)
                 } else {
                     null
                 }
-                val checked = com.przemas230.dietaapp.logic.EatenOperations.isEaten(day.entries, category.id)
+                val entry = day.entries[category.id]
+                // An entry's own name/kcal (once set -- by ticking the box
+                // OR by "✏️ Zmień danie" below) takes priority over the
+                // currently PLANNED dish, so a correction survives even if
+                // the weekly template changes later, and toggling the
+                // checkbox off-and-on doesn't silently revert it back to
+                // whatever happens to be planned right now.
+                val displayName = entry?.name ?: plannedRecipe?.name
+                val displayKcal = entry?.kcal ?: plannedKcal
+                val checked = entry?.done == true
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 2.dp)
                         .then(
-                            if (recipe != null) {
+                            if (displayName != null) {
                                 Modifier.clickable {
-                                    eatenViewModel.toggleForDate(selectedDate, category.id, plannedKcal, recipe.name)
+                                    eatenViewModel.toggleForDate(selectedDate, category.id, displayKcal, displayName)
                                 }
                             } else {
                                 Modifier
@@ -325,18 +351,33 @@ private fun EatenHistoryCard(
                 ) {
                     Checkbox(
                         checked = checked,
-                        onCheckedChange = { eatenViewModel.toggleForDate(selectedDate, category.id, plannedKcal, recipe?.name) },
-                        enabled = recipe != null,
+                        onCheckedChange = { eatenViewModel.toggleForDate(selectedDate, category.id, displayKcal, displayName) },
+                        enabled = displayName != null,
                     )
                     Text(
-                        if (recipe != null) {
-                            "${category.emoji} ${category.label}: ${recipe.name} ($plannedKcal kcal)"
+                        if (displayName != null) {
+                            "${category.emoji} ${category.label}: $displayName (${displayKcal ?: 0} kcal)"
                         } else {
                             "${category.emoji} ${category.label}: — nie zaplanowano w Planerze —"
                         },
                         style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f),
                     )
+                    TextButton(onClick = { editTarget = category.id }) { Text("✏️") }
                 }
+            }
+            if (editTarget != null) {
+                val cat = editTarget!!
+                val category = com.przemas230.dietaapp.logic.PlannerOperations.PLANNER_CATEGORIES.first { it.id == cat }
+                EatenRecipeEditDialog(
+                    category = category,
+                    recipes = allRecipes.filter { it.cat == cat },
+                    onPick = { recipe ->
+                        eatenViewModel.setEatenOnDate(selectedDate.toString(), cat, true, recipe.kcal, recipe.name)
+                        editTarget = null
+                    },
+                    onDismiss = { editTarget = null },
+                )
             }
             if (day.snacks.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
@@ -790,5 +831,82 @@ private fun WeightChart(entries: List<WeightEntry>) {
         }
         points.dropLast(1).forEach { drawCircle(lineColor, radius = 3.dp.toPx(), center = it) }
         drawCircle(lastPointColor, radius = 6.dp.toPx(), center = points.last())
+    }
+}
+
+/**
+ * Requested 2026-08-30 ("da możliwość zmieniania dania w historii"):
+ * [EatenHistoryCard]'s "✏️ Zmień danie" picker for one meal-slot on one
+ * past (or today's) date -- lets a wrongly-recorded or missing entry be
+ * corrected to any recipe from that same category, independent of
+ * whatever the CURRENT weekly plan happens to have in that slot. Deliberately
+ * simpler than PlannerScreen's PlannerSlotDialog (no leftovers/scale/clear --
+ * this is a correction tool for one date's record, not a planning tool for
+ * the recurring template) but same search-then-tap-a-row shape as the rest
+ * of the app's recipe pickers.
+ */
+@Composable
+private fun EatenRecipeEditDialog(
+    category: com.przemas230.dietaapp.logic.PlannerCategory,
+    recipes: List<com.przemas230.dietaapp.data.Recipe>,
+    onPick: (com.przemas230.dietaapp.data.Recipe) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var searchTerm by remember { mutableStateOf("") }
+    val filtered = remember(recipes, searchTerm) {
+        if (searchTerm.isBlank()) recipes.sortedBy { it.name }
+        else recipes.filter { com.przemas230.dietaapp.logic.PolishText.contains(it.name, searchTerm.trim()) }.sortedBy { it.name }
+    }
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.widthIn(max = 480.dp)) {
+            Column(modifier = Modifier.padding(16.dp).heightIn(max = 560.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "✏️ Zmień danie — ${category.emoji} ${category.label}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onDismiss) { Text("✕") }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = searchTerm,
+                    onValueChange = { searchTerm = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = { Text("Szukaj przepisu…") },
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    if (filtered.isEmpty()) {
+                        Text(
+                            "Brak przepisów pasujących do wyszukiwania.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 12.dp),
+                        )
+                    }
+                    filtered.forEach { recipe ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onPick(recipe) }
+                                .padding(vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(recipe.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                            Text(
+                                "${recipe.kcal} kcal",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        HorizontalDivider()
+                    }
+                }
+            }
+        }
     }
 }
