@@ -194,15 +194,36 @@ async function main() {
       console.log("no result found, skipping (leaves emoji fallback).");
       continue;
     }
-    recipe.image = result.image;
-    recipe.imageCredit = result.imageCredit;
     console.log(`OK (${result.imageCredit.name})`);
     fetched++;
 
-    // Write progress after every recipe so an interruption never loses work.
-    const newHtml = html.slice(0, start) + JSON.stringify(recipes) + html.slice(end);
-    fs.writeFileSync(INDEX_HTML, newHtml);
-    fs.writeFileSync(RECIPES_JSON, JSON.stringify(recipes, null, 0));
+    // Write progress after every recipe so an interruption never loses
+    // work -- and RE-READ both files fresh right before merging in just
+    // THIS recipe's two new fields, rather than reusing the in-memory
+    // `recipes`/`html` snapshot from when the script started. Found the
+    // hard way: a concurrent edit to index.html while this script was
+    // mid-run (73s between requests adds up to hours for a full pass) got
+    // silently discarded on the next write, because every write re-used
+    // the STALE prefix/suffix text captured at startup. Re-reading fresh
+    // every time means this script can never clobber someone else's
+    // concurrent edit, no matter how long a run takes.
+    const freshHtml = fs.readFileSync(INDEX_HTML, "utf8");
+    const { arrayText: freshArrayText, start: freshStart, end: freshEnd } = extractRecipesFromHtml(freshHtml);
+    const freshHtmlRecipes = JSON.parse(freshArrayText);
+    const htmlTarget = freshHtmlRecipes.find((r) => r.id === recipe.id);
+    if (htmlTarget) {
+      htmlTarget.image = result.image;
+      htmlTarget.imageCredit = result.imageCredit;
+    }
+    fs.writeFileSync(INDEX_HTML, freshHtml.slice(0, freshStart) + JSON.stringify(freshHtmlRecipes) + freshHtml.slice(freshEnd));
+
+    const freshJsonRecipes = JSON.parse(fs.readFileSync(RECIPES_JSON, "utf8"));
+    const jsonTarget = freshJsonRecipes.find((r) => r.id === recipe.id);
+    if (jsonTarget) {
+      jsonTarget.image = result.image;
+      jsonTarget.imageCredit = result.imageCredit;
+    }
+    fs.writeFileSync(RECIPES_JSON, JSON.stringify(freshJsonRecipes));
 
     // Unsplash Demo tier: 50 req/h = one request per 72s to never trip the
     // limit; this pacing plus the resumable design means a full 213-recipe
