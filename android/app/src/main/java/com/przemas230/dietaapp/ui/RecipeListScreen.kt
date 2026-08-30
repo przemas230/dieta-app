@@ -2,6 +2,8 @@ package com.przemas230.dietaapp.ui
 
 import android.content.Intent
 import android.net.Uri
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -1141,13 +1143,28 @@ private fun RecipeCard(
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
+                // FR-114 (2026-08-30): a real photo (recipe.image, a
+                // hotlinked Unsplash URL baked into recipes.json offline)
+                // replaces the emoji when present -- falls back to the
+                // emoji for anything not matched to a decent photo
+                // (community/custom recipes always fall back this way).
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(thumbEmoji, fontSize = 24.sp)
+                    if (recipe.image != null) {
+                        AsyncImage(
+                            model = recipe.image,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        Text(thumbEmoji, fontSize = 24.sp)
+                    }
                 }
             }
         }
@@ -1533,6 +1550,33 @@ internal fun RecipeCardBody(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 6.dp),
                 )
+            }
+            // FR-114: Unsplash's API guidelines require crediting both the
+            // photographer and Unsplash itself, each hyperlinked back with
+            // a referral UTM tag -- same two links as the web version.
+            val creditName = recipe.imageCreditName
+            val creditUrl = recipe.imageCreditUrl
+            if (recipe.image != null && creditName != null && creditUrl != null) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                    Text("📷 Zdjęcie: ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        creditName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("$creditUrl?utm_source=dieta_app&utm_medium=referral")))
+                        },
+                    )
+                    Text(" / ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "Unsplash",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://unsplash.com/?utm_source=dieta_app&utm_medium=referral")))
+                        },
+                    )
+                }
             }
             // Requested 2026-08-25 (Web FR-66/v5, ported here): explicit
             // search buttons for the full dish name -- previously the only

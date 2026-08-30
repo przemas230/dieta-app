@@ -21,8 +21,8 @@ android {
         applicationId = "com.przemas230.dietaapp"
         minSdk = 26
         targetSdk = 34
-        versionCode = 98
-        versionName = "0.1.97"
+        versionCode = 99
+        versionName = "0.1.98"
     }
 
     buildTypes {
@@ -79,6 +79,12 @@ dependencies {
     // API, which needs extra Digital Asset Links setup this session can't
     // verify end-to-end anyway.
     implementation("com.google.android.gms:play-services-auth:21.2.0")
+
+    // FR-114 (2026-08-30): real recipe photos on the card thumbnail
+    // (recipe.image, a hotlinked Unsplash URL baked into recipes.json) --
+    // Coil is the standard async-image loader for Compose, handles disk/
+    // memory caching so a scrolled-past thumbnail doesn't re-download.
+    implementation("io.coil-kt:coil-compose:2.7.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

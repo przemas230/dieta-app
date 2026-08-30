@@ -60,4 +60,16 @@ data class Recipe(
     // recipe card if present. Never backfilled for builtin recipes (no
     // real data for them) or fabricated.
     val inspirationSource: String? = null,
+    // FR-114 (2026-08-30): a hotlinked Unsplash photo URL, batch-fetched
+    // offline (see scripts/fetch-recipe-images.*) and baked into
+    // recipes.json -- never fetched live on-device, both for API
+    // rate-limit reasons and because a mobile client has no shared cache
+    // to hold a per-recipe lookup the way a server would. Null for any
+    // recipe not matched to a decent photo (community/custom recipes
+    // always fall back to the emoji thumbnail, they're never a batch-fetch
+    // target) or, on this platform, until the batch fetch has been rerun
+    // and recipes.json regenerated.
+    val image: String? = null,
+    val imageCreditName: String? = null,
+    val imageCreditUrl: String? = null,
 )

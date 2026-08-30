@@ -1,0 +1,37 @@
+Wersja v126 (2026-08-30)
+========================
+
+Infrastruktura pod prawdziwe zdjęcia dań zamiast emoji (FR-114).
+
+CO SIĘ ZMIENIŁO
+---------------
+Przygotowana infrastruktura do pokazywania prawdziwych zdjęć dań na
+miniaturce karty przepisu zamiast emotikonki głównego składnika. Karta
+z wypełnionym polem "image" pokazuje zdjęcie; bez niego (jeszcze na razie
+WSZYSTKIE przepisy) zachowuje się dokładnie jak dotąd — emoji.
+
+Wybrane podejście: darmowe zdjęcia stockowe z Unsplash, pobrane
+JEDNORAZOWO skryptem wsadowym (scripts/fetch-recipe-images.mjs), nie
+wyszukiwane na żywo przy każdym wczytaniu aplikacji — aplikacja jest
+w pełni statyczna (bez backendu), więc live-wyszukiwanie oznaczałoby, że
+każdy użytkownik osobno wyczerpuje limit zapytań Unsplash.
+
+Rozwinięta karta dostaje też przypisanie autora zdjęcia ("📷 Zdjęcie:
+{autor} / Unsplash", oba linki klikalne) — wymóg licencji Unsplash.
+
+CO JESZCZE NIE JEST ZROBIONE
+-----------------------------
+Same zdjęcia jeszcze nie zostały pobrane — skrypt czeka na darmowy klucz
+API od użytkownika (rejestracja na unsplash.com/developers). Do tego
+momentu wygląd aplikacji jest identyczny jak przed tą zmianą.
+
+Weryfikacja
+-----------
+Android: ./gradlew :logic:test :app:assembleDebug przechodzi (nowa
+zależność Coil do wczytywania obrazków). Logika parsowania listy
+przepisów w skrypcie zweryfikowana suchym przebiegiem bez wywołań API
+(229 przepisów, zero zmian w pliku) — poprawnie odnajduje granice danych
+i nie rusza niczego innego.
+
+Wersje: Android versionCode 98->99, versionName 0.1.97->0.1.98 (APK w
+android/dist zsynchronizowany), Web CACHE_NAME v125->v126.

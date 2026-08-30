@@ -2319,14 +2319,25 @@ private fun RecipePreviewDialog(
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
+                    // FR-114 (2026-08-30): same photo-over-emoji fallback as RecipeCardBody.
                     Box(
                         modifier = Modifier
                             .size(48.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center,
                     ) {
-                        val thumbEmoji = remember(recipe.id) { IngredientCanon.mainIngredientInfo(recipe)?.emoji ?: "🍽️" }
-                        Text(thumbEmoji, fontSize = 24.sp)
+                        if (recipe.image != null) {
+                            coil.compose.AsyncImage(
+                                model = recipe.image,
+                                contentDescription = null,
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        } else {
+                            val thumbEmoji = remember(recipe.id) { IngredientCanon.mainIngredientInfo(recipe)?.emoji ?: "🍽️" }
+                            Text(thumbEmoji, fontSize = 24.sp)
+                        }
                     }
                 }
             }

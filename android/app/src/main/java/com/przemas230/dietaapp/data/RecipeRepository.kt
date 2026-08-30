@@ -60,6 +60,9 @@ object RecipeRepository {
                     gi = if (obj.has("gi")) obj.getDouble("gi") else null,
                     gl = if (obj.has("gl")) obj.getDouble("gl") else null,
                     calc = calc,
+                    image = if (obj.has("image")) obj.getString("image") else null,
+                    imageCreditName = obj.optJSONObject("imageCredit")?.optString("name")?.takeIf { it.isNotEmpty() },
+                    imageCreditUrl = obj.optJSONObject("imageCredit")?.optString("profileUrl")?.takeIf { it.isNotEmpty() },
                 )
             )
         }
