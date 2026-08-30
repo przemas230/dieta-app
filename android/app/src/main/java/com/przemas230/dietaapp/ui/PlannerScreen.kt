@@ -1455,14 +1455,22 @@ private fun PlannerDashboard(
                 // the tint into `colors.containerColor` instead (the color
                 // Card itself paints) is the only place a Card's background
                 // can actually be influenced from outside.
-                // FR-103: the card shows WHICH STAGE it is at, since that is
-                // what the swipe steps through -- "zrobione" gets a green
-                // wash ("podświetla na zielono że gotowe do zjedzenia") and
-                // "zjedzone" is dimmed with the name struck through
-                // ("skreśla i wyszarza delikatnie").
+                // FR-103 (v2, 2026-08-30 -- user reported "zjedzone" had no
+                // color of its own, only the name got struck through): the
+                // card shows WHICH STAGE it is at -- "zrobione" gets a green
+                // (primaryContainer) wash and "zjedzone" now gets its OWN
+                // secondaryContainer wash (was just plain `surface`, i.e. no
+                // color at all, indistinguishable from an empty slot at a
+                // glance), on top of the existing struck-through name and
+                // dimmed content below. secondaryContainer, not
+                // tertiaryContainer, because tertiaryContainer is already the
+                // "half portion" chip's color a few lines down (MealStateChip)
+                // -- reusing it here would make that chip invisible against
+                // its own card whenever a meal is both eaten AND partial.
                 val stageBase = when (stage) {
                     PlannerSwipe.Stage.COOKED -> MaterialTheme.colorScheme.primaryContainer
-                    else -> MaterialTheme.colorScheme.surface
+                    PlannerSwipe.Stage.EATEN -> MaterialTheme.colorScheme.secondaryContainer
+                    PlannerSwipe.Stage.NONE -> MaterialTheme.colorScheme.surface
                 }
                 val cardContainerColor = dragTint.compositeOver(stageBase)
                 // Bug reported 2026-08-29 ("dolny pasek z kartami przesuwa
@@ -1976,9 +1984,15 @@ private fun DayCardClinic(
                     rowDefinitePx,
                 )
                 val rowTarget = if (rowDirection == 0) null else PlannerSwipe.nextStage(rowStage, rowDirection)
+                // FR-103/v2 (2026-08-30): same "zjedzone" gets its own color
+                // fix as the dashboard card above, applied here too --
+                // secondaryContainer, not tertiaryContainer, for the same
+                // reason (this row's own "half portion" chip further down
+                // already uses tertiaryContainer).
                 val rowBase = when (rowStage) {
                     PlannerSwipe.Stage.COOKED -> MaterialTheme.colorScheme.primaryContainer
-                    else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                    PlannerSwipe.Stage.EATEN -> MaterialTheme.colorScheme.secondaryContainer
+                    PlannerSwipe.Stage.NONE -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
                 }
                 val rowTint = when {
                     rowDirection == 0 -> Color.Transparent

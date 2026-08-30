@@ -5517,6 +5517,11 @@ przekreślona nazwa dania = zjedzone w całości, plakietka „½ Zjedzone w
 połowie” = połowa porcji (nazwa NIE jest przekreślona — danie nie jest
 skończone), plakietka „🍳 Zrobione” = danie ma dziś wpis w historii
 gotowania. Przy połowie porcji kafelek kcal pokazuje „300 / 600 kcal”.
+Tło karty ma własny kolor dla każdego z trzech stanów: „zrobione” —
+zielonkawy wash, „zjedzone” — fioletowo-liliowy wash (`--plum-pale` na
+webie, `secondaryContainer` na Androidzie), nic zaplanowane/w toku —
+zwykłe tło karty bez wybarwienia (patrz v4 niżej — do 2026-08-30
+„zjedzone” nie miało własnego koloru wcale).
 
 Wprowadzenie połowy porcji wymagało rozszerzenia zapisu zjedzonego
 posiłku o pole `portion` (0–1) obok istniejących `done`/`kcal`/`name`.
@@ -5634,6 +5639,43 @@ sprzed tej zmiany nie zmienia się ani o kcal.
   → „Zjedzone”. Testy jednostkowe (`PlannerSwipeTest`) pokrywają wszystkie
   trzy pasma plus własność, że zabezpieczenie tylko ZAWĘŻA — nigdy nie
   zatwierdza tam, gdzie sam dystans by nie zatwierdził.
+
+- **v4** (2026-08-30, NAPRAWIONY REALNY BŁĄD): zgłoszenie użytkownika —
+  „nie ma pokolorowanego pola ze zjedzonym daniem, tylko zrobione się
+  podświetla, a jak przesunie użytkownik jeszcze raz to się skreśla i
+  podświetlenie znika”. Trafne: v2 opisywała „zjedzone” jako „delikatnie
+  wyszarzona CAŁA karta”, co w praktyce zaimplementowano jako
+  `opacity:.62` na CAŁYM kontenerze karty (web) — a to wygasza DOWOLNE tło
+  pod spodem, więc nawet gdyby jakiś kolor tam był, i tak by zniknął w
+  wyblaknięciu. „Zrobione” tła to nie dotyczyło, bo dostawało solidne
+  `background` bez opacity — stąd wrażenie „tylko zrobione ma kolor”.
+
+  Naprawione tak samo po obu stronach: „zjedzone” dostaje WŁASNE, stałe
+  tło (`--plum-pale` / `secondaryContainer`) zamiast opacity na całej
+  karcie; przygaszenie i przekreślenie zostają, ale przeniesione TYLKO na
+  nazwę dania (`.pd-meal-name`/`.cdc-dish` — web już to miało jako osobną
+  regułę, po prostu przykrytą przez wyblakłe tło; Android dawno dimował
+  tylko treść, nie kontener, więc tam jedynym brakiem był w ogóle brak
+  koloru — sam `else -> surface`/`surfaceVariant`, czyli brak wybarwienia).
+
+  Kolor dobrany świadomie NIE `--honey`/`tertiaryContainer` (web/Android),
+  bo to już kolor plakietki „połowa porcji” (`.pd-meal-flag.half` /
+  `MealStateChip` dla `isPartial`) — reużycie by uczyniło tę plakietkę
+  niewidoczną na własnym tle za każdym razem, gdy danie jest zjedzone W
+  POŁOWIE (częsty przypadek, bo to jedyny sposób na porcję ułamkową).
+  `--plum`/`secondaryContainer` już istniały w palecie/motywie i nie były
+  używane nigdzie indziej na tym ekranie.
+
+  Web zweryfikowany na żywo w Chrome (lokalny serwer): przesunięcie
+  „Zrobione” → zielona karta; drugie przesunięcie „Zjedzone” → karta z
+  fioletowo-liliowym tłem i przekreśloną nazwą, zrzut ekranu potwierdza
+  czytelny kontrast tekstu. Android: `./gradlew :logic:test
+  :app:assembleDebug` przechodzi, NIE zweryfikowane wizualnie na
+  emulatorze (brak uruchomionego emulatora w tej sesji). Wariant motywu
+  Klinika (`.cdc-row.stage-eaten` / `DayCardClinic`'s `rowBase`) naprawiony
+  tą samą techniką, ale NIE zweryfikowany osobno na żywo (przełącznik
+  motywu w ad hoc sesji testowej się zaciął) — ryzyko niskie, identyczny
+  wzorzec co już potwierdzony wariant.
 
 ---
 

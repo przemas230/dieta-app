@@ -1049,8 +1049,16 @@
      without changing the card's size (a border would, and the meal rows are
      flex-sized -- see .pd-today-list). */
   .pd-meal-card.stage-cooked{background:var(--teal-pale);}
-  /* "zjedzone" = done with, gently greyed out and struck through. */
-  .pd-meal-card.stage-eaten{opacity:.62;}
+  /* FR-103/v2 (2026-08-30, user reported "zjedzone" had no color of its
+     own, only the name got struck through): "zjedzone" now gets its own
+     wash too, same tint-not-border technique as stage-cooked above --
+     plum, not honey, because .pd-meal-flag.half (a few lines up) is
+     already honey-colored and would disappear against a honey card
+     whenever a meal is both eaten AND partial. The old whole-card
+     opacity:.62 is gone: it washed out ANY background color (including
+     this new one), which was the actual bug -- the struck-through+dimmed
+     name below already carries the "done with" signal at the text level. */
+  .pd-meal-card.stage-eaten{background:var(--plum-pale);}
   /* Half a portion is NOT finished, so it deliberately does not get the
      struck-through treatment a fully eaten meal gets -- just dimmed. */
   .pd-meal-card.eaten.half .pd-meal-name{ text-decoration:none; opacity:.8; }
@@ -1220,8 +1228,11 @@
     position:relative; touch-action:pan-y; -webkit-user-select:none; user-select:none;
   }
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-row.stage-cooked{ background:var(--teal-pale); }
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-row.stage-eaten{ opacity:.62; }
-  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-row.stage-eaten .cdc-dish{ text-decoration:line-through; }
+  /* FR-103/v2 (2026-08-30): same fix as .pd-meal-card.stage-eaten above --
+     a real background tint instead of whole-row opacity (which washed out
+     any color, including this one), dimming moved to just the dish name. */
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-row.stage-eaten{ background:var(--plum-pale); }
+  :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-row.stage-eaten .cdc-dish{ text-decoration:line-through; opacity:.55; }
   [data-theme="clinic"] .cdc-row{ background:rgba(0,0,0,.03); }
   [data-theme="clinic_dark"] .cdc-row{ background:rgba(255,255,255,.05); }
   :is([data-theme="clinic"], [data-theme="clinic_dark"]) .cdc-avatar{

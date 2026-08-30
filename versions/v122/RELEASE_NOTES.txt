@@ -1,0 +1,47 @@
+Wersja v122 (2026-08-30)
+========================
+
+Naprawiony realny błąd: karta "zjedzone" w Planerze nie miała żadnego
+koloru (FR-103/v4).
+
+CO BYŁO ŹLE
+-----------
+Zgłoszenie: "nie ma pokolorowanego pola ze zjedzonym daniem, tylko
+zrobione się podświetla, a jak przesunie użytkownik jeszcze raz to się
+skreśla i podświetlenie znika".
+
+Trafne. Karta "zrobione" (gest w prawo raz) dostawała solidne zielonkawe
+tło. Karta "zjedzone" (gest w prawo drugi raz) miała tylko
+opacity:.62 na CAŁYM kontenerze karty — co wygasza DOWOLNE tło pod
+spodem, więc nawet gdyby jakiś kolor tam był, i tak by zniknął w
+wyblaknięciu. Stąd wrażenie "tylko zrobione ma kolor, zjedzone tylko się
+przekreśla i blednie".
+
+CO SIĘ ZMIENIŁO
+---------------
+"Zjedzone" dostaje teraz WŁASNE, stałe tło (fioletowo-liliowy odcień,
+zmienna --plum-pale, ta sama para co już istniejące --plum/--plum-pale
+używane gdzie indziej w aplikacji). Przygaszenie i przekreślenie zostają,
+ale przeniesione tylko na samą nazwę dania — nie na całą kartę.
+
+Kolor dobrany świadomie NIE honey (żółty), bo to już kolor plakietki
+"połowa porcji" — reużycie zrobiłoby tę plakietkę niewidoczną na własnym
+tle za każdym razem, gdy danie jest zjedzone w połowie.
+
+Naprawa dotyczy obu wariantów karty (zwykły motyw i motyw Klinika) i obu
+platform.
+
+Weryfikacja
+-----------
+Web, na żywo w Chrome (lokalny serwer): przesunięcie "Zrobione" → zielona
+karta; drugie przesunięcie "Zjedzone" → karta z czytelnym fioletowo-
+liliowym tłem i przekreśloną nazwą, dobry kontrast tekstu. Wariant
+motywu Klinika NIE zweryfikowany osobno na żywo (ten sam kod CSS, ale
+przełącznik motywu w tej sesji testowej się zaciął) — ryzyko niskie.
+
+Android: ./gradlew :logic:test :app:assembleDebug przechodzi. NIE
+zweryfikowane wizualnie na emulatorze w tej sesji (brak uruchomionego
+emulatora).
+
+Wersje: Android versionCode 94->95, versionName 0.1.93->0.1.94 (APK w
+android/dist zsynchronizowany), Web CACHE_NAME v121->v122.
