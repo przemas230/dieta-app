@@ -1,0 +1,47 @@
+Wersja v121 (2026-08-30)
+========================
+
+Trzeci sposób na „ugotuj na dwa dni" (FR-111): przycisk 🍱 bezpośrednio
+z wiersza Planera.
+
+PRZYCISK 🍱 PRZY KAŻDYM ZAPLANOWANYM DANIU
+-------------------------------------------
+Obok istniejącego 📅 (FR-109, przenoszenie/zamiana) dochodzi 🍱 — na karcie
+„Dzisiejszy Planer" i w każdym wierszu kart dni tygodnia. Otwiera listę
+dni, na które można dodać TO SAMO danie jako resztki (bazowa wielkość
+porcji, znacznik „🍱 resztki"), bez ponownego dodawania go do listy
+zakupów.
+
+Zajęte dni są pokazane w liście — z tym, co już tam mają — ale
+NIEKLIKALNE. W odróżnieniu od 📅, które przy zajętym dniu zamienia dania
+miejscami, tu nie ma niczym zamieniać: danie ZOSTAJE też na swoim
+pierwotnym miejscu, więc jedyna bezpieczna opcja przy zajętym dniu to
+w ogóle nic nie robić, a nie nadpisać czyjś świadomy wybór.
+
+DLACZEGO OSOBNY PRZYCISK, SKORO „UGOTUJ NA DWA DNI" JUŻ ISTNIAŁO:
+FR-23 robi dokładnie to samo pod spodem, ale dociera do tego inaczej —
+trzeba wejść w szczegóły dania i podnieść skalę porcji do ×2 (albo trafić
+na danie rozpoznane słowem kluczowym jak w FR-24), a cel jest sztywno
+ustawiony na „dwa dni później". Zgłoszony problem brzmiał „nie widzę tej
+opcji" — bo faktycznie nie widać jej z samego Planera, dopóki nie
+zwiększysz porcji. FR-111 to ten sam mechanizm (`planLeftover`), tylko
+wystawiony jako jedno stuknięcie z poziomu wiersza, z wyborem DOWOLNEGO
+dnia zamiast sztywnego +2.
+
+Wszystkie trzy mechanizmy zapisują dokładnie ten sam stan i żadne nie
+nadpisuje cudzego wyboru bez akcji użytkownika — nie są ze sobą
+sprzeczne, tylko oferują trzy różne drogi do tego samego rezultatu.
+
+Weryfikacja
+-----------
+Logika ma testy jednostkowe w module `logic` (4 nowe, `cookForTwoDays`).
+
+Web: NIE zweryfikowane na żywo w Chrome w tej turze — rozszerzenie
+przeglądarki nie było podłączone w tej sesji (przerwana sesja wznowiona
+z braku połączenia); logika jest tym samym `planLeftover`, który mają już
+FR-23/FR-24, więc ryzyko niskie, ale wymaga potwierdzenia w kolejnej turze.
+Android: `./gradlew :logic:test :app:assembleDebug` przechodzi (4 nowe
+testy `cookForTwoDays`), NIE zweryfikowane wizualnie na emulatorze.
+
+Wersje: Android versionCode 92→93, versionName 0.1.91→0.1.92 (APK w
+android/dist zsynchronizowany), Web CACHE_NAME v120→v121.

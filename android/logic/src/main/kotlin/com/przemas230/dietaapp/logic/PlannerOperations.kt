@@ -72,6 +72,27 @@ object PlannerOperations {
         return plan + (fromDay to fromMap) + (toDay to toMap)
     }
 
+    /**
+     * FR-111: "🍱 ugotuj na dwa dni" straight from the planner row -- unlike
+     * FR-23's [planLeftover] (gated behind scaling the portion to 2x+ first,
+     * always exactly day+2) this works for ANY planned dish and lets the
+     * user pick ANY target day, the same day-list UX [moveMeal] already has.
+     *
+     * Unlike [moveMeal] though, there is nothing to swap here: this ADDS a
+     * base-scale leftover copy on [toDay] without touching [fromDay] at all,
+     * so it only ever succeeds onto an EMPTY slot -- an occupied target is
+     * left alone and the plan comes back unchanged, the same "never silently
+     * overwrite a deliberately planned dish" rule [moveMeal] follows by
+     * swapping instead. Callers (see PlannerScreen's day picker) are
+     * expected to not even offer an occupied day as a choice.
+     */
+    fun cookForTwoDays(plan: WeekPlan, fromDay: Int, toDay: Int, cat: String): WeekPlan {
+        if (fromDay == toDay) return plan
+        val source = plan[fromDay]?.get(cat) ?: return plan
+        if (plan[toDay]?.get(cat) != null) return plan
+        return planLeftover(plan, toDay, cat, source.recipeId)
+    }
+
     fun setScale(plan: WeekPlan, day: Int, cat: String, scale: Double): WeekPlan {
         val current = plan[day]?.get(cat) ?: return plan
         return setMeal(plan, day, cat, current.copy(scale = scale))

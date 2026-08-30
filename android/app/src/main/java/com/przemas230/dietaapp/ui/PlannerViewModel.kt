@@ -65,6 +65,11 @@ class PlannerViewModel(application: Application) : AndroidViewModel(application)
         _weekPlan.value = PlannerOperations.moveMeal(_weekPlan.value, fromDay, toDay, cat)
     }
 
+    /** FR-111: "🍱 ugotuj na dwa dni" -- adds a base-scale leftover copy on toDay, never touches fromDay. */
+    fun cookForTwoDays(fromDay: Int, toDay: Int, cat: String) {
+        _weekPlan.value = PlannerOperations.cookForTwoDays(_weekPlan.value, fromDay, toDay, cat)
+    }
+
     fun clearSlot(day: Int, cat: String) {
         _weekPlan.value = PlannerOperations.clearSlot(_weekPlan.value, day, cat)
     }

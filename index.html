@@ -2562,6 +2562,19 @@
   </div>
 </div>
 
+<!-- FR-111 (2026-08-30): "ugotuj na dwa dni" bezpośrednio z wiersza Planera —
+     jak FR-109's picker dnia, ale DODAJE (nie przenosi/zamienia) i tylko na
+     puste sloty, bo tu nie ma czego zamieniać. -->
+<div class="modal-overlay center" id="cookTwoDaysOverlay">
+  <div class="modal-sheet center-sheet">
+    <div class="modal-head">
+      <h3>🍱 Ugotuj na dwa dni</h3>
+      <button id="cookTwoDaysClose">✕</button>
+    </div>
+    <div id="cookTwoDaysBody"></div>
+  </div>
+</div>
+
 <div class="modal-overlay center" id="copyDayOverlay">
   <div class="modal-sheet center-sheet">
     <div class="modal-head">
@@ -5428,7 +5441,7 @@ function attachPdMealCardSwipe(box, date){
       // a tap never crosses AXIS_LOCK and so never sets pdSwiped.
       // FR-109's "📅" opens a day picker; like the ✕ it is a small
       // explicit control, and starting a drag from it means nothing.
-      if(e.target.closest("[data-pd-remove-cat]") || e.target.closest("[data-pd-move-cat]") || e.target.closest("[data-move-day]")) return;
+      if(e.target.closest("[data-pd-remove-cat]") || e.target.closest("[data-pd-move-cat]") || e.target.closest("[data-move-day]") || e.target.closest("[data-pd-cook2-cat]") || e.target.closest("[data-cook2-day]")) return;
       startX = e.clientX; startY = e.clientY; dx = 0; axis = null;
       startedAt = Date.now();
       card.style.transition = "none";
@@ -8692,6 +8705,7 @@ function renderPlannerDashboard(){
       </span>
       <span class="pd-meal-kcal">${isPartial ? `${Math.round(r.kcal*portion)} / ${r.kcal}` : r.kcal} kcal</span>
       <button class="pd-meal-remove pd-meal-move" data-pd-move-cat="${c.id}" title="Przenieś na inny dzień">📅</button>
+      <button class="pd-meal-remove pd-meal-move" data-pd-cook2-cat="${c.id}" title="Ugotuj na dwa dni">🍱</button>
       <button class="pd-meal-remove" data-pd-remove-cat="${c.id}" title="Usuń z planu">✕</button>
     </div>`;
   }).join("");
@@ -8766,7 +8780,7 @@ function renderPlannerDashboard(){
   attachPdMealCardSwipe(box, today);
   box.querySelectorAll("[data-pd-toggle-cat]").forEach(el=>{
     el.addEventListener("click", (e)=>{
-      if(e.target.closest("[data-pd-remove-cat]") || e.target.closest("[data-pd-pantry-check]") || e.target.closest("[data-pd-move-cat]")) return;
+      if(e.target.closest("[data-pd-remove-cat]") || e.target.closest("[data-pd-pantry-check]") || e.target.closest("[data-pd-move-cat]") || e.target.closest("[data-pd-cook2-cat]")) return;
       if(el.dataset.pdSwiped==="1"){ delete el.dataset.pdSwiped; return; }
       const recipe = findRecipeById(el.dataset.pdRecipeId);
       if(recipe) openRecipePreviewModal(recipe);
@@ -8788,6 +8802,13 @@ function renderPlannerDashboard(){
     btn.addEventListener("click", (e)=>{
       e.stopPropagation();
       openMoveMealModal(todayIdx, btn.dataset.pdMoveCat);
+    });
+  });
+  // FR-111: "ugotuj na dwa dni" -- see openCookForTwoDaysModal.
+  box.querySelectorAll("[data-pd-cook2-cat]").forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      openCookForTwoDaysModal(todayIdx, btn.dataset.pdCook2Cat);
     });
   });
   box.querySelectorAll("[data-pd-remove-cat]").forEach(btn=>{
@@ -9003,6 +9024,7 @@ function renderPlanner(){
           ${baseRecipe?`<span class="cdc-scale" data-scale-day="${di}" data-scale-cat="${c.id}" title="Wielkość porcji — kliknij, by zmienić">${scaleLabel}</span>`:""}
           <button class="cdc-regen" data-regen-day="${di}" data-regen-cat="${c.id}" title="Losuj inne danie">🔁</button>
           ${chosenRecipe?`<button class="cdc-regen" data-move-day="${di}" data-move-cat="${c.id}" title="Przenieś na inny dzień">📅</button>`:""}
+          ${chosenRecipe?`<button class="cdc-regen" data-cook2-day="${di}" data-cook2-cat="${c.id}" title="Ugotuj na dwa dni">🍱</button>`:""}
         </div>${prepSuggestHtml}`;
       }
       return `<div class="slot-row">
@@ -9011,6 +9033,7 @@ function renderPlanner(){
         ${baseRecipe?`<button class="scale-btn" data-scale-day="${di}" data-scale-cat="${c.id}" title="Wielkość porcji — kliknij, by zmienić">${scaleLabel}</button>`:""}
         <button class="regen-btn" data-regen-day="${di}" data-regen-cat="${c.id}" title="Losuj inne danie">🔁</button>
         ${baseRecipe?`<button class="regen-btn" data-move-day="${di}" data-move-cat="${c.id}" title="Przenieś na inny dzień">📅</button>`:""}
+        ${baseRecipe?`<button class="regen-btn" data-cook2-day="${di}" data-cook2-cat="${c.id}" title="Ugotuj na dwa dni">🍱</button>`:""}
       </div>${prepSuggestHtml}`;
     }).join("");
     const headHtml = isClinic
@@ -9141,6 +9164,13 @@ function renderPlanner(){
         openMoveMealModal(parseInt(btn.dataset.moveDay, 10), btn.dataset.moveCat);
       });
     });
+    // FR-111: "ugotuj na dwa dni" -- see openCookForTwoDaysModal.
+    card.querySelectorAll("[data-cook2-day]").forEach(btn=>{
+      btn.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        openCookForTwoDaysModal(parseInt(btn.dataset.cook2Day, 10), btn.dataset.cook2Cat);
+      });
+    });
     card.querySelectorAll("[data-regen-day]").forEach(btn=>{
       btn.addEventListener("click", (e)=>{
         e.stopPropagation();
@@ -9240,6 +9270,72 @@ function openMoveMealModal(fromDay, cat){
 document.getElementById("moveMealClose").addEventListener("click", ()=> document.getElementById("moveMealOverlay").classList.remove("show"));
 document.getElementById("moveMealOverlay").addEventListener("click", (e)=>{
   if(e.target===document.getElementById("moveMealOverlay")) e.target.classList.remove("show");
+});
+
+// FR-111: "🍱 ugotuj na dwa dni" straight from the planner row -- unlike
+// FR-23 (gated behind scaling the portion to 2x+ first, and always exactly
+// two days later) this works for ANY planned dish and lets you pick ANY
+// day, the same day-list UX as FR-109's move. Unlike moveMealToDay though,
+// there is nothing to swap here: this ADDS a base-scale leftover copy on
+// toDay, it never touches fromDay, so it only ever succeeds onto an EMPTY
+// slot -- an occupied target is not offered as a choice at all (see
+// openCookForTwoDaysModal), rather than silently overwriting a dish the
+// user deliberately planned there.
+function cookForTwoDays(fromDay, toDay, cat){
+  if(fromDay === toDay) return false;
+  const source = (state.planner[fromDay] || {})[cat];
+  if(!source) return false;
+  if((state.planner[toDay] || {})[cat]) return false;
+  state.planner[toDay] = state.planner[toDay] || {};
+  state.planner[toDay][cat] = source;
+  setPlannerScale(toDay, cat, 1);
+  state.plannerLeftover[toDay] = state.plannerLeftover[toDay] || {};
+  state.plannerLeftover[toDay][cat] = true;
+  return true;
+}
+// Every day except the source is offered; a day that already holds
+// something in this slot is shown (so its name isn't a mystery) but
+// disabled, since there's no swap to fall back on the way FR-109 has one.
+function openCookForTwoDaysModal(fromDay, cat){
+  const catDef = CATS.find(c=>c.id===cat);
+  const recipe = findRecipeById((state.planner[fromDay] || {})[cat] || "");
+  const body = document.getElementById("cookTwoDaysBody");
+  body.innerHTML = `<div class="hint-text" style="margin:0 0 10px;">${recipe
+    ? `„${recipe.name}" — ${catDef ? catDef.label : cat}, ${DAYS[fromDay]}. Wybierz dzień, na który dodać tę samą porcję jako resztki (bazowa wielkość). Zajęte dni nie da się tak nadpisać.`
+    : "Ten slot jest pusty."}</div>`;
+  const grid = document.createElement("div");
+  grid.style.cssText = "display:grid; grid-template-columns:1fr; gap:8px;";
+  DAYS.forEach((dayName, di)=>{
+    if(di === fromDay) return;
+    const occupant = findRecipeById((state.planner[di] || {})[cat] || "");
+    const btn = document.createElement("button");
+    btn.className = "btn ghost";
+    btn.style.cssText = "font-size:13px; text-align:left;";
+    if(occupant){
+      btn.textContent = `${dayName} — zajęte: ${occupant.name}`;
+      btn.disabled = true;
+    } else {
+      btn.textContent = dayName;
+      btn.addEventListener("click", ()=>{
+        if(!cookForTwoDays(fromDay, di, cat)) return;
+        saveState(); renderPlanner(); renderHeader();
+        document.getElementById("cookTwoDaysOverlay").classList.remove("show");
+        toast(`Zaplanowano resztki „${recipe.name}" na ${dayName}`, "Cofnij", ()=>{
+          if(state.planner[di]) delete state.planner[di][cat];
+          if(state.plannerScale[di]) delete state.plannerScale[di][cat];
+          if(state.plannerLeftover[di]) delete state.plannerLeftover[di][cat];
+          saveState(); renderPlanner(); renderHeader();
+        });
+      });
+    }
+    grid.appendChild(btn);
+  });
+  body.appendChild(grid);
+  document.getElementById("cookTwoDaysOverlay").classList.add("show");
+}
+document.getElementById("cookTwoDaysClose").addEventListener("click", ()=> document.getElementById("cookTwoDaysOverlay").classList.remove("show"));
+document.getElementById("cookTwoDaysOverlay").addEventListener("click", (e)=>{
+  if(e.target===document.getElementById("cookTwoDaysOverlay")) e.target.classList.remove("show");
 });
 
 function openCopyDayModal(targetDay){

@@ -123,6 +123,52 @@ class PlannerOperationsTest {
         assertEquals(plan, PlannerOperations.moveMeal(plan, 3, 5, "obiady"))
     }
 
+    // ---- FR-111: ugotuj na dwa dni (bezposredni przycisk, dowolny dzien) ----
+
+    @Test
+    fun `cookForTwoDays adds a base-scale leftover copy on the target day, leaving the source alone`() {
+        val plan = PlannerOperations.setMeal(emptyMap(), 2, "obiady", PlannedMeal("r1", scale = 1.5))
+
+        val result = PlannerOperations.cookForTwoDays(plan, fromDay = 2, toDay = 5, cat = "obiady")
+
+        assertEquals("r1", result[2]?.get("obiady")?.recipeId)
+        assertEquals(1.5, result[2]?.get("obiady")?.scale, "the source day's own scale must not change")
+        assertEquals("r1", result[5]?.get("obiady")?.recipeId)
+        assertEquals(1.0, result[5]?.get("obiady")?.scale, "leftovers are always planted at base scale, like FR-23's planLeftover")
+        assertTrue(result[5]?.get("obiady")?.isLeftover == true)
+    }
+
+    @Test
+    fun `cookForTwoDays refuses to overwrite an occupied target slot`() {
+        var plan = PlannerOperations.setMeal(emptyMap(), 2, "obiady", PlannedMeal("r1"))
+        plan = PlannerOperations.setMeal(plan, 5, "obiady", PlannedMeal("r2"))
+
+        val result = PlannerOperations.cookForTwoDays(plan, fromDay = 2, toDay = 5, cat = "obiady")
+
+        assertEquals(plan, result, "an occupied target must come back unchanged, not swapped or overwritten")
+        assertEquals("r2", result[5]?.get("obiady")?.recipeId)
+    }
+
+    @Test
+    fun `cookForTwoDays no-ops on the source day itself or an empty source slot`() {
+        val plan = PlannerOperations.setMeal(emptyMap(), 2, "obiady", PlannedMeal("r1"))
+
+        assertEquals(plan, PlannerOperations.cookForTwoDays(plan, 2, 2, "obiady"))
+        assertEquals(plan, PlannerOperations.cookForTwoDays(plan, 3, 5, "obiady"))
+    }
+
+    @Test
+    fun `cookForTwoDays leaves other categories and days alone`() {
+        var plan = PlannerOperations.setMeal(emptyMap(), 2, "obiady", PlannedMeal("r1"))
+        plan = PlannerOperations.setMeal(plan, 2, "kolacje", PlannedMeal("r2"))
+        plan = PlannerOperations.setMeal(plan, 4, "obiady", PlannedMeal("r3"))
+
+        val result = PlannerOperations.cookForTwoDays(plan, 2, 5, "obiady")
+
+        assertEquals("r2", result[2]?.get("kolacje")?.recipeId)
+        assertEquals("r3", result[4]?.get("obiady")?.recipeId)
+    }
+
     @Test
     fun `clearSlot removes only the targeted day-category pair`() {
         var plan = PlannerOperations.setMeal(emptyMap(), 0, "obiady", PlannedMeal("r1"))

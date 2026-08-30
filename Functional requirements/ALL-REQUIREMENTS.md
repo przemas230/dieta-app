@@ -52,6 +52,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-107: Zapamiętana wielkość porcji dla danego dania](#fr-107-zapamiętana-wielkość-porcji-dla-danego-dania)
 - [FR-100: Podsumowanie odżywcze zaplanowanego tygodnia](#fr-100-podsumowanie-odżywcze-zaplanowanego-tygodnia)
 - [FR-110: Realizacja tygodnia — ile z planu faktycznie zjedzone](#fr-110-realizacja-tygodnia--ile-z-planu-faktycznie-zjedzone)
+- [FR-111: „Ugotuj na dwa dni” bezpośrednio z wiersza Planera](#fr-111-ugotuj-na-dwa-dni-bezpośrednio-z-wiersza-planera)
 
 ### Lista zakupów
 - [FR-25: Budowanie listy zakupów ze składników przepisów](#fr-25-budowanie-listy-zakupów-ze-składników-przepisów)
@@ -182,6 +183,8 @@ Przegląd wymagań pod kątem wzajemnych sprzeczności. Żadna z poniższych par
 24. **FR-109 (przeniesienie dania) vs FR-90 (kopiowanie planu dnia).** Łatwo pomylić, bo obie przestawiają tydzień, ale robią co innego: kopiowanie POWIELA cały dzień i świadomie NADPISUJE cel (użytkownik potwierdza to w oknie), FR-109 przenosi JEDEN slot i nigdy nie nadpisuje — zajęty dzień zamienia się z nim miejscami. Różnica jest zamierzona: przy kopiowaniu całego dnia strata jest widoczna od razu (cały dzień się zmienia), przy pojedynczym slocie nie byłoby po niej śladu.
 25. **FR-109 vs FR-103/FR-104 (gest zrobione/zjedzone).** Przycisk „📅” leży na karcie, która jest też polem gestu, więc jest — tak jak „✕” — wyłączony ze startu przeciągnięcia; przeciąganie od małej, jednoznacznej kontrolki nic nie znaczy. Uwaga na przyszłość: przeniesienie dania NIE przenosi wpisów „zjedzone”/„zrobione”, bo te są przypisane do konkretnej DATY, a nie do slotu — przesunięcie planu na inny dzień nie zmienia tego, co się danego dnia zjadło.
 26. **FR-110 (realizacja tygodnia) vs FR-100 (podsumowanie zaplanowanego tygodnia).** Stoją na jednej karcie i celowo mierzą dwie różne rzeczy: FR-100 uśrednia po dniach ZAPLANOWANYCH (bez względu na datę), FR-110 liczy wyłącznie dni DO DZIŚ. Gdyby ujednolicić zakresy, jedna z tych liczb przestałaby znaczyć to, po co powstała — średnia stałaby się chwiejna na początku tygodnia, albo realizacja zawsze niska.
+27. **FR-111 vs FR-23 vs FR-24 (trzy drogi do „ugotuj na dwa dni”).** Wszystkie trzy zapisują dokładnie ten sam stan (`isLeftover=true`, bazowa skala porcji) i żadna nie nadpisuje cudzego wyboru bez akcji użytkownika — nie są ze sobą sprzeczne, różnią się tylko wyzwalaczem i celem: FR-23 ręczny/skala≥2×/`dzień+2`, FR-24 automatyczny/słowo kluczowe/`dzień+1`, FR-111 ręczny/bez warunków wstępnych/dowolny dzień z listy. Zobacz też FR-111 vs FR-109 niżej.
+28. **FR-111 vs FR-109 (dwa różne pickery dnia).** Współdzielą tę samą listę-dni-z-etykietami jako wzorzec UI, ale robią coś przeciwnego: FR-109 PRZENOSI (zamienia, gdy dzień zajęty), FR-111 DODAJE (i dlatego dzień zajęty jest tam nieklikalny, nie zamienny) — nigdy nie modyfikują tego samego wpisu jednocześnie.
 
 ---
 
@@ -6070,3 +6073,76 @@ tego, co i tak widać.
   poniedziałku (dania zaplanowane tylko na późniejsze dni) funkcja zwróciła
   `null`, czyli brak wiersza. Na emulatorze Androida karta pokazała
   „✅ Zrealizowane: 1 z 5 posiłków (20%)" wraz z wierszem wyjaśniającym.
+
+---
+
+# FR-111: „Ugotuj na dwa dni” bezpośrednio z wiersza Planera
+
+**Obszar:** Planer, Android + Web
+**Status:** Zaimplementowane na obu platformach
+
+## Opis
+Przy każdym zaplanowanym daniu — na karcie „Dzisiejszy Planer” i w każdym
+wierszu kart dni tygodnia — jest przycisk 🍱, obok istniejącego 📅
+(FR-109). Otwiera listę dni, na które można dodać to samo danie jako
+resztki (bazowa wielkość porcji, znacznik „🍱 resztki”), bez ponownego
+dodawania go do listy zakupów.
+
+Zajęte dni są pokazane w tej liście — z tym, co już tam mają — ale
+nieklikalne. W odróżnieniu od 📅 (który przy zajętym dniu zamienia dania
+miejscami) tu nie ma niczym zamieniać: to danie ZOSTAJE też na swoim
+pierwotnym miejscu, więc jedyna bezpieczna opcja przy zajętym dniu to
+w ogóle nic nie robić, a nie nadpisać czyjś świadomy wybór.
+
+**Dlaczego osobny przycisk, skoro „ugotuj na dwa dni” już istniało.**
+FR-23 robi dokładnie to samo pod spodem, ale dociera do tego inaczej:
+trzeba wejść w szczegóły dania i podnieść skalę porcji do ×2 (albo trafić
+na danie rozpoznane słowem kluczowym), a cel jest sztywno ustawiony na
+„dwa dni później”. To działa, ale zgłoszony problem brzmiał „nie widzę tej
+opcji” — bo faktycznie nie widać jej z samego Planera, dopóki nie
+zwiększysz porcji. FR-111 to ten sam mechanizm (`planLeftover`), tylko
+wystawiony jako jedno stuknięcie z poziomu wiersza, z wyborem DOWOLNEGO
+dnia zamiast sztywnego +2 — patrz „Uwagi” niżej po pełne rozróżnienie od
+FR-23 i FR-24.
+
+## Kryteria akceptacji
+- Przycisk 🍱 pojawia się przy każdym zaplanowanym daniu, w tych samych
+  miejscach co przycisk 📅.
+- Otwiera listę wszystkich dni oprócz bieżącego, z etykietą tego, co dany
+  dzień już ma w tym samym slocie.
+- Dzień z czymś już zaplanowanym w tym slocie jest pokazany, ale
+  NIEKLIKALNY — stuknięcie w niego nic nie robi.
+- Wybranie pustego dnia dodaje to samo danie w bazowej (×1) wielkości
+  porcji, ze znacznikiem „🍱 resztki”, na wybrany dzień — bez usuwania ani
+  zmiany oryginalnego wpisu.
+- Nie tworzy nowej pozycji na liście zakupów (to samo danie, ta sama
+  partia zakupów).
+- Akcja ma „Cofnij”.
+
+## Uwagi
+Trzy mechanizmy „ugotuj na dwa dni” współistnieją, każdy z innym
+wyzwalaczem:
+- **FR-23** — ręczny, wymaga podniesienia skali porcji do ×2 lub więcej
+  (albo dania rozpoznanego jak w FR-24), cel zawsze `dzień+2`.
+- **FR-24** — automatyczny, tylko dla dań rozpoznanych po nazwie jako
+  „dobrze się odgrzewające”, cel zawsze `dzień+1`, tylko gdy tamten slot
+  jest pusty.
+- **FR-111** (to wymaganie) — ręczny, jedno stuknięcie z samego wiersza
+  Planera, bez wymogu skalowania porcji ani rozpoznawania nazwy, cel
+  DOWOLNY dzień wybrany z listy (jak FR-109).
+
+Wszystkie trzy zapisują dokładnie to samo pod spodem (`planLeftover` w
+Androidzie / te same trzy pola stanu Plannera w web) i żadne nie
+nadpisuje cudzego wyboru bez akcji użytkownika — nie są ze sobą sprzeczne,
+tylko oferują trzy różne drogi do tego samego rezultatu. Zobacz też
+FR-109 (na którego wzorcu UI — lista dni z etykietami — oparte jest to
+wymaganie) — różnica jest w tym, że FR-109 PRZENOSI/ZAMIENIA (bo to ten
+sam plan przełożony na inny dzień), a FR-111 DODAJE (bo to nadal to samo
+gotowanie, tylko podwojona partia).
+
+## Historia rewizji
+- **v1** (2026-08-30): Pierwsza wersja, obie platformy w tej samej turze.
+  `PlannerOperations.cookForTwoDays` (Android, `logic/`, cztery nowe testy
+  JUnit) i `cookForTwoDays`/`openCookForTwoDaysModal` (web) — oba
+  reużywają istniejący `planLeftover`/plannerLeftover-pisanie zamiast
+  duplikować logikę FR-23.

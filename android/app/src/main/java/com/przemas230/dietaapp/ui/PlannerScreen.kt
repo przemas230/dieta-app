@@ -279,6 +279,10 @@ fun PlannerScreen(
     var slotPicker by remember { mutableStateOf<Pair<Int, String>?>(null) }
     // FR-109: which (day, category) slot is being moved to another day.
     var moveTarget by remember { mutableStateOf<Pair<Int, String>?>(null) }
+    // FR-111: which (day, category) slot is being copied as a leftover onto
+    // another day -- same shape as moveTarget, separate dialog (see below),
+    // since this one only ever offers empty target days, never a swap.
+    var cookTwoDaysTarget by remember { mutableStateOf<Pair<Int, String>?>(null) }
     var pendingConfirm by remember { mutableStateOf<PendingConfirm?>(null) }
     // Requested 2026-08-26 ("📋 Kopiuj plan z innego dnia"): the day INDEX
     // being copied INTO -- non-null shows CopyDayPickerDialog below.
@@ -347,6 +351,7 @@ fun PlannerScreen(
                     },
                     onSlotClick = { cat -> slotPicker = todayIndex to cat },
                     onMoveSlot = { cat -> moveTarget = todayIndex to cat },
+                    onCookTwoDays = { cat -> cookTwoDaysTarget = todayIndex to cat },
                     onSignOut = onSignOut,
                     onPreviewRecipe = { recipe, scale -> previewRecipe = recipe to scale },
                     pantryItems = pantryItems,
@@ -473,6 +478,7 @@ fun PlannerScreen(
                     onScaleClick = scaleClick,
                     onRegenerateSlot = regenerateSlot,
                     onMoveSlot = { cat -> moveTarget = day to cat },
+                    onCookTwoDays = { cat -> cookTwoDaysTarget = day to cat },
                     onPreviewClick = previewClick,
                     prepAheadFor = prepAheadFor,
                     onApplyPrepAhead = applyPrepAhead,
@@ -499,6 +505,7 @@ fun PlannerScreen(
                     onScaleClick = scaleClick,
                     onRegenerateSlot = regenerateSlot,
                     onMoveSlot = { cat -> moveTarget = day to cat },
+                    onCookTwoDays = { cat -> cookTwoDaysTarget = day to cat },
                     onPreviewClick = previewClick,
                     prepAheadFor = prepAheadFor,
                     onApplyPrepAhead = applyPrepAhead,
@@ -656,6 +663,58 @@ fun PlannerScreen(
             },
             confirmButton = {
                 TextButton(onClick = { moveTarget = null }) { Text("Anuluj") }
+            },
+        )
+    }
+
+    // FR-111 (2026-08-30): "ugotuj na dwa dni" straight from the planner
+    // row -- unlike FR-23 (gated behind scaling to 2x+ first, always
+    // exactly day+2) this works for any planned dish and any target day.
+    // Unlike the FR-109 dialog above, an occupied day is NOT a valid
+    // target here (there is nothing to swap when you're only adding a
+    // copy), so it's shown disabled instead of clickable.
+    cookTwoDaysTarget?.let { (fromDay, cat) ->
+        val category = PlannerOperations.PLANNER_CATEGORIES.find { it.id == cat }
+        val sourceRecipe = recipesById[weekPlan[fromDay]?.get(cat)?.recipeId]
+        AlertDialog(
+            onDismissRequest = { cookTwoDaysTarget = null },
+            title = { Text("Ugotuj na dwa dni", maxLines = 2) },
+            text = {
+                Column {
+                    Text(
+                        sourceRecipe?.name?.let {
+                            "$it — ${category?.label ?: cat}, ${PlannerOperations.DAYS_PL[fromDay]}. Wybierz dzień, na który dodać tę samą porcję jako resztki."
+                        } ?: "Ten slot jest pusty.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    PlannerOperations.DAYS_PL.forEachIndexed { day, dayName ->
+                        if (day == fromDay) return@forEachIndexed
+                        val occupant = recipesById[weekPlan[day]?.get(cat)?.recipeId]
+                        TextButton(
+                            enabled = occupant == null,
+                            onClick = {
+                                plannerViewModel.cookForTwoDays(fromDay, day, cat)
+                                cookTwoDaysTarget = null
+                                onShowUndoSnackbar("Zaplanowano resztki na $dayName", "Cofnij") {
+                                    plannerViewModel.clearSlot(day, cat)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                if (occupant == null) dayName else "$dayName — zajęte: ${occupant.name}",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { cookTwoDaysTarget = null }) { Text("Anuluj") }
             },
         )
     }
@@ -896,6 +955,9 @@ private fun DayCard(
     onScaleClick: (cat: String, currentScale: Double) -> Unit,
     onRegenerateSlot: (cat: String) -> Unit,
     onMoveSlot: (cat: String) -> Unit,
+    // FR-111: "🍱 ugotuj na dwa dni" -- adds this dish as a leftover on
+    // another day picked from a list, without touching this slot.
+    onCookTwoDays: (cat: String) -> Unit = {},
     onPreviewClick: (recipe: Recipe, scale: Double) -> Unit,
     prepAheadFor: (cat: String) -> Recipe?,
     onApplyPrepAhead: (cat: String, recipeId: String) -> Unit,
@@ -952,6 +1014,7 @@ private fun DayCard(
                         // which also threw away its portion scale and its
                         // "resztki" flag.
                         TextButton(onClick = { onMoveSlot(category.id) }) { Text("📅") }
+                        TextButton(onClick = { onCookTwoDays(category.id) }) { Text("🍱") }
                     }
                 }
                 if (recipe == null) {
@@ -1038,6 +1101,9 @@ private fun PlannerDashboard(
     // FR-109: "przenieś na inny dzień" on today's card too -- rearranging a
     // week usually starts from the day you are standing on.
     onMoveSlot: (cat: String) -> Unit = {},
+    // FR-111: "🍱 ugotuj na dwa dni" -- adds this dish as a leftover on
+    // another day picked from a list, without touching this slot.
+    onCookTwoDays: (cat: String) -> Unit = {},
     onSignOut: () -> Unit,
     // Requested 2026-08-26: reports a meal-card tap up to PlannerScreen,
     // which owns the single shared RecipePreviewDialog instance (and the
@@ -1513,6 +1579,9 @@ private fun PlannerDashboard(
                             IconButton(onClick = { onMoveSlot(category.id) }, modifier = Modifier.size(32.dp)) {
                                 Text("📅", style = MaterialTheme.typography.bodySmall)
                             }
+                            IconButton(onClick = { onCookTwoDays(category.id) }, modifier = Modifier.size(32.dp)) {
+                                Text("🍱", style = MaterialTheme.typography.bodySmall)
+                            }
                             IconButton(onClick = { onClearSlot(category.id) }, modifier = Modifier.size(32.dp)) {
                                 Text("✕", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
@@ -1808,6 +1877,9 @@ private fun DayCardClinic(
     onScaleClick: (cat: String, currentScale: Double) -> Unit,
     onRegenerateSlot: (cat: String) -> Unit,
     onMoveSlot: (cat: String) -> Unit,
+    // FR-111: "🍱 ugotuj na dwa dni" -- adds this dish as a leftover on
+    // another day picked from a list, without touching this slot.
+    onCookTwoDays: (cat: String) -> Unit = {},
     onPreviewClick: (recipe: Recipe, scale: Double) -> Unit,
     prepAheadFor: (cat: String) -> Recipe?,
     onApplyPrepAhead: (cat: String, recipeId: String) -> Unit,
@@ -2025,6 +2097,7 @@ private fun DayCardClinic(
                         // which also threw away its portion scale and its
                         // "resztki" flag.
                         TextButton(onClick = { onMoveSlot(category.id) }) { Text("📅") }
+                        TextButton(onClick = { onCookTwoDays(category.id) }) { Text("🍱") }
                     }
                 }
                 if (rowDirection != 0) {
