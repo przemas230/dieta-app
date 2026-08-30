@@ -6,12 +6,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.przemas230.dietaapp.data.LocalStateStore
 import com.przemas230.dietaapp.logic.CloudSyncCodec
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -83,6 +87,7 @@ fun LocalPersistenceCoordinator(
     // file with the ViewModels' empty startup defaults) before the one-time
     // load has actually applied whatever was saved last run.
     var initialLoadDone by remember { mutableStateOf(false) }
+    val resumeReloadScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         val data = withContext(Dispatchers.IO) { LocalStateStore.load(context) }
@@ -107,6 +112,25 @@ fun LocalPersistenceCoordinator(
             )
         }
         initialLoadDone = true
+    }
+
+    // Requested 2026-08-30 (home-screen widgets, WidgetDataStore): a widget
+    // writes "eaten"/"water" straight to the same local_state.json this
+    // Activity's OWN debounced save effect (below) also writes wholesale
+    // from its in-memory snapshot -- without this, resuming the app after
+    // ticking a meal off from a widget would silently discard that tick the
+    // next time anything here triggers a save, since the Activity's memory
+    // never heard about the widget's change. Re-reads just those two
+    // fields (not the full snapshot -- pantry/shopping/etc. weren't
+    // touched by any widget, so there's nothing to protect there and no
+    // reason to risk fighting other in-flight app state).
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        if (!initialLoadDone) return@LifecycleEventEffect
+        resumeReloadScope.launch {
+            val data = withContext(Dispatchers.IO) { LocalStateStore.load(context) }
+            CloudSyncCodec.decodeEaten(data?.get("eaten") as? Map<*, *>)?.let { eatenViewModel.replaceAll(it) }
+            CloudSyncCodec.decodeWater(data?.get("water") as? Map<*, *>)?.let { waterViewModel.setCount(it) }
+        }
     }
 
     LaunchedEffect(

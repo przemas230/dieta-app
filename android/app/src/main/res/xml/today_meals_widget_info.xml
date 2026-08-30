@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Requested 2026-08-30 (home-screen widgets): checklist of today's 5
+     Planer slots. Sized for the full 5-row list to be comfortably
+     readable without scrolling on a typical 4-column home screen. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="220dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="3"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_today_meals_description"
+    android:initialLayout="@layout/glance_default_loading_layout" />

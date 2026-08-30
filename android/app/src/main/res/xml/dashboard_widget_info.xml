@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Requested 2026-08-30 (home-screen widgets): the small "one tile"
+     option, kcal + water + 3 quick launchers, for someone who doesn't
+     want the full meal checklist taking up home-screen space. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="140dp"
+    android:minHeight="140dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_dashboard_description"
+    android:initialLayout="@layout/glance_default_loading_layout" />

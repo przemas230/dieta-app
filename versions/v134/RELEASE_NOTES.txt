@@ -1,0 +1,37 @@
+Wersja v134 (2026-08-30, 23:21)
+================================
+
+Nowa funkcja: widgety na ekran główny (Android) + kolejne zdjęcia
+przepisów z Unsplash. Web: bez nowych funkcji w tej wersji, tylko
+CACHE_NAME bump towarzyszący nowym zdjęciom.
+
+CO SIĘ ZMIENIŁO
+---------------
+1. Na wyraźną prośbę użytkownika ("dodaj mi jeszcze widgety dla aplikacji
+kotlin, chce kilka różnych do wyboru żeby można było na nich zaznaczać
+posiłki i wodę oraz podglądać dania") — trzy osobne widgety Android do
+wyboru w systemowym selektorze:
+  - "Dzisiejszy Planer" — checklista dzisiejszych 5 posiłków z Planera,
+    checkbox przy każdym odhacza "zjedzone" bez otwierania aplikacji.
+  - "Woda" — pasek 8 kropelek, ta sama interakcja co pasek w nagłówku
+    aplikacji.
+  - "Skrót" — kompaktowy kafelek: pozostałe kcal dzisiaj, mini-pasek
+    wody i trzy przyciski szybkiego uruchomienia (Zakupy/Spiżarnia/
+    Postęp).
+Widgety czytają/piszą bezpośrednio ten sam plik co aplikacja, więc
+działają bez jej otwierania, a zmiana w jednym widgecie odświeża
+pozostałe. Aplikacja dostała też nowy mechanizm odświeżania danych przy
+powrocie na pierwszy plan, żeby zmiana zrobiona z widgetu nie została
+przypadkiem cofnięta przy najbliższym autozapisie.
+
+2. Kolejna partia zdjęć przepisów z Unsplash (FR-114, 156/229).
+
+Weryfikacja
+-----------
+Android: ./gradlew :logic:test :app:assembleDebug przechodzi (BUILD
+SUCCESSFUL). NIE zweryfikowane wizualnie — dodanie widgetu na ekran
+główny i interakcja z nim wymaga fizycznego/emulowanego launchera,
+którego nie było w tej sesji.
+
+Wersje: Web CACHE_NAME v133->v134 (tylko zdjęcia, bez nowych funkcji).
+Android versionCode 106->107 (0.1.105->0.1.106).

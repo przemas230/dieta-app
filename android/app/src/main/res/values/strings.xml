@@ -8,4 +8,13 @@
     <string name="shortcut_pantry_long">Spiżarnia</string>
     <string name="shortcut_progress_short">Postęp</string>
     <string name="shortcut_progress_long">Postęp</string>
+
+    <!-- Requested 2026-08-30 ("dodaj mi jeszcze widgety... chce kilka
+         różnych do wyboru"): shown in the system widget picker. -->
+    <string name="widget_today_meals_name">Dieta App: Dzisiejszy Planer</string>
+    <string name="widget_today_meals_description">Dzisiejsze 5 posiłków — odhacz zjedzone bez otwierania aplikacji.</string>
+    <string name="widget_water_name">Dieta App: Woda</string>
+    <string name="widget_water_description">Krople wody — stuknij, żeby zaznaczyć wypite szklanki.</string>
+    <string name="widget_dashboard_name">Dieta App: Skrót</string>
+    <string name="widget_dashboard_description">Pozostałe kalorie, woda i szybkie skróty do Zakupów/Spiżarni/Postępu.</string>
 </resources>

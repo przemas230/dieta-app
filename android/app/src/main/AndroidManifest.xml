@@ -49,6 +49,48 @@
             android:name=".notifications.WaterActionReceiver"
             android:exported="false" />
 
+        <!-- Requested 2026-08-30 ("dodaj mi jeszcze widgety... chce kilka
+             różnych do wyboru żeby można było na nich zaznaczać posiłki i
+             wodę oraz podglądać dania"): three home-screen widgets, see
+             android/app/src/main/java/.../widget/. android:exported="true"
+             is required for AppWidget receivers, since the launcher process
+             needs to be able to broadcast to them; safe here since they
+             only ever handle the standard APPWIDGET_UPDATE action, no
+             custom Intent surface of their own. -->
+        <receiver
+            android:name=".widget.TodayMealsWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_today_meals_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/today_meals_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.WaterWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_water_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/water_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.DashboardWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_dashboard_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/dashboard_widget_info" />
+        </receiver>
+
         <!-- FR-39: fires the recurring water reminder and re-arms the next
              one. Also listens for BOOT_COMPLETED (a system-sent broadcast,
              so this one must be exported) to reschedule after a reboot. -->

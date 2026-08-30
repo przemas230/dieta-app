@@ -21,8 +21,8 @@ android {
         applicationId = "com.przemas230.dietaapp"
         minSdk = 26
         targetSdk = 34
-        versionCode = 106
-        versionName = "0.1.105-20260830.2301"
+        versionCode = 107
+        versionName = "0.1.106-20260830.2318"
     }
 
     buildTypes {
@@ -85,6 +85,17 @@ dependencies {
     // Coil is the standard async-image loader for Compose, handles disk/
     // memory caching so a scrolled-past thumbnail doesn't re-download.
     implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // FR-119 (2026-08-30): home-screen widgets ("chce kilka różnych do
+    // wyboru") -- Glance is the modern Compose-first widget toolkit
+    // (RemoteViews under the hood, but a Composable API instead of hand-
+    // built XML layouts), the standard choice for any new AppWidget as of
+    // 2024+. GlanceTheme (dynamic-color support used by all three widgets
+    // below) lives in the base artifact itself, not glance-material3.
+    implementation("androidx.glance:glance-appwidget:1.1.1")
+    // LifecycleEventEffect (ON_RESUME reload, see LocalPersistenceCoordinator's
+    // own comment on why widget-vs-app write races need this).
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
