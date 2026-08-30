@@ -38,6 +38,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-19: Wybór innego slotu posiłkowego z poziomu karty przepisu](#fr-19-wybór-innego-slotu-posiłkowego-z-poziomu-karty-przepisu)
 - [FR-20: Skalowanie wielkości porcji w planerze](#fr-20-skalowanie-wielkości-porcji-w-planerze)
 - [FR-21: Losowe generowanie planu — cały tydzień lub pojedynczy dzień](#fr-21-losowe-generowanie-planu--cały-tydzień-lub-pojedynczy-dzień)
+- [FR-115: Szablon tygodnia w Planerze (zapisz/wczytaj)](#fr-115-szablon-tygodnia-w-planerze-zapiszwczytaj)
 - [FR-22: Czyszczenie planu — cały tydzień lub pojedynczy dzień](#fr-22-czyszczenie-planu--cały-tydzień-lub-pojedynczy-dzień)
 - [FR-23: „Ugotuj na 2 dni” — planowanie resztek po zwiększeniu porcji](#fr-23-ugotuj-na-2-dni--planowanie-resztek-po-zwiększeniu-porcji)
 - [FR-24: Proaktywna podpowiedź gotowania na kolejny dzień](#fr-24-proaktywna-podpowiedź-gotowania-na-kolejny-dzień)
@@ -6518,3 +6519,73 @@ plikach, albo dodając wpis do `OVERRIDES` w skrypcie na przyszłość).
   wywołań API (odczyt+ponowna serializacja 229 przepisów, zero zmian w
   pliku) — poprawnie znalazła granice tablicy i zachowała wszystko poza
   nią bez zmian. Zdjęcia NIE pobrane — czeka na klucz API od użytkownika.
+
+---
+
+# FR-115: Szablon tygodnia w Planerze (zapisz/wczytaj)
+
+**Obszar:** Planer, Web (Android: patrz Uwagi — jeszcze nie przeniesione)
+**Status:** Zaimplementowane na webie
+
+## Opis
+Obok „🎲 Wygeneruj losowo cały tydzień” dochodzą dwa przyciski: „💾 Zapisz
+ten tydzień jako szablon” i „📂 Wczytaj szablon” (widoczny tylko, gdy coś
+jest zapisane). Rozwiązuje problem: użytkownik ma ulubiony układ tygodnia
+(np. sprawdzony pod kątem budżetu kalorycznego i zakupów) i za każdym
+razem, gdy chce do niego wrócić po eksperymentowaniu z Planerem, musiał
+odtwarzać go ręcznie danie po daniu.
+
+„Zapisz” robi migawkę CAŁEGO bieżącego tygodnia (`planner`+
+`plannerScale`+`plannerLeftover`, czyli dania, skale porcji i znaczniki
+„resztki” razem) do jednego zapisanego slotu w `state.weekTemplate`.
+„Wczytaj” nadpisuje nią cały bieżący tydzień — tak samo destrukcyjne jak
+losowanie całego tygodnia, więc dostaje tę samą parę zabezpieczeń:
+`confirm()` przed wykonaniem ORAZ „Cofnij” po wykonaniu.
+
+**Świadomie jeden slot, nie lista nazwanych szablonów.** Pierwsza wersja
+— zapisanie ponownie nadpisuje poprzedni szablon. Rozszerzenie do
+wielu nazwanych szablonów to naturalny kolejny krok, jeśli się okaże
+potrzebny, ale nie było proszone wprost i nie komplikuje UI/modelu
+danych na start.
+
+## Kryteria akceptacji
+- „💾 Zapisz ten tydzień jako szablon” zawsze widoczny, działa od razu
+  (bez potwierdzenia — zapisanie niczego nie nadpisuje w widocznym
+  planie).
+- „📂 Wczytaj szablon” widoczny WYŁĄCZNIE gdy `state.weekTemplate`
+  istnieje.
+- Wczytanie wymaga potwierdzenia (nadpisuje cały bieżący tydzień) i po
+  wykonaniu pokazuje „Cofnij”, które przywraca dokładnie poprzedni stan
+  wszystkich trzech pól (`planner`/`plannerScale`/`plannerLeftover`).
+- Zapisanie NOWEGO szablonu nad istniejącym po prostu go zastępuje —
+  bez ostrzeżenia (świadome uproszczenie jednosltowego modelu).
+- Oba przyciski przenoszą się razem z „🎲 Wygeneruj losowo cały tydzień”
+  przy przełączeniu na motyw Klinika (który przenosi tamten przycisk na
+  dół widoku).
+
+## Uwagi
+Web: `state.weekTemplate` — `null` albo `{savedAt, planner, plannerScale,
+plannerLeftover}`, `structuredClone()` w obie strony (ten sam wzorzec co
+`autoPlanBtn`/FR-21). `plannerTemplateRow` (nowy kontener HTML) trzymany
+zaraz za `plannerAutoPlanRow` przez `insertAdjacentElement("afterend",...)`
+wołane w `renderPlanner()` niezależnie od tego, która gałąź motywu Klinika
+akurat przeniosła `autoPlanRow` — bez tego druga karta zostałaby w tyle na
+swojej statycznej pozycji w HTML przy przełączeniu na Klinikę.
+
+**Android: świadomie NIE przeniesione w tej turze** — praca równoległa do
+tury pobierania zdjęć (FR-114), gdzie priorytetem było zdążyć z kolejną
+partią przed odświeżeniem limitu Unsplash. Port wymaga: nowego pola
+`PlannerViewModel`/lokalnej trwałości (`LocalStateStore`, wzorem reszty
+niezsynchronizowanych jeszcze pól), dwóch przycisków w `PlannerScreen.kt`
+obok istniejącego `AutoPlanWeekButton`, tego samego wzorca
+`pendingConfirm`+`onShowUndoSnackbar` co reszta akcji o zasięgu całego
+tygodnia w tym pliku (patrz `randomizeWeek` closure, FR-21/v4).
+
+## Historia rewizji
+- **v1** (2026-08-30, web only): Pierwsza wersja. Zweryfikowane na żywo w
+  Chrome (lokalny serwer): zapisanie tygodnia z „Szakszuka…” w
+  poniedziałkowe śniadanie, zmiana tego slotu na inne danie, wczytanie
+  szablonu (logika handlera odtworzona bez natywnego `confirm()`, którego
+  automatyzacja przeglądarki nie może bezpiecznie kliknąć) poprawnie
+  przywróciło „Szakszuka…”, a cofnięcie poprawnie wróciło do
+  międzyczasowej zmiany. Android: ⬜, patrz Uwagi.

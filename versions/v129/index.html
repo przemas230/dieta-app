@@ -1949,15 +1949,6 @@
     <div class="shop-actions" style="margin-top:0;" id="plannerAutoPlanRow">
       <button class="btn primary" id="autoPlanBtn">🎲 Wygeneruj losowo cały tydzień</button>
     </div>
-    <!-- FR-115 (2026-08-30): "szablon tygodnia" -- save the current week's
-         plan once, load it back later, so a favorite week layout doesn't
-         need re-randomizing/re-picking from scratch every time. Single
-         saved slot (not a named list) -- see saveWeekTemplate/
-         loadWeekTemplate. -->
-    <div class="shop-actions" id="plannerTemplateRow">
-      <button class="btn ghost" id="saveWeekTemplateBtn" style="flex:1;">💾 Zapisz ten tydzień jako szablon</button>
-      <button class="btn ghost" id="loadWeekTemplateBtn" style="flex:1; display:none;">📂 Wczytaj szablon</button>
-    </div>
     <!-- Requested 2026-08-26 ("dodaj też przynajmniej 5 nowych funkcji" --
          research: users want their plan portable, e.g. to send to whoever
          does the shopping/cooking) -- same WhatsApp/Kopiuj share pattern
@@ -3806,13 +3797,6 @@ function loadState(){
       if(!s.waterReminder) s.waterReminder = {...DEFAULT_WATER_REMINDER};
       if(!s.plannerScale) s.plannerScale = {};
       if(!s.plannerLeftover) s.plannerLeftover = {};
-      // FR-115 (2026-08-30, requested: "pracować nad szablonami tygodnia
-      // planera, żeby nie trzeba było losować/klikać od nowa za każdym
-      // razem"): one saved snapshot of a whole week -- {savedAt, planner,
-      // plannerScale, plannerLeftover}, or null if nothing saved yet.
-      // Single-slot by design (not a named list) to keep this first
-      // version simple; saving again overwrites the previous one.
-      if(s.weekTemplate===undefined) s.weekTemplate = null;
       if(!s.waterHistory) s.waterHistory = {};
       if(s.uiScale===undefined) s.uiScale = detectDefaultUiScale();
       if(!s.recipeRating) s.recipeRating = {};
@@ -3855,7 +3839,7 @@ function loadState(){
       return s;
     }
   }catch(e){}
-  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, plannerLeftover:{}, water:{date:"",count:0}, waterHistory:{}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, pantryCategoryOverride:{}, pantryStepOverride:{}, pantryHidden:{}, waterNotifEnabled:false, theme:"clinic", waterReminder:{...DEFAULT_WATER_REMINDER}, uiScale:detectDefaultUiScale(), recipeRating:{}, swipeRatingStyle:"balloon", displayName:"", myRecipes:[], recipeReviews:{}, communityRecipesEnabled:false, remainingKcalFillEnabled:false, fasting:{...DEFAULT_FASTING}, clinicPalette:"default", household:{id:null, name:"", inviteCode:null, members:[]}, _lastSyncedSnapshot:null, weekTemplate:null};
+  return {favorites:{}, shopping:{}, recipeAdded:{}, planner:{}, plannerScale:{}, plannerLeftover:{}, water:{date:"",count:0}, waterHistory:{}, weights:[], profile:{...DEFAULT_PROFILE}, eaten:{}, favIngredients:{}, pantry:{}, history:[], cooked:{}, customTiles:{}, pantryUnitOverride:{}, pantryCategoryOverride:{}, pantryStepOverride:{}, pantryHidden:{}, waterNotifEnabled:false, theme:"clinic", waterReminder:{...DEFAULT_WATER_REMINDER}, uiScale:detectDefaultUiScale(), recipeRating:{}, swipeRatingStyle:"balloon", displayName:"", myRecipes:[], recipeReviews:{}, communityRecipesEnabled:false, remainingKcalFillEnabled:false, fasting:{...DEFAULT_FASTING}, clinicPalette:"default", household:{id:null, name:"", inviteCode:null, members:[]}, _lastSyncedSnapshot:null};
 }
 let state = loadState();
 document.documentElement.setAttribute("data-theme", state.theme || "clinic");
@@ -9104,12 +9088,6 @@ function renderPlanner(){
   }else{
     viewPlanner.insertBefore(autoPlanRow, document.getElementById("plannerTodayWrap").nextSibling);
   }
-  // FR-115: keeps plannerTemplateRow glued right after autoPlanRow no
-  // matter which branch above just moved it -- otherwise it would be left
-  // behind at its static HTML position when the Klinika themes relocate
-  // autoPlanRow to the bottom of the view.
-  autoPlanRow.insertAdjacentElement("afterend", document.getElementById("plannerTemplateRow"));
-  document.getElementById("loadWeekTemplateBtn").style.display = state.weekTemplate ? "" : "none";
   const jsDay = new Date().getDay();
   const todayIdx = jsDay===0 ? 6 : jsDay-1;
   const box = document.getElementById("plannerDays");
@@ -9624,39 +9602,6 @@ document.getElementById("autoPlanBtn").addEventListener("click", ()=>{
   });
   saveState(); renderPlanner(); renderHeader();
   toast("Wygenerowano plan na cały tydzień", "Cofnij", ()=>{
-    state.planner = prevPlan;
-    state.plannerScale = prevScale;
-    state.plannerLeftover = prevLeftover;
-    saveState(); renderPlanner(); renderHeader();
-  });
-});
-// FR-115 (2026-08-30, requested: "szablony tygodnia planera, żeby nie
-// trzeba było losować/klikać od nowa za każdym razem"): single saved
-// slot, overwritten each time -- see the field's own comment in
-// loadState() for why not a named list (kept deliberately simple for a
-// first version).
-document.getElementById("saveWeekTemplateBtn").addEventListener("click", ()=>{
-  state.weekTemplate = {
-    savedAt: new Date().toISOString(),
-    planner: structuredClone(state.planner),
-    plannerScale: structuredClone(state.plannerScale),
-    plannerLeftover: structuredClone(state.plannerLeftover),
-  };
-  saveState();
-  document.getElementById("loadWeekTemplateBtn").style.display = "";
-  toast("Zapisano ten tydzień jako szablon");
-});
-document.getElementById("loadWeekTemplateBtn").addEventListener("click", ()=>{
-  if(!state.weekTemplate) return;
-  if(!confirm("Wczytać zapisany szablon? To nadpisze wszystkie dania zaplanowane w całym tygodniu.")) return;
-  const prevPlan = structuredClone(state.planner);
-  const prevScale = structuredClone(state.plannerScale);
-  const prevLeftover = structuredClone(state.plannerLeftover);
-  state.planner = structuredClone(state.weekTemplate.planner);
-  state.plannerScale = structuredClone(state.weekTemplate.plannerScale);
-  state.plannerLeftover = structuredClone(state.weekTemplate.plannerLeftover);
-  saveState(); renderPlanner(); renderHeader();
-  toast("Wczytano szablon tygodnia", "Cofnij", ()=>{
     state.planner = prevPlan;
     state.plannerScale = prevScale;
     state.plannerLeftover = prevLeftover;

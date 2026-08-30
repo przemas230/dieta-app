@@ -1,0 +1,33 @@
+Wersja v129 (2026-08-30)
+========================
+
+Nowa funkcja w Planerze: szablon tygodnia (FR-115, na razie Web-only).
+
+CO SIĘ ZMIENIŁO
+---------------
+Obok "🎲 Wygeneruj losowo cały tydzień" dochodzą dwa przyciski:
+"💾 Zapisz ten tydzień jako szablon" i "📂 Wczytaj szablon" (widoczny
+tylko, gdy coś jest zapisane). Rozwiązuje problem: masz ulubiony układ
+tygodnia i za każdym razem, gdy chcesz do niego wrócić po eksperymentach
+w Planerze, musiałeś odtwarzać go ręcznie danie po daniu.
+
+"Zapisz" robi migawkę całego bieżącego tygodnia (dania, skale porcji,
+znaczniki "resztki"). "Wczytaj" nadpisuje nią cały bieżący tydzień - tak
+samo destrukcyjne jak losowanie całego tygodnia, więc dostaje te same
+zabezpieczenia: potwierdzenie przed wykonaniem i "Cofnij" po.
+
+Na razie jeden zapisany slot (nie lista nazwanych szablonów) - kolejny
+zapis nadpisuje poprzedni. Rozszerzenie do wielu szablonów to naturalny
+następny krok, jeśli się okaże potrzebny.
+
+Android: świadomie nie przeniesione w tej turze (praca równoległa do
+głównego zadania sesji - pobierania zdjęć przepisów), odłożone na kolejną
+sesję.
+
+Weryfikacja
+-----------
+Web, na żywo w Chrome (lokalny serwer): zapisanie tygodnia, zmiana planu,
+wczytanie szablonu poprawnie przywróciło zapisany stan, cofnięcie
+poprawnie wróciło do stanu sprzed wczytania.
+
+Wersje: Web CACHE_NAME v128->v129. Android bez zmian w tej wersji.
