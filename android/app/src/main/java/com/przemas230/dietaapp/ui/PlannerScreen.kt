@@ -247,6 +247,30 @@ fun PlannerScreen(
             }
         }
     }
+    // Requested 2026-08-30 ("zrobione i zjedzone może być w formie
+    // buttonów z zaznaczonym po ptaszkiem"): jumps straight to a target
+    // stage for the new checkbox-style buttons, instead of one step at a
+    // time -- none->eaten needs two underlying steps (you can't eat what
+    // was never cooked), walked here by calling handlePlannerSwipe more
+    // than once so it reuses the exact same pantry/kcal mutations and
+    // undo snackbars as the swipe gesture, not a second implementation.
+    val setPlannerStage: (String, Recipe, Int, LocalDate, PlannerSwipe.Stage) -> Unit = { cat, recipe, scaledKcal, date, target ->
+        val dateKey = date.toString()
+        fun currentStage() = PlannerSwipe.stageOf(
+            isEaten = EatenOperations.isEaten(eatenEntriesForDate(dateKey), cat),
+            isCooked = recipeViewModel.isCookedOn(recipe.id, dateKey),
+        )
+        var stage = currentStage()
+        if (stage != target) {
+            val direction = if (target.ordinal > stage.ordinal) 1 else -1
+            while (stage != target) {
+                handlePlannerSwipe(cat, direction, recipe, scaledKcal, date)
+                val nextStage = currentStage()
+                if (nextStage == stage) break // no progress -- avoid looping forever on an edge case
+                stage = nextStage
+            }
+        }
+    }
     val profile by profileViewModel.profile.collectAsState()
     // Requested 2026-08-26 (RecipePreviewDialog's full RecipeCardBody reuse).
     val pantryItems by pantryViewModel.items.collectAsState()
@@ -404,6 +428,7 @@ fun PlannerScreen(
                     onSwipeStep = { cat, direction, recipe, scaledKcal, date ->
                         handlePlannerSwipe(cat, direction, recipe, scaledKcal, date)
                     },
+                    onSetStage = setPlannerStage,
                     isCookedOnDate = isCookedOnDate,
                     onOpenPortionPicker = { cat, recipe, scaledKcal, date ->
                         portionPickerTarget = PortionTarget(cat, recipe, scaledKcal, date)
@@ -536,6 +561,7 @@ fun PlannerScreen(
                     eatenEntries = eatenEntriesForDate(dateForDayIndex(day).toString()),
                     isCookedOnDate = isCookedOnDate,
                     onSwipeStep = handlePlannerSwipe,
+                    onSetStage = setPlannerStage,
                     onOpenPortionPicker = { cat, recipe, scaledKcal, date ->
                         portionPickerTarget = PortionTarget(cat, recipe, scaledKcal, date)
                     },
@@ -1194,6 +1220,9 @@ private fun PlannerDashboard(
     // date; PlannerScreen owns the ViewModels needed to carry it out (cook
     // history + pantry live there, not here).
     onSwipeStep: (cat: String, direction: Int, recipe: Recipe, scaledKcal: Int, date: LocalDate) -> Unit = { _, _, _, _, _ -> },
+    // Requested 2026-08-30: "🍳 Zrobione"/"🍴 Zjedzone" checkbox buttons,
+    // alongside the swipe -- addresses a stage directly (see setPlannerStage).
+    onSetStage: (cat: String, recipe: Recipe, scaledKcal: Int, date: LocalDate, target: PlannerSwipe.Stage) -> Unit = { _, _, _, _, _ -> },
     /** FR-103/FR-104: "is this dish logged as cooked on that day" -- drives each row's stage. */
     isCookedOnDate: (recipeId: String, dateKey: String) -> Boolean = { _, _ -> false },
     /** FR-105: long-press a meal row -> pick how much of it was actually eaten. */
@@ -1517,21 +1546,17 @@ private fun PlannerDashboard(
                 // the tint into `colors.containerColor` instead (the color
                 // Card itself paints) is the only place a Card's background
                 // can actually be influenced from outside.
-                // FR-103 (v2, 2026-08-30 -- user reported "zjedzone" had no
-                // color of its own, only the name got struck through): the
-                // card shows WHICH STAGE it is at -- "zrobione" gets a green
-                // (primaryContainer) wash and "zjedzone" now gets its OWN
-                // secondaryContainer wash (was just plain `surface`, i.e. no
-                // color at all, indistinguishable from an empty slot at a
-                // glance), on top of the existing struck-through name and
-                // dimmed content below. secondaryContainer, not
-                // tertiaryContainer, because tertiaryContainer is already the
-                // "half portion" chip's color a few lines down (MealStateChip)
-                // -- reusing it here would make that chip invisible against
-                // its own card whenever a meal is both eaten AND partial.
+                // FR-103 (v3, 2026-08-30, user: "zrobione i zjedzone mają
+                // różnić się tylko przekreśleniem" -- reverts v2 below,
+                // which gave "zjedzone" its own secondaryContainer wash
+                // after an earlier complaint that it had no color at all):
+                // "zjedzone" now shares "zrobione"'s exact primaryContainer
+                // wash. The ONLY signal a meal is eaten rather than just
+                // cooked is the struck-through name (below), not a second
+                // color to learn.
                 val stageBase = when (stage) {
                     PlannerSwipe.Stage.COOKED -> MaterialTheme.colorScheme.primaryContainer
-                    PlannerSwipe.Stage.EATEN -> MaterialTheme.colorScheme.secondaryContainer
+                    PlannerSwipe.Stage.EATEN -> MaterialTheme.colorScheme.primaryContainer
                     PlannerSwipe.Stage.NONE -> MaterialTheme.colorScheme.surface
                 }
                 val cardContainerColor = dragTint.compositeOver(stageBase)
@@ -1587,8 +1612,7 @@ private fun PlannerDashboard(
                         Row(
                             modifier = Modifier
                                 .fillMaxHeight()
-                                .padding(10.dp)
-                                .alpha(if (stage == PlannerSwipe.Stage.EATEN) 0.62f else 1f),
+                                .padding(10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(category.emoji, fontSize = 18.sp)
@@ -1599,6 +1623,13 @@ private fun PlannerDashboard(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                // FR-103/v3 (2026-08-30, user: "różnić się
+                                // tylko przekreśleniem"): dimming moved from
+                                // the WHOLE row (removed above -- it washed
+                                // out the shared stageBase color too, the
+                                // same bug the color unification just fixed)
+                                // to just this name, alongside the
+                                // strikethrough that was always here.
                                 Text(
                                     recipe.name,
                                     style = MaterialTheme.typography.bodyMedium,
@@ -1606,6 +1637,7 @@ private fun PlannerDashboard(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     textDecoration = if (eaten) TextDecoration.LineThrough else TextDecoration.None,
+                                    modifier = Modifier.alpha(if (eaten) 0.55f else 1f),
                                 )
                                 // Requested 2026-08-26 ("na karcie dzisiejszy
                                 // planer na każdym daniu z racji że jest
@@ -1623,27 +1655,30 @@ private fun PlannerDashboard(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                                // FR-103: three independent bits of state now
-                                // (cooked / eaten / how much), so the card
-                                // has to show all three -- struck-through
-                                // name = eaten whole (above), these chips =
-                                // the other two.
-                                if (stage == PlannerSwipe.Stage.COOKED || isPartial) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                                        if (stage == PlannerSwipe.Stage.COOKED) {
-                                            MealStateChip(
-                                                "🍳 Zrobione — gotowe do zjedzenia",
-                                                MaterialTheme.colorScheme.primaryContainer,
-                                                MaterialTheme.colorScheme.onPrimaryContainer,
-                                            )
-                                        }
-                                        if (isPartial) {
-                                            MealStateChip(
-                                                PortionText.label(portion),
-                                                MaterialTheme.colorScheme.tertiaryContainer,
-                                                MaterialTheme.colorScheme.onTertiaryContainer,
-                                            )
-                                        }
+                                // Requested 2026-08-30: explicit checkbox
+                                // buttons alongside the swipe gesture --
+                                // replaces the old read-only "🍳 Zrobione"
+                                // chip (cooked-only) with something tappable
+                                // that also covers "eaten", which never had
+                                // a chip of its own before.
+                                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                    StageToggleChip(
+                                        "🍳 Zrobione",
+                                        checked = stage == PlannerSwipe.Stage.COOKED || stage == PlannerSwipe.Stage.EATEN,
+                                    ) {
+                                        val target = if (stage == PlannerSwipe.Stage.NONE) PlannerSwipe.Stage.COOKED else PlannerSwipe.Stage.NONE
+                                        onSetStage(category.id, recipe, kcal, today, target)
+                                    }
+                                    StageToggleChip("🍴 Zjedzone", checked = stage == PlannerSwipe.Stage.EATEN) {
+                                        val target = if (stage == PlannerSwipe.Stage.EATEN) PlannerSwipe.Stage.COOKED else PlannerSwipe.Stage.EATEN
+                                        onSetStage(category.id, recipe, kcal, today, target)
+                                    }
+                                    if (isPartial) {
+                                        MealStateChip(
+                                            PortionText.label(portion),
+                                            MaterialTheme.colorScheme.tertiaryContainer,
+                                            MaterialTheme.colorScheme.onTertiaryContainer,
+                                        )
                                     }
                                 }
                             }
@@ -1937,6 +1972,30 @@ private fun MealStateChip(text: String, background: Color, contentColor: Color) 
 }
 
 /**
+ * Requested 2026-08-30 ("zrobione i zjedzone może być w formie buttonów z
+ * zaznaczonym po ptaszkiem"): checkbox-style button for the "🍳
+ * Zrobione"/"🍴 Zjedzone" stage toggles, alongside the swipe gesture --
+ * unchecked is an outline in the same shape as MealStateChip above,
+ * checked fills with a ✓ and the card's own primaryContainer wash so the
+ * two read as related.
+ */
+@Composable
+private fun StageToggleChip(label: String, checked: Boolean, onClick: () -> Unit) {
+    Text(
+        (if (checked) "✓ " else "") + label,
+        modifier = Modifier
+            .clip(MaterialTheme.shapes.small)
+            .background(if (checked) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+            .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+        fontSize = 9.5.sp,
+        fontWeight = FontWeight.Bold,
+        color = if (checked) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+/**
  * FR-87: bento-wariant DayCard dla motywu "Klinika" -- ten sam stan i te
  * same callbacki co DayCard (zero nowej logiki), tylko inny uklad: kafelek
  * dnia z odznaka "Dziś" i pigulka kcal-vs-cel zamiast plaskiego tekstu,
@@ -1976,6 +2035,9 @@ private fun DayCardClinic(
     eatenEntries: Map<String, EatenEntry> = emptyMap(),
     isCookedOnDate: (recipeId: String, dateKey: String) -> Boolean = { _, _ -> false },
     onSwipeStep: (cat: String, direction: Int, recipe: Recipe, scaledKcal: Int, date: LocalDate) -> Unit = { _, _, _, _, _ -> },
+    // Requested 2026-08-30: "🍳 Zrobione"/"🍴 Zjedzone" checkbox buttons,
+    // alongside the swipe -- same as PlannerDashboard's own onSetStage.
+    onSetStage: (cat: String, recipe: Recipe, scaledKcal: Int, date: LocalDate, target: PlannerSwipe.Stage) -> Unit = { _, _, _, _, _ -> },
     onOpenPortionPicker: (cat: String, recipe: Recipe, scaledKcal: Int, date: LocalDate) -> Unit = { _, _, _, _ -> },
     modifier: Modifier = Modifier,
 ) {
@@ -2046,14 +2108,13 @@ private fun DayCardClinic(
                     rowDefinitePx,
                 )
                 val rowTarget = if (rowDirection == 0) null else PlannerSwipe.nextStage(rowStage, rowDirection)
-                // FR-103/v2 (2026-08-30): same "zjedzone" gets its own color
-                // fix as the dashboard card above, applied here too --
-                // secondaryContainer, not tertiaryContainer, for the same
-                // reason (this row's own "half portion" chip further down
-                // already uses tertiaryContainer).
+                // FR-103/v3 (2026-08-30, user: "różnić się tylko
+                // przekreśleniem"): same color unification as the dashboard
+                // card above -- "zjedzone" now shares "zrobione"'s exact
+                // primaryContainer wash instead of its own secondaryContainer.
                 val rowBase = when (rowStage) {
                     PlannerSwipe.Stage.COOKED -> MaterialTheme.colorScheme.primaryContainer
-                    PlannerSwipe.Stage.EATEN -> MaterialTheme.colorScheme.secondaryContainer
+                    PlannerSwipe.Stage.EATEN -> MaterialTheme.colorScheme.primaryContainer
                     PlannerSwipe.Stage.NONE -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
                 }
                 val rowTint = when {
@@ -2119,8 +2180,7 @@ private fun DayCardClinic(
                                 Modifier.clickable { onSlotClick(category.id) }
                             },
                         )
-                        .padding(horizontal = 10.dp, vertical = 8.dp)
-                        .alpha(if (rowStage == PlannerSwipe.Stage.EATEN) 0.62f else 1f),
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(
@@ -2147,15 +2207,28 @@ private fun DayCardClinic(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             textDecoration = if (rowStage == PlannerSwipe.Stage.EATEN) TextDecoration.LineThrough else TextDecoration.None,
+                            // FR-103/v3: dimming moved from the whole row
+                            // (removed above) to just this name, alongside
+                            // the strikethrough -- same fix as the
+                            // dashboard card, see its own comment.
+                            modifier = Modifier.alpha(if (rowStage == PlannerSwipe.Stage.EATEN) 0.55f else 1f),
                         )
-                        if (rowStage == PlannerSwipe.Stage.COOKED || (rowEaten && rowPortion > 0.0 && rowPortion < 1.0)) {
+                        // Requested 2026-08-30: same "🍳 Zrobione"/"🍴
+                        // Zjedzone" checkbox buttons as the dashboard card
+                        // -- only for rows that actually hold a dish, same
+                        // guard the swipe itself uses.
+                        if (recipe != null) {
                             Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                                if (rowStage == PlannerSwipe.Stage.COOKED) {
-                                    MealStateChip(
-                                        "🍳 Zrobione",
-                                        MaterialTheme.colorScheme.primaryContainer,
-                                        MaterialTheme.colorScheme.onPrimaryContainer,
-                                    )
+                                StageToggleChip(
+                                    "🍳 Zrobione",
+                                    checked = rowStage == PlannerSwipe.Stage.COOKED || rowStage == PlannerSwipe.Stage.EATEN,
+                                ) {
+                                    val target = if (rowStage == PlannerSwipe.Stage.NONE) PlannerSwipe.Stage.COOKED else PlannerSwipe.Stage.NONE
+                                    onSetStage(category.id, recipe, rowKcal, date, target)
+                                }
+                                StageToggleChip("🍴 Zjedzone", checked = rowStage == PlannerSwipe.Stage.EATEN) {
+                                    val target = if (rowStage == PlannerSwipe.Stage.EATEN) PlannerSwipe.Stage.COOKED else PlannerSwipe.Stage.EATEN
+                                    onSetStage(category.id, recipe, rowKcal, date, target)
                                 }
                                 if (rowEaten && rowPortion > 0.0 && rowPortion < 1.0) {
                                     MealStateChip(

@@ -1,0 +1,36 @@
+Wersja v130 (2026-08-30)
+========================
+
+Nowy przycisk na karcie przepisu ("📤 Udostępnij przepis") + poprawki
+kolorów i nowe przyciski-checkboxy "🍳 Zrobione"/"🍴 Zjedzone" w Planerze
+(motyw Klinika).
+
+CO SIĘ ZMIENIŁO
+---------------
+1. Rozwinięta karta przepisu (obok "🔎 Google" / "▶️ YouTube" / "✨ Gemini")
+dostaje nowy, pełnej szerokości przycisk "📤 Udostępnij przepis". Rozwiązuje
+ten sam problem co już istniejące udostępnianie planu tygodnia (FR-92), ale
+dla pojedynczego dania: wysyła nazwę, czas, kalorie, listę składników i
+sposób przygotowania jako zwykły tekst przez natywne okno udostępniania
+telefonu (WhatsApp/SMS/Messenger/e-mail), z awaryjnym kopiowaniem do
+schowka na desktopie. Przydatne np. gdy ktoś inny robi zakupy albo gotuje
+i potrzebuje pełnego przepisu, a nie tylko nazwy dania z Planera. Zero
+zmian w modelu danych — czysto UI + jedna funkcja budująca tekst
+(buildRecipeShareText), reużywa już istniejącą shareOrCopyText(). Android:
+jeszcze nie przeniesione w tej turze (odłożone na kolejną sesję,
+odnotowane w PARITY.md).
+
+2. Na życzenie użytkownika: karty dań w Planerze (motyw Klinika) — "🍳
+zrobione" i "🍴 zjedzone" mają teraz DOKŁADNIE ten sam kolor tła (wcześniej
+zjedzone miało własny, fioletowy odcień) — jedyna różnica to przekreślenie
+nazwy dania, tak jak było pierwotnie proszone. Dodatkowo: obok gestu
+przesunięcia dochodzą dwa jawne przyciski-checkboxy "🍳 Zrobione" i "🍴
+Zjedzone" na każdej karcie/wierszu dania — zaznaczone (✓, wypełnione tłem)
+gdy dany etap jest aktualny, klikalne żeby przeskoczyć wprost do tego
+etapu (odznaczenie "Zrobione" cofa też "Zjedzone", bo nie da się zjeść
+czegoś, co nie zostało ugotowane). Zaimplementowane w obu miejscach
+motywu Klinika: na kartce "Dzisiejszy Planer" i w liście dni tygodnia.
+
+Wersje: Web CACHE_NAME v129->v130. Android: patrz osobny wpis
+android/dist/version.json (versionCode 102->103, oba punkty w jednej
+turze — patrz PARITY.md dla dokładnego zakresu portu punktu 2).

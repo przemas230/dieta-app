@@ -14,6 +14,7 @@ Zbiorczy dokument wszystkich wymagań funkcjonalnych aplikacji, spisany retrospe
 - [FR-74: Wspólna zakładka „Śniadania” na liście przepisów, osobne sloty w Planerze](#fr-74-wspólna-zakładka-śniadania-na-liście-przepisów-osobne-sloty-w-planerze)
 - [FR-95: Wyszukiwanie AI (Gemini) na kartach przepisów + wyszukiwanie tylko na rozwiniętej karcie](#fr-95-wyszukiwanie-ai-gemini-na-kartach-przepisów--wyszukiwanie-tylko-na-rozwiniętej-karcie)
 - [FR-114: Prawdziwe zdjęcia dań zamiast emoji na miniaturce karty](#fr-114-prawdziwe-zdjęcia-dań-zamiast-emoji-na-miniaturce-karty)
+- [FR-116: Udostępnianie pojedynczego przepisu](#fr-116-udostępnianie-pojedynczego-przepisu)
 
 ### Personalizacja i cele dietetyczne
 - [FR-6: Profil użytkownika i wyliczanie zapotrzebowania kalorycznego](#fr-6-profil-użytkownika-i-wyliczanie-zapotrzebowania-kalorycznego)
@@ -5587,13 +5588,20 @@ czterema wynikami — bez niej gest nie byłby odkrywalny.
 Stan karty (w odróżnieniu od tego, co gest *zrobi*) pokazują znaczniki:
 przekreślona nazwa dania = zjedzone w całości, plakietka „½ Zjedzone w
 połowie” = połowa porcji (nazwa NIE jest przekreślona — danie nie jest
-skończone), plakietka „🍳 Zrobione” = danie ma dziś wpis w historii
-gotowania. Przy połowie porcji kafelek kcal pokazuje „300 / 600 kcal”.
-Tło karty ma własny kolor dla każdego z trzech stanów: „zrobione” —
-zielonkawy wash, „zjedzone” — fioletowo-liliowy wash (`--plum-pale` na
-webie, `secondaryContainer` na Androidzie), nic zaplanowane/w toku —
-zwykłe tło karty bez wybarwienia (patrz v4 niżej — do 2026-08-30
-„zjedzone” nie miało własnego koloru wcale).
+skończone). Przy połowie porcji kafelek kcal pokazuje „300 / 600 kcal”.
+Tło karty ma jeden wspólny kolor dla „zrobione” I „zjedzone” (zielonkawy
+wash — `--teal-pale` na webie, `primaryContainer` na Androidzie); nic
+zaplanowane/w toku zostaje bez wybarwienia. Jedyna wizualna różnica
+między „zrobione” a „zjedzone” to przekreślenie (i lekkie przygaszenie)
+nazwy dania — świadomie, na życzenie użytkownika (patrz v5 niżej: v4
+najpierw dało „zjedzone” WŁASNY, inny kolor po zgłoszeniu, że nie miało
+żadnego, po czym użytkownik poprosił o cofnięcie tego rozróżnienia
+kolorystycznego, zostawiając tylko przekreślenie jako sygnał).
+
+Od v5 (2026-08-30) oba stany są też osiągalne bez gestu: obok przesuwania
+każda karta/wiersz ma dwa jawne przyciski-checkboxy „🍳 Zrobione” i „🍴
+Zjedzone” (zaznaczone = wypełnione tłem + ✓), klikalne wprost do danego
+etapu — patrz v5 niżej.
 
 Wprowadzenie połowy porcji wymagało rozszerzenia zapisu zjedzonego
 posiłku o pole `portion` (0–1) obok istniejących `done`/`kcal`/`name`.
@@ -5619,6 +5627,22 @@ sprzed tej zmiany nie zmienia się ani o kcal.
   wracają do spiżarni.
 - Wszystkie cztery akcje są idempotentne i niezależne od kolejności.
 - Zwykłe stuknięcie karty nadal otwiera podgląd przepisu (bez zmian).
+- Tło karty w stanie „zrobione” i w stanie „zjedzone” to DOKŁADNIE ten sam
+  kolor — jedyna różnica to przekreślenie (i lekkie przygaszenie) nazwy
+  dania.
+- Przycisk „🍳 Zrobione” pokazuje ✓ i wypełnione tło, gdy danie jest
+  zrobione LUB zjedzone (zjedzenie implikuje zrobienie); kliknięcie w
+  stanie odznaczonym skacze wprost do „zrobione”, kliknięcie w stanie
+  zaznaczonym cofa WSZYSTKO do „nic” (kaskadowo odznacza też „Zjedzone”,
+  bo nie da się być zjedzonym bez bycia zrobionym).
+- Przycisk „🍴 Zjedzone” pokazuje ✓ i wypełnione tło tylko w stanie
+  „zjedzone”; kliknięcie w stanie odznaczonym skacze wprost do „zjedzone”
+  (przechodząc niewidocznie przez „zrobione”, jeśli danie nie było jeszcze
+  zrobione), kliknięcie w stanie zaznaczonym cofa o jeden krok do
+  „zrobione”.
+- Oba przyciski działają identycznie na karcie „Dzisiejszy Planer” i w
+  wierszach dni tygodnia (motyw Klinika), i nie inicjują gestu przesuwania
+  (wyłączone z rozpoznawania swipe'a tak samo jak przycisk „✕”).
 - Odczyt kcal dnia dla wpisów bez pola `portion` jest identyczny jak
   przed zmianą.
 - `./gradlew :logic:test :app:assembleDebug` przechodzi
@@ -5631,7 +5655,6 @@ sprzed tej zmiany nie zmienia się ani o kcal.
   `android/logic/`, `pdSwipeAction()` na webie), żeby żywa etykieta, żywe
   tło i obsługa puszczenia palca nie mogły się rozjechać co do znaczenia
   bieżącego gestu.
-
 
 - **v2** (2026-08-29, PRZEBUDOWA po odklikaniu v1): gest przestał wybierać
   akcję na podstawie ODLEGŁOŚCI przesunięcia, a zaczął przechodzić KROK po
@@ -5679,7 +5702,6 @@ sprzed tej zmiany nie zmienia się ani o kcal.
   Zweryfikowane na emulatorze: cztery kolejne przesunięcia dały 0/1480 →
   zielona karta „🍳 Zrobione” → 345/1480 z przekreśleniem i wyszarzeniem →
   z powrotem, a dolny pasek nie drgnął.
-
 
 - **v3** (2026-08-29): gest odróżnia teraz stuknięcie, które się
   „poślizgnęło”, od świadomego krótkiego przeciągnięcia. Prawdziwy palec
@@ -5748,6 +5770,51 @@ sprzed tej zmiany nie zmienia się ani o kcal.
   tą samą techniką, ale NIE zweryfikowany osobno na żywo (przełącznik
   motywu w ad hoc sesji testowej się zaciął) — ryzyko niskie, identyczny
   wzorzec co już potwierdzony wariant.
+
+- **v5** (2026-08-30, na wyraźną prośbę użytkownika): dwie zmiany w jednej
+  turze.
+
+  **(a) Cofnięcie rozróżnienia kolorem** — „zrobione i zjedzone mają
+  różnić się tylko przekreśleniem”. v4 dało „zjedzone” osobny kolor
+  (`--plum-pale`/`secondaryContainer`) po wcześniejszym zgłoszeniu, że nie
+  miało żadnego; teraz użytkownik poprosił o odwrót — oba stany dzielą
+  DOKŁADNIE ten sam `--teal-pale`/`primaryContainer`, a jedynym sygnałem
+  „zjedzone” zostaje przekreślona+przygaszona nazwa dania. Przy okazji na
+  Androidzie usunięto też `.alpha(0.62f)` na CAŁYM wierszu/karcie (ten sam
+  błąd co v4 już naprawiło na webie, ale Android wciąż go miał — wygaszał
+  jednolity kolor tła tak samo jak stare `opacity` na webie), przenosząc
+  przygaszenie na SAMĄ nazwę dania (`Modifier.alpha(0.55f)` na tym jednym
+  `Text`), zgodnie z już zweryfikowanym wzorcem webowym.
+
+  **(b) Nowe przyciski-checkboxy** — „zrobione i zjedzone może być w
+  formie buttonów z zaznaczonym po ptaszkiem”. Obok gestu przesuwania (bez
+  zastępowania go) każda karta/wiersz dostaje dwa jawne przyciski „🍳
+  Zrobione”/„🍴 Zjedzone”, zaznaczone (wypełnione tłem + prefiks „✓ ”) gdy
+  ich etap jest aktualny. Web: `setPdMealStage(cat, recipeId, date,
+  target)` — nowa funkcja obok już istniejącego `applyPdStageStep`
+  (wydzielony bezgłosowy rdzeń `applyPdStageStepCore` reużywany przez
+  obie), chodzi po pojedynczych krokach BEZ pokazywania toastu za każdy z
+  nich, pokazuje jeden toast dopiero za cały skok (np. „nic”→„zjedzone”
+  wymaga dwóch kroków, ale użytkownik widzi tylko „🍴 Zjedzone”, nie
+  najpierw „🍳 Zrobione”). Android: analogiczny `setPlannerStage` w
+  `PlannerScreen.kt`, reużywa istniejące `handlePlannerSwipe` (może
+  wywołać je więcej niż raz na jedno kliknięcie). Nowy `StageToggleChip`
+  (Android) / `.pd-stage-btn` (web) — outline gdy odznaczone, wypełnione
+  `primaryContainer`/`--teal` gdy zaznaczone. Oba przyciski wyłączone z
+  rozpoznawania gestu przesuwania (ten sam mechanizm wykluczeń co
+  istniejące przyciski „✕”/„📅”/„🍱”), żeby przytrzymanie przycisku nie
+  odpaliło pod spodem długiego-przytrzymania (picker porcji).
+
+  Zweryfikowane: web na żywo w Chrome (lokalny serwer, `javascript_tool`)
+  — kliknięcie „Zrobione” poprawnie przechodzi nic→zrobione, „Zjedzone”
+  poprawnie przechodzi zrobione→zjedzone, potwierdzony WSPÓLNY kolor tła
+  obu stanów przez odczyt reguł CSS wprost (`--teal-pale` dla obu), a
+  kliknięcie „Zrobione” w stanie zjedzone poprawnie kaskadowo cofa do
+  „nic” (oba przyciski odznaczone, jeden toast końcowy). To samo
+  zweryfikowane w liście dni tygodnia (`.cdc-row`). Android: `./gradlew
+  :logic:test :app:assembleDebug` przechodzi, NIE zweryfikowane wizualnie
+  na emulatorze (brak uruchomionego emulatora w tej sesji) — logika
+  identyczna ze zweryfikowaną wersją webową.
 
 ---
 
@@ -6604,3 +6671,62 @@ przez ponownie użyte `CloudSyncCodec.encodePlanner`/`encodePlannerScale`/
   na emulatorze (brak uruchomionego emulatora w tej turze) — logika
   save/load/undo jest jednak identyczna z już zweryfikowaną wersją
   webową, więc ryzyko ogranicza się głównie do warstwy UI/kompozycji.
+
+---
+
+# FR-116: Udostępnianie pojedynczego przepisu
+
+**Obszar:** Lista przepisów, Web (Android: patrz Uwagi — jeszcze nie przeniesione)
+**Status:** Zaimplementowane na webie
+
+## Opis
+Rozwinięta karta przepisu dostaje nowy, pełnej szerokości przycisk „📤
+Udostępnij przepis” (obok istniejącego rzędu „🔎 Google” / „▶️ YouTube” /
+„✨ Gemini”). Rozwiązuje ten sam problem co już istniejące udostępnianie
+całego planu tygodnia (FR-92), tylko dla pojedynczego dania: użytkownik
+chce wysłać komuś (kto robi zakupy albo gotuje zamiast niego) pełny
+przepis — nazwę, czas, kalorie, listę składników i sposób przygotowania —
+zamiast tylko nazwy dania widocznej w Planerze.
+
+Tekst budowany przez `buildRecipeShareText(r)` i wysyłany przez już
+istniejącą `shareOrCopyText()` (ta sama funkcja, której używa FR-92 dla
+całego tygodnia): na telefonie otwiera natywne okno udostępniania systemu
+(`navigator.share`) — WhatsApp/SMS/Messenger/e-mail bez kodowania
+osobnego przycisku na każdy z nich; na desktopie (brak `navigator.share`)
+kopiuje do schowka z komunikatem potwierdzającym.
+
+## Kryteria akceptacji
+- „📤 Udostępnij przepis” widoczny na każdej rozwiniętej karcie przepisu,
+  niezależnie od źródła (`builtin`/`custom`/`community`).
+- Kliknięcie NIE rozwija/zwija karty (`stopPropagation`, tak jak reszta
+  przycisków w tym rzędzie).
+- Treść zawiera: nazwę dania, czas przygotowania, kalorie, pełną listę
+  składników (jedna pozycja na linię) i sposób przygotowania — czysty
+  tekst, czytelny po wklejeniu w SMS/komunikator bez żadnego znacznika
+  HTML/Markdown.
+- Na urządzeniu z `navigator.share` otwiera natywne okno wyboru aplikacji;
+  w przeciwnym razie kopiuje do schowka i pokazuje toast potwierdzający.
+- Anulowanie natywnego okna udostępniania nie pokazuje błędu (ten sam
+  `catch` ignorujący anulowanie co FR-92).
+
+## Uwagi
+Web: `buildRecipeShareText(r)` (nowa funkcja, tuż przed `shareOrCopyText`)
++ nowy `data-share-recipe` przycisk w szablonie karty przepisu (funkcja
+renderująca kartę, zmienna `card.innerHTML`), handler dopisany zaraz po
+istniejącym `[data-search-gemini]`. Zero zmian w modelu danych
+(`state`) — czysto UI + jedna czysta funkcja budująca string z pól
+`Recipe` już obecnych w każdym przepisie.
+
+**Android: świadomie NIE przeniesione w tej turze** — odłożone na kolejną
+sesję (odnotowane w `PARITY.md`). Port wymaga: odpowiednika
+`buildRecipeShareText` w `logic/` (albo bezpośrednio w `RecipeListScreen.kt`,
+skoro to czysto prezentacyjna funkcja bez stanu), nowego przycisku w
+`RecipeCardBody` obok istniejącego rzędu Google/YouTube/Gemini, i
+`Intent.ACTION_SEND` — dokładnie ten sam wzorzec, jakiego już używają
+`SharePlanButtons` (`PlannerScreen.kt`) i `ShoppingScreen.kt`'s „📤
+Udostępnij”.
+
+## Historia rewizji
+- **v1** (2026-08-30, web only): Pierwsza wersja, funkcja samodzielnie
+  zaproponowana i zbudowana w oczekiwaniu na kolejne okno limitu Unsplash
+  (FR-114). Android: ⬜, patrz Uwagi.
